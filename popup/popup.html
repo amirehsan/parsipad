@@ -11,7 +11,7 @@
     <!-- Header -->
     <header class="header">
       <div class="logo">
-        <span class="logo-icon">P</span>
+        <img src="../icons/icon-48.png" alt="ParsiPad" class="logo-icon">
         <span class="logo-text">ParsiPad</span>
       </div>
       <div class="header-actions">
@@ -50,6 +50,8 @@
     <nav class="tab-nav">
       <button id="tab-translate" class="tab active" data-mode="translate" data-i18n="translate">Translate</button>
       <button id="tab-polish" class="tab" data-mode="polish" data-i18n="polish">Polish</button>
+      <button id="tab-dictionary" class="tab" data-mode="dictionary" data-i18n="dictionary">Dictionary</button>
+      <button id="tab-document" class="tab" data-mode="document" data-i18n="document">Document</button>
     </nav>
 
     <!-- Input Section -->
@@ -137,6 +139,87 @@
       </div>
     </section>
 
+    <!-- Dictionary Output Section -->
+    <section id="dictionary-section" class="section dictionary-section" hidden>
+      <div class="dict-result">
+        <div class="dict-header">
+          <div class="dict-word" id="dict-word"></div>
+          <div class="dict-phonetic" id="dict-phonetic"></div>
+          <div class="dict-pos" id="dict-pos"></div>
+        </div>
+        <div class="dict-definitions" id="dict-definitions"></div>
+        <div class="dict-synonyms" id="dict-synonyms-section" hidden>
+          <span class="dict-label" data-i18n="synonyms">Synonyms</span>
+          <div class="dict-tags" id="dict-synonyms"></div>
+        </div>
+        <div class="dict-antonyms" id="dict-antonyms-section" hidden>
+          <span class="dict-label" data-i18n="antonyms">Antonyms</span>
+          <div class="dict-tags" id="dict-antonyms"></div>
+        </div>
+        <div class="dict-translation" id="dict-translation-section">
+          <span class="dict-label" data-i18n="translation">Translation</span>
+          <div class="dict-translation-row">
+            <span id="dict-translation"></span>
+            <button id="dict-copy-btn" class="icon-btn small" data-i18n-title="copyToClipboard" title="Copy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Document Upload Section -->
+    <section id="document-upload-section" class="section document-section" hidden>
+      <div class="upload-area" id="upload-area">
+        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p class="upload-text" data-i18n="uploadDocument">Upload Document</p>
+        <p class="upload-hint" data-i18n="supportedFormats">Supported: TXT files</p>
+        <input type="file" id="file-input" accept=".txt" hidden>
+        <button id="select-file-btn" class="action-btn secondary" data-i18n="selectFile">Select File</button>
+      </div>
+      <div id="document-info" class="document-info" hidden>
+        <div class="doc-details">
+          <span class="doc-name" id="doc-name"></span>
+          <span class="doc-size" id="doc-size"></span>
+        </div>
+        <button id="remove-file-btn" class="icon-btn small" data-i18n-title="removeFile" title="Remove file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div id="translation-progress" class="progress-section" hidden>
+        <div class="progress-label">
+          <span data-i18n="translating">Translating...</span>
+          <span id="progress-text">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="progress-chunks" id="progress-chunks"></div>
+        <button id="cancel-translation-btn" class="action-btn cancel-btn" data-i18n="cancel">Cancel</button>
+      </div>
+      <div id="download-section" class="download-section" hidden>
+        <div class="download-success" data-i18n="translationComplete">Translation complete!</div>
+        <button id="download-btn" class="action-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span data-i18n="downloadTranslation">Download Translation</span>
+        </button>
+      </div>
+    </section>
+
     <!-- Error Section -->
     <div id="error-section" class="error-section" hidden>
       <p id="error-message"></p>
@@ -164,6 +247,17 @@
         </div>
       </div>
       <div id="polish-history-list" class="history-list"></div>
+    </section>
+
+    <!-- Dictionary History Section -->
+    <section id="dictionary-history-section" class="history-section" hidden>
+      <div class="history-header">
+        <span class="history-title" data-i18n="recentLookups">Recent Lookups</span>
+        <div class="history-actions">
+          <button id="clear-dict-history-btn" class="link-btn" data-i18n="clearAll">Clear All</button>
+        </div>
+      </div>
+      <div id="dictionary-history-list" class="history-list"></div>
     </section>
 
     <!-- Usage Stats Section -->

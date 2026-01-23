@@ -4,7 +4,7 @@
 ParsiPad - Persian English Translator
 
 ## Short Description (132 chars max)
-AI-powered Persian ↔ English translator with text polishing, right-click menu, keyboard shortcut (Alt+T), history & dark mode.
+AI-powered Persian ↔ English translator with dictionary, document translation, text polishing, Alt+T/Alt+D shortcuts & dark mode.
 
 ## Detailed Description
 
@@ -25,8 +25,20 @@ Not just translation! Polish your text in three styles:
 • Keyboard shortcut: Alt+T (customizable)
 • Popup for quick translations
 
+📖 **Dictionary Lookup** (NEW!)
+• Look up any word for definitions, phonetics, synonyms & antonyms
+• Keyboard shortcut: Alt+D
+• Right-click any word → "Look up in Dictionary"
+• Control translation direction in settings
+
+📄 **Document Translation** (NEW!)
+• Upload TXT files and translate entire documents
+• Progress tracking with chunk indicator
+• Cancel long translations anytime
+• Download translated files instantly
+
 📚 **Translation History**
-• View past translations and polish operations
+• View past translations, polish operations, and dictionary lookups
 • Search and filter by type
 • Organized by date with easy navigation
 
@@ -76,10 +88,12 @@ You'll need to create these screenshots (1280x800 or 640x400):
 
 1. **Translation in action** - Show the floating translation box on a webpage
 2. **Polish feature** - Show the polishing options (Professional/Conversational/Concise)
-3. **Popup interface** - Show the main popup with translation
-4. **Settings page** - Show the clean settings interface
-5. **History page** - Show the history with filters
-6. **Dark mode** - Show any view in dark mode
+3. **Dictionary lookup** - Show dictionary results with definitions and synonyms
+4. **Document translation** - Show progress bar during document translation
+5. **Popup interface** - Show the main popup with translation
+6. **Settings page** - Show the clean settings interface
+7. **History page** - Show the history with filters
+8. **Dark mode** - Show any view in dark mode
 
 ---
 
