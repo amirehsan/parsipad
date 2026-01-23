@@ -1,9 +1,13 @@
 /* ParsiPad Floating Translation Box Styles */
 /* These styles are injected into Shadow DOM to avoid conflicts with host page */
+/* Aligned with landing page styling */
+
+/* Import Inter & Vazirmatn fonts for consistency with landing page */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&display=swap');
 
 :host {
   all: initial;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 * {
@@ -16,8 +20,8 @@
   position: fixed;
   z-index: 2147483647;
   background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.25);
   border: 1px solid #e5e7eb;
   min-width: 280px;
   max-width: 450px;
@@ -25,6 +29,7 @@
   font-size: 14px;
   line-height: 1.5;
   color: #111827;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 @keyframes parsipad-fade-in {
@@ -42,49 +47,43 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
+  padding: 12px 16px;
   border-bottom: 1px solid #e5e7eb;
   background: #f9fafb;
-  border-radius: 12px 12px 0 0;
+  border-radius: 16px 16px 0 0;
 }
 
 .parsipad-logo {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .parsipad-logo-icon {
-  width: 20px;
-  height: 20px;
-  background: #6366f1;
-  color: white;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  object-fit: contain;
 }
 
 .parsipad-logo-text {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #111827;
 }
 
 .parsipad-badge {
   font-size: 10px;
   font-weight: 500;
-  padding: 2px 6px;
+  padding: 2px 8px;
   background: #6366f1;
   color: white;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .parsipad-close {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   background: none;
   border: none;
   cursor: pointer;
@@ -92,7 +91,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 8px;
   transition: background-color 0.15s, color 0.15s;
   font-size: 18px;
   line-height: 1;
@@ -104,7 +103,7 @@
 }
 
 .parsipad-content {
-  padding: 12px;
+  padding: 16px;
   max-height: 200px;
   overflow-y: auto;
 }
@@ -126,10 +125,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  padding: 12px 16px;
   border-top: 1px solid #e5e7eb;
   background: #f9fafb;
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 16px 16px;
 }
 
 .parsipad-cache-badge {
@@ -140,20 +139,21 @@
 .parsipad-copy {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
+  gap: 6px;
+  padding: 8px 12px;
   background: #6366f1;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  transition: background-color 0.15s;
+  transition: background-color 0.15s, box-shadow 0.15s;
 }
 
 .parsipad-copy:hover {
   background: #4f46e5;
+  box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.25);
 }
 
 .parsipad-copy svg {
@@ -167,10 +167,10 @@
 
 /* Loading State */
 .parsipad-loading {
-  padding: 16px 12px;
+  padding: 20px 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .parsipad-skeleton {
@@ -178,7 +178,7 @@
   background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
   background-size: 200% 100%;
   animation: parsipad-shimmer 1.5s infinite;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .parsipad-skeleton:nth-child(1) {
@@ -204,17 +204,17 @@
 
 /* Error State */
 .parsipad-error {
-  padding: 12px;
+  padding: 16px;
   color: #ef4444;
   font-size: 13px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .parsipad-error svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
 }
 
@@ -234,4 +234,152 @@
 
 .parsipad-content::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
+}
+
+/* ============================================
+   Dictionary Floating UI Styles
+   ============================================ */
+
+.parsipad-dict-result {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.parsipad-dict-header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.parsipad-dict-word {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.parsipad-dict-phonetic {
+  font-size: 13px;
+  color: #6b7280;
+  font-style: italic;
+  margin-bottom: 6px;
+}
+
+.parsipad-dict-pos {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.1);
+  padding: 2px 8px;
+  border-radius: 6px;
+  text-transform: lowercase;
+}
+
+.parsipad-dict-section {
+  margin-bottom: 8px;
+}
+
+.parsipad-dict-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6366f1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.parsipad-dict-definition {
+  margin-bottom: 8px;
+}
+
+.parsipad-dict-meaning {
+  font-size: 13px;
+  color: #111827;
+  line-height: 1.5;
+}
+
+.parsipad-dict-example {
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+  margin-top: 4px;
+  padding-left: 12px;
+  border-left: 2px solid #e5e7eb;
+}
+
+.parsipad-dict-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.parsipad-dict-tag {
+  font-size: 12px;
+  padding: 4px 10px;
+  background: #f9fafb;
+  color: #374151;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.parsipad-dict-tag-antonym {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.parsipad-dict-translation {
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.parsipad-dict-translation-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.parsipad-dict-translation-text {
+  font-size: 15px;
+  font-weight: 500;
+  color: #111827;
+  flex: 1;
+}
+
+.parsipad-dict-translation-text[dir="rtl"] {
+  font-family: 'Vazirmatn', 'Tahoma', sans-serif;
+  text-align: right;
+}
+
+.parsipad-dict-copy {
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.parsipad-dict-copy:hover {
+  background: #f3f4f6;
+  color: #6366f1;
+}
+
+.parsipad-dict-copy svg {
+  width: 16px;
+  height: 16px;
+}
+
+.parsipad-dict-copy.copied {
+  color: #10b981;
 }

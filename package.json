@@ -1,7 +1,7 @@
 {
   "name": "parsipad-extension",
-  "version": "1.0.0",
-  "description": "AI-powered Persian ↔ English translation & text polishing browser extension",
+  "version": "2.0.0",
+  "description": "AI-powered Persian ↔ English translation & text polishing browser extension with dictionary lookup and document translation",
   "type": "module",
   "scripts": {
     "lint": "echo 'No linter configured'",
@@ -14,10 +14,20 @@
     "farsi",
     "english",
     "ai",
-    "claude"
+    "claude",
+    "dictionary",
+    "document-translation"
   ],
-  "author": "",
+  "author": "amirehsan",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amirehsan/parsipad.git"
+  },
+  "bugs": {
+    "url": "https://github.com/amirehsan/parsipad/issues"
+  },
+  "homepage": "https://github.com/amirehsan/parsipad#readme",
   "engines": {
     "node": ">=18.0.0"
   }
