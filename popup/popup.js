@@ -1,5 +1,5 @@
 import { getTextDirection } from '../lib/language-detect.js';
-import { getHistory, clearHistory, getPolishHistory, clearPolishHistory } from '../lib/history.js';
+import { getHistory, clearHistory, getPolishHistory, clearPolishHistory, getDictionaryHistory, clearDictionaryHistory } from '../lib/history.js';
 import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage } from '../lib/storage.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 
@@ -9,6 +9,8 @@ const apiKeyWarning = document.getElementById('api-key-warning');
 const configureApiBtn = document.getElementById('configure-api-btn');
 const tabTranslate = document.getElementById('tab-translate');
 const tabPolish = document.getElementById('tab-polish');
+const tabDictionary = document.getElementById('tab-dictionary');
+const tabDocument = document.getElementById('tab-document');
 const inputText = document.getElementById('input-text');
 const charCount = document.getElementById('char-count');
 const clearInputBtn = document.getElementById('clear-input-btn');
@@ -34,6 +36,38 @@ const polishHistorySection = document.getElementById('polish-history-section');
 const polishHistoryList = document.getElementById('polish-history-list');
 const clearPolishHistoryBtn = document.getElementById('clear-polish-history-btn');
 const viewAllPolishHistoryBtn = document.getElementById('view-all-polish-history-btn');
+// Dictionary elements
+const dictionarySection = document.getElementById('dictionary-section');
+const dictWord = document.getElementById('dict-word');
+const dictPhonetic = document.getElementById('dict-phonetic');
+const dictPos = document.getElementById('dict-pos');
+const dictDefinitions = document.getElementById('dict-definitions');
+const dictSynonymsSection = document.getElementById('dict-synonyms-section');
+const dictSynonyms = document.getElementById('dict-synonyms');
+const dictAntonymsSection = document.getElementById('dict-antonyms-section');
+const dictAntonyms = document.getElementById('dict-antonyms');
+const dictTranslationSection = document.getElementById('dict-translation-section');
+const dictTranslation = document.getElementById('dict-translation');
+const dictCopyBtn = document.getElementById('dict-copy-btn');
+const dictionaryHistorySection = document.getElementById('dictionary-history-section');
+const dictionaryHistoryList = document.getElementById('dictionary-history-list');
+const clearDictHistoryBtn = document.getElementById('clear-dict-history-btn');
+// Document elements
+const documentUploadSection = document.getElementById('document-upload-section');
+const uploadArea = document.getElementById('upload-area');
+const fileInput = document.getElementById('file-input');
+const selectFileBtn = document.getElementById('select-file-btn');
+const documentInfo = document.getElementById('document-info');
+const docName = document.getElementById('doc-name');
+const docSize = document.getElementById('doc-size');
+const removeFileBtn = document.getElementById('remove-file-btn');
+const translationProgress = document.getElementById('translation-progress');
+const progressText = document.getElementById('progress-text');
+const progressFill = document.getElementById('progress-fill');
+const progressChunks = document.getElementById('progress-chunks');
+const downloadSection = document.getElementById('download-section');
+const downloadBtn = document.getElementById('download-btn');
+const cancelTranslationBtn = document.getElementById('cancel-translation-btn');
 const themeBtn = document.getElementById('theme-btn');
 const statsToggle = document.getElementById('stats-toggle');
 const statsContent = document.getElementById('stats-content');
@@ -45,8 +79,10 @@ const resetStatsBtn = document.getElementById('reset-stats-btn');
 
 // State
 let isProcessing = false;
-let currentMode = 'translate'; // 'translate' or 'polish'
+let currentMode = 'translate'; // 'translate', 'polish', 'dictionary', or 'document'
 let currentLang = 'en';
+let uploadedFile = null;
+let translatedContent = null;
 
 /**
  * Initialize the popup
@@ -229,6 +265,8 @@ function setupEventListeners() {
   // Tab switching
   tabTranslate.addEventListener('click', () => updateMode('translate'));
   tabPolish.addEventListener('click', () => updateMode('polish'));
+  tabDictionary.addEventListener('click', () => updateMode('dictionary'));
+  tabDocument.addEventListener('click', () => updateMode('document'));
 
   // Input text changes
   inputText.addEventListener('input', () => {
@@ -272,6 +310,17 @@ function setupEventListeners() {
   clearPolishHistoryBtn.addEventListener('click', handleClearPolishHistory);
   viewAllPolishHistoryBtn.addEventListener('click', openHistoryPage);
 
+  // Dictionary buttons
+  clearDictHistoryBtn.addEventListener('click', handleClearDictionaryHistory);
+  dictCopyBtn.addEventListener('click', handleDictCopy);
+
+  // Document buttons
+  selectFileBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', handleFileSelect);
+  removeFileBtn.addEventListener('click', clearFile);
+  downloadBtn.addEventListener('click', downloadTranslation);
+  cancelTranslationBtn.addEventListener('click', handleCancelTranslation);
+
   // Theme toggle
   themeBtn.addEventListener('click', toggleTheme);
 
@@ -290,8 +339,8 @@ function setupEventListeners() {
 }
 
 /**
- * Update mode (translate or polish)
- * @param {string} mode - 'translate' or 'polish'
+ * Update mode (translate, polish, dictionary, or document)
+ * @param {string} mode - 'translate', 'polish', 'dictionary', or 'document'
  */
 function updateMode(mode) {
   currentMode = mode;
@@ -299,26 +348,52 @@ function updateMode(mode) {
   // Update tabs
   tabTranslate.classList.toggle('active', mode === 'translate');
   tabPolish.classList.toggle('active', mode === 'polish');
+  tabDictionary.classList.toggle('active', mode === 'dictionary');
+  tabDocument.classList.toggle('active', mode === 'document');
 
-  // Update button text
-  btnText.textContent = mode === 'translate' ? t('translate', currentLang) : t('polish', currentLang);
+  // Update button text based on mode
+  const buttonTexts = {
+    translate: t('translate', currentLang),
+    polish: t('polish', currentLang),
+    dictionary: t('lookupWord', currentLang),
+    document: t('translate', currentLang)
+  };
+  btnText.textContent = buttonTexts[mode] || t('translate', currentLang);
 
-  // Update placeholder
-  inputText.placeholder = mode === 'translate'
-    ? t('enterTextTranslate', currentLang)
-    : t('enterTextPolish', currentLang);
+  // Update placeholder based on mode
+  const placeholders = {
+    translate: t('enterTextTranslate', currentLang),
+    polish: t('enterTextPolish', currentLang),
+    dictionary: t('enterWordToLookup', currentLang),
+    document: t('enterTextTranslate', currentLang)
+  };
+  inputText.placeholder = placeholders[mode] || t('enterTextTranslate', currentLang);
 
   // Hide outputs when switching modes
   hideAllOutputs();
   hideError();
 
-  // Show/hide history based on mode
-  if (mode === 'polish') {
-    historySection.hidden = true;
-    loadPolishHistory();
-  } else {
-    polishHistorySection.hidden = true;
+  // Hide all history sections first
+  historySection.hidden = true;
+  polishHistorySection.hidden = true;
+  dictionaryHistorySection.hidden = true;
+
+  // Show/hide input section based on mode
+  const inputSection = inputText.closest('.section');
+  const actionBtnEl = actionBtn;
+  inputSection.hidden = mode === 'document';
+  actionBtnEl.hidden = mode === 'document';
+
+  // Show/hide document section
+  documentUploadSection.hidden = mode !== 'document';
+
+  // Load appropriate history
+  if (mode === 'translate') {
     loadHistory();
+  } else if (mode === 'polish') {
+    loadPolishHistory();
+  } else if (mode === 'dictionary') {
+    loadDictionaryHistory();
   }
 }
 
@@ -328,8 +403,12 @@ function updateMode(mode) {
 async function handleAction() {
   if (currentMode === 'translate') {
     await handleTranslate();
-  } else {
+  } else if (currentMode === 'polish') {
     await handlePolish();
+  } else if (currentMode === 'dictionary') {
+    await handleDictionary();
+  } else if (currentMode === 'document') {
+    await handleDocumentTranslate();
   }
 }
 
@@ -636,6 +715,7 @@ function hideError() {
 function hideAllOutputs() {
   outputSection.hidden = true;
   polishSection.hidden = true;
+  dictionarySection.hidden = true;
 }
 
 /**
@@ -652,6 +732,349 @@ function escapeHtml(text) {
  */
 function escapeAttr(text) {
   return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// ============================================
+// Dictionary Functions
+// ============================================
+
+/**
+ * Handle dictionary lookup
+ */
+async function handleDictionary() {
+  const word = inputText.value.trim();
+
+  if (!word) {
+    showError(t('enterWordToLookup', currentLang));
+    return;
+  }
+
+  // Validate single word
+  if (word.split(/\s+/).length > 1) {
+    showError(t('singleWordOnly', currentLang));
+    return;
+  }
+
+  if (isProcessing) {
+    return;
+  }
+
+  setLoadingState(true);
+  hideError();
+  hideAllOutputs();
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      action: 'DICTIONARY_LOOKUP',
+      word: word,
+      sourceLang: 'auto'
+    });
+
+    if (response.error) {
+      showError(response.error);
+      return;
+    }
+
+    displayDictionaryResult(response);
+    await loadDictionaryHistory();
+  } catch (error) {
+    showError(error.message || t('noDefinitionFound', currentLang));
+  } finally {
+    setLoadingState(false);
+  }
+}
+
+/**
+ * Display dictionary result
+ */
+function displayDictionaryResult(result) {
+  const { word, phonetic, partOfSpeech, definitions, synonyms, antonyms, translation, targetLang } = result;
+
+  // Word and phonetic
+  dictWord.textContent = word;
+  dictPhonetic.textContent = phonetic || '';
+  dictPhonetic.hidden = !phonetic;
+
+  // Part of speech
+  dictPos.textContent = partOfSpeech || '';
+  dictPos.hidden = !partOfSpeech;
+
+  // Definitions
+  if (definitions && definitions.length > 0) {
+    dictDefinitions.innerHTML = definitions.map((def, i) => `
+      <div class="dict-definition-item">
+        <div class="dict-meaning">${i + 1}. ${escapeHtml(def.meaning)}</div>
+        ${def.example ? `<div class="dict-example">"${escapeHtml(def.example)}"</div>` : ''}
+      </div>
+    `).join('');
+  } else {
+    dictDefinitions.innerHTML = '';
+  }
+
+  // Synonyms
+  if (synonyms && synonyms.length > 0) {
+    dictSynonyms.innerHTML = synonyms.slice(0, 5).map(s =>
+      `<span class="dict-tag">${escapeHtml(s)}</span>`
+    ).join('');
+    dictSynonymsSection.hidden = false;
+  } else {
+    dictSynonymsSection.hidden = true;
+  }
+
+  // Antonyms
+  if (antonyms && antonyms.length > 0) {
+    dictAntonyms.innerHTML = antonyms.slice(0, 3).map(a =>
+      `<span class="dict-tag dict-tag-antonym">${escapeHtml(a)}</span>`
+    ).join('');
+    dictAntonymsSection.hidden = false;
+  } else {
+    dictAntonymsSection.hidden = true;
+  }
+
+  // Translation
+  if (translation) {
+    const isRTL = ['fa', 'ar', 'he'].includes(targetLang);
+    dictTranslation.textContent = translation;
+    dictTranslation.dir = isRTL ? 'rtl' : 'ltr';
+    dictTranslationSection.hidden = false;
+  } else {
+    dictTranslationSection.hidden = true;
+  }
+
+  dictionarySection.hidden = false;
+}
+
+/**
+ * Handle dictionary translation copy
+ */
+async function handleDictCopy() {
+  const text = dictTranslation.textContent;
+  if (!text) return;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    dictCopyBtn.classList.add('copied');
+    setTimeout(() => {
+      dictCopyBtn.classList.remove('copied');
+    }, 1500);
+  } catch (error) {
+    showError('Failed to copy to clipboard');
+  }
+}
+
+/**
+ * Load dictionary history
+ */
+async function loadDictionaryHistory() {
+  try {
+    const history = await getDictionaryHistory();
+
+    if (history.length === 0) {
+      dictionaryHistorySection.hidden = true;
+      return;
+    }
+
+    dictionaryHistorySection.hidden = false;
+    renderDictionaryHistory(history);
+  } catch (error) {
+    // Silently handle dictionary history load errors
+  }
+}
+
+/**
+ * Render dictionary history items
+ */
+function renderDictionaryHistory(history) {
+  dictionaryHistoryList.innerHTML = history.map(entry => {
+    return `
+      <div class="history-item dict-history-item" data-word="${escapeAttr(entry.word)}">
+        <div class="history-item-content">
+          <div class="history-item-original">${escapeHtml(entry.word)}</div>
+          <div class="history-item-translation">${escapeHtml(entry.translation || entry.definition || '')}</div>
+        </div>
+        <span class="history-item-badge dict-badge">Dict</span>
+      </div>
+    `;
+  }).join('');
+
+  dictionaryHistoryList.querySelectorAll('.dict-history-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const word = item.dataset.word;
+      inputText.value = word;
+      updateCharCount();
+      handleDictionary();
+    });
+  });
+}
+
+/**
+ * Clear dictionary history
+ */
+async function handleClearDictionaryHistory() {
+  await clearDictionaryHistory();
+  dictionaryHistorySection.hidden = true;
+  dictionaryHistoryList.innerHTML = '';
+}
+
+// ============================================
+// Document Translation Functions
+// ============================================
+
+/**
+ * Handle file selection
+ */
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Validate file size (100KB max)
+  if (file.size > 100 * 1024) {
+    showError(t('fileTooLarge', currentLang));
+    return;
+  }
+
+  uploadedFile = file;
+  docName.textContent = file.name;
+  docSize.textContent = formatFileSize(file.size);
+
+  uploadArea.hidden = true;
+  documentInfo.hidden = false;
+  downloadSection.hidden = true;
+  translationProgress.hidden = true;
+  translatedContent = null;
+
+  // Show translate button for document
+  actionBtn.hidden = false;
+  btnText.textContent = t('translate', currentLang);
+}
+
+/**
+ * Clear uploaded file
+ */
+function clearFile() {
+  uploadedFile = null;
+  translatedContent = null;
+  fileInput.value = '';
+
+  uploadArea.hidden = false;
+  documentInfo.hidden = true;
+  downloadSection.hidden = true;
+  translationProgress.hidden = true;
+  actionBtn.hidden = true;
+}
+
+/**
+ * Handle document translation
+ */
+async function handleDocumentTranslate() {
+  if (!uploadedFile) {
+    showError('Please select a file');
+    return;
+  }
+
+  const content = await uploadedFile.text();
+
+  setLoadingState(true);
+  translationProgress.hidden = false;
+  downloadSection.hidden = true;
+  updateProgress(0, 0, 1);
+
+  // Reset cancel button state
+  cancelTranslationBtn.disabled = false;
+  cancelTranslationBtn.textContent = t('cancel', currentLang);
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      action: 'TRANSLATE_DOCUMENT',
+      content: content,
+      filename: uploadedFile.name,
+      sourceLang: 'auto'
+    });
+
+    if (response.error) {
+      showError(response.error);
+      return;
+    }
+
+    // Check if translation was cancelled
+    if (response.cancelled) {
+      showError(t('translationCancelled', currentLang));
+      translationProgress.hidden = true;
+      return;
+    }
+
+    translatedContent = response.translation;
+    downloadSection.hidden = false;
+    updateProgress(100, response.chunks || 1, response.totalChunks || response.chunks || 1);
+
+    // Update usage stats
+    await updateUsageStats({
+      inputTokens: response.totalInputTokens || 0,
+      outputTokens: response.totalOutputTokens || 0,
+      translations: 1
+    });
+    await loadStats();
+  } catch (error) {
+    showError(error.message || 'Document translation failed');
+  } finally {
+    setLoadingState(false);
+  }
+}
+
+/**
+ * Handle cancel translation button click
+ */
+async function handleCancelTranslation() {
+  cancelTranslationBtn.disabled = true;
+  cancelTranslationBtn.textContent = t('translationCancelled', currentLang);
+
+  try {
+    await chrome.runtime.sendMessage({
+      action: 'CANCEL_DOCUMENT_TRANSLATION'
+    });
+  } catch (error) {
+    // Silently handle cancel errors
+  }
+}
+
+/**
+ * Update progress bar
+ */
+function updateProgress(percent, current, total) {
+  progressText.textContent = `${Math.round(percent)}%`;
+  progressFill.style.width = `${percent}%`;
+  if (total > 1) {
+    progressChunks.textContent = `${t('processingChunk', currentLang)} ${current} ${t('of', currentLang)} ${total}`;
+    progressChunks.hidden = false;
+  } else {
+    progressChunks.hidden = true;
+  }
+}
+
+/**
+ * Download translated document
+ */
+function downloadTranslation() {
+  if (!translatedContent || !uploadedFile) return;
+
+  const blob = new Blob([translatedContent], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = uploadedFile.name.replace('.txt', '_translated.txt');
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Format file size for display
+ */
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
 // Initialize when DOM is ready

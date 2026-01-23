@@ -1,87 +1,268 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ParsiPad Settings</title>
+
+  <!-- Fonts - Same as landing page -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="settings.css">
 </head>
-<body>
-  <div class="container">
-    <header class="header">
-      <h1 class="title" data-i18n="settingsTitle">ParsiPad Settings</h1>
-      <p class="subtitle" data-i18n="settingsSubtitle">Configure your Persian-English translator</p>
-    </header>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
 
-    <main class="main">
-      <section class="section">
-        <h2 class="section-title" data-i18n="languageSettings">Language Settings</h2>
-        <div class="form-group">
-          <label class="label" data-i18n="uiLanguage">Interface Language</label>
-          <div class="language-options">
-            <label class="radio-label">
-              <input type="radio" name="language" value="en" id="lang-en" checked>
-              <span>English</span>
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="language" value="fa" id="lang-fa">
-              <span>فارسی</span>
-            </label>
+  <!-- Navigation Bar - Matching landing page -->
+  <nav class="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
+    <div class="max-w-3xl mx-auto px-6 py-4">
+      <div class="flex items-center justify-between">
+        <!-- Logo -->
+        <div class="flex items-center space-x-3">
+          <img src="../icons/icon-48.png" alt="ParsiPad" class="w-10 h-10 rounded-xl">
+          <div>
+            <h1 class="font-semibold text-lg text-gray-900 dark:text-white">ParsiPad</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400" data-i18n="settingsSubtitle">Settings</p>
           </div>
         </div>
-      </section>
 
-      <section class="section">
-        <h2 class="section-title" data-i18n="apiConfiguration">API Configuration</h2>
+        <!-- Right side controls -->
+        <div class="flex items-center space-x-3">
+          <!-- Dark mode toggle -->
+          <button id="theme-toggle" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Toggle dark mode">
+            <svg class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
+            </svg>
+            <svg class="w-5 h-5 block dark:hidden" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
 
+  <!-- Main Content -->
+  <main class="max-w-3xl mx-auto px-6 py-8">
+
+    <!-- Language Settings Card -->
+    <section class="settings-card">
+      <div class="card-header">
+        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
+          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="card-title" data-i18n="languageSettings">Language Settings</h2>
+          <p class="card-subtitle">Choose your preferred interface language</p>
+        </div>
+      </div>
+      <div class="card-content">
+        <div class="language-options">
+          <label class="language-option">
+            <input type="radio" name="language" value="en" id="lang-en" checked>
+            <div class="option-content">
+              <span class="option-flag">🇬🇧</span>
+              <span class="option-label">English</span>
+            </div>
+          </label>
+          <label class="language-option">
+            <input type="radio" name="language" value="fa" id="lang-fa">
+            <div class="option-content">
+              <span class="option-flag">🇮🇷</span>
+              <span class="option-label persian-text">فارسی</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dictionary Settings Card -->
+    <section class="settings-card">
+      <div class="card-header">
+        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
+          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="card-title" data-i18n="dictionarySettings">Dictionary Settings</h2>
+          <p class="card-subtitle">Control translation directions for dictionary lookups</p>
+        </div>
+      </div>
+      <div class="card-content">
+        <label class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label-text" data-i18n="translateEnToFa">English → Persian translation</span>
+            <span class="toggle-hint">Show Persian translation for English words</span>
+          </div>
+          <div class="toggle-switch">
+            <input type="checkbox" id="dict-en-to-fa" checked>
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
+        <label class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label-text" data-i18n="translateFaToEn">Persian → English translation</span>
+            <span class="toggle-hint">Show English translation for Persian words</span>
+          </div>
+          <div class="toggle-switch">
+            <input type="checkbox" id="dict-fa-to-en" checked>
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
+      </div>
+    </section>
+
+    <!-- API Configuration Card -->
+    <section class="settings-card">
+      <div class="card-header">
+        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
+          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="card-title" data-i18n="apiConfiguration">API Configuration</h2>
+          <p class="card-subtitle">Connect your Anthropic API key to enable translations</p>
+        </div>
+      </div>
+      <div class="card-content">
         <div class="form-group">
-          <label for="api-key" class="label" data-i18n="anthropicApiKey">Anthropic API Key</label>
+          <label for="api-key" class="input-label" data-i18n="anthropicApiKey">Anthropic API Key</label>
           <div class="input-wrapper">
             <input
               type="password"
               id="api-key"
-              class="input"
-              placeholder="sk-ant-..."
+              class="text-input"
+              placeholder="sk-ant-api03-..."
               autocomplete="off"
             >
-            <button type="button" id="toggle-visibility" class="icon-button" data-i18n-title="showHide" title="Show/Hide">
-              <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button type="button" id="toggle-visibility" class="input-icon-btn" title="Show/Hide">
+              <svg class="eye-icon eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                 <circle cx="12" cy="12" r="3"/>
               </svg>
+              <svg class="eye-icon eye-closed hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
             </button>
           </div>
-          <p class="hint">
+          <p class="input-hint">
             <span data-i18n="getApiKey">Get your API key from</span>
-            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">
+            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" class="text-link">
               console.anthropic.com
+              <svg class="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+              </svg>
             </a>
           </p>
         </div>
 
-        <div class="form-actions">
-          <button type="button" id="save-btn" class="button primary" data-i18n="saveApiKey">Save API Key</button>
-          <button type="button" id="clear-btn" class="button secondary" data-i18n="clear">Clear</button>
+        <div class="button-group">
+          <button type="button" id="save-btn" class="btn btn-primary">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span data-i18n="saveApiKey">Save API Key</span>
+          </button>
+          <button type="button" id="clear-btn" class="btn btn-secondary">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            <span data-i18n="clear">Clear</span>
+          </button>
         </div>
 
-        <div id="status" class="status" hidden></div>
-      </section>
+        <div id="status" class="status-message" hidden></div>
+      </div>
+    </section>
 
-      <section class="section">
-        <h2 class="section-title" data-i18n="cache">Cache</h2>
-        <p class="text-secondary" id="cache-stats">Loading cache statistics...</p>
-        <button type="button" id="clear-cache-btn" class="button secondary" data-i18n="clearCache">Clear Cache</button>
-      </section>
+    <!-- Cache Card -->
+    <section class="settings-card">
+      <div class="card-header">
+        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
+          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="card-title" data-i18n="cache">Cache</h2>
+          <p class="card-subtitle">Manage cached translations for faster loading</p>
+        </div>
+      </div>
+      <div class="card-content">
+        <div class="cache-stats" id="cache-stats">
+          <div class="stat-item">
+            <span class="stat-label">Cached items</span>
+            <span class="stat-value" id="cache-count">Loading...</span>
+          </div>
+        </div>
+        <button type="button" id="clear-cache-btn" class="btn btn-secondary btn-full">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+          <span data-i18n="clearCache">Clear Cache</span>
+        </button>
+      </div>
+    </section>
 
-      <section class="section">
-        <h2 class="section-title" data-i18n="about">About</h2>
-        <p class="text-secondary">
-          ParsiPad v1.0.0<br>
-          AI-powered Persian ↔ English translation & text polishing using Claude
-        </p>
-      </section>
-    </main>
-  </div>
+    <!-- About Card -->
+    <section class="settings-card">
+      <div class="card-header">
+        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
+          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="card-title" data-i18n="about">About</h2>
+          <p class="card-subtitle">ParsiPad extension information</p>
+        </div>
+      </div>
+      <div class="card-content">
+        <div class="about-info">
+          <div class="about-row">
+            <span class="about-label">Version</span>
+            <span class="about-value">2.0.0</span>
+          </div>
+          <div class="about-row">
+            <span class="about-label">Powered by</span>
+            <span class="about-value">Claude AI</span>
+          </div>
+          <div class="about-row">
+            <span class="about-label">License</span>
+            <span class="about-value">MIT</span>
+          </div>
+        </div>
+        <div class="about-links">
+          <a href="https://github.com/amirehsan/parsipad" target="_blank" class="about-link">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+            GitHub
+          </a>
+          <a href="https://github.com/amirehsan/parsipad/issues" target="_blank" class="about-link">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Report Issue
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-200 dark:border-gray-800 py-6 mt-8">
+    <div class="max-w-3xl mx-auto px-6 text-center text-sm text-gray-500 dark:text-gray-400">
+      ParsiPad - AI-powered Persian ↔ English translation
+    </div>
+  </footer>
 
   <script type="module" src="settings.js"></script>
 </body>

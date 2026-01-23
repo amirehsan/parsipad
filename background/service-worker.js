@@ -1,7 +1,10 @@
 import { translate, polish } from '../lib/api.js';
+import { lookupWord } from '../lib/dictionary.js';
+import { translateDocument, validateFile, readFileContent } from '../lib/document-translator.js';
 import { translationCache } from '../lib/cache.js';
-import { hasApiKey } from '../lib/storage.js';
-import { addToHistory, addToPolishHistory } from '../lib/history.js';
+import { hasApiKey, getDictionaryTranslationSettings, isTranslationCancelled, setTranslationCancelled } from '../lib/storage.js';
+import { detectLanguageCode } from '../lib/language-detect.js';
+import { addToHistory, addToPolishHistory, addToDictionaryHistory } from '../lib/history.js';
 import { ACTIONS } from '../lib/constants.js';
 
 /**
@@ -30,6 +33,16 @@ async function handleMessage(message, sender) {
 
     case ACTIONS.POLISH:
       return handlePolish(message.text);
+
+    case ACTIONS.DICTIONARY_LOOKUP:
+      return handleDictionaryLookup(message.word, message.sourceLang);
+
+    case ACTIONS.TRANSLATE_DOCUMENT:
+      return handleDocumentTranslation(message.content);
+
+    case ACTIONS.CANCEL_DOCUMENT_TRANSLATION:
+      await setTranslationCancelled(true);
+      return { cancelled: true };
 
     case ACTIONS.CHECK_API_KEY:
       return { hasApiKey: await hasApiKey() };
@@ -105,6 +118,78 @@ async function handlePolish(text) {
 }
 
 /**
+ * Handle dictionary lookup request
+ * @param {string} word - Word to look up
+ * @param {'auto' | string} sourceLang - Source language
+ * @returns {Promise<Object>}
+ */
+async function handleDictionaryLookup(word, sourceLang = 'auto') {
+  if (!word || word.trim().length === 0) {
+    throw new Error('No word provided');
+  }
+
+  // Validate single word
+  const cleanWord = word.trim();
+  if (cleanWord.split(/\s+/).length > 1) {
+    throw new Error('Dictionary lookup is for single words only');
+  }
+
+  // Get dictionary translation settings
+  const dictSettings = await getDictionaryTranslationSettings();
+
+  // Detect the word's language to determine if translation should be shown
+  const detectedLang = detectLanguageCode(cleanWord);
+  let showTranslation = true;
+
+  if (detectedLang === 'en' && !dictSettings.enToFa) {
+    // English word, but EN→FA translation is disabled
+    showTranslation = false;
+  } else if (detectedLang === 'fa' && !dictSettings.faToEn) {
+    // Persian word, but FA→EN translation is disabled
+    showTranslation = false;
+  }
+
+  // Call API with translation preference
+  const result = await lookupWord(cleanWord, sourceLang, showTranslation);
+
+  // Add to dictionary history
+  await addToDictionaryHistory(cleanWord, result);
+
+  return result;
+}
+
+/**
+ * Handle document translation request
+ * @param {string} content - Document content to translate
+ * @returns {Promise<Object>}
+ */
+async function handleDocumentTranslation(content) {
+  if (!content || content.trim().length === 0) {
+    throw new Error('No content provided for translation');
+  }
+
+  // Reset cancellation flag before starting
+  await setTranslationCancelled(false);
+
+  // Translate document with cancellation check
+  const result = await translateDocument(
+    content,
+    () => {}, // onProgress - not used in service worker
+    isTranslationCancelled // checkCancelled callback
+  );
+
+  return {
+    translation: result.translation,
+    direction: result.direction,
+    chunks: result.chunks,
+    totalChunks: result.totalChunks,
+    totalInputTokens: result.totalInputTokens,
+    totalOutputTokens: result.totalOutputTokens,
+    cancelled: result.cancelled || false
+  };
+}
+
+/**
  * Create context menus on install
  */
 chrome.runtime.onInstalled.addListener(() => {
@@ -119,6 +204,13 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'polish-selection',
     title: 'Polish with ParsiPad',
+    contexts: ['selection']
+  });
+
+  // Create context menu for dictionary lookup
+  chrome.contextMenus.create({
+    id: 'dictionary-lookup',
+    title: 'Look up in Dictionary',
     contexts: ['selection']
   });
 });
@@ -166,6 +258,15 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         action: 'SHOW_POLISH',
         text: selectedText
       });
+    } else if (info.menuItemId === 'dictionary-lookup') {
+      // Only for single words
+      const word = selectedText.trim();
+      if (word.split(/\s+/).length === 1) {
+        await chrome.tabs.sendMessage(tab.id, {
+          action: 'SHOW_DICTIONARY',
+          word: word
+        });
+      }
     }
   } catch (error) {
     // Silently handle context menu action errors
@@ -176,21 +277,25 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
  * Handle keyboard shortcut
  */
 chrome.commands.onCommand.addListener(async (command) => {
-  if (command === 'translate-selection') {
-    // Get active tab
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  // Get active tab
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-    if (tab?.id) {
-      try {
-        // Ensure content script is loaded
-        await ensureContentScript(tab.id);
+  if (!tab?.id) return;
 
-        await chrome.tabs.sendMessage(tab.id, {
-          action: 'TRANSLATE_SELECTION'
-        });
-      } catch (error) {
-        // Silently handle translate selection errors
-      }
+  try {
+    // Ensure content script is loaded
+    await ensureContentScript(tab.id);
+
+    if (command === 'translate-selection') {
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'TRANSLATE_SELECTION'
+      });
+    } else if (command === 'dictionary-lookup') {
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'DICTIONARY_SELECTION'
+      });
     }
+  } catch (error) {
+    // Silently handle shortcut errors
   }
 });

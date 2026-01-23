@@ -50,6 +50,20 @@ function handleMessage(message, sender, sendResponse) {
         translateAndShow(selectedText);
       }
       break;
+
+    case 'SHOW_DICTIONARY':
+      // Context menu triggered - look up word
+      dictionaryAndShow(message.word);
+      break;
+
+    case 'DICTIONARY_SELECTION':
+      // Keyboard shortcut (Alt+D) triggered - get current selection
+      const dictSelection = window.getSelection();
+      const selectedWord = dictSelection?.toString().trim();
+      if (selectedWord && selectedWord.split(/\s+/).length === 1) {
+        dictionaryAndShow(selectedWord);
+      }
+      break;
   }
 
   sendResponse({ success: true });
@@ -184,7 +198,7 @@ function createFloatingBox(position) {
   box.innerHTML = `
     <div class="parsipad-header">
       <div class="parsipad-logo">
-        <span class="parsipad-logo-icon">P</span>
+        <img src="${chrome.runtime.getURL('icons/icon-48.png')}" alt="ParsiPad" class="parsipad-logo-icon">
         <span class="parsipad-logo-text">ParsiPad</span>
       </div>
       <span class="parsipad-badge">EN → FA</span>
@@ -385,7 +399,7 @@ function createPolishBox(position) {
   box.innerHTML = `
     <div class="parsipad-header">
       <div class="parsipad-logo">
-        <span class="parsipad-logo-icon">P</span>
+        <img src="${chrome.runtime.getURL('icons/icon-48.png')}" alt="ParsiPad" class="parsipad-logo-icon">
         <span class="parsipad-logo-text">ParsiPad</span>
       </div>
       <span class="parsipad-badge parsipad-badge-polish">Polish</span>
@@ -535,6 +549,248 @@ function showPolishError(message) {
   if (!shadowRoot) return;
 
   const content = shadowRoot.querySelector('.parsipad-polish-content');
+  content.innerHTML = `
+    <div class="parsipad-error">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      ${escapeHtml(message)}
+    </div>
+  `;
+}
+
+// ============================================
+// Dictionary Functions
+// ============================================
+
+/**
+ * Look up word and show dictionary floating box
+ */
+async function dictionaryAndShow(word) {
+  if (!word || word.trim().length === 0) {
+    return;
+  }
+
+  // Validate single word
+  const cleanWord = word.trim();
+  if (cleanWord.split(/\s+/).length > 1) {
+    return;
+  }
+
+  // Get selection position for box placement
+  const selection = window.getSelection();
+  const position = getBoxPosition(selection);
+
+  // Create dictionary floating box
+  createDictionaryBox(position);
+  showDictionaryLoading();
+
+  try {
+    // Send dictionary lookup request to background script
+    const response = await chrome.runtime.sendMessage({
+      action: 'DICTIONARY_LOOKUP',
+      word: cleanWord,
+      sourceLang: 'auto'
+    });
+
+    if (response.error) {
+      showDictionaryError(response.error);
+    } else {
+      showDictionaryResult(response);
+    }
+  } catch (error) {
+    showDictionaryError(error.message || 'Lookup failed');
+  }
+}
+
+/**
+ * Create the floating dictionary box with Shadow DOM
+ */
+function createDictionaryBox(position) {
+  // Remove existing box if present
+  removeFloatingBox();
+
+  // Create host element
+  const host = document.createElement('div');
+  host.id = 'parsipad-host';
+  host.style.cssText = `
+    position: absolute;
+    top: ${position.top}px;
+    left: ${position.left}px;
+    z-index: 2147483647;
+  `;
+
+  // Create shadow root for style isolation
+  shadowRoot = host.attachShadow({ mode: 'closed' });
+
+  // Inject styles
+  const style = document.createElement('style');
+  style.textContent = getStyles();
+  shadowRoot.appendChild(style);
+
+  // Create box structure for dictionary
+  const box = document.createElement('div');
+  box.className = 'parsipad-box parsipad-dictionary-box';
+  box.innerHTML = `
+    <div class="parsipad-header">
+      <div class="parsipad-logo">
+        <img src="${chrome.runtime.getURL('icons/icon-48.png')}" alt="ParsiPad" class="parsipad-logo-icon">
+        <span class="parsipad-logo-text">ParsiPad</span>
+      </div>
+      <span class="parsipad-badge parsipad-badge-dictionary">Dictionary</span>
+      <button class="parsipad-close" title="Close">×</button>
+    </div>
+    <div class="parsipad-dictionary-content">
+      <!-- Dictionary result will be inserted here -->
+    </div>
+  `;
+
+  shadowRoot.appendChild(box);
+  document.body.appendChild(host);
+
+  floatingBox = host;
+
+  // Set up event listeners
+  const closeBtn = shadowRoot.querySelector('.parsipad-close');
+  closeBtn.addEventListener('click', removeFloatingBox);
+
+  // Prevent clicks inside box from closing it
+  box.addEventListener('click', (e) => e.stopPropagation());
+}
+
+/**
+ * Show loading state in the dictionary box
+ */
+function showDictionaryLoading() {
+  if (!shadowRoot) return;
+
+  const content = shadowRoot.querySelector('.parsipad-dictionary-content');
+  content.innerHTML = `
+    <div class="parsipad-loading">
+      <div class="parsipad-skeleton" style="width: 40%;"></div>
+      <div class="parsipad-skeleton" style="width: 90%;"></div>
+      <div class="parsipad-skeleton" style="width: 70%;"></div>
+      <div class="parsipad-skeleton" style="width: 85%;"></div>
+    </div>
+  `;
+}
+
+/**
+ * Show dictionary result
+ */
+function showDictionaryResult(result) {
+  if (!shadowRoot) return;
+
+  const { word, phonetic, partOfSpeech, definitions, synonyms, antonyms, translation, targetLang } = result;
+  const isTargetRTL = ['fa', 'ar', 'he'].includes(targetLang);
+
+  let definitionsHtml = '';
+  if (definitions && definitions.length > 0) {
+    definitionsHtml = definitions.map((def, i) => `
+      <div class="parsipad-dict-definition">
+        <div class="parsipad-dict-meaning">${i + 1}. ${escapeHtml(def.meaning)}</div>
+        ${def.example ? `<div class="parsipad-dict-example">"${escapeHtml(def.example)}"</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  let synonymsHtml = '';
+  if (synonyms && synonyms.length > 0) {
+    synonymsHtml = `
+      <div class="parsipad-dict-section">
+        <div class="parsipad-dict-section-title">Synonyms</div>
+        <div class="parsipad-dict-tags">
+          ${synonyms.slice(0, 5).map(s => `<span class="parsipad-dict-tag">${escapeHtml(s)}</span>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  let antonymsHtml = '';
+  if (antonyms && antonyms.length > 0) {
+    antonymsHtml = `
+      <div class="parsipad-dict-section">
+        <div class="parsipad-dict-section-title">Antonyms</div>
+        <div class="parsipad-dict-tags">
+          ${antonyms.slice(0, 3).map(a => `<span class="parsipad-dict-tag parsipad-dict-tag-antonym">${escapeHtml(a)}</span>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  const content = shadowRoot.querySelector('.parsipad-dictionary-content');
+  content.innerHTML = `
+    <div class="parsipad-dict-header">
+      <div class="parsipad-dict-word">${escapeHtml(word)}</div>
+      ${phonetic ? `<div class="parsipad-dict-phonetic">${escapeHtml(phonetic)}</div>` : ''}
+      ${partOfSpeech ? `<div class="parsipad-dict-pos">${escapeHtml(partOfSpeech)}</div>` : ''}
+    </div>
+
+    ${definitionsHtml ? `
+      <div class="parsipad-dict-section">
+        <div class="parsipad-dict-section-title">Definitions</div>
+        ${definitionsHtml}
+      </div>
+    ` : ''}
+
+    ${synonymsHtml}
+    ${antonymsHtml}
+
+    ${translation ? `
+      <div class="parsipad-dict-translation">
+        <div class="parsipad-dict-section-title">Translation</div>
+        <div class="parsipad-dict-translation-text" ${isTargetRTL ? 'dir="rtl"' : ''}>${escapeHtml(translation)}</div>
+        <button class="parsipad-dict-copy-translation" title="Copy translation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        </button>
+      </div>
+    ` : ''}
+  `;
+
+  // Add copy handler for translation
+  const copyBtn = shadowRoot.querySelector('.parsipad-dict-copy-translation');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => handleDictionaryCopy(copyBtn, translation));
+  }
+}
+
+/**
+ * Handle copy for dictionary translation
+ */
+async function handleDictionaryCopy(btn, text) {
+  try {
+    await navigator.clipboard.writeText(text);
+
+    // Visual feedback
+    btn.classList.add('copied');
+    const originalSvg = btn.innerHTML;
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    `;
+
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = originalSvg;
+    }, 1500);
+  } catch (error) {
+    // Silently handle copy errors
+  }
+}
+
+/**
+ * Show error in dictionary box
+ */
+function showDictionaryError(message) {
+  if (!shadowRoot) return;
+
+  const content = shadowRoot.querySelector('.parsipad-dictionary-content');
   content.innerHTML = `
     <div class="parsipad-error">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -890,6 +1146,169 @@ function getStyles() {
     }
 
     .parsipad-polish-content::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 3px;
+    }
+
+    /* Dictionary Box Styles */
+    .parsipad-dictionary-box {
+      max-width: 400px;
+    }
+
+    .parsipad-badge-dictionary {
+      background: #059669;
+    }
+
+    .parsipad-dictionary-content {
+      padding: 12px;
+      max-height: 350px;
+      overflow-y: auto;
+    }
+
+    .parsipad-dict-header {
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .parsipad-dict-word {
+      font-size: 18px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+
+    .parsipad-dict-phonetic {
+      font-size: 13px;
+      color: #6b7280;
+      font-style: italic;
+      margin-bottom: 4px;
+    }
+
+    .parsipad-dict-pos {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 500;
+      color: #8b5cf6;
+      background: #f3e8ff;
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-transform: lowercase;
+    }
+
+    .parsipad-dict-section {
+      margin-bottom: 12px;
+    }
+
+    .parsipad-dict-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #6366f1;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .parsipad-dict-definition {
+      margin-bottom: 8px;
+    }
+
+    .parsipad-dict-meaning {
+      font-size: 13px;
+      color: #111827;
+      line-height: 1.5;
+    }
+
+    .parsipad-dict-example {
+      font-size: 12px;
+      color: #6b7280;
+      font-style: italic;
+      margin-top: 4px;
+      padding-left: 10px;
+      border-left: 2px solid #e5e7eb;
+    }
+
+    .parsipad-dict-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .parsipad-dict-tag {
+      font-size: 12px;
+      padding: 3px 8px;
+      background: #f3f4f6;
+      color: #374151;
+      border-radius: 4px;
+    }
+
+    .parsipad-dict-tag-antonym {
+      background: #fef2f2;
+      color: #991b1b;
+    }
+
+    .parsipad-dict-translation {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e5e7eb;
+      position: relative;
+    }
+
+    .parsipad-dict-translation-text {
+      font-size: 15px;
+      font-weight: 500;
+      color: #111827;
+      line-height: 1.5;
+      padding-right: 32px;
+    }
+
+    .parsipad-dict-translation-text[dir="rtl"] {
+      font-family: 'Vazirmatn', 'Tahoma', sans-serif;
+      text-align: right;
+      padding-right: 0;
+      padding-left: 32px;
+    }
+
+    .parsipad-dict-copy-translation {
+      position: absolute;
+      top: 12px;
+      right: 0;
+      width: 28px;
+      height: 28px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #9ca3af;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: background-color 0.15s, color 0.15s;
+    }
+
+    .parsipad-dict-copy-translation:hover {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .parsipad-dict-copy-translation svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .parsipad-dict-copy-translation.copied {
+      color: #10b981;
+    }
+
+    .parsipad-dictionary-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .parsipad-dictionary-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .parsipad-dictionary-content::-webkit-scrollbar-thumb {
       background: #d1d5db;
       border-radius: 3px;
     }

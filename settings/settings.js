@@ -1,4 +1,4 @@
-import { getApiKey, setApiKey, removeApiKey, maskApiKey, getLanguage, setLanguage } from '../lib/storage.js';
+import { getApiKey, setApiKey, removeApiKey, maskApiKey, getLanguage, setLanguage, getDictionaryTranslationSettings, setDictionaryTranslationSettings } from '../lib/storage.js';
 import { translationCache } from '../lib/cache.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 
@@ -8,10 +8,13 @@ const toggleVisibilityBtn = document.getElementById('toggle-visibility');
 const saveBtn = document.getElementById('save-btn');
 const clearBtn = document.getElementById('clear-btn');
 const statusEl = document.getElementById('status');
-const cacheStatsEl = document.getElementById('cache-stats');
+const cacheCountEl = document.getElementById('cache-count');
 const clearCacheBtn = document.getElementById('clear-cache-btn');
 const langEnRadio = document.getElementById('lang-en');
 const langFaRadio = document.getElementById('lang-fa');
+const dictEnToFaCheckbox = document.getElementById('dict-en-to-fa');
+const dictFaToEnCheckbox = document.getElementById('dict-fa-to-en');
+const themeToggle = document.getElementById('theme-toggle');
 
 // State
 let isPasswordVisible = false;
@@ -22,10 +25,36 @@ let currentLang = 'en';
  * Initialize the settings page
  */
 async function init() {
+  initTheme();
   await loadLanguage();
+  await loadDictionarySettings();
   await loadApiKey();
   await loadCacheStats();
   setupEventListeners();
+}
+
+/**
+ * Initialize theme from localStorage or system preference
+ */
+function initTheme() {
+  const html = document.documentElement;
+
+  // Check for saved preference or system preference
+  if (localStorage.getItem('theme') === 'dark' ||
+      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    html.classList.add('dark');
+  } else {
+    html.classList.remove('dark');
+  }
+}
+
+/**
+ * Toggle dark/light theme
+ */
+function toggleTheme() {
+  const html = document.documentElement;
+  html.classList.toggle('dark');
+  localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
 }
 
 /**
@@ -42,6 +71,15 @@ async function loadLanguage() {
   }
 
   applyTranslations(currentLang);
+}
+
+/**
+ * Load dictionary translation settings
+ */
+async function loadDictionarySettings() {
+  const settings = await getDictionaryTranslationSettings();
+  dictEnToFaCheckbox.checked = settings.enToFa;
+  dictFaToEnCheckbox.checked = settings.faToEn;
 }
 
 /**
@@ -64,12 +102,9 @@ async function loadCacheStats() {
   const stats = await translationCache.getStats();
 
   if (stats.size === 0) {
-    cacheStatsEl.textContent = t('cacheEmpty', currentLang);
+    cacheCountEl.textContent = '0 items';
   } else {
-    const oldestDate = stats.oldestEntry
-      ? stats.oldestEntry.toLocaleDateString(currentLang === 'fa' ? 'fa-IR' : 'en-US')
-      : 'Unknown';
-    cacheStatsEl.textContent = `${stats.size} ${t('cachedTranslations', currentLang)} (${t('oldest', currentLang)}: ${oldestDate})`;
+    cacheCountEl.textContent = `${stats.size} items`;
   }
 }
 
@@ -77,11 +112,22 @@ async function loadCacheStats() {
  * Set up event listeners
  */
 function setupEventListeners() {
+  // Theme toggle
+  themeToggle.addEventListener('click', toggleTheme);
+
   // Toggle password visibility
   toggleVisibilityBtn.addEventListener('click', () => {
     isPasswordVisible = !isPasswordVisible;
     apiKeyInput.type = isPasswordVisible ? 'text' : 'password';
     toggleVisibilityBtn.title = isPasswordVisible ? 'Hide' : 'Show';
+
+    // Toggle eye icons
+    const eyeOpen = toggleVisibilityBtn.querySelector('.eye-open');
+    const eyeClosed = toggleVisibilityBtn.querySelector('.eye-closed');
+    if (eyeOpen && eyeClosed) {
+      eyeOpen.classList.toggle('hidden', isPasswordVisible);
+      eyeClosed.classList.toggle('hidden', !isPasswordVisible);
+    }
   });
 
   // Save API key
@@ -103,6 +149,10 @@ function setupEventListeners() {
   // Language selection
   langEnRadio.addEventListener('change', () => handleLanguageChange('en'));
   langFaRadio.addEventListener('change', () => handleLanguageChange('fa'));
+
+  // Dictionary translation settings
+  dictEnToFaCheckbox.addEventListener('change', handleDictionarySettingChange);
+  dictFaToEnCheckbox.addEventListener('change', handleDictionarySettingChange);
 }
 
 /**
@@ -114,6 +164,15 @@ async function handleLanguageChange(lang) {
   await setLanguage(lang);
   applyTranslations(lang);
   await loadCacheStats(); // Refresh cache stats text
+}
+
+/**
+ * Handle dictionary translation setting change
+ */
+async function handleDictionarySettingChange() {
+  const enToFa = dictEnToFaCheckbox.checked;
+  const faToEn = dictFaToEnCheckbox.checked;
+  await setDictionaryTranslationSettings(enToFa, faToEn);
 }
 
 /**
@@ -163,7 +222,7 @@ async function handleClearCache() {
  */
 function showStatus(message, type) {
   statusEl.textContent = message;
-  statusEl.className = `status ${type}`;
+  statusEl.className = `status-message ${type}`;
   statusEl.hidden = false;
 
   // Auto-hide after 3 seconds
