@@ -29,8 +29,10 @@
 
 - **AI-Powered Translation** - Accurate, context-aware translations using Claude AI
 - **Text Polishing** - Get 3 versions: Professional, Conversational, and Concise
-- **Right-Click Menu** - Select text on any webpage, right-click to translate instantly
-- **Keyboard Shortcut** - Press `Alt+T` to translate selected text
+- **Dictionary Lookup** - Look up definitions, phonetics, synonyms, and antonyms (NEW in v2.0)
+- **Document Translation** - Upload and translate TXT files with progress tracking (NEW in v2.0)
+- **Right-Click Menu** - Select text on any webpage, right-click to translate, polish, or look up
+- **Keyboard Shortcuts** - `Alt+T` to translate, `Alt+D` for dictionary lookup
 - **Dark Mode** - Beautiful dark theme that syncs with system preferences
 - **Translation History** - Access and manage your past translations
 - **Usage Statistics** - Track your translation and token usage
@@ -90,6 +92,29 @@ Get three polished versions of your text:
 - **Conversational** - Friendly, casual tone
 - **Concise** - Brief, to-the-point version
 
+### Dictionary Mode (NEW in v2.0)
+
+Look up any word to see:
+- **Definitions** - Multiple definitions with part of speech
+- **Phonetics** - Pronunciation guide
+- **Synonyms & Antonyms** - Related words
+- **Translation** - Persian translation for English words (and vice versa)
+
+Access via:
+- Select a word and press `Alt+D`
+- Right-click and choose "Look up in Dictionary"
+- Use the Dictionary tab in the popup
+
+### Document Mode (NEW in v2.0)
+
+Translate entire documents:
+1. Click the "Document" tab in the popup
+2. Upload a TXT file (max 100KB)
+3. Watch the progress as chunks are translated
+4. Download the translated file when complete
+
+You can cancel long translations at any time.
+
 ## Development
 
 ### Project Structure
@@ -106,6 +131,9 @@ parsipad/
 │   ├── api.js          # Claude API integration
 │   ├── storage.js      # Chrome storage wrapper
 │   ├── cache.js        # Translation caching
+│   ├── dictionary.js   # Dictionary lookup API
+│   ├── document-translator.js  # Document translation
+│   ├── history.js      # History management
 │   ├── i18n.js         # Internationalization
 │   └── ...
 └── icons/              # Extension icons

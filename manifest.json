@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ParsiPad - Persian English Translator",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "AI-powered Persian ↔ English translator with text polishing, right-click menu, Alt+T shortcut & dark mode.",
 
   "permissions": [
@@ -54,6 +54,20 @@
         "mac": "Alt+T"
       },
       "description": "Translate selected text"
+    },
+    "dictionary-lookup": {
+      "suggested_key": {
+        "default": "Alt+D",
+        "mac": "Alt+D"
+      },
+      "description": "Look up selected word in dictionary"
     }
-  }
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*.png"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }
