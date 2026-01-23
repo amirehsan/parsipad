@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ParsiPad</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">P</span>
+        <span class="logo-text">ParsiPad</span>
+      </div>
+      <div class="header-actions">
+        <button id="theme-btn" class="icon-btn" data-i18n-title="toggleTheme" title="Toggle theme">
+          <svg id="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+        <button id="settings-btn" class="icon-btn" data-i18n-title="settings" title="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- API Key Warning (shown when not configured) -->
+    <div id="api-key-warning" class="warning" hidden>
+      <p data-i18n="apiKeyNotConfigured">API key not configured.</p>
+      <button id="configure-api-btn" class="link-btn" data-i18n="configureInSettings">Configure in Settings</button>
+    </div>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+      <button id="tab-translate" class="tab active" data-mode="translate" data-i18n="translate">Translate</button>
+      <button id="tab-polish" class="tab" data-mode="polish" data-i18n="polish">Polish</button>
+    </nav>
+
+    <!-- Input Section -->
+    <section class="section">
+      <textarea
+        id="input-text"
+        class="textarea"
+        data-i18n-placeholder="enterTextTranslate"
+        placeholder="Enter text to translate..."
+        rows="4"
+      ></textarea>
+      <div class="input-footer">
+        <span id="char-count" class="char-count">0 characters</span>
+        <button id="clear-input-btn" class="link-btn" data-i18n="clear">Clear</button>
+      </div>
+    </section>
+
+    <!-- Action Button -->
+    <button id="action-btn" class="action-btn">
+      <span class="btn-text" data-i18n="translate">Translate</span>
+      <span class="btn-loading" hidden>
+        <svg class="spinner" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4" stroke-dashoffset="10"/>
+        </svg>
+      </span>
+    </button>
+
+    <!-- Output Section -->
+    <section id="output-section" class="section output-section" hidden>
+      <div class="output-header">
+        <span id="direction-badge" class="badge">EN → FA</span>
+        <button id="copy-btn" class="icon-btn" data-i18n-title="copyToClipboard" title="Copy to clipboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        </button>
+      </div>
+      <div id="output-text" class="output-text"></div>
+      <div id="cache-badge" class="cache-badge" hidden data-i18n="fromCache">From cache</div>
+    </section>
+
+    <!-- Polish Output Section -->
+    <section id="polish-section" class="section polish-section" hidden>
+      <!-- Professional Card -->
+      <div class="polish-card">
+        <div class="polish-card-header">
+          <span class="polish-card-title" data-i18n="professional">Professional</span>
+          <button class="polish-copy-btn" data-version="professional" data-i18n-title="copyToClipboard" title="Copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          </button>
+        </div>
+        <div id="polish-professional" class="polish-card-text"></div>
+      </div>
+
+      <!-- Conversational Card -->
+      <div class="polish-card">
+        <div class="polish-card-header">
+          <span class="polish-card-title" data-i18n="conversational">Conversational</span>
+          <button class="polish-copy-btn" data-version="conversational" data-i18n-title="copyToClipboard" title="Copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          </button>
+        </div>
+        <div id="polish-conversational" class="polish-card-text"></div>
+      </div>
+
+      <!-- Concise Card -->
+      <div class="polish-card">
+        <div class="polish-card-header">
+          <span class="polish-card-title" data-i18n="concise">Concise</span>
+          <button class="polish-copy-btn" data-version="concise" data-i18n-title="copyToClipboard" title="Copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          </button>
+        </div>
+        <div id="polish-concise" class="polish-card-text"></div>
+      </div>
+    </section>
+
+    <!-- Error Section -->
+    <div id="error-section" class="error-section" hidden>
+      <p id="error-message"></p>
+    </div>
+
+    <!-- Translation History Section -->
+    <section id="history-section" class="history-section" hidden>
+      <div class="history-header">
+        <span class="history-title" data-i18n="recentTranslations">Recent Translations</span>
+        <div class="history-actions">
+          <button id="view-all-history-btn" class="link-btn" data-i18n="viewAll">View All</button>
+          <button id="clear-history-btn" class="link-btn" data-i18n="clearAll">Clear All</button>
+        </div>
+      </div>
+      <div id="history-list" class="history-list"></div>
+    </section>
+
+    <!-- Polish History Section -->
+    <section id="polish-history-section" class="history-section" hidden>
+      <div class="history-header">
+        <span class="history-title" data-i18n="recentPolishes">Recent Polishes</span>
+        <div class="history-actions">
+          <button id="view-all-polish-history-btn" class="link-btn" data-i18n="viewAll">View All</button>
+          <button id="clear-polish-history-btn" class="link-btn" data-i18n="clearAll">Clear All</button>
+        </div>
+      </div>
+      <div id="polish-history-list" class="history-list"></div>
+    </section>
+
+    <!-- Usage Stats Section -->
+    <section id="stats-section" class="stats-section">
+      <div class="stats-toggle" id="stats-toggle">
+        <span class="stats-title" data-i18n="usageStats">Usage Stats</span>
+        <svg class="stats-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+      <div id="stats-content" class="stats-content" hidden>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-value" id="stat-translations">0</span>
+            <span class="stat-label" data-i18n="translations">Translations</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-polishes">0</span>
+            <span class="stat-label" data-i18n="polishes">Polishes</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-input-tokens">0</span>
+            <span class="stat-label" data-i18n="inputTokens">Input Tokens</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-output-tokens">0</span>
+            <span class="stat-label" data-i18n="outputTokens">Output Tokens</span>
+          </div>
+        </div>
+        <button id="reset-stats-btn" class="link-btn stats-reset" data-i18n="resetStats">Reset Stats</button>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

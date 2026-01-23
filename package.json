@@ -1,0 +1,24 @@
+{
+  "name": "parsipad-extension",
+  "version": "1.0.0",
+  "description": "AI-powered Persian ↔ English translation & text polishing browser extension",
+  "type": "module",
+  "scripts": {
+    "lint": "echo 'No linter configured'",
+    "test": "echo 'No tests configured'"
+  },
+  "keywords": [
+    "browser-extension",
+    "translation",
+    "persian",
+    "farsi",
+    "english",
+    "ai",
+    "claude"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

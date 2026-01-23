@@ -1,0 +1,237 @@
+/* ParsiPad Floating Translation Box Styles */
+/* These styles are injected into Shadow DOM to avoid conflicts with host page */
+
+:host {
+  all: initial;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.parsipad-box {
+  position: fixed;
+  z-index: 2147483647;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  min-width: 280px;
+  max-width: 450px;
+  animation: parsipad-fade-in 150ms ease-out;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #111827;
+}
+
+@keyframes parsipad-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.parsipad-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 12px 12px 0 0;
+}
+
+.parsipad-logo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.parsipad-logo-icon {
+  width: 20px;
+  height: 20px;
+  background: #6366f1;
+  color: white;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.parsipad-logo-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.parsipad-badge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 6px;
+  background: #6366f1;
+  color: white;
+  border-radius: 4px;
+}
+
+.parsipad-close {
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background-color 0.15s, color 0.15s;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.parsipad-close:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.parsipad-content {
+  padding: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.parsipad-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #111827;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.parsipad-text[dir="rtl"] {
+  font-family: 'Vazirmatn', 'Tahoma', sans-serif;
+  text-align: right;
+}
+
+.parsipad-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 0 0 12px 12px;
+}
+
+.parsipad-cache-badge {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.parsipad-copy {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background-color 0.15s;
+}
+
+.parsipad-copy:hover {
+  background: #4f46e5;
+}
+
+.parsipad-copy svg {
+  width: 14px;
+  height: 14px;
+}
+
+.parsipad-copy.copied {
+  background: #10b981;
+}
+
+/* Loading State */
+.parsipad-loading {
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.parsipad-skeleton {
+  height: 14px;
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: parsipad-shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+.parsipad-skeleton:nth-child(1) {
+  width: 90%;
+}
+
+.parsipad-skeleton:nth-child(2) {
+  width: 75%;
+}
+
+.parsipad-skeleton:nth-child(3) {
+  width: 60%;
+}
+
+@keyframes parsipad-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Error State */
+.parsipad-error {
+  padding: 12px;
+  color: #ef4444;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.parsipad-error svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Scrollbar */
+.parsipad-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.parsipad-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.parsipad-content::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.parsipad-content::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}

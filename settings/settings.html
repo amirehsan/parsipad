@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ParsiPad Settings</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 class="title" data-i18n="settingsTitle">ParsiPad Settings</h1>
+      <p class="subtitle" data-i18n="settingsSubtitle">Configure your Persian-English translator</p>
+    </header>
+
+    <main class="main">
+      <section class="section">
+        <h2 class="section-title" data-i18n="languageSettings">Language Settings</h2>
+        <div class="form-group">
+          <label class="label" data-i18n="uiLanguage">Interface Language</label>
+          <div class="language-options">
+            <label class="radio-label">
+              <input type="radio" name="language" value="en" id="lang-en" checked>
+              <span>English</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="language" value="fa" id="lang-fa">
+              <span>فارسی</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title" data-i18n="apiConfiguration">API Configuration</h2>
+
+        <div class="form-group">
+          <label for="api-key" class="label" data-i18n="anthropicApiKey">Anthropic API Key</label>
+          <div class="input-wrapper">
+            <input
+              type="password"
+              id="api-key"
+              class="input"
+              placeholder="sk-ant-..."
+              autocomplete="off"
+            >
+            <button type="button" id="toggle-visibility" class="icon-button" data-i18n-title="showHide" title="Show/Hide">
+              <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <p class="hint">
+            <span data-i18n="getApiKey">Get your API key from</span>
+            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">
+              console.anthropic.com
+            </a>
+          </p>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" id="save-btn" class="button primary" data-i18n="saveApiKey">Save API Key</button>
+          <button type="button" id="clear-btn" class="button secondary" data-i18n="clear">Clear</button>
+        </div>
+
+        <div id="status" class="status" hidden></div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title" data-i18n="cache">Cache</h2>
+        <p class="text-secondary" id="cache-stats">Loading cache statistics...</p>
+        <button type="button" id="clear-cache-btn" class="button secondary" data-i18n="clearCache">Clear Cache</button>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title" data-i18n="about">About</h2>
+        <p class="text-secondary">
+          ParsiPad v1.0.0<br>
+          AI-powered Persian ↔ English translation & text polishing using Claude
+        </p>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="settings.js"></script>
+</body>
+</html>

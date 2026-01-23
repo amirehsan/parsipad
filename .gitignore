@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local configuration
+.claude/
+.vercel/
+
+# Build outputs
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+*.local.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# Landing page (deployed separately)
+landing/
+
+# Store assets (not needed in source)
+store-assets/
+
+# Internal planning docs
+masterplan*.md

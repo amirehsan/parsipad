@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>History - ParsiPad</title>
+  <link rel="stylesheet" href="history.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <a href="#" id="back-btn" class="back-btn" data-i18n-title="back" title="Back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="19" y1="12" x2="5" y2="12"/>
+            <polyline points="12 19 5 12 12 5"/>
+          </svg>
+        </a>
+        <div class="logo">
+          <span class="logo-icon">P</span>
+          <span class="logo-text">ParsiPad</span>
+        </div>
+      </div>
+      <h1 class="page-title" data-i18n="allHistory">All History</h1>
+      <div class="header-right">
+        <button id="theme-btn" class="icon-btn" data-i18n-title="toggleTheme" title="Toggle theme">
+          <svg id="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Filter Tabs -->
+    <nav class="filter-tabs">
+      <button class="filter-tab active" data-filter="all" data-i18n="all">All</button>
+      <button class="filter-tab" data-filter="translations" data-i18n="translationsTab">Translations</button>
+      <button class="filter-tab" data-filter="polishes" data-i18n="polishesTab">Polishes</button>
+    </nav>
+
+    <!-- Search Bar -->
+    <div class="search-container">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="search-input" class="search-input" data-i18n-placeholder="searchHistory" placeholder="Search history...">
+    </div>
+
+    <!-- History List -->
+    <main id="history-container" class="history-container">
+      <!-- History items will be rendered here -->
+    </main>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="empty-state" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <p id="empty-message" data-i18n="noHistoryYet">No history yet</p>
+    </div>
+
+    <!-- Footer Actions -->
+    <footer id="footer-actions" class="footer-actions">
+      <button id="clear-all-btn" class="clear-btn" data-i18n="clearAll">Clear All</button>
+    </footer>
+  </div>
+
+  <script type="module" src="history.js"></script>
+</body>
+</html>
