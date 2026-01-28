@@ -64,14 +64,14 @@
           <label class="language-option">
             <input type="radio" name="language" value="en" id="lang-en" checked>
             <div class="option-content">
-              <span class="option-flag">🇬🇧</span>
+              <img src="../icons/Flag_of_the_United_States.svg" alt="English" class="option-flag">
               <span class="option-label">English</span>
             </div>
           </label>
           <label class="language-option">
             <input type="radio" name="language" value="fa" id="lang-fa">
             <div class="option-content">
-              <span class="option-flag">🇮🇷</span>
+              <img src="../icons/Flag_of_Iran.svg" alt="فارسی" class="option-flag">
               <span class="option-label persian-text">فارسی</span>
             </div>
           </label>
@@ -110,6 +110,33 @@
           </div>
           <div class="toggle-switch">
             <input type="checkbox" id="dict-fa-to-en" checked>
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
+      </div>
+    </section>
+
+    <!-- Selection Popup Card -->
+    <section class="settings-card">
+      <div class="card-header">
+        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
+          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="card-title" data-i18n="selectionPopup">Selection Popup</h2>
+          <p class="card-subtitle">Show quick action icons when selecting text</p>
+        </div>
+      </div>
+      <div class="card-content">
+        <label class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label-text" data-i18n="enableSelectionPopup">Enable selection popup</span>
+            <span class="toggle-hint">Show translate, polish, and dictionary icons when you select text on any webpage</span>
+          </div>
+          <div class="toggle-switch">
+            <input type="checkbox" id="selection-popup-toggle">
             <span class="toggle-slider"></span>
           </div>
         </label>

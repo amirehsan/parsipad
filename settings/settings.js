@@ -1,4 +1,4 @@
-import { getApiKey, setApiKey, removeApiKey, maskApiKey, getLanguage, setLanguage, getDictionaryTranslationSettings, setDictionaryTranslationSettings } from '../lib/storage.js';
+import { getApiKey, setApiKey, removeApiKey, maskApiKey, getLanguage, setLanguage, getDictionaryTranslationSettings, setDictionaryTranslationSettings, getSelectionPopupEnabled, setSelectionPopupEnabled } from '../lib/storage.js';
 import { translationCache } from '../lib/cache.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 
@@ -14,6 +14,7 @@ const langEnRadio = document.getElementById('lang-en');
 const langFaRadio = document.getElementById('lang-fa');
 const dictEnToFaCheckbox = document.getElementById('dict-en-to-fa');
 const dictFaToEnCheckbox = document.getElementById('dict-fa-to-en');
+const selectionPopupToggle = document.getElementById('selection-popup-toggle');
 const themeToggle = document.getElementById('theme-toggle');
 
 // State
@@ -28,6 +29,7 @@ async function init() {
   initTheme();
   await loadLanguage();
   await loadDictionarySettings();
+  await loadSelectionPopupSetting();
   await loadApiKey();
   await loadCacheStats();
   setupEventListeners();
@@ -80,6 +82,14 @@ async function loadDictionarySettings() {
   const settings = await getDictionaryTranslationSettings();
   dictEnToFaCheckbox.checked = settings.enToFa;
   dictFaToEnCheckbox.checked = settings.faToEn;
+}
+
+/**
+ * Load selection popup setting
+ */
+async function loadSelectionPopupSetting() {
+  const enabled = await getSelectionPopupEnabled();
+  selectionPopupToggle.checked = enabled;
 }
 
 /**
@@ -153,6 +163,9 @@ function setupEventListeners() {
   // Dictionary translation settings
   dictEnToFaCheckbox.addEventListener('change', handleDictionarySettingChange);
   dictFaToEnCheckbox.addEventListener('change', handleDictionarySettingChange);
+
+  // Selection popup setting
+  selectionPopupToggle.addEventListener('change', handleSelectionPopupChange);
 }
 
 /**
@@ -173,6 +186,14 @@ async function handleDictionarySettingChange() {
   const enToFa = dictEnToFaCheckbox.checked;
   const faToEn = dictFaToEnCheckbox.checked;
   await setDictionaryTranslationSettings(enToFa, faToEn);
+}
+
+/**
+ * Handle selection popup setting change
+ */
+async function handleSelectionPopupChange() {
+  const enabled = selectionPopupToggle.checked;
+  await setSelectionPopupEnabled(enabled);
 }
 
 /**

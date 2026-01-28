@@ -313,7 +313,10 @@ main {
 }
 
 .option-flag {
-  font-size: 1.5rem;
+  width: 32px;
+  height: 21px;
+  object-fit: cover;
+  border-radius: 3px;
 }
 
 .option-label {
