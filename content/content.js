@@ -7,6 +7,9 @@
 let floatingBox = null;
 let shadowRoot = null;
 let currentSelection = null;
+let selectionPopup = null;
+let selectionPopupShadow = null;
+let selectionPopupEnabled = false;
 
 /**
  * Initialize the content script
@@ -20,6 +23,19 @@ function init() {
 
   // Listen for Escape key to close the box
   document.addEventListener('keydown', handleKeyDown);
+
+  // Listen for text selection (mouseup)
+  document.addEventListener('mouseup', handleTextSelection);
+
+  // Load selection popup setting
+  loadSelectionPopupSetting();
+
+  // Listen for storage changes to update setting
+  chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === 'local' && changes.selection_popup_enabled) {
+      selectionPopupEnabled = changes.selection_popup_enabled.newValue ?? false;
+    }
+  });
 }
 
 /**
@@ -810,14 +826,23 @@ function handleDocumentClick(event) {
   if (floatingBox && !floatingBox.contains(event.target)) {
     removeFloatingBox();
   }
+  // Also remove selection popup if clicking outside it
+  if (selectionPopup && !selectionPopup.contains(event.target)) {
+    removeSelectionPopup();
+  }
 }
 
 /**
  * Handle keyboard events
  */
 function handleKeyDown(event) {
-  if (event.key === 'Escape' && floatingBox) {
-    removeFloatingBox();
+  if (event.key === 'Escape') {
+    if (floatingBox) {
+      removeFloatingBox();
+    }
+    if (selectionPopup) {
+      removeSelectionPopup();
+    }
   }
 }
 
@@ -828,6 +853,248 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// ============================================
+// Selection Popup Functions
+// ============================================
+
+/**
+ * Load selection popup setting from storage
+ */
+async function loadSelectionPopupSetting() {
+  try {
+    const result = await chrome.storage.local.get('selection_popup_enabled');
+    selectionPopupEnabled = result.selection_popup_enabled ?? false;
+  } catch (error) {
+    selectionPopupEnabled = false;
+  }
+}
+
+/**
+ * Handle text selection on mouseup
+ */
+function handleTextSelection(event) {
+  // Don't show popup if disabled
+  if (!selectionPopupEnabled) return;
+
+  // Don't show if clicking inside existing popup or floating box
+  if (selectionPopup && selectionPopup.contains(event.target)) return;
+  if (floatingBox && floatingBox.contains(event.target)) return;
+
+  // Small delay to ensure selection is complete
+  setTimeout(() => {
+    const selection = window.getSelection();
+    const selectedText = selection?.toString().trim();
+
+    // Remove existing popup first
+    removeSelectionPopup();
+
+    // Only show popup if there's selected text
+    if (selectedText && selectedText.length > 0) {
+      const position = getSelectionPopupPosition(selection);
+      createSelectionPopup(position, selectedText);
+    }
+  }, 10);
+}
+
+/**
+ * Get position for selection popup (near the end of selection)
+ */
+function getSelectionPopupPosition(selection) {
+  let top = 100;
+  let left = 100;
+
+  if (selection && selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    // Position above the selection, near the end
+    top = rect.top + window.scrollY - 44; // 40px height + 4px gap
+    left = rect.right + window.scrollX - 120; // Roughly center the popup
+
+    // If popup would go above viewport, show below selection instead
+    if (top < window.scrollY + 10) {
+      top = rect.bottom + window.scrollY + 4;
+    }
+
+    // Ensure popup doesn't go off-screen to the right
+    const maxLeft = window.innerWidth - 140;
+    if (left > maxLeft) {
+      left = maxLeft > 0 ? maxLeft : 10;
+    }
+
+    // Ensure popup doesn't go off-screen to the left
+    if (left < 10) {
+      left = 10;
+    }
+  }
+
+  return { top, left };
+}
+
+/**
+ * Create the selection popup with action icons
+ */
+function createSelectionPopup(position, selectedText) {
+  // Create host element
+  const host = document.createElement('div');
+  host.id = 'parsipad-selection-popup';
+  host.style.cssText = `
+    position: absolute;
+    top: ${position.top}px;
+    left: ${position.left}px;
+    z-index: 2147483647;
+  `;
+
+  // Create shadow root for style isolation
+  selectionPopupShadow = host.attachShadow({ mode: 'closed' });
+
+  // Inject styles
+  const style = document.createElement('style');
+  style.textContent = getSelectionPopupStyles();
+  selectionPopupShadow.appendChild(style);
+
+  // Check if selected text is a single word (for dictionary)
+  const isSingleWord = selectedText.split(/\s+/).length === 1;
+
+  // Create popup structure
+  const popup = document.createElement('div');
+  popup.className = 'selection-popup';
+  popup.innerHTML = `
+    <button class="selection-btn" data-action="translate" title="Translate">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
+      </svg>
+    </button>
+    <button class="selection-btn" data-action="polish" title="Polish">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z"/>
+      </svg>
+    </button>
+    <button class="selection-btn ${!isSingleWord ? 'disabled' : ''}" data-action="dictionary" title="Dictionary${!isSingleWord ? ' (single word only)' : ''}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+      </svg>
+    </button>
+  `;
+
+  selectionPopupShadow.appendChild(popup);
+  document.body.appendChild(host);
+
+  selectionPopup = host;
+
+  // Set up event listeners
+  popup.querySelectorAll('.selection-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const action = btn.dataset.action;
+
+      // Remove popup first
+      removeSelectionPopup();
+
+      // Execute action
+      if (action === 'translate') {
+        translateAndShow(selectedText);
+      } else if (action === 'polish') {
+        polishAndShow(selectedText);
+      } else if (action === 'dictionary' && isSingleWord) {
+        dictionaryAndShow(selectedText);
+      }
+    });
+  });
+
+  // Prevent clicks inside popup from triggering document click
+  popup.addEventListener('click', (e) => e.stopPropagation());
+}
+
+/**
+ * Remove the selection popup
+ */
+function removeSelectionPopup() {
+  if (selectionPopup) {
+    selectionPopup.remove();
+    selectionPopup = null;
+    selectionPopupShadow = null;
+  }
+}
+
+/**
+ * Get CSS styles for selection popup
+ */
+function getSelectionPopupStyles() {
+  return `
+    :host {
+      all: initial;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    .selection-popup {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+      padding: 4px;
+      animation: popup-fade-in 150ms ease-out;
+    }
+
+    @keyframes popup-fade-in {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .selection-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #6b7280;
+      transition: background-color 0.15s, color 0.15s;
+    }
+
+    .selection-btn:hover {
+      background: #f3f4f6;
+      color: #6366f1;
+    }
+
+    .selection-btn:active {
+      background: #e5e7eb;
+    }
+
+    .selection-btn.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .selection-btn.disabled:hover {
+      background: transparent;
+      color: #6b7280;
+    }
+
+    .selection-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+  `;
 }
 
 /**

@@ -5,6 +5,21 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-01-28
+
+### Added
+- **Selection Popup** - Floating action icons when selecting text on any webpage
+  - Quick access to Translate, Polish, and Dictionary lookup
+  - Enable/disable toggle in Settings
+  - Dictionary button auto-disabled for multi-word selections
+  - Escape key or click outside to dismiss
+
+### Changed
+- Replaced emoji flags with SVG flag images in Language Settings
+  - US flag for English
+  - Iran flag for Persian (فارسی)
+  - Larger, cleaner appearance
+
 ## [2.0.0] - 2025-01-23
 
 ### Added

@@ -2,7 +2,7 @@
 
 This document outlines planned features and improvements for ParsiPad. Contributions are welcome!
 
-## Current Version (v2.0)
+## Current Version (v2.1)
 
 - [x] AI-powered Persian ↔ English translation
 - [x] Text polishing (Professional, Conversational, Concise)
@@ -13,22 +13,26 @@ This document outlines planned features and improvements for ParsiPad. Contribut
 - [x] Usage statistics
 - [x] Offline caching
 - [x] Bilingual UI (English/Persian)
-- [x] Dictionary lookup with definitions, synonyms, antonyms (NEW)
-- [x] Document translation with progress tracking (NEW)
-- [x] Dictionary translation settings (EN→FA / FA→EN toggles) (NEW)
-- [x] Cancel button for document translation (NEW)
+- [x] Dictionary lookup with definitions, synonyms, antonyms
+- [x] Document translation with progress tracking
+- [x] Dictionary translation settings (EN→FA / FA→EN toggles)
+- [x] Cancel button for document translation
+- [x] Selection Popup - floating icons when selecting text (NEW)
+- [x] SVG flag images in language settings (NEW)
 
 ---
 
 ## Planned Features
 
-### v2.1 - Quality of Life Improvements
+### v2.2 - Quality of Life Improvements
 
 #### 1. Multiple AI Provider Support
+
 **Status:** Planned
 **Priority:** Medium
 
 Add support for multiple AI providers beyond Claude:
+
 - OpenAI GPT-4
 - Google Gemini
 - DeepL API
@@ -39,10 +43,12 @@ Users can choose their preferred provider in settings.
 ---
 
 #### 2. Saved Vocabulary / Flashcards
+
 **Status:** Planned
 **Priority:** Medium
 
 Build a personal vocabulary list:
+
 - Save words from dictionary lookups
 - Spaced repetition flashcard system
 - Export vocabulary lists
@@ -53,6 +59,7 @@ Build a personal vocabulary list:
 ### v3.0 - Advanced Features
 
 #### 1. Voice Input/Output
+
 **Status:** Planned
 **Priority:** Low
 
@@ -64,6 +71,7 @@ Build a personal vocabulary list:
 ---
 
 #### 2. Extended Document Support
+
 **Status:** Planned
 **Priority:** Medium
 
@@ -74,10 +82,12 @@ Build a personal vocabulary list:
 ---
 
 #### 3. Translation Memory
+
 **Status:** Planned
 **Priority:** Medium
 
 Learn from user corrections:
+
 - Remember preferred translations
 - Suggest based on context
 - Personal translation glossary
@@ -86,6 +96,7 @@ Learn from user corrections:
 ---
 
 #### 4. Browser Integration Enhancements
+
 **Status:** Planned
 **Priority:** Medium
 
@@ -109,4 +120,4 @@ Have an idea? [Open an issue](https://github.com/amirehsan/parsipad/issues/new) 
 
 ---
 
-*Last updated: January 2025 (v2.0.0)*
+_Last updated: January 2026 (v2.1.0)_
