@@ -7,11 +7,15 @@ import { t, applyTranslations } from '../lib/i18n.js';
 const settingsBtn = document.getElementById('settings-btn');
 const apiKeyWarning = document.getElementById('api-key-warning');
 const configureApiBtn = document.getElementById('configure-api-btn');
-const tabTranslate = document.getElementById('tab-translate');
-const tabPolish = document.getElementById('tab-polish');
+// Tab elements (4 main tabs)
+const tabText = document.getElementById('tab-text');
 const tabDictionary = document.getElementById('tab-dictionary');
 const tabDocument = document.getElementById('tab-document');
 const tabImage = document.getElementById('tab-image');
+// Segmented control for Text tab (Translate/Polish)
+const modeTranslate = document.getElementById('mode-translate');
+const modePolish = document.getElementById('mode-polish');
+const textModeSection = document.getElementById('text-mode-section');
 const inputText = document.getElementById('input-text');
 const charCount = document.getElementById('char-count');
 const clearInputBtn = document.getElementById('clear-input-btn');
@@ -99,11 +103,20 @@ const resetStatsBtn = document.getElementById('reset-stats-btn');
 
 // State
 let isProcessing = false;
-let currentMode = 'translate'; // 'translate', 'polish', 'dictionary', 'document', or 'image'
+let currentTab = 'text'; // 'text', 'dictionary', 'document', or 'image'
+let currentTextMode = 'translate'; // 'translate' or 'polish' (for text tab)
 let currentLang = 'en';
 let uploadedFile = null;
 let translatedContent = null;
 let selectedImage = null;
+
+// Computed mode for backwards compatibility
+function getCurrentMode() {
+  if (currentTab === 'text') {
+    return currentTextMode;
+  }
+  return currentTab;
+}
 
 /**
  * Initialize the popup
@@ -116,7 +129,8 @@ async function init() {
   await loadStats();
   setupEventListeners();
   updateCharCount();
-  updateMode('translate');
+  updateTab('text');
+  updateTextMode('translate');
 }
 
 /**
@@ -262,8 +276,9 @@ function renderHistory(history) {
       updateCharCount();
       updateInputDirection();
 
-      // Switch to translate mode and show result
-      updateMode('translate');
+      // Switch to text tab + translate mode and show result
+      updateTab('text');
+      updateTextMode('translate');
       displayTranslation({ translation, direction, fromCache: true });
     });
   });
@@ -283,12 +298,15 @@ function setupEventListeners() {
     chrome.runtime.openOptionsPage();
   });
 
-  // Tab switching
-  tabTranslate.addEventListener('click', () => updateMode('translate'));
-  tabPolish.addEventListener('click', () => updateMode('polish'));
-  tabDictionary.addEventListener('click', () => updateMode('dictionary'));
-  tabDocument.addEventListener('click', () => updateMode('document'));
-  tabImage.addEventListener('click', () => updateMode('image'));
+  // Tab switching (4 main tabs)
+  tabText.addEventListener('click', () => updateTab('text'));
+  tabDictionary.addEventListener('click', () => updateTab('dictionary'));
+  tabDocument.addEventListener('click', () => updateTab('document'));
+  tabImage.addEventListener('click', () => updateTab('image'));
+
+  // Segmented control switching (Translate/Polish within Text tab)
+  modeTranslate.addEventListener('click', () => updateTextMode('translate'));
+  modePolish.addEventListener('click', () => updateTextMode('polish'));
 
   // Input text changes
   inputText.addEventListener('input', () => {
@@ -371,40 +389,19 @@ function setupEventListeners() {
 }
 
 /**
- * Update mode (translate, polish, dictionary, document, or image)
- * @param {string} mode - 'translate', 'polish', 'dictionary', 'document', or 'image'
+ * Update main tab (text, dictionary, document, or image)
+ * @param {string} tab - 'text', 'dictionary', 'document', or 'image'
  */
-function updateMode(mode) {
-  currentMode = mode;
+function updateTab(tab) {
+  currentTab = tab;
 
-  // Update tabs
-  tabTranslate.classList.toggle('active', mode === 'translate');
-  tabPolish.classList.toggle('active', mode === 'polish');
-  tabDictionary.classList.toggle('active', mode === 'dictionary');
-  tabDocument.classList.toggle('active', mode === 'document');
-  tabImage.classList.toggle('active', mode === 'image');
+  // Update tab buttons
+  tabText.classList.toggle('active', tab === 'text');
+  tabDictionary.classList.toggle('active', tab === 'dictionary');
+  tabDocument.classList.toggle('active', tab === 'document');
+  tabImage.classList.toggle('active', tab === 'image');
 
-  // Update button text based on mode
-  const buttonTexts = {
-    translate: t('translate', currentLang),
-    polish: t('polish', currentLang),
-    dictionary: t('lookupWord', currentLang),
-    document: t('translate', currentLang),
-    image: t('translateImage', currentLang)
-  };
-  btnText.textContent = buttonTexts[mode] || t('translate', currentLang);
-
-  // Update placeholder based on mode
-  const placeholders = {
-    translate: t('enterTextTranslate', currentLang),
-    polish: t('enterTextPolish', currentLang),
-    dictionary: t('enterWordToLookup', currentLang),
-    document: t('enterTextTranslate', currentLang),
-    image: t('enterTextTranslate', currentLang)
-  };
-  inputText.placeholder = placeholders[mode] || t('enterTextTranslate', currentLang);
-
-  // Hide outputs when switching modes
+  // Hide outputs when switching tabs
   hideAllOutputs();
   hideError();
 
@@ -413,28 +410,64 @@ function updateMode(mode) {
   polishHistorySection.hidden = true;
   dictionaryHistorySection.hidden = true;
 
-  // Show/hide input section based on mode
-  const inputSection = inputText.closest('.section');
-  const actionBtnEl = actionBtn;
-  inputSection.hidden = mode === 'document' || mode === 'image';
-  actionBtnEl.hidden = mode === 'document' || mode === 'image';
+  // Show/hide sections based on tab
+  textModeSection.hidden = tab !== 'text';
+  documentUploadSection.hidden = tab !== 'document';
+  imageUploadSection.hidden = tab !== 'image';
+
+  // Show/hide action button (document and image have their own buttons)
+  actionBtn.hidden = tab === 'document' || tab === 'image';
+
+  // For dictionary mode, we show the text input but change the button/placeholder
+  if (tab === 'dictionary') {
+    textModeSection.hidden = false;
+    // Hide segmented control in dictionary mode
+    document.querySelector('.segmented-control').hidden = true;
+    btnText.textContent = t('lookupWord', currentLang);
+    inputText.placeholder = t('enterWordToLookup', currentLang);
+    grammarToggleSection.hidden = true;
+    actionBtn.hidden = false;
+    loadDictionaryHistory();
+  } else if (tab === 'text') {
+    // Show segmented control in text mode
+    document.querySelector('.segmented-control').hidden = false;
+    updateTextMode(currentTextMode);
+  }
+}
+
+/**
+ * Update text mode (translate or polish) within the Text tab
+ * @param {string} mode - 'translate' or 'polish'
+ */
+function updateTextMode(mode) {
+  currentTextMode = mode;
+
+  // Update segmented control
+  modeTranslate.classList.toggle('active', mode === 'translate');
+  modePolish.classList.toggle('active', mode === 'polish');
+
+  // Update button text
+  btnText.textContent = mode === 'translate' ? t('translate', currentLang) : t('polish', currentLang);
+
+  // Update placeholder
+  inputText.placeholder = mode === 'translate' ? t('enterTextTranslate', currentLang) : t('enterTextPolish', currentLang);
 
   // Show/hide grammar toggle (only in translate mode)
   grammarToggleSection.hidden = mode !== 'translate';
 
-  // Show/hide document section
-  documentUploadSection.hidden = mode !== 'document';
+  // Hide outputs when switching modes
+  hideAllOutputs();
+  hideError();
 
-  // Show/hide image section
-  imageUploadSection.hidden = mode !== 'image';
+  // Hide all history sections first
+  historySection.hidden = true;
+  polishHistorySection.hidden = true;
 
   // Load appropriate history
   if (mode === 'translate') {
     loadHistory();
   } else if (mode === 'polish') {
     loadPolishHistory();
-  } else if (mode === 'dictionary') {
-    loadDictionaryHistory();
   }
 }
 
@@ -442,13 +475,14 @@ function updateMode(mode) {
  * Handle action button click
  */
 async function handleAction() {
-  if (currentMode === 'translate') {
+  const mode = getCurrentMode();
+  if (mode === 'translate') {
     await handleTranslate();
-  } else if (currentMode === 'polish') {
+  } else if (mode === 'polish') {
     await handlePolish();
-  } else if (currentMode === 'dictionary') {
+  } else if (mode === 'dictionary') {
     await handleDictionary();
-  } else if (currentMode === 'document') {
+  } else if (mode === 'document') {
     await handleDocumentTranslate();
   }
 }
@@ -1160,8 +1194,8 @@ function handleImageFileSelect(event) {
  * Handle paste event for clipboard images
  */
 function handlePaste(event) {
-  // Only handle paste when in image mode
-  if (currentMode !== 'image') return;
+  // Only handle paste when in image tab
+  if (currentTab !== 'image') return;
 
   const items = event.clipboardData?.items;
   if (!items) return;

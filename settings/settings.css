@@ -813,7 +813,9 @@ footer div {
 .inline { display: inline; }
 
 /* RTL Support */
-[dir="rtl"] {
+[dir="rtl"],
+[dir="rtl"] body,
+[dir="rtl"] * {
   font-family: var(--font-persian);
 }
 

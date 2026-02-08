@@ -79,6 +79,11 @@
   padding: 0;
 }
 
+/* Ensure hidden attribute works correctly */
+[hidden] {
+  display: none !important;
+}
+
 /* Base */
 body {
   font-family: var(--font-sans);
@@ -184,35 +189,75 @@ body {
   margin-bottom: var(--space-xs);
 }
 
-/* Tab Navigation */
+/* Tab Navigation - Text Tabs (4 tabs) */
 .tab-nav {
   display: flex;
-  gap: 0;
+  gap: var(--space-xs);
   margin-bottom: var(--space-md);
   border-bottom: 2px solid var(--color-border);
+  padding: 0;
 }
 
 .tab {
   flex: 1;
-  padding: var(--space-sm) var(--space-md);
-  font-size: 14px;
-  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-sm) var(--space-xs);
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .tab:hover {
   color: var(--color-text);
+  background-color: var(--color-bg-secondary);
 }
 
 .tab.active {
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
+}
+
+/* Segmented Control (Translate/Polish toggle) */
+.segmented-control {
+  display: flex;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  margin-bottom: var(--space-md);
+  gap: 2px;
+}
+
+.segment {
+  flex: 1;
+  padding: var(--space-xs) var(--space-sm);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.segment:hover {
+  color: var(--color-text);
+}
+
+.segment.active {
+  background: var(--color-bg);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Section */
@@ -250,6 +295,13 @@ body {
 .output-text[dir="rtl"] {
   font-family: var(--font-persian);
   text-align: right;
+}
+
+/* Persian text utility class - use for any Persian content */
+.persian-text,
+[lang="fa"],
+[dir="rtl"] .persian-content {
+  font-family: var(--font-persian);
 }
 
 .input-footer {
@@ -462,7 +514,14 @@ body {
   text-overflow: ellipsis;
 }
 
-.history-item-translation[dir="rtl"] {
+.history-item-translation[dir="rtl"],
+.history-item-translation.persian-text {
+  font-family: var(--font-persian);
+}
+
+/* Persian text in history items (original text) */
+.history-item-original[dir="rtl"],
+.history-item-original.persian-text {
   font-family: var(--font-persian);
 }
 
@@ -581,6 +640,13 @@ body {
   white-space: pre-wrap;
 }
 
+/* Persian polish card text */
+.polish-card-text[dir="rtl"],
+.polish-card-text.persian-text {
+  font-family: var(--font-persian);
+  text-align: right;
+}
+
 /* Usage Stats Section */
 .stats-section {
   border-top: 1px solid var(--color-border);
@@ -665,7 +731,9 @@ body {
 }
 
 /* RTL Support for Farsi UI */
-[dir="rtl"] {
+[dir="rtl"],
+[dir="rtl"] body,
+[dir="rtl"] * {
   font-family: var(--font-persian);
 }
 
@@ -710,6 +778,10 @@ body {
 }
 
 [dir="rtl"] .stats-toggle {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .segmented-control {
   flex-direction: row-reverse;
 }
 
@@ -835,9 +907,18 @@ body {
   flex: 1;
 }
 
-.dict-translation-row span[dir="rtl"] {
+.dict-translation-row span[dir="rtl"],
+.dict-translation-row span.persian-text {
   font-family: var(--font-persian);
   text-align: right;
+}
+
+/* Persian dictionary word and definitions */
+.dict-word[dir="rtl"],
+.dict-word.persian-text,
+.dict-meaning[dir="rtl"],
+.dict-meaning.persian-text {
+  font-family: var(--font-persian);
 }
 
 .dict-badge {
@@ -1109,12 +1190,25 @@ body {
   line-height: 1.5;
 }
 
+/* Persian grammar points */
+.grammar-point-title[dir="rtl"],
+.grammar-point-title.persian-text,
+.grammar-point-explanation[dir="rtl"],
+.grammar-point-explanation.persian-text {
+  font-family: var(--font-persian);
+}
+
 /* ============================================
    Image Translation Styles
    ============================================ */
 
 .image-section {
   margin-bottom: var(--space-md);
+}
+
+/* Ensure hidden elements in image section don't display */
+.image-section [hidden] {
+  display: none !important;
 }
 
 .image-preview {
@@ -1141,6 +1235,12 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+/* Translate Image button - spacing */
+#translate-image-btn {
+  margin-top: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
 .image-result {
   background: var(--color-bg-secondary);
   border-radius: var(--radius-md);
@@ -1148,6 +1248,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  margin-top: var(--space-sm);
 }
 
 .result-section {

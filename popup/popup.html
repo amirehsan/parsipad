@@ -46,17 +46,23 @@
       <button id="configure-api-btn" class="link-btn" data-i18n="configureInSettings">Configure in Settings</button>
     </div>
 
-    <!-- Tab Navigation -->
+    <!-- Tab Navigation (4 tabs: Text, Dictionary, Document, Image) -->
     <nav class="tab-nav">
-      <button id="tab-translate" class="tab active" data-mode="translate" data-i18n="translate">Translate</button>
-      <button id="tab-polish" class="tab" data-mode="polish" data-i18n="polish">Polish</button>
-      <button id="tab-dictionary" class="tab" data-mode="dictionary" data-i18n="dictionary">Dictionary</button>
-      <button id="tab-document" class="tab" data-mode="document" data-i18n="document">Document</button>
-      <button id="tab-image" class="tab" data-mode="image" data-i18n="image">Image</button>
+      <button id="tab-text" class="tab active" data-mode="text" data-i18n="text" title="Text">Text</button>
+      <button id="tab-dictionary" class="tab" data-mode="dictionary" data-i18n="dictionary" title="Dictionary">Dictionary</button>
+      <button id="tab-document" class="tab" data-mode="document" data-i18n="document" title="Document">Document</button>
+      <button id="tab-image" class="tab" data-mode="image" data-i18n="image" title="Image">Image</button>
     </nav>
 
-    <!-- Input Section -->
-    <section class="section">
+    <!-- Text Mode Section (Translate/Polish with segmented control) -->
+    <section id="text-mode-section" class="section">
+      <!-- Segmented Control for Translate/Polish -->
+      <div class="segmented-control">
+        <button id="mode-translate" class="segment active" data-i18n="translate">Translate</button>
+        <button id="mode-polish" class="segment" data-i18n="polish">Polish</button>
+      </div>
+
+      <!-- Text Input -->
       <textarea
         id="input-text"
         class="textarea"
@@ -68,25 +74,25 @@
         <span id="char-count" class="char-count">0 characters</span>
         <button id="clear-input-btn" class="link-btn" data-i18n="clear">Clear</button>
       </div>
+
+      <!-- Grammar Toggle (only visible in translate mode) -->
+      <div id="grammar-toggle-section" class="grammar-toggle">
+        <label class="grammar-checkbox-label">
+          <input type="checkbox" id="grammar-checkbox" class="grammar-checkbox-input">
+          <span class="grammar-checkbox-text" data-i18n="explainGrammar">Explain grammar</span>
+        </label>
+      </div>
+
+      <!-- Action Button -->
+      <button id="action-btn" class="action-btn">
+        <span class="btn-text" data-i18n="translate">Translate</span>
+        <span class="btn-loading" hidden>
+          <svg class="spinner" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4" stroke-dashoffset="10"/>
+          </svg>
+        </span>
+      </button>
     </section>
-
-    <!-- Grammar Toggle (only visible in translate mode) -->
-    <div id="grammar-toggle-section" class="grammar-toggle" hidden>
-      <label class="grammar-checkbox-label">
-        <input type="checkbox" id="grammar-checkbox" class="grammar-checkbox-input">
-        <span class="grammar-checkbox-text" data-i18n="explainGrammar">Explain grammar</span>
-      </label>
-    </div>
-
-    <!-- Action Button -->
-    <button id="action-btn" class="action-btn">
-      <span class="btn-text" data-i18n="translate">Translate</span>
-      <span class="btn-loading" hidden>
-        <svg class="spinner" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4" stroke-dashoffset="10"/>
-        </svg>
-      </span>
-    </button>
 
     <!-- Output Section -->
     <section id="output-section" class="section output-section" hidden>
