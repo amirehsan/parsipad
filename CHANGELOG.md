@@ -23,8 +23,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Shows extracted text and translation side-by-side
   - Copy translation to clipboard
 
+- **Tab Redesign** - Cleaner 4-tab layout
+  - Reduced from 5 tabs to 4: Text, Dictionary, Document, Image
+  - Segmented control for Translate/Polish toggle inside Text tab
+  - More space-efficient design
+
 ### Changed
 - Updated i18n translations for new features (English & Persian)
+- **Vazirmatn Font Consistency** - Persian text now uses Vazirmatn font throughout the entire extension
+- Enhanced RTL support with proper font inheritance for all UI elements
+- Added Google Fonts import to history page CSS
 
 ## [2.1.0] - 2025-01-28
 

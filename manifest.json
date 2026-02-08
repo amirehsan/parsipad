@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ParsiPad - Persian English Translator",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "AI-powered Persian ↔ English translator with text polishing, right-click menu, Alt+T shortcut & dark mode.",
 
   "permissions": [

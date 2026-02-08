@@ -1,3 +1,6 @@
+/* Google Fonts - Inter & Vazirmatn */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&display=swap');
+
 /* Design Tokens */
 :root {
   --color-primary: #6366F1;
@@ -13,7 +16,7 @@
   --color-warning: #F59E0B;
 
   --font-persian: 'Vazirmatn', 'Tahoma', sans-serif;
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   --space-xs: 4px;
   --space-sm: 8px;
@@ -388,9 +391,25 @@ body {
   border-radius: var(--radius-sm);
 }
 
-.history-card-translation[dir="rtl"] {
+.history-card-translation[dir="rtl"],
+.history-card-translation.persian-text {
   font-family: var(--font-persian);
   text-align: right;
+}
+
+/* Persian text in history cards (original text and results) */
+.history-card-original[dir="rtl"],
+.history-card-original.persian-text,
+.history-card-result[dir="rtl"],
+.history-card-result.persian-text {
+  font-family: var(--font-persian);
+  text-align: right;
+}
+
+/* Persian text utility class */
+.persian-text,
+[lang="fa"] {
+  font-family: var(--font-persian);
 }
 
 /* Polish specific - show all 3 versions */
@@ -471,6 +490,12 @@ body {
 }
 
 /* RTL Support */
+[dir="rtl"],
+[dir="rtl"] body,
+[dir="rtl"] * {
+  font-family: var(--font-persian);
+}
+
 [dir="rtl"] .container {
   direction: rtl;
 }
