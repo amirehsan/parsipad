@@ -481,6 +481,52 @@ main {
   color: var(--gray-400);
 }
 
+.select-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  border: 1px solid var(--gray-300);
+  border-radius: 0.75rem;
+  background: #ffffff;
+  color: var(--gray-900);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.25rem;
+  padding-right: 2.5rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.dark .select-input {
+  background-color: var(--gray-700);
+  border-color: var(--gray-600);
+  color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+}
+
+.select-input:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.select-input option {
+  background: #ffffff;
+  color: var(--gray-900);
+}
+
+.dark .select-input option {
+  background: var(--gray-700);
+  color: #ffffff;
+}
+
+.mt-4 {
+  margin-top: 1rem;
+}
+
 .input-icon-btn {
   position: absolute;
   right: 0.75rem;

@@ -11,6 +11,7 @@ const tabTranslate = document.getElementById('tab-translate');
 const tabPolish = document.getElementById('tab-polish');
 const tabDictionary = document.getElementById('tab-dictionary');
 const tabDocument = document.getElementById('tab-document');
+const tabImage = document.getElementById('tab-image');
 const inputText = document.getElementById('input-text');
 const charCount = document.getElementById('char-count');
 const clearInputBtn = document.getElementById('clear-input-btn');
@@ -68,6 +69,25 @@ const progressChunks = document.getElementById('progress-chunks');
 const downloadSection = document.getElementById('download-section');
 const downloadBtn = document.getElementById('download-btn');
 const cancelTranslationBtn = document.getElementById('cancel-translation-btn');
+// Grammar elements
+const grammarToggleSection = document.getElementById('grammar-toggle-section');
+const grammarCheckbox = document.getElementById('grammar-checkbox');
+const grammarSection = document.getElementById('grammar-section');
+const grammarPoints = document.getElementById('grammar-points');
+// Image elements
+const imageUploadSection = document.getElementById('image-upload-section');
+const imageUploadArea = document.getElementById('image-upload-area');
+const imageInput = document.getElementById('image-input');
+const selectImageBtn = document.getElementById('select-image-btn');
+const imagePreview = document.getElementById('image-preview');
+const previewImg = document.getElementById('preview-img');
+const removeImageBtn = document.getElementById('remove-image-btn');
+const translateImageBtn = document.getElementById('translate-image-btn');
+const imageResult = document.getElementById('image-result');
+const extractedText = document.getElementById('extracted-text');
+const imageDirectionBadge = document.getElementById('image-direction-badge');
+const imageTranslation = document.getElementById('image-translation');
+const imageCopyBtn = document.getElementById('image-copy-btn');
 const themeBtn = document.getElementById('theme-btn');
 const statsToggle = document.getElementById('stats-toggle');
 const statsContent = document.getElementById('stats-content');
@@ -79,10 +99,11 @@ const resetStatsBtn = document.getElementById('reset-stats-btn');
 
 // State
 let isProcessing = false;
-let currentMode = 'translate'; // 'translate', 'polish', 'dictionary', or 'document'
+let currentMode = 'translate'; // 'translate', 'polish', 'dictionary', 'document', or 'image'
 let currentLang = 'en';
 let uploadedFile = null;
 let translatedContent = null;
+let selectedImage = null;
 
 /**
  * Initialize the popup
@@ -267,6 +288,7 @@ function setupEventListeners() {
   tabPolish.addEventListener('click', () => updateMode('polish'));
   tabDictionary.addEventListener('click', () => updateMode('dictionary'));
   tabDocument.addEventListener('click', () => updateMode('document'));
+  tabImage.addEventListener('click', () => updateMode('image'));
 
   // Input text changes
   inputText.addEventListener('input', () => {
@@ -321,6 +343,16 @@ function setupEventListeners() {
   downloadBtn.addEventListener('click', downloadTranslation);
   cancelTranslationBtn.addEventListener('click', handleCancelTranslation);
 
+  // Image buttons
+  selectImageBtn.addEventListener('click', () => imageInput.click());
+  imageInput.addEventListener('change', handleImageFileSelect);
+  removeImageBtn.addEventListener('click', clearImage);
+  translateImageBtn.addEventListener('click', handleImageTranslate);
+  imageCopyBtn.addEventListener('click', handleImageCopy);
+
+  // Clipboard paste for images
+  document.addEventListener('paste', handlePaste);
+
   // Theme toggle
   themeBtn.addEventListener('click', toggleTheme);
 
@@ -339,8 +371,8 @@ function setupEventListeners() {
 }
 
 /**
- * Update mode (translate, polish, dictionary, or document)
- * @param {string} mode - 'translate', 'polish', 'dictionary', or 'document'
+ * Update mode (translate, polish, dictionary, document, or image)
+ * @param {string} mode - 'translate', 'polish', 'dictionary', 'document', or 'image'
  */
 function updateMode(mode) {
   currentMode = mode;
@@ -350,13 +382,15 @@ function updateMode(mode) {
   tabPolish.classList.toggle('active', mode === 'polish');
   tabDictionary.classList.toggle('active', mode === 'dictionary');
   tabDocument.classList.toggle('active', mode === 'document');
+  tabImage.classList.toggle('active', mode === 'image');
 
   // Update button text based on mode
   const buttonTexts = {
     translate: t('translate', currentLang),
     polish: t('polish', currentLang),
     dictionary: t('lookupWord', currentLang),
-    document: t('translate', currentLang)
+    document: t('translate', currentLang),
+    image: t('translateImage', currentLang)
   };
   btnText.textContent = buttonTexts[mode] || t('translate', currentLang);
 
@@ -365,7 +399,8 @@ function updateMode(mode) {
     translate: t('enterTextTranslate', currentLang),
     polish: t('enterTextPolish', currentLang),
     dictionary: t('enterWordToLookup', currentLang),
-    document: t('enterTextTranslate', currentLang)
+    document: t('enterTextTranslate', currentLang),
+    image: t('enterTextTranslate', currentLang)
   };
   inputText.placeholder = placeholders[mode] || t('enterTextTranslate', currentLang);
 
@@ -381,11 +416,17 @@ function updateMode(mode) {
   // Show/hide input section based on mode
   const inputSection = inputText.closest('.section');
   const actionBtnEl = actionBtn;
-  inputSection.hidden = mode === 'document';
-  actionBtnEl.hidden = mode === 'document';
+  inputSection.hidden = mode === 'document' || mode === 'image';
+  actionBtnEl.hidden = mode === 'document' || mode === 'image';
+
+  // Show/hide grammar toggle (only in translate mode)
+  grammarToggleSection.hidden = mode !== 'translate';
 
   // Show/hide document section
   documentUploadSection.hidden = mode !== 'document';
+
+  // Show/hide image section
+  imageUploadSection.hidden = mode !== 'image';
 
   // Load appropriate history
   if (mode === 'translate') {
@@ -437,6 +478,7 @@ function updateInputDirection() {
  */
 async function handleTranslate() {
   const text = inputText.value.trim();
+  const withGrammar = grammarCheckbox.checked;
 
   if (!text) {
     showError('Please enter text to translate');
@@ -455,7 +497,8 @@ async function handleTranslate() {
     const response = await chrome.runtime.sendMessage({
       action: 'TRANSLATE',
       text: text,
-      sourceLang: 'auto'
+      sourceLang: 'auto',
+      withGrammar: withGrammar
     });
 
     if (response.error) {
@@ -531,7 +574,7 @@ async function handlePolish() {
  * @param {Object} result - Translation result
  */
 function displayTranslation(result) {
-  const { translation, direction, displayDirection, fromCache } = result;
+  const { translation, direction, displayDirection, fromCache, grammar } = result;
 
   directionBadge.textContent = displayDirection || formatDirectionBadge(direction);
 
@@ -542,6 +585,28 @@ function displayTranslation(result) {
 
   cacheBadge.hidden = !fromCache;
   outputSection.hidden = false;
+
+  // Display grammar explanations if available
+  if (grammar && grammar.length > 0) {
+    displayGrammarExplanation(grammar);
+  } else {
+    grammarSection.hidden = true;
+  }
+}
+
+/**
+ * Display grammar explanation
+ * @param {Array} grammarPointsList - Array of grammar points with point and explanation
+ */
+function displayGrammarExplanation(grammarPointsList) {
+  grammarPoints.innerHTML = grammarPointsList.map(item => `
+    <div class="grammar-point">
+      <div class="grammar-point-title">${escapeHtml(item.point)}</div>
+      <div class="grammar-point-explanation">${escapeHtml(item.explanation)}</div>
+    </div>
+  `).join('');
+
+  grammarSection.hidden = false;
 }
 
 /**
@@ -1075,6 +1140,213 @@ function formatFileSize(bytes) {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// ============================================
+// Image Translation Functions
+// ============================================
+
+/**
+ * Handle image file selection
+ */
+function handleImageFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  handleImageSelect(file);
+}
+
+/**
+ * Handle paste event for clipboard images
+ */
+function handlePaste(event) {
+  // Only handle paste when in image mode
+  if (currentMode !== 'image') return;
+
+  const items = event.clipboardData?.items;
+  if (!items) return;
+
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile();
+      if (file) {
+        handleImageSelect(file);
+        event.preventDefault();
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * Handle image selection (from file input or paste)
+ * @param {File} file - Image file
+ */
+function handleImageSelect(file) {
+  // Validate file type
+  const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    showError(t('unsupportedFormat', currentLang));
+    return;
+  }
+
+  // Validate file size (5MB max)
+  if (file.size > 5 * 1024 * 1024) {
+    showError(t('imageTooLarge', currentLang));
+    return;
+  }
+
+  selectedImage = file;
+
+  // Show preview
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    previewImg.src = e.target.result;
+    imageUploadArea.hidden = true;
+    imagePreview.hidden = false;
+    translateImageBtn.hidden = false;
+    imageResult.hidden = true;
+  };
+  reader.readAsDataURL(file);
+}
+
+/**
+ * Clear selected image
+ */
+function clearImage() {
+  selectedImage = null;
+  imageInput.value = '';
+  previewImg.src = '';
+
+  imageUploadArea.hidden = false;
+  imagePreview.hidden = true;
+  translateImageBtn.hidden = true;
+  imageResult.hidden = true;
+}
+
+/**
+ * Read image file as base64
+ * @param {File} file - Image file
+ * @returns {Promise<string>} Base64 encoded image data
+ */
+async function readImageAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      // Remove the data:image/...;base64, prefix
+      const base64 = reader.result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Handle image translation
+ */
+async function handleImageTranslate() {
+  if (!selectedImage) {
+    showError('Please select an image');
+    return;
+  }
+
+  if (isProcessing) {
+    return;
+  }
+
+  setImageLoadingState(true);
+  hideError();
+  imageResult.hidden = true;
+
+  try {
+    const base64Data = await readImageAsBase64(selectedImage);
+
+    const response = await chrome.runtime.sendMessage({
+      action: 'TRANSLATE_IMAGE',
+      imageData: base64Data,
+      mimeType: selectedImage.type
+    });
+
+    if (response.error) {
+      showError(response.error);
+      return;
+    }
+
+    displayImageResult(response);
+
+    // Update usage stats
+    await updateUsageStats({
+      inputTokens: response.inputTokens || 0,
+      outputTokens: response.outputTokens || 0,
+      translations: 1
+    });
+    await loadStats();
+  } catch (error) {
+    showError(error.message || 'Image translation failed');
+  } finally {
+    setImageLoadingState(false);
+  }
+}
+
+/**
+ * Display image translation result
+ * @param {Object} result - Image translation result
+ */
+function displayImageResult(result) {
+  const { extractedText: extracted, translation, direction } = result;
+
+  // Check if no text was found
+  if (!extracted && !translation) {
+    showError(t('noTextFound', currentLang));
+    return;
+  }
+
+  // Display extracted text
+  extractedText.textContent = extracted || '';
+  const sourceLang = direction.split('-')[0] || 'en';
+  extractedText.dir = ['fa', 'ar', 'he'].includes(sourceLang) ? 'rtl' : 'ltr';
+
+  // Display translation
+  imageTranslation.textContent = translation || '';
+  const targetLang = direction.split('-')[1] || 'fa';
+  imageTranslation.dir = ['fa', 'ar', 'he'].includes(targetLang) ? 'rtl' : 'ltr';
+
+  // Display direction badge
+  imageDirectionBadge.textContent = formatDirectionBadge(direction);
+
+  imageResult.hidden = false;
+}
+
+/**
+ * Set loading state for image translation
+ * @param {boolean} loading
+ */
+function setImageLoadingState(loading) {
+  isProcessing = loading;
+  translateImageBtn.disabled = loading;
+  const btnTextEl = translateImageBtn.querySelector('.btn-text');
+  const btnLoadingEl = translateImageBtn.querySelector('.btn-loading');
+  if (btnTextEl) btnTextEl.hidden = loading;
+  if (btnLoadingEl) btnLoadingEl.hidden = !loading;
+}
+
+/**
+ * Handle copy button click for image translation
+ */
+async function handleImageCopy() {
+  const text = imageTranslation.textContent;
+  if (!text) return;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    imageCopyBtn.classList.add('copied');
+    setTimeout(() => {
+      imageCopyBtn.classList.remove('copied');
+    }, 1500);
+  } catch (error) {
+    showError('Failed to copy to clipboard');
+  }
 }
 
 // Initialize when DOM is ready
