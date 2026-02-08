@@ -1025,3 +1025,194 @@ body {
 [dir="rtl"] .doc-details {
   align-items: flex-end;
 }
+
+/* ============================================
+   Grammar Explanation Styles
+   ============================================ */
+
+.grammar-toggle {
+  margin-bottom: var(--space-sm);
+}
+
+.grammar-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  user-select: none;
+}
+
+.grammar-checkbox-label:hover {
+  color: var(--color-text);
+}
+
+.grammar-checkbox-input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.grammar-checkbox-text {
+  font-weight: 500;
+}
+
+.grammar-section {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.grammar-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.grammar-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--color-primary);
+}
+
+.grammar-points {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.grammar-point {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm);
+}
+
+.grammar-point-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-xs);
+}
+
+.grammar-point-explanation {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* ============================================
+   Image Translation Styles
+   ============================================ */
+
+.image-section {
+  margin-bottom: var(--space-md);
+}
+
+.image-preview {
+  position: relative;
+  margin-bottom: var(--space-md);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+  text-align: center;
+}
+
+.image-preview img {
+  max-width: 100%;
+  max-height: 150px;
+  border-radius: var(--radius-sm);
+  object-fit: contain;
+}
+
+.image-preview .icon-btn {
+  position: absolute;
+  top: var(--space-xs);
+  right: var(--space-xs);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-sm);
+}
+
+.image-result {
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.result-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.result-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.result-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.result-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text);
+  background: var(--color-bg);
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.result-text[dir="rtl"] {
+  font-family: var(--font-persian);
+  text-align: right;
+}
+
+/* RTL Support for grammar and image sections */
+[dir="rtl"] .grammar-header {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .grammar-checkbox-label {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .result-header {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .result-actions {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .image-preview .icon-btn {
+  right: auto;
+  left: var(--space-xs);
+}

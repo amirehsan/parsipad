@@ -5,6 +5,27 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-02-08
+
+### Added
+- **Grammar Explanation Mode** - Learn while you translate
+  - Checkbox option in Translate tab: "Explain grammar"
+  - When enabled, shows grammar notes below translation
+  - Explains word order differences, verb conjugations, idiomatic expressions
+  - 2-4 grammar points per translation
+  - Grammar translations are not cached (fresh explanations each time)
+
+- **Image Translation** - Translate text from images
+  - New "Image" tab in popup
+  - Upload images via file picker or paste from clipboard (Ctrl+V)
+  - Supports JPG, PNG, WebP formats (max 5MB)
+  - Extracts text using Claude's vision capabilities
+  - Shows extracted text and translation side-by-side
+  - Copy translation to clipboard
+
+### Changed
+- Updated i18n translations for new features (English & Persian)
+
 ## [2.1.0] - 2025-01-28
 
 ### Added

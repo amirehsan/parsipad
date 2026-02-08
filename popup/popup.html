@@ -52,6 +52,7 @@
       <button id="tab-polish" class="tab" data-mode="polish" data-i18n="polish">Polish</button>
       <button id="tab-dictionary" class="tab" data-mode="dictionary" data-i18n="dictionary">Dictionary</button>
       <button id="tab-document" class="tab" data-mode="document" data-i18n="document">Document</button>
+      <button id="tab-image" class="tab" data-mode="image" data-i18n="image">Image</button>
     </nav>
 
     <!-- Input Section -->
@@ -68,6 +69,14 @@
         <button id="clear-input-btn" class="link-btn" data-i18n="clear">Clear</button>
       </div>
     </section>
+
+    <!-- Grammar Toggle (only visible in translate mode) -->
+    <div id="grammar-toggle-section" class="grammar-toggle" hidden>
+      <label class="grammar-checkbox-label">
+        <input type="checkbox" id="grammar-checkbox" class="grammar-checkbox-input">
+        <span class="grammar-checkbox-text" data-i18n="explainGrammar">Explain grammar</span>
+      </label>
+    </div>
 
     <!-- Action Button -->
     <button id="action-btn" class="action-btn">
@@ -92,6 +101,17 @@
       </div>
       <div id="output-text" class="output-text"></div>
       <div id="cache-badge" class="cache-badge" hidden data-i18n="fromCache">From cache</div>
+
+      <!-- Grammar Explanation Section -->
+      <div id="grammar-section" class="grammar-section" hidden>
+        <div class="grammar-header">
+          <svg class="grammar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+          </svg>
+          <span data-i18n="grammarExplanation">Grammar Notes</span>
+        </div>
+        <div id="grammar-points" class="grammar-points"></div>
+      </div>
     </section>
 
     <!-- Polish Output Section -->
@@ -217,6 +237,67 @@
           </svg>
           <span data-i18n="downloadTranslation">Download Translation</span>
         </button>
+      </div>
+    </section>
+
+    <!-- Image Upload Section -->
+    <section id="image-upload-section" class="section image-section" hidden>
+      <div class="upload-area" id="image-upload-area">
+        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+        <p class="upload-text" data-i18n="uploadImage">Upload Image</p>
+        <p class="upload-hint" data-i18n="imageFormats">JPG, PNG • Paste with Ctrl+V</p>
+        <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp" hidden>
+        <button id="select-image-btn" class="action-btn secondary" data-i18n="selectFile">Select File</button>
+      </div>
+
+      <!-- Image Preview -->
+      <div id="image-preview" class="image-preview" hidden>
+        <img id="preview-img" src="" alt="Preview">
+        <button id="remove-image-btn" class="icon-btn small" data-i18n-title="removeFile" title="Remove file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Translate Image Button -->
+      <button id="translate-image-btn" class="action-btn" hidden>
+        <span class="btn-text" data-i18n="translateImage">Translate Image</span>
+        <span class="btn-loading" hidden>
+          <svg class="spinner" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4" stroke-dashoffset="10"/>
+          </svg>
+        </span>
+      </button>
+
+      <!-- Image Translation Results -->
+      <div id="image-result" class="image-result" hidden>
+        <div class="result-section">
+          <div class="result-header">
+            <span class="result-label" data-i18n="extractedText">Extracted Text</span>
+          </div>
+          <div id="extracted-text" class="result-text"></div>
+        </div>
+        <div class="result-section">
+          <div class="result-header">
+            <span class="result-label" data-i18n="translation">Translation</span>
+            <div class="result-actions">
+              <span id="image-direction-badge" class="badge"></span>
+              <button id="image-copy-btn" class="icon-btn small" data-i18n-title="copyToClipboard" title="Copy">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div id="image-translation" class="result-text"></div>
+        </div>
       </div>
     </section>
 

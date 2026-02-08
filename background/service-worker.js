@@ -1,4 +1,4 @@
-import { translate, polish } from '../lib/api.js';
+import { translate, polish, translateImage } from '../lib/api.js';
 import { lookupWord } from '../lib/dictionary.js';
 import { translateDocument, validateFile, readFileContent } from '../lib/document-translator.js';
 import { translationCache } from '../lib/cache.js';
@@ -29,7 +29,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleMessage(message, sender) {
   switch (message.action) {
     case ACTIONS.TRANSLATE:
-      return handleTranslate(message.text, message.sourceLang);
+      return handleTranslate(message.text, message.sourceLang, message.withGrammar);
 
     case ACTIONS.POLISH:
       return handlePolish(message.text);
@@ -44,6 +44,9 @@ async function handleMessage(message, sender) {
       await setTranslationCancelled(true);
       return { cancelled: true };
 
+    case ACTIONS.TRANSLATE_IMAGE:
+      return handleImageTranslation(message.imageData, message.mimeType);
+
     case ACTIONS.CHECK_API_KEY:
       return { hasApiKey: await hasApiKey() };
 
@@ -56,28 +59,34 @@ async function handleMessage(message, sender) {
  * Handle translation request with caching
  * @param {string} text - Text to translate
  * @param {'auto' | 'fa' | 'en'} sourceLang - Source language
+ * @param {boolean} withGrammar - Whether to include grammar explanations
  * @returns {Promise<Object>}
  */
-async function handleTranslate(text, sourceLang = 'auto') {
+async function handleTranslate(text, sourceLang = 'auto', withGrammar = false) {
   if (!text || text.trim().length === 0) {
     throw new Error('No text provided for translation');
   }
 
-  // Check cache first
-  const cached = await translationCache.get(text);
-  if (cached) {
-    return {
-      translation: cached.translation,
-      direction: cached.direction,
-      fromCache: true
-    };
+  // Don't use cache when grammar mode is enabled (explanations should be fresh)
+  if (!withGrammar) {
+    // Check cache first
+    const cached = await translationCache.get(text);
+    if (cached) {
+      return {
+        translation: cached.translation,
+        direction: cached.direction,
+        fromCache: true
+      };
+    }
   }
 
   // Call API
-  const result = await translate(text, sourceLang);
+  const result = await translate(text, sourceLang, withGrammar);
 
-  // Store in cache
-  await translationCache.set(text, result.translation, result.direction);
+  // Store in cache (only for non-grammar translations)
+  if (!withGrammar) {
+    await translationCache.set(text, result.translation, result.direction);
+  }
 
   // Add to history
   await addToHistory(text, result.translation, result.direction);
@@ -86,6 +95,7 @@ async function handleTranslate(text, sourceLang = 'auto') {
     translation: result.translation,
     direction: result.direction,
     displayDirection: result.displayDirection,
+    grammar: result.grammar || null,
     fromCache: false,
     inputTokens: result.inputTokens,
     outputTokens: result.outputTokens
@@ -186,6 +196,29 @@ async function handleDocumentTranslation(content) {
     totalInputTokens: result.totalInputTokens,
     totalOutputTokens: result.totalOutputTokens,
     cancelled: result.cancelled || false
+  };
+}
+
+/**
+ * Handle image translation request
+ * @param {string} base64Data - Base64 encoded image data
+ * @param {string} mimeType - Image MIME type
+ * @returns {Promise<Object>}
+ */
+async function handleImageTranslation(base64Data, mimeType) {
+  if (!base64Data) {
+    throw new Error('No image data provided');
+  }
+
+  // Call API
+  const result = await translateImage(base64Data, mimeType);
+
+  return {
+    extractedText: result.extractedText,
+    translation: result.translation,
+    direction: result.direction,
+    inputTokens: result.inputTokens,
+    outputTokens: result.outputTokens
   };
 }
 

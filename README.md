@@ -28,9 +28,12 @@
 ## Features
 
 - **AI-Powered Translation** - Accurate, context-aware translations using Claude AI
+- **Grammar Explanations** - Learn grammar while translating with detailed explanations (NEW in v2.2)
+- **Image Translation** - Extract and translate text from images using OCR (NEW in v2.2)
 - **Text Polishing** - Get 3 versions: Professional, Conversational, and Concise
-- **Dictionary Lookup** - Look up definitions, phonetics, synonyms, and antonyms (NEW in v2.0)
-- **Document Translation** - Upload and translate TXT files with progress tracking (NEW in v2.0)
+- **Dictionary Lookup** - Look up definitions, phonetics, synonyms, and antonyms
+- **Document Translation** - Upload and translate TXT files with progress tracking
+- **Selection Popup** - Quick action icons when selecting text on webpages
 - **Right-Click Menu** - Select text on any webpage, right-click to translate, polish, or look up
 - **Keyboard Shortcuts** - `Alt+T` to translate, `Alt+D` for dictionary lookup
 - **Dark Mode** - Beautiful dark theme that syncs with system preferences
@@ -85,6 +88,14 @@
 
 Enter any text in English or Persian - the extension automatically detects the language and translates to the other.
 
+#### Grammar Explanation Mode (NEW in v2.2)
+
+Enable "Explain grammar" checkbox to receive grammar notes with your translation:
+- Word order differences between Persian and English
+- Verb conjugations and tense explanations
+- Idiomatic expressions and their meanings
+- Register and formality choices
+
 ### Polish Mode
 
 Get three polished versions of your text:
@@ -114,6 +125,21 @@ Translate entire documents:
 4. Download the translated file when complete
 
 You can cancel long translations at any time.
+
+### Image Mode (NEW in v2.2)
+
+Translate text directly from images:
+1. Click the "Image" tab in the popup
+2. Upload an image (JPG, PNG, WebP up to 5MB)
+   - Or paste from clipboard with `Ctrl+V`
+3. Click "Translate Image"
+4. View extracted text and translation
+5. Copy translation to clipboard
+
+Useful for translating:
+- Screenshots of foreign text
+- Photos of signs, menus, or documents
+- Images with embedded text
 
 ## Development
 
