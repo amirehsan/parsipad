@@ -5,6 +5,57 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2025-02-12
+
+### Improved
+- **Selection Popup UX** - Enhanced floating toolbar for text selection
+  - Centered positioning on selected text
+  - Smart flip: appears above selection, flips below when near top edge
+  - Spring animation with proper direction based on position
+  - Custom styled tooltips with dark background and arrow
+  - 200ms debounce to prevent flickering during selection
+  - ARIA accessibility attributes for screen readers
+
+- **Popup UI Spacing** - Better visual hierarchy in main popup
+  - Improved spacing between character count and grammar checkbox
+  - Better separation between grammar checkbox and Translate button
+  - More breathing room in input area
+
+- **Floating Translation Box** - Smart positioning improvements
+  - Now flips above selection when near bottom of viewport
+  - Consistent viewport padding (12px)
+
+## [2.3.0] - 2025-02-12
+
+### Added
+- **Multi-AI Provider Support** - Choose your preferred AI provider
+  - Support for Claude (Anthropic), Gemini (Google), and ChatGPT (OpenAI)
+  - Global provider selection in Settings page
+  - Separate API key configuration for each provider
+  - Provider badge shows which AI generated the result
+
+- **Provider Abstraction Layer** - Clean architecture for AI providers
+  - Base provider interface with `complete()`, `vision()`, and `validateApiKey()` methods
+  - Separate implementations for each provider
+  - Easy to add more providers in the future
+
+- **New Settings UI** - Enhanced provider management
+  - Radio button cards for provider selection with company names
+  - Tabbed interface for managing API keys
+  - Green status indicator for configured providers
+  - Links to each provider's API console
+
+### Changed
+- Settings page redesigned with AI Provider and API Keys sections
+- Provider badge displayed in all result views (popup, floating window)
+- Updated manifest with host permissions for Gemini and OpenAI APIs
+- Updated i18n translations for new provider-related UI elements
+
+### Technical
+- New `lib/providers/` directory with modular provider implementations
+- Updated `lib/storage.js` with provider selection and multi-key functions
+- Refactored `lib/api.js`, `lib/dictionary.js`, and `lib/document-translator.js` to use provider abstraction
+
 ## [2.2.0] - 2025-02-08
 
 ### Added

@@ -1,26 +1,62 @@
-import { getApiKey, setApiKey, removeApiKey, maskApiKey, getLanguage, setLanguage, getDictionaryTranslationSettings, setDictionaryTranslationSettings, getSelectionPopupEnabled, setSelectionPopupEnabled } from '../lib/storage.js';
+import {
+  getSelectedProvider,
+  setSelectedProvider,
+  getProviderApiKey,
+  setProviderApiKey,
+  removeProviderApiKey,
+  hasProviderApiKey,
+  getLanguage,
+  setLanguage,
+  getDictionaryTranslationSettings,
+  setDictionaryTranslationSettings,
+  getSelectionPopupEnabled,
+  setSelectionPopupEnabled
+} from '../lib/storage.js';
+import { PROVIDERS, PROVIDER_CONFIGS } from '../lib/constants.js';
 import { translationCache } from '../lib/cache.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 
-// DOM Elements
-const apiKeyInput = document.getElementById('api-key');
-const toggleVisibilityBtn = document.getElementById('toggle-visibility');
-const saveBtn = document.getElementById('save-btn');
-const clearBtn = document.getElementById('clear-btn');
-const statusEl = document.getElementById('status');
-const cacheCountEl = document.getElementById('cache-count');
-const clearCacheBtn = document.getElementById('clear-cache-btn');
+// DOM Elements - Language
 const langEnRadio = document.getElementById('lang-en');
 const langFaRadio = document.getElementById('lang-fa');
+
+// DOM Elements - Dictionary
 const dictEnToFaCheckbox = document.getElementById('dict-en-to-fa');
 const dictFaToEnCheckbox = document.getElementById('dict-fa-to-en');
+
+// DOM Elements - Selection Popup
 const selectionPopupToggle = document.getElementById('selection-popup-toggle');
+
+// DOM Elements - Theme
 const themeToggle = document.getElementById('theme-toggle');
 
+// DOM Elements - Provider Selection
+const providerRadios = document.querySelectorAll('input[name="provider"]');
+
+// DOM Elements - API Key Tabs
+const apiKeyTabs = document.querySelectorAll('.api-key-tab');
+const apiKeyPanels = document.querySelectorAll('.api-key-panel');
+
+// DOM Elements - API Key Inputs
+const claudeApiKeyInput = document.getElementById('claude-api-key');
+const geminiApiKeyInput = document.getElementById('gemini-api-key');
+const openaiApiKeyInput = document.getElementById('openai-api-key');
+
+// DOM Elements - Key Status Indicators
+const claudeKeyStatus = document.getElementById('claude-key-status');
+const geminiKeyStatus = document.getElementById('gemini-key-status');
+const openaiKeyStatus = document.getElementById('openai-key-status');
+
+// DOM Elements - Cache
+const cacheCountEl = document.getElementById('cache-count');
+const clearCacheBtn = document.getElementById('clear-cache-btn');
+
+// DOM Elements - Status
+const apiStatusEl = document.getElementById('api-status');
+
 // State
-let isPasswordVisible = false;
-let currentApiKey = '';
 let currentLang = 'en';
+let currentProvider = PROVIDERS.CLAUDE;
 
 /**
  * Initialize the settings page
@@ -30,7 +66,8 @@ async function init() {
   await loadLanguage();
   await loadDictionarySettings();
   await loadSelectionPopupSetting();
-  await loadApiKey();
+  await loadProviderSettings();
+  await loadAllApiKeyStatuses();
   await loadCacheStats();
   setupEventListeners();
 }
@@ -41,7 +78,6 @@ async function init() {
 function initTheme() {
   const html = document.documentElement;
 
-  // Check for saved preference or system preference
   if (localStorage.getItem('theme') === 'dark' ||
       (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
     html.classList.add('dark');
@@ -65,7 +101,6 @@ function toggleTheme() {
 async function loadLanguage() {
   currentLang = await getLanguage();
 
-  // Set radio button
   if (currentLang === 'fa') {
     langFaRadio.checked = true;
   } else {
@@ -93,16 +128,95 @@ async function loadSelectionPopupSetting() {
 }
 
 /**
- * Load and display the stored API key (masked)
+ * Load provider settings (selected provider)
  */
-async function loadApiKey() {
-  const apiKey = await getApiKey();
-  currentApiKey = apiKey || '';
+async function loadProviderSettings() {
+  currentProvider = await getSelectedProvider();
 
-  if (apiKey) {
-    apiKeyInput.value = apiKey;
-    apiKeyInput.placeholder = 'API key configured';
+  // Set the correct radio button
+  const providerRadio = document.getElementById(`provider-${currentProvider}`);
+  if (providerRadio) {
+    providerRadio.checked = true;
   }
+
+  // Also activate the corresponding API key tab
+  activateApiKeyTab(currentProvider);
+}
+
+/**
+ * Load API key status indicators for all providers
+ */
+async function loadAllApiKeyStatuses() {
+  const providers = [PROVIDERS.CLAUDE, PROVIDERS.GEMINI, PROVIDERS.OPENAI];
+
+  for (const provider of providers) {
+    await updateKeyStatus(provider);
+  }
+}
+
+/**
+ * Update key status indicator for a provider
+ */
+async function updateKeyStatus(provider) {
+  const hasKey = await hasProviderApiKey(provider);
+  const statusEl = document.getElementById(`${provider}-key-status`);
+
+  if (statusEl) {
+    if (hasKey) {
+      statusEl.classList.add('configured');
+      statusEl.title = 'API key configured';
+    } else {
+      statusEl.classList.remove('configured');
+      statusEl.title = 'API key not configured';
+    }
+  }
+
+  // Also load the key into the input if it exists
+  const key = await getProviderApiKey(provider);
+  const input = getApiKeyInput(provider);
+  if (input && key) {
+    input.value = key;
+    input.placeholder = `${PROVIDER_CONFIGS[provider].keyPlaceholder} (configured)`;
+  }
+}
+
+/**
+ * Get the API key input element for a provider
+ */
+function getApiKeyInput(provider) {
+  switch (provider) {
+    case PROVIDERS.CLAUDE:
+      return claudeApiKeyInput;
+    case PROVIDERS.GEMINI:
+      return geminiApiKeyInput;
+    case PROVIDERS.OPENAI:
+      return openaiApiKeyInput;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Activate API key tab for a provider
+ */
+function activateApiKeyTab(provider) {
+  // Update tab states
+  apiKeyTabs.forEach(tab => {
+    if (tab.dataset.provider === provider) {
+      tab.classList.add('active');
+    } else {
+      tab.classList.remove('active');
+    }
+  });
+
+  // Update panel visibility
+  apiKeyPanels.forEach(panel => {
+    if (panel.id === `${provider}-panel`) {
+      panel.classList.add('active');
+    } else {
+      panel.classList.remove('active');
+    }
+  });
 }
 
 /**
@@ -125,37 +239,6 @@ function setupEventListeners() {
   // Theme toggle
   themeToggle.addEventListener('click', toggleTheme);
 
-  // Toggle password visibility
-  toggleVisibilityBtn.addEventListener('click', () => {
-    isPasswordVisible = !isPasswordVisible;
-    apiKeyInput.type = isPasswordVisible ? 'text' : 'password';
-    toggleVisibilityBtn.title = isPasswordVisible ? 'Hide' : 'Show';
-
-    // Toggle eye icons
-    const eyeOpen = toggleVisibilityBtn.querySelector('.eye-open');
-    const eyeClosed = toggleVisibilityBtn.querySelector('.eye-closed');
-    if (eyeOpen && eyeClosed) {
-      eyeOpen.classList.toggle('hidden', isPasswordVisible);
-      eyeClosed.classList.toggle('hidden', !isPasswordVisible);
-    }
-  });
-
-  // Save API key
-  saveBtn.addEventListener('click', handleSave);
-
-  // Clear API key
-  clearBtn.addEventListener('click', handleClear);
-
-  // Clear cache
-  clearCacheBtn.addEventListener('click', handleClearCache);
-
-  // Allow Enter key to save
-  apiKeyInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      handleSave();
-    }
-  });
-
   // Language selection
   langEnRadio.addEventListener('change', () => handleLanguageChange('en'));
   langFaRadio.addEventListener('change', () => handleLanguageChange('fa'));
@@ -166,17 +249,59 @@ function setupEventListeners() {
 
   // Selection popup setting
   selectionPopupToggle.addEventListener('change', handleSelectionPopupChange);
+
+  // Provider selection
+  providerRadios.forEach(radio => {
+    radio.addEventListener('change', handleProviderChange);
+  });
+
+  // API key tabs
+  apiKeyTabs.forEach(tab => {
+    tab.addEventListener('click', () => handleTabClick(tab.dataset.provider));
+  });
+
+  // Toggle password visibility buttons
+  document.querySelectorAll('.toggle-visibility').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.dataset.target;
+      togglePasswordVisibility(targetId);
+    });
+  });
+
+  // Save API key buttons
+  document.querySelectorAll('.save-key-btn').forEach(btn => {
+    btn.addEventListener('click', () => handleSaveApiKey(btn.dataset.provider));
+  });
+
+  // Clear API key buttons
+  document.querySelectorAll('.clear-key-btn').forEach(btn => {
+    btn.addEventListener('click', () => handleClearApiKey(btn.dataset.provider));
+  });
+
+  // Allow Enter key to save in API key inputs
+  [claudeApiKeyInput, geminiApiKeyInput, openaiApiKeyInput].forEach(input => {
+    if (input) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const provider = input.id.replace('-api-key', '');
+          handleSaveApiKey(provider);
+        }
+      });
+    }
+  });
+
+  // Clear cache
+  clearCacheBtn.addEventListener('click', handleClearCache);
 }
 
 /**
  * Handle language change
- * @param {'en'|'fa'} lang
  */
 async function handleLanguageChange(lang) {
   currentLang = lang;
   await setLanguage(lang);
   applyTranslations(lang);
-  await loadCacheStats(); // Refresh cache stats text
+  await loadCacheStats();
 }
 
 /**
@@ -197,10 +322,66 @@ async function handleSelectionPopupChange() {
 }
 
 /**
- * Handle save button click
+ * Handle provider selection change
  */
-async function handleSave() {
-  const apiKey = apiKeyInput.value.trim();
+async function handleProviderChange(e) {
+  const provider = e.target.value;
+  currentProvider = provider;
+
+  try {
+    await setSelectedProvider(provider);
+    activateApiKeyTab(provider);
+    showStatus(`Switched to ${PROVIDER_CONFIGS[provider].displayName}`, 'success');
+  } catch (error) {
+    showStatus(error.message, 'error');
+  }
+}
+
+/**
+ * Handle API key tab click
+ */
+function handleTabClick(provider) {
+  activateApiKeyTab(provider);
+}
+
+/**
+ * Toggle password visibility for an input
+ */
+function togglePasswordVisibility(inputId) {
+  const input = document.getElementById(inputId);
+  const btn = document.querySelector(`[data-target="${inputId}"]`);
+
+  if (input && btn) {
+    const isVisible = input.type === 'text';
+    input.type = isVisible ? 'password' : 'text';
+
+    // Update icon
+    const icon = btn.querySelector('.eye-icon');
+    if (icon) {
+      if (isVisible) {
+        icon.innerHTML = `
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        `;
+      } else {
+        icon.innerHTML = `
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+          <line x1="1" y1="1" x2="23" y2="23"/>
+        `;
+      }
+    }
+  }
+}
+
+/**
+ * Handle save API key button click
+ */
+async function handleSaveApiKey(provider) {
+  const input = getApiKeyInput(provider);
+  if (!input) return;
+
+  const apiKey = input.value.trim();
+  const config = PROVIDER_CONFIGS[provider];
 
   if (!apiKey) {
     showStatus(t('pleaseEnterApiKey', currentLang), 'error');
@@ -208,23 +389,30 @@ async function handleSave() {
   }
 
   try {
-    await setApiKey(apiKey);
-    currentApiKey = apiKey;
-    showStatus(t('apiKeySaved', currentLang), 'success');
+    await setProviderApiKey(provider, apiKey);
+    await updateKeyStatus(provider);
+    showStatus(`${config.name} API key saved successfully`, 'success');
   } catch (error) {
     showStatus(error.message, 'error');
   }
 }
 
 /**
- * Handle clear button click
+ * Handle clear API key button click
  */
-async function handleClear() {
-  await removeApiKey();
-  apiKeyInput.value = '';
-  currentApiKey = '';
-  apiKeyInput.placeholder = 'sk-ant-...';
-  showStatus(t('apiKeyRemoved', currentLang), 'success');
+async function handleClearApiKey(provider) {
+  const input = getApiKeyInput(provider);
+  const config = PROVIDER_CONFIGS[provider];
+
+  await removeProviderApiKey(provider);
+
+  if (input) {
+    input.value = '';
+    input.placeholder = config.keyPlaceholder;
+  }
+
+  await updateKeyStatus(provider);
+  showStatus(`${config.name} API key removed`, 'success');
 }
 
 /**
@@ -238,17 +426,14 @@ async function handleClearCache() {
 
 /**
  * Show a status message
- * @param {string} message - Message to display
- * @param {'success' | 'error'} type - Message type
  */
 function showStatus(message, type) {
-  statusEl.textContent = message;
-  statusEl.className = `status-message ${type}`;
-  statusEl.hidden = false;
+  apiStatusEl.textContent = message;
+  apiStatusEl.className = `status-message ${type}`;
+  apiStatusEl.hidden = false;
 
-  // Auto-hide after 3 seconds
   setTimeout(() => {
-    statusEl.hidden = true;
+    apiStatusEl.hidden = true;
   }, 3000);
 }
 
