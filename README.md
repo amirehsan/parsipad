@@ -9,9 +9,9 @@
 </p>
 
 <p align="center">
-  A Chrome extension for seamless Persian-English translation powered by Claude AI.
+  A Chrome extension for seamless Persian-English translation powered by your choice of AI.
   <br>
-  Featuring text polishing, keyboard shortcuts, right-click menu, and dark mode.
+  Supports Claude, Gemini, and ChatGPT. Featuring text polishing, keyboard shortcuts, right-click menu, and dark mode.
 </p>
 
 <p align="center">
@@ -27,9 +27,10 @@
 
 ## Features
 
-- **AI-Powered Translation** - Accurate, context-aware translations using Claude AI
-- **Grammar Explanations** - Learn grammar while translating with detailed explanations (NEW in v2.2)
-- **Image Translation** - Extract and translate text from images using OCR (NEW in v2.2)
+- **Multi-AI Provider Support** - Choose between Claude, Gemini, or ChatGPT (NEW in v2.3)
+- **AI-Powered Translation** - Accurate, context-aware translations using your preferred AI
+- **Grammar Explanations** - Learn grammar while translating with detailed explanations
+- **Image Translation** - Extract and translate text from images using OCR
 - **Text Polishing** - Get 3 versions: Professional, Conversational, and Concise
 - **Dictionary Lookup** - Look up definitions, phonetics, synonyms, and antonyms
 - **Document Translation** - Upload and translate TXT files with progress tracking
@@ -69,15 +70,16 @@
 
 ### Getting Started
 
-1. **Get a Claude API Key**
-   - Visit [console.anthropic.com](https://console.anthropic.com/)
-   - Create an account and generate an API key
-   - The key should start with `sk-ant-`
+1. **Get an API Key** from your preferred AI provider:
+   - **Claude (Anthropic)**: Visit [console.anthropic.com](https://console.anthropic.com/) - Key starts with `sk-ant-`
+   - **Gemini (Google)**: Visit [aistudio.google.com/apikey](https://aistudio.google.com/apikey) - Key starts with `AIza`
+   - **ChatGPT (OpenAI)**: Visit [platform.openai.com/api-keys](https://platform.openai.com/api-keys) - Key starts with `sk-`
 
 2. **Configure the Extension**
    - Click the ParsiPad icon in your toolbar
    - Go to Settings (gear icon)
-   - Paste your API key and save
+   - Select your preferred AI provider
+   - Enter the API key for that provider and save
 
 3. **Start Translating**
    - **Option 1:** Type or paste text in the popup and click Translate
@@ -169,7 +171,7 @@ parsipad/
 
 - **Pure JavaScript** - No frameworks, minimal dependencies
 - **Chrome Extension Manifest V3** - Latest extension platform
-- **Claude AI API** - Anthropic's language model
+- **Multi-AI Support** - Claude (Anthropic), Gemini (Google), ChatGPT (OpenAI)
 - **Chrome Storage API** - Secure local data storage
 
 ### Building
@@ -215,7 +217,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- Powered by [Claude AI](https://www.anthropic.com/) from Anthropic
+- Powered by [Claude](https://www.anthropic.com/), [Gemini](https://ai.google.dev/), and [ChatGPT](https://openai.com/)
 - Built for the Persian-speaking community worldwide
 
 ---

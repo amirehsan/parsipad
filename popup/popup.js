@@ -1,6 +1,7 @@
 import { getTextDirection } from '../lib/language-detect.js';
 import { getHistory, clearHistory, getPolishHistory, clearPolishHistory, getDictionaryHistory, clearDictionaryHistory } from '../lib/history.js';
-import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage } from '../lib/storage.js';
+import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider } from '../lib/storage.js';
+import { PROVIDER_CONFIGS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 
 // DOM Elements
@@ -73,6 +74,7 @@ const progressChunks = document.getElementById('progress-chunks');
 const downloadSection = document.getElementById('download-section');
 const downloadBtn = document.getElementById('download-btn');
 const cancelTranslationBtn = document.getElementById('cancel-translation-btn');
+const translateDocBtn = document.getElementById('translate-doc-btn');
 // Grammar elements
 const grammarToggleSection = document.getElementById('grammar-toggle-section');
 const grammarCheckbox = document.getElementById('grammar-checkbox');
@@ -92,6 +94,11 @@ const extractedText = document.getElementById('extracted-text');
 const imageDirectionBadge = document.getElementById('image-direction-badge');
 const imageTranslation = document.getElementById('image-translation');
 const imageCopyBtn = document.getElementById('image-copy-btn');
+const imageProviderBadge = document.getElementById('image-provider-badge');
+// Provider badges
+const providerBadge = document.getElementById('provider-badge');
+const polishProviderBadge = document.getElementById('polish-provider-badge');
+const dictProviderBadge = document.getElementById('dict-provider-badge');
 const themeBtn = document.getElementById('theme-btn');
 const statsToggle = document.getElementById('stats-toggle');
 const statsContent = document.getElementById('stats-content');
@@ -360,6 +367,7 @@ function setupEventListeners() {
   removeFileBtn.addEventListener('click', clearFile);
   downloadBtn.addEventListener('click', downloadTranslation);
   cancelTranslationBtn.addEventListener('click', handleCancelTranslation);
+  translateDocBtn.addEventListener('click', handleDocumentTranslate);
 
   // Image buttons
   selectImageBtn.addEventListener('click', () => imageInput.click());
@@ -417,6 +425,12 @@ function updateTab(tab) {
 
   // Show/hide action button (document and image have their own buttons)
   actionBtn.hidden = tab === 'document' || tab === 'image';
+
+  // Reset document translate button when switching to document tab
+  if (tab === 'document') {
+    // Only show if a file is already selected
+    translateDocBtn.hidden = !uploadedFile;
+  }
 
   // For dictionary mode, we show the text input but change the button/placeholder
   if (tab === 'dictionary') {
@@ -607,10 +621,13 @@ async function handlePolish() {
  * Display translation result
  * @param {Object} result - Translation result
  */
-function displayTranslation(result) {
+async function displayTranslation(result) {
   const { translation, direction, displayDirection, fromCache, grammar } = result;
 
   directionBadge.textContent = displayDirection || formatDirectionBadge(direction);
+
+  // Show provider badge
+  await updateProviderBadge(providerBadge);
 
   const targetLang = direction.split('-')[1] || 'fa';
   const outputDir = ['fa', 'ar', 'he'].includes(targetLang) ? 'rtl' : 'ltr';
@@ -625,6 +642,27 @@ function displayTranslation(result) {
     displayGrammarExplanation(grammar);
   } else {
     grammarSection.hidden = true;
+  }
+}
+
+/**
+ * Update provider badge with current provider info
+ * @param {HTMLElement} badgeElement - The badge element to update
+ */
+async function updateProviderBadge(badgeElement) {
+  if (!badgeElement) return;
+
+  try {
+    const providerId = await getSelectedProvider();
+    const config = PROVIDER_CONFIGS[providerId];
+
+    if (config) {
+      badgeElement.textContent = config.name;
+      badgeElement.className = `badge provider-badge ${providerId}`;
+      badgeElement.hidden = false;
+    }
+  } catch (error) {
+    badgeElement.hidden = true;
   }
 }
 
@@ -647,7 +685,10 @@ function displayGrammarExplanation(grammarPointsList) {
  * Display polish results
  * @param {Object} result - Polish result with professional, conversational, concise
  */
-function displayPolishResults(result) {
+async function displayPolishResults(result) {
+  // Show provider badge
+  await updateProviderBadge(polishProviderBadge);
+
   polishProfessional.textContent = result.professional;
   polishConversational.textContent = result.conversational;
   polishConcise.textContent = result.concise;
@@ -886,11 +927,14 @@ async function handleDictionary() {
 /**
  * Display dictionary result
  */
-function displayDictionaryResult(result) {
+async function displayDictionaryResult(result) {
   const { word, phonetic, partOfSpeech, definitions, synonyms, antonyms, translation, targetLang } = result;
 
   // Word and phonetic
   dictWord.textContent = word;
+
+  // Show provider badge
+  await updateProviderBadge(dictProviderBadge);
   dictPhonetic.textContent = phonetic || '';
   dictPhonetic.hidden = !phonetic;
 
@@ -1026,9 +1070,23 @@ function handleFileSelect(event) {
   const file = event.target.files[0];
   if (!file) return;
 
+  hideError();
+
+  // Validate file type
+  if (!file.name.endsWith('.txt')) {
+    showError(t('unsupportedFormat', currentLang) || 'Only .txt files are supported');
+    return;
+  }
+
   // Validate file size (100KB max)
   if (file.size > 100 * 1024) {
     showError(t('fileTooLarge', currentLang));
+    return;
+  }
+
+  // Validate file is not empty
+  if (file.size === 0) {
+    showError('File is empty');
     return;
   }
 
@@ -1043,8 +1101,7 @@ function handleFileSelect(event) {
   translatedContent = null;
 
   // Show translate button for document
-  actionBtn.hidden = false;
-  btnText.textContent = t('translate', currentLang);
+  translateDocBtn.hidden = false;
 }
 
 /**
@@ -1059,7 +1116,20 @@ function clearFile() {
   documentInfo.hidden = true;
   downloadSection.hidden = true;
   translationProgress.hidden = true;
-  actionBtn.hidden = true;
+  translateDocBtn.hidden = true;
+}
+
+/**
+ * Set loading state for document translate button
+ * @param {boolean} loading
+ */
+function setDocLoadingState(loading) {
+  isProcessing = loading;
+  translateDocBtn.disabled = loading;
+  const btnTextEl = translateDocBtn.querySelector('.btn-text');
+  const btnLoadingEl = translateDocBtn.querySelector('.btn-loading');
+  if (btnTextEl) btnTextEl.hidden = loading;
+  if (btnLoadingEl) btnLoadingEl.hidden = !loading;
 }
 
 /**
@@ -1071,9 +1141,31 @@ async function handleDocumentTranslate() {
     return;
   }
 
-  const content = await uploadedFile.text();
+  // Validate file type
+  if (!uploadedFile.name.endsWith('.txt')) {
+    showError(t('unsupportedFormat', currentLang) || 'Only .txt files are supported');
+    return;
+  }
 
-  setLoadingState(true);
+  if (isProcessing) {
+    return;
+  }
+
+  let content;
+  try {
+    content = await uploadedFile.text();
+  } catch (readError) {
+    showError('Failed to read file: ' + (readError.message || 'Unknown error'));
+    return;
+  }
+
+  if (!content || content.trim().length === 0) {
+    showError('File is empty');
+    return;
+  }
+
+  setDocLoadingState(true);
+  hideError();
   translationProgress.hidden = false;
   downloadSection.hidden = true;
   updateProgress(0, 0, 1);
@@ -1090,8 +1182,15 @@ async function handleDocumentTranslate() {
       sourceLang: 'auto'
     });
 
+    if (!response) {
+      showError('No response from translation service');
+      translationProgress.hidden = true;
+      return;
+    }
+
     if (response.error) {
       showError(response.error);
+      translationProgress.hidden = true;
       return;
     }
 
@@ -1115,8 +1214,9 @@ async function handleDocumentTranslate() {
     await loadStats();
   } catch (error) {
     showError(error.message || 'Document translation failed');
+    translationProgress.hidden = true;
   } finally {
-    setLoadingState(false);
+    setDocLoadingState(false);
   }
 }
 
@@ -1327,7 +1427,7 @@ async function handleImageTranslate() {
  * Display image translation result
  * @param {Object} result - Image translation result
  */
-function displayImageResult(result) {
+async function displayImageResult(result) {
   const { extractedText: extracted, translation, direction } = result;
 
   // Check if no text was found
@@ -1348,6 +1448,9 @@ function displayImageResult(result) {
 
   // Display direction badge
   imageDirectionBadge.textContent = formatDirectionBadge(direction);
+
+  // Show provider badge
+  await updateProviderBadge(imageProviderBadge);
 
   imageResult.hidden = false;
 }

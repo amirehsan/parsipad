@@ -10,6 +10,7 @@ let currentSelection = null;
 let selectionPopup = null;
 let selectionPopupShadow = null;
 let selectionPopupEnabled = false;
+let selectionDebounceTimer = null;
 
 /**
  * Initialize the content script
@@ -155,8 +156,15 @@ async function polishAndShow(text) {
 
 /**
  * Calculate position for floating box based on selection
+ * Uses smart flip to position above or below based on available space
  */
 function getBoxPosition(selection) {
+  // Constants for floating box dimensions
+  const BOX_WIDTH = 450;
+  const BOX_HEIGHT_ESTIMATE = 200; // Approximate height for flip calculation
+  const GAP = 8;
+  const VIEWPORT_PADDING = 12;
+
   let top = 100;
   let left = 100;
 
@@ -164,19 +172,34 @@ function getBoxPosition(selection) {
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
 
-    // Position below the selection with some padding
-    top = rect.bottom + window.scrollY + 8;
+    // Calculate space above and below selection
+    const spaceAbove = rect.top;
+    const spaceBelow = window.innerHeight - rect.bottom;
+
+    // Prefer below, but flip to above if not enough space below AND more space above
+    if (spaceBelow < BOX_HEIGHT_ESTIMATE + GAP && spaceAbove > spaceBelow) {
+      // Position above the selection (subtract estimated height)
+      top = rect.top + window.scrollY - BOX_HEIGHT_ESTIMATE - GAP;
+      // Ensure it doesn't go above the viewport
+      if (top < window.scrollY + VIEWPORT_PADDING) {
+        top = window.scrollY + VIEWPORT_PADDING;
+      }
+    } else {
+      // Position below the selection
+      top = rect.bottom + window.scrollY + GAP;
+    }
+
     left = rect.left + window.scrollX;
 
     // Ensure box doesn't go off-screen to the right
-    const maxLeft = window.innerWidth - 460; // 450px max-width + padding
+    const maxLeft = window.innerWidth - BOX_WIDTH - VIEWPORT_PADDING;
     if (left > maxLeft) {
-      left = maxLeft > 0 ? maxLeft : 10;
+      left = maxLeft > 0 ? maxLeft : VIEWPORT_PADDING;
     }
 
     // Ensure box doesn't go off-screen to the left
-    if (left < 10) {
-      left = 10;
+    if (left < VIEWPORT_PADDING) {
+      left = VIEWPORT_PADDING;
     }
   }
 
@@ -217,7 +240,10 @@ function createFloatingBox(position) {
         <img src="${chrome.runtime.getURL('icons/icon-48.png')}" alt="ParsiPad" class="parsipad-logo-icon">
         <span class="parsipad-logo-text">ParsiPad</span>
       </div>
-      <span class="parsipad-badge">EN → FA</span>
+      <div class="parsipad-badges">
+        <span class="parsipad-badge">EN → FA</span>
+        <span class="parsipad-provider-badge"></span>
+      </div>
       <button class="parsipad-close" title="Close">×</button>
     </div>
     <div class="parsipad-content">
@@ -290,11 +316,18 @@ function formatDirectionBadge(direction) {
 function showTranslation(result) {
   if (!shadowRoot) return;
 
-  const { translation, direction, displayDirection, fromCache } = result;
+  const { translation, direction, displayDirection, fromCache, provider } = result;
 
   // Update direction badge - use displayDirection if available, otherwise format from direction
   const badge = shadowRoot.querySelector('.parsipad-badge');
   badge.textContent = displayDirection || formatDirectionBadge(direction);
+
+  // Update provider badge
+  const providerBadge = shadowRoot.querySelector('.parsipad-provider-badge');
+  if (providerBadge && provider) {
+    providerBadge.textContent = provider;
+    providerBadge.className = `parsipad-provider-badge parsipad-provider-${provider.toLowerCase()}`;
+  }
 
   // Update content - target language determines text direction
   const content = shadowRoot.querySelector('.parsipad-content');
@@ -418,7 +451,10 @@ function createPolishBox(position) {
         <img src="${chrome.runtime.getURL('icons/icon-48.png')}" alt="ParsiPad" class="parsipad-logo-icon">
         <span class="parsipad-logo-text">ParsiPad</span>
       </div>
-      <span class="parsipad-badge parsipad-badge-polish">Polish</span>
+      <div class="parsipad-badges">
+        <span class="parsipad-badge parsipad-badge-polish">Polish</span>
+        <span class="parsipad-provider-badge"></span>
+      </div>
       <button class="parsipad-close" title="Close">×</button>
     </div>
     <div class="parsipad-polish-content">
@@ -482,7 +518,14 @@ function showPolishLoading() {
 function showPolishResults(result) {
   if (!shadowRoot) return;
 
-  const { professional, conversational, concise } = result;
+  const { professional, conversational, concise, provider } = result;
+
+  // Update provider badge
+  const providerBadge = shadowRoot.querySelector('.parsipad-provider-badge');
+  if (providerBadge && provider) {
+    providerBadge.textContent = provider;
+    providerBadge.className = `parsipad-provider-badge parsipad-provider-${provider.toLowerCase()}`;
+  }
 
   const content = shadowRoot.querySelector('.parsipad-polish-content');
   content.innerHTML = `
@@ -655,7 +698,10 @@ function createDictionaryBox(position) {
         <img src="${chrome.runtime.getURL('icons/icon-48.png')}" alt="ParsiPad" class="parsipad-logo-icon">
         <span class="parsipad-logo-text">ParsiPad</span>
       </div>
-      <span class="parsipad-badge parsipad-badge-dictionary">Dictionary</span>
+      <div class="parsipad-badges">
+        <span class="parsipad-badge parsipad-badge-dictionary">Dictionary</span>
+        <span class="parsipad-provider-badge"></span>
+      </div>
       <button class="parsipad-close" title="Close">×</button>
     </div>
     <div class="parsipad-dictionary-content">
@@ -699,8 +745,15 @@ function showDictionaryLoading() {
 function showDictionaryResult(result) {
   if (!shadowRoot) return;
 
-  const { word, phonetic, partOfSpeech, definitions, synonyms, antonyms, translation, targetLang } = result;
+  const { word, phonetic, partOfSpeech, definitions, synonyms, antonyms, translation, targetLang, provider } = result;
   const isTargetRTL = ['fa', 'ar', 'he'].includes(targetLang);
+
+  // Update provider badge
+  const providerBadge = shadowRoot.querySelector('.parsipad-provider-badge');
+  if (providerBadge && provider) {
+    providerBadge.textContent = provider;
+    providerBadge.className = `parsipad-provider-badge parsipad-provider-${provider.toLowerCase()}`;
+  }
 
   let definitionsHtml = '';
   if (definitions && definitions.length > 0) {
@@ -882,55 +935,82 @@ function handleTextSelection(event) {
   if (selectionPopup && selectionPopup.contains(event.target)) return;
   if (floatingBox && floatingBox.contains(event.target)) return;
 
-  // Small delay to ensure selection is complete
-  setTimeout(() => {
+  // Clear any existing debounce timer
+  if (selectionDebounceTimer) {
+    clearTimeout(selectionDebounceTimer);
+    selectionDebounceTimer = null;
+  }
+
+  // Remove existing popup immediately on new selection attempt
+  removeSelectionPopup();
+
+  // Debounce: wait 200ms before showing popup to avoid flickering
+  selectionDebounceTimer = setTimeout(() => {
     const selection = window.getSelection();
     const selectedText = selection?.toString().trim();
 
-    // Remove existing popup first
-    removeSelectionPopup();
-
-    // Only show popup if there's selected text
-    if (selectedText && selectedText.length > 0) {
+    // Only show popup if there's selected text (min 2 chars)
+    if (selectedText && selectedText.length >= 2) {
       const position = getSelectionPopupPosition(selection);
       createSelectionPopup(position, selectedText);
     }
-  }, 10);
+  }, 200);
 }
 
 /**
- * Get position for selection popup (near the end of selection)
+ * Get position for selection popup (centered on selection)
+ * Uses smart flip to position above or below based on available space
  */
 function getSelectionPopupPosition(selection) {
+  // Constants for popup dimensions
+  const POPUP_WIDTH = 120;
+  const POPUP_HEIGHT = 46;
+  const GAP = 8;
+  const VIEWPORT_PADDING = 12;
+
   let top = 100;
   let left = 100;
+  let showBelow = false;
 
   if (selection && selection.rangeCount > 0) {
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
 
-    // Position above the selection, near the end
-    top = rect.top + window.scrollY - 44; // 40px height + 4px gap
-    left = rect.right + window.scrollX - 120; // Roughly center the popup
+    // Center popup horizontally on selection
+    const selectionCenterX = rect.left + (rect.width / 2);
+    left = selectionCenterX + window.scrollX - (POPUP_WIDTH / 2);
 
-    // If popup would go above viewport, show below selection instead
-    if (top < window.scrollY + 10) {
-      top = rect.bottom + window.scrollY + 4;
+    // Calculate space above and below selection
+    const spaceAbove = rect.top;
+    const spaceBelow = window.innerHeight - rect.bottom;
+
+    // Prefer above, but flip to below if not enough space above AND more space below
+    if (spaceAbove < POPUP_HEIGHT + GAP && spaceBelow > spaceAbove) {
+      // Show below selection
+      top = rect.bottom + window.scrollY + GAP;
+      showBelow = true;
+    } else {
+      // Show above selection
+      top = rect.top + window.scrollY - POPUP_HEIGHT - GAP;
     }
 
-    // Ensure popup doesn't go off-screen to the right
-    const maxLeft = window.innerWidth - 140;
+    // Ensure popup stays within horizontal viewport bounds
+    const maxLeft = window.innerWidth - POPUP_WIDTH - VIEWPORT_PADDING;
     if (left > maxLeft) {
-      left = maxLeft > 0 ? maxLeft : 10;
+      left = maxLeft > 0 ? maxLeft : VIEWPORT_PADDING;
+    }
+    if (left < VIEWPORT_PADDING) {
+      left = VIEWPORT_PADDING;
     }
 
-    // Ensure popup doesn't go off-screen to the left
-    if (left < 10) {
-      left = 10;
+    // Ensure popup stays within vertical viewport bounds
+    const scrollTop = window.scrollY;
+    if (top < scrollTop + VIEWPORT_PADDING) {
+      top = scrollTop + VIEWPORT_PADDING;
     }
   }
 
-  return { top, left };
+  return { top, left, showBelow };
 }
 
 /**
@@ -950,30 +1030,32 @@ function createSelectionPopup(position, selectedText) {
   // Create shadow root for style isolation
   selectionPopupShadow = host.attachShadow({ mode: 'closed' });
 
-  // Inject styles
+  // Inject styles with animation direction based on position
   const style = document.createElement('style');
-  style.textContent = getSelectionPopupStyles();
+  style.textContent = getSelectionPopupStyles(position.showBelow);
   selectionPopupShadow.appendChild(style);
 
   // Check if selected text is a single word (for dictionary)
   const isSingleWord = selectedText.split(/\s+/).length === 1;
 
-  // Create popup structure
+  // Create popup structure with ARIA attributes for accessibility
   const popup = document.createElement('div');
   popup.className = 'selection-popup';
+  popup.setAttribute('role', 'toolbar');
+  popup.setAttribute('aria-label', 'Text actions');
   popup.innerHTML = `
-    <button class="selection-btn" data-action="translate" title="Translate">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <button class="selection-btn" data-action="translate" data-tooltip="Translate" role="button" aria-label="Translate selected text">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <path d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
       </svg>
     </button>
-    <button class="selection-btn" data-action="polish" title="Polish">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <button class="selection-btn" data-action="polish" data-tooltip="Polish" role="button" aria-label="Polish and improve text">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z"/>
       </svg>
     </button>
-    <button class="selection-btn ${!isSingleWord ? 'disabled' : ''}" data-action="dictionary" title="Dictionary${!isSingleWord ? ' (single word only)' : ''}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <button class="selection-btn ${!isSingleWord ? 'disabled' : ''}" data-action="dictionary" data-tooltip="${isSingleWord ? 'Dictionary' : 'Single word only'}" role="button" aria-label="Look up in dictionary${!isSingleWord ? ' (single word only)' : ''}" ${!isSingleWord ? 'aria-disabled="true"' : ''}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
       </svg>
     </button>
@@ -1021,12 +1103,16 @@ function removeSelectionPopup() {
 
 /**
  * Get CSS styles for selection popup
+ * @param {boolean} showBelow - Whether popup is shown below selection (affects animation direction)
  */
-function getSelectionPopupStyles() {
+function getSelectionPopupStyles(showBelow = false) {
+  // Animation direction: popup slides toward the selection
+  const animFrom = showBelow ? 'translateY(-8px)' : 'translateY(8px)';
+
   return `
     :host {
       all: initial;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     }
 
     * {
@@ -1038,46 +1124,51 @@ function getSelectionPopupStyles() {
     .selection-popup {
       display: flex;
       align-items: center;
-      gap: 2px;
-      background: #ffffff;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
-      padding: 4px;
-      animation: popup-fade-in 150ms ease-out;
+      gap: 4px;
+      background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+      border-radius: 10px;
+      box-shadow:
+        0 4px 16px rgba(0, 0, 0, 0.12),
+        0 1px 3px rgba(0, 0, 0, 0.08),
+        0 0 0 1px rgba(0, 0, 0, 0.04);
+      padding: 6px;
+      animation: popup-spring-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    @keyframes popup-fade-in {
+    @keyframes popup-spring-in {
       from {
         opacity: 0;
-        transform: translateY(4px);
+        transform: ${animFrom} scale(0.95);
       }
       to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
       }
     }
 
     .selection-btn {
-      width: 32px;
-      height: 32px;
+      position: relative;
+      width: 34px;
+      height: 34px;
       display: flex;
       align-items: center;
       justify-content: center;
       background: transparent;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
-      color: #6b7280;
-      transition: background-color 0.15s, color 0.15s;
+      color: #64748b;
+      transition: background-color 0.15s, color 0.15s, transform 0.15s;
     }
 
     .selection-btn:hover {
-      background: #f3f4f6;
+      background: rgba(99, 102, 241, 0.1);
       color: #6366f1;
+      transform: scale(1.05);
     }
 
     .selection-btn:active {
-      background: #e5e7eb;
+      transform: scale(0.95);
     }
 
     .selection-btn.disabled {
@@ -1087,12 +1178,62 @@ function getSelectionPopupStyles() {
 
     .selection-btn.disabled:hover {
       background: transparent;
-      color: #6b7280;
+      color: #64748b;
+      transform: none;
     }
 
     .selection-btn svg {
       width: 18px;
       height: 18px;
+    }
+
+    /* Custom tooltips */
+    .selection-btn::before {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 4px 8px;
+      background: #1f2937;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+      border-radius: 4px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.15s, visibility 0.15s;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Tooltip arrow */
+    .selection-btn::after {
+      content: '';
+      position: absolute;
+      bottom: calc(100% + 2px);
+      left: 50%;
+      transform: translateX(-50%);
+      border: 4px solid transparent;
+      border-top-color: #1f2937;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.15s, visibility 0.15s;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .selection-btn:hover::before,
+    .selection-btn:hover::after {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Disabled button tooltip stays visible longer */
+    .selection-btn.disabled:hover::before {
+      opacity: 1;
+      visibility: visible;
     }
   `;
 }
@@ -1174,6 +1315,13 @@ function getStyles() {
       color: #374151;
     }
 
+    .parsipad-badges {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: auto;
+    }
+
     .parsipad-badge {
       font-size: 10px;
       font-weight: 500;
@@ -1181,7 +1329,27 @@ function getStyles() {
       background: #6366f1;
       color: white;
       border-radius: 4px;
-      margin-left: auto;
+    }
+
+    .parsipad-provider-badge {
+      font-size: 9px;
+      font-weight: 500;
+      padding: 2px 6px;
+      color: white;
+      border-radius: 4px;
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    }
+
+    .parsipad-provider-claude {
+      background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+    }
+
+    .parsipad-provider-gemini {
+      background: linear-gradient(135deg, #4285F4 0%, #1A73E8 100%);
+    }
+
+    .parsipad-provider-chatgpt {
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
     }
 
     .parsipad-close {

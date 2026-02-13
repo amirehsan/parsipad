@@ -97,7 +97,10 @@
     <!-- Output Section -->
     <section id="output-section" class="section output-section" hidden>
       <div class="output-header">
-        <span id="direction-badge" class="badge">EN → FA</span>
+        <div class="output-badges">
+          <span id="direction-badge" class="badge">EN → FA</span>
+          <span id="provider-badge" class="badge provider-badge" hidden></span>
+        </div>
         <button id="copy-btn" class="icon-btn" data-i18n-title="copyToClipboard" title="Copy to clipboard">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -122,6 +125,9 @@
 
     <!-- Polish Output Section -->
     <section id="polish-section" class="section polish-section" hidden>
+      <div class="polish-provider-badge">
+        <span id="polish-provider-badge" class="badge provider-badge" hidden></span>
+      </div>
       <!-- Professional Card -->
       <div class="polish-card">
         <div class="polish-card-header">
@@ -169,7 +175,10 @@
     <section id="dictionary-section" class="section dictionary-section" hidden>
       <div class="dict-result">
         <div class="dict-header">
-          <div class="dict-word" id="dict-word"></div>
+          <div class="dict-word-row">
+            <div class="dict-word" id="dict-word"></div>
+            <span id="dict-provider-badge" class="badge provider-badge" hidden></span>
+          </div>
           <div class="dict-phonetic" id="dict-phonetic"></div>
           <div class="dict-pos" id="dict-pos"></div>
         </div>
@@ -222,6 +231,15 @@
           </svg>
         </button>
       </div>
+      <!-- Document Translate Button -->
+      <button id="translate-doc-btn" class="action-btn" hidden>
+        <span class="btn-text" data-i18n="translate">Translate</span>
+        <span class="btn-loading" hidden>
+          <svg class="spinner" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4" stroke-dashoffset="10"/>
+          </svg>
+        </span>
+      </button>
       <div id="translation-progress" class="progress-section" hidden>
         <div class="progress-label">
           <span data-i18n="translating">Translating...</span>
@@ -294,6 +312,7 @@
             <span class="result-label" data-i18n="translation">Translation</span>
             <div class="result-actions">
               <span id="image-direction-badge" class="badge"></span>
+              <span id="image-provider-badge" class="badge provider-badge" hidden></span>
               <button id="image-copy-btn" class="icon-btn small" data-i18n-title="copyToClipboard" title="Copy">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
