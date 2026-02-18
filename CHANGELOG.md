@@ -5,6 +5,43 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2025-02-18
+
+### Added
+- **Favorites System** - Save your best translations and polished text
+  - Star icon on translations and each polish variant
+  - Dedicated favorites page to view and manage saved items
+  - Favorites include original text, saved text, type, and timestamp
+  - Quick toggle favorite status from any result
+
+- **New Tab Flashcards** - Learn vocabulary on every new tab
+  - Interactive flashcard interface with flip animation
+  - Click or press Space to reveal original text
+  - Navigate with arrow keys or click progress dots
+  - Keyboard shortcuts: ← → (navigate), Space (flip), C (copy), R (refresh)
+  - Customizable phrase count (1-10 items)
+  - Enable/disable in Settings
+  - Beautiful design matching the extension theme
+  - Dark mode support
+
+- **Regenerate Polish Variant** - Get fresh alternatives for any polish version
+  - Refresh button on each polish card (Professional, Conversational, Concise)
+  - Regenerate individual variants without affecting others
+  - Loading spinner on the specific card during regeneration
+  - Updates history with the new variant
+
+### Changed
+- Settings page now includes New Tab Flashcards toggle and phrase count selector
+- Updated manifest with new tab override for flashcard feature
+- Added favorites link in popup footer
+
+### Technical
+- New `favorites/` directory with favorites.html, favorites.js, favorites.css
+- New `newtab/` directory with newtab.html, newtab.js, newtab.css
+- Extended `lib/storage.js` with favorites and new tab functions
+- New `REGENERATE_POLISH_VARIANT` action in background service worker
+- Added `POLISH_VARIANT_SYSTEM_PROMPT` for single-variant regeneration
+
 ## [2.3.1] - 2025-02-12
 
 ### Improved

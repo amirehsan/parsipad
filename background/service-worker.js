@@ -1,10 +1,10 @@
-import { translate, polish, translateImage } from '../lib/api.js';
+import { translate, polish, translateImage, regeneratePolishVariant } from '../lib/api.js';
 import { lookupWord } from '../lib/dictionary.js';
 import { translateDocument, validateFile, readFileContent } from '../lib/document-translator.js';
 import { translationCache } from '../lib/cache.js';
-import { hasApiKey, getDictionaryTranslationSettings, isTranslationCancelled, setTranslationCancelled, getSelectedProvider } from '../lib/storage.js';
+import { hasApiKey, getDictionaryTranslationSettings, isTranslationCancelled, setTranslationCancelled, getSelectedProvider, getFavorites, addFavorite, removeFavorite, isFavorite } from '../lib/storage.js';
 import { detectLanguageCode } from '../lib/language-detect.js';
-import { addToHistory, addToPolishHistory, addToDictionaryHistory } from '../lib/history.js';
+import { addToHistory, addToPolishHistory, addToDictionaryHistory, updatePolishVariant, getPolishHistory } from '../lib/history.js';
 import { ACTIONS, PROVIDER_CONFIGS } from '../lib/constants.js';
 
 /**
@@ -46,6 +46,21 @@ async function handleMessage(message, sender) {
 
     case ACTIONS.TRANSLATE_IMAGE:
       return handleImageTranslation(message.imageData, message.mimeType);
+
+    case ACTIONS.REGENERATE_POLISH_VARIANT:
+      return handleRegeneratePolishVariant(message.text, message.variant, message.historyId);
+
+    case ACTIONS.ADD_FAVORITE:
+      return handleAddFavorite(message.item);
+
+    case ACTIONS.REMOVE_FAVORITE:
+      return handleRemoveFavorite(message.id, message.original, message.saved);
+
+    case ACTIONS.GET_FAVORITES:
+      return { favorites: await getFavorites() };
+
+    case ACTIONS.CHECK_FAVORITE:
+      return handleCheckFavorite(message.original, message.saved);
 
     case ACTIONS.CHECK_API_KEY:
       return { hasApiKey: await hasApiKey() };
@@ -243,6 +258,89 @@ async function handleImageTranslation(base64Data, mimeType) {
     outputTokens: result.outputTokens,
     provider: providerConfig?.name || 'AI'
   };
+}
+
+/**
+ * Handle regenerate polish variant request
+ * @param {string} text - Original text to polish
+ * @param {'professional' | 'conversational' | 'concise'} variant - Variant to regenerate
+ * @param {number} historyId - History entry ID to update
+ * @returns {Promise<Object>}
+ */
+async function handleRegeneratePolishVariant(text, variant, historyId) {
+  if (!text || text.trim().length === 0) {
+    throw new Error('No text provided for polishing');
+  }
+
+  if (!['professional', 'conversational', 'concise'].includes(variant)) {
+    throw new Error('Invalid variant type');
+  }
+
+  // Get current provider info
+  const providerId = await getSelectedProvider();
+  const providerConfig = PROVIDER_CONFIGS[providerId];
+
+  // Call API
+  const result = await regeneratePolishVariant(text, variant);
+
+  // Update history if historyId provided
+  if (historyId) {
+    await updatePolishVariant(historyId, variant, result.text);
+  }
+
+  return {
+    text: result.text,
+    variant,
+    inputTokens: result.inputTokens,
+    outputTokens: result.outputTokens,
+    provider: providerConfig?.name || 'AI'
+  };
+}
+
+/**
+ * Handle add favorite request
+ * @param {Object} item - Favorite item to add
+ * @returns {Promise<Object>}
+ */
+async function handleAddFavorite(item) {
+  const favorite = await addFavorite(item);
+  return { success: !!favorite, favorite };
+}
+
+/**
+ * Handle remove favorite request
+ * @param {string} id - Favorite ID to remove (optional)
+ * @param {string} original - Original text (optional, used with saved)
+ * @param {string} saved - Saved text (optional, used with original)
+ * @returns {Promise<Object>}
+ */
+async function handleRemoveFavorite(id, original, saved) {
+  if (id) {
+    const removed = await removeFavorite(id);
+    return { success: removed };
+  }
+
+  // Remove by original and saved text
+  if (original && saved) {
+    const favorite = await isFavorite(original, saved);
+    if (favorite) {
+      const removed = await removeFavorite(favorite.id);
+      return { success: removed };
+    }
+  }
+
+  return { success: false };
+}
+
+/**
+ * Handle check favorite request
+ * @param {string} original - Original text
+ * @param {string} saved - Saved text
+ * @returns {Promise<Object>}
+ */
+async function handleCheckFavorite(original, saved) {
+  const favorite = await isFavorite(original, saved);
+  return { isFavorite: !!favorite, favorite };
 }
 
 /**

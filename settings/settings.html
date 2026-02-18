@@ -143,6 +143,45 @@
       </div>
     </section>
 
+    <!-- New Tab Card -->
+    <section class="settings-card">
+      <div class="card-header">
+        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
+          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="card-title" data-i18n="newTabPage">New Tab Page</h2>
+          <p class="card-subtitle">Display favorites when opening a new browser tab</p>
+        </div>
+      </div>
+      <div class="card-content">
+        <label class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label-text" data-i18n="enableNewTab">Show favorites on new tab</span>
+            <span class="toggle-hint">Replace Chrome's default new tab page with your favorite translations and polished texts</span>
+          </div>
+          <div class="toggle-switch">
+            <input type="checkbox" id="newtab-toggle">
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
+
+        <!-- Phrase Count Slider -->
+        <div class="slider-row" id="phrase-count-section">
+          <div class="slider-info">
+            <span class="slider-label-text" data-i18n="phraseCount">Number of phrases</span>
+            <span class="slider-hint">How many favorite items to show on each new tab (1-10)</span>
+          </div>
+          <div class="slider-control">
+            <input type="range" id="phrase-count-slider" min="1" max="10" value="3" class="slider-input">
+            <span class="slider-value" id="phrase-count-value">3</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- AI Provider Selection Card -->
     <section class="settings-card">
       <div class="card-header">
@@ -411,7 +450,7 @@
         <div class="about-info">
           <div class="about-row">
             <span class="about-label">Version</span>
-            <span class="about-value">2.3.1</span>
+            <span class="about-value">2.4.0</span>
           </div>
           <div class="about-row">
             <span class="about-label">Powered by</span>

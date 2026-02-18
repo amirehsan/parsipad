@@ -101,12 +101,22 @@
           <span id="direction-badge" class="badge">EN → FA</span>
           <span id="provider-badge" class="badge provider-badge" hidden></span>
         </div>
-        <button id="copy-btn" class="icon-btn" data-i18n-title="copyToClipboard" title="Copy to clipboard">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>
-        </button>
+        <div class="output-actions">
+          <button id="favorite-translation-btn" class="icon-btn" data-i18n-title="addToFavorites" title="Add to favorites">
+            <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            <svg class="star-filled" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </button>
+          <button id="copy-btn" class="icon-btn" data-i18n-title="copyToClipboard" title="Copy to clipboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          </button>
+        </div>
       </div>
       <div id="output-text" class="output-text"></div>
       <div id="cache-badge" class="cache-badge" hidden data-i18n="fromCache">From cache</div>
@@ -129,43 +139,91 @@
         <span id="polish-provider-badge" class="badge provider-badge" hidden></span>
       </div>
       <!-- Professional Card -->
-      <div class="polish-card">
+      <div class="polish-card" data-variant="professional">
         <div class="polish-card-header">
           <span class="polish-card-title" data-i18n="professional">Professional</span>
-          <button class="polish-copy-btn" data-version="professional" data-i18n-title="copyToClipboard" title="Copy">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-          </button>
+          <div class="polish-card-actions">
+            <button class="polish-favorite-btn" data-version="professional" data-i18n-title="addToFavorites" title="Add to favorites">
+              <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+              <svg class="star-filled" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </button>
+            <button class="polish-regenerate-btn" data-version="professional" data-i18n-title="regenerate" title="Regenerate">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+            </button>
+            <button class="polish-copy-btn" data-version="professional" data-i18n-title="copyToClipboard" title="Copy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <div id="polish-professional" class="polish-card-text"></div>
       </div>
 
       <!-- Conversational Card -->
-      <div class="polish-card">
+      <div class="polish-card" data-variant="conversational">
         <div class="polish-card-header">
           <span class="polish-card-title" data-i18n="conversational">Conversational</span>
-          <button class="polish-copy-btn" data-version="conversational" data-i18n-title="copyToClipboard" title="Copy">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-          </button>
+          <div class="polish-card-actions">
+            <button class="polish-favorite-btn" data-version="conversational" data-i18n-title="addToFavorites" title="Add to favorites">
+              <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+              <svg class="star-filled" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </button>
+            <button class="polish-regenerate-btn" data-version="conversational" data-i18n-title="regenerate" title="Regenerate">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+            </button>
+            <button class="polish-copy-btn" data-version="conversational" data-i18n-title="copyToClipboard" title="Copy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <div id="polish-conversational" class="polish-card-text"></div>
       </div>
 
       <!-- Concise Card -->
-      <div class="polish-card">
+      <div class="polish-card" data-variant="concise">
         <div class="polish-card-header">
           <span class="polish-card-title" data-i18n="concise">Concise</span>
-          <button class="polish-copy-btn" data-version="concise" data-i18n-title="copyToClipboard" title="Copy">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-          </button>
+          <div class="polish-card-actions">
+            <button class="polish-favorite-btn" data-version="concise" data-i18n-title="addToFavorites" title="Add to favorites">
+              <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+              <svg class="star-filled" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </button>
+            <button class="polish-regenerate-btn" data-version="concise" data-i18n-title="regenerate" title="Regenerate">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+            </button>
+            <button class="polish-copy-btn" data-version="concise" data-i18n-title="copyToClipboard" title="Copy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <div id="polish-concise" class="polish-card-text"></div>
       </div>
@@ -330,6 +388,17 @@
     <div id="error-section" class="error-section" hidden>
       <p id="error-message"></p>
     </div>
+
+    <!-- Favorites Link -->
+    <section id="favorites-link-section" class="favorites-link-section" hidden>
+      <button id="view-favorites-btn" class="favorites-link-btn">
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+        <span data-i18n="viewFavorites">View Favorites</span>
+        <span id="favorites-count" class="favorites-count" hidden>0</span>
+      </button>
+    </section>
 
     <!-- Translation History Section -->
     <section id="history-section" class="history-section" hidden>

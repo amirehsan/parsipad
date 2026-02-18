@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Tab - ParsiPad</title>
+  <link rel="stylesheet" href="newtab.css">
+</head>
+<body>
+  <div class="newtab-container">
+    <!-- Header with logo -->
+    <header class="newtab-header">
+      <div class="logo">
+        <img src="../icons/icon-48.png" alt="ParsiPad" class="logo-img">
+        <span class="logo-text">ParsiPad</span>
+      </div>
+      <div class="header-actions">
+        <button id="refresh-btn" class="icon-btn" title="Show different favorites">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"/>
+            <path d="M1 20v-6h6"/>
+            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+          </svg>
+        </button>
+        <button id="theme-btn" class="icon-btn" title="Toggle theme">
+          <svg id="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main content area -->
+    <main class="newtab-main">
+      <!-- Flashcard container -->
+      <div id="flashcard-container" class="flashcard-container">
+        <!-- Progress indicator -->
+        <div id="progress-indicator" class="progress-indicator">
+          <span id="current-card">1</span> / <span id="total-cards">3</span>
+        </div>
+
+        <!-- Flashcard -->
+        <div id="flashcard" class="flashcard">
+          <div class="flashcard-inner">
+            <!-- Front side (saved translation/polish) -->
+            <div class="flashcard-front">
+              <div class="flashcard-badge-container">
+                <span id="card-badge" class="flashcard-badge translation">EN → FA</span>
+              </div>
+              <div id="card-saved" class="flashcard-saved" dir="auto">
+                The saved translation appears here
+              </div>
+              <div class="flashcard-hint">
+                <span class="hint-text">Click to reveal original</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Back side (original text) -->
+            <div class="flashcard-back">
+              <div class="flashcard-badge-container">
+                <span id="card-badge-back" class="flashcard-badge translation">EN → FA</span>
+              </div>
+              <div id="card-original" class="flashcard-original" dir="auto">
+                The original text appears here
+              </div>
+              <div class="flashcard-divider"></div>
+              <div id="card-saved-back" class="flashcard-saved-small" dir="auto">
+                The saved translation
+              </div>
+              <div class="flashcard-hint">
+                <span class="hint-text">Click to hide</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card actions -->
+        <div class="card-actions">
+          <button id="copy-btn" class="action-btn copy-btn" title="Copy to clipboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <span>Copy</span>
+          </button>
+        </div>
+
+        <!-- Navigation -->
+        <div class="card-navigation">
+          <button id="prev-btn" class="nav-btn" title="Previous card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+          <div class="progress-dots" id="progress-dots">
+            <!-- Dots will be rendered here -->
+          </div>
+          <button id="next-btn" class="nav-btn" title="Next card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="empty-state" class="empty-state" hidden>
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        </div>
+        <h2 class="empty-title">Save your favorite translations!</h2>
+        <p class="empty-description">
+          Star translations or polished text in ParsiPad to see them here on new tabs.
+        </p>
+        <button id="open-popup-btn" class="open-popup-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          <span>Start Translating</span>
+        </button>
+      </div>
+
+      <!-- Disabled state (when feature is off) -->
+      <div id="disabled-state" class="disabled-state" hidden>
+        <div class="disabled-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+          </svg>
+        </div>
+        <h2 class="disabled-title">ParsiPad New Tab is disabled</h2>
+        <p class="disabled-description">
+          Enable this feature in settings to see your favorites on new tabs.
+        </p>
+        <button id="open-settings-btn" class="open-settings-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span>Open Settings</span>
+        </button>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="newtab-footer">
+      <a href="#" id="view-all-link" class="footer-link">
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+        <span>View All Favorites</span>
+      </a>
+      <span class="footer-divider">|</span>
+      <a href="#" id="open-settings-link" class="footer-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>Settings</span>
+      </a>
+    </footer>
+
+    <!-- Keyboard shortcuts hint -->
+    <div class="keyboard-hints" id="keyboard-hints">
+      <span class="hint-item"><kbd>←</kbd><kbd>→</kbd> Navigate</span>
+      <span class="hint-item"><kbd>Space</kbd> Flip</span>
+      <span class="hint-item"><kbd>C</kbd> Copy</span>
+    </div>
+  </div>
+
+  <script type="module" src="newtab.js"></script>
+</body>
+</html>
