@@ -1369,3 +1369,167 @@ body {
   right: auto;
   left: var(--space-xs);
 }
+
+/* ============================================
+   Polish Card Actions (Regenerate, Favorite, Copy)
+   ============================================ */
+
+.polish-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.polish-regenerate-btn,
+.polish-favorite-btn {
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s, color 0.15s, transform 0.15s;
+}
+
+.polish-regenerate-btn:hover,
+.polish-favorite-btn:hover {
+  background-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.polish-regenerate-btn svg,
+.polish-favorite-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Regenerate button spinning animation */
+.polish-regenerate-btn.loading svg {
+  animation: spin 1s linear infinite;
+}
+
+.polish-regenerate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Favorite button states */
+.polish-favorite-btn .star-filled,
+.icon-btn .star-filled {
+  display: none;
+}
+
+.polish-favorite-btn .star-outline,
+.icon-btn .star-outline {
+  display: block;
+}
+
+.polish-favorite-btn.favorited .star-filled,
+.icon-btn.favorited .star-filled {
+  display: block;
+  color: #FBBF24;
+}
+
+.polish-favorite-btn.favorited .star-outline,
+.icon-btn.favorited .star-outline {
+  display: none;
+}
+
+.polish-favorite-btn:hover .star-outline,
+.icon-btn:hover .star-outline {
+  color: #FBBF24;
+}
+
+/* ============================================
+   Output Actions (Favorite + Copy)
+   ============================================ */
+
+.output-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#favorite-translation-btn .star-filled,
+#favorite-translation-btn .star-outline {
+  width: 18px;
+  height: 18px;
+}
+
+/* ============================================
+   Favorites Link Section
+   ============================================ */
+
+.favorites-link-section {
+  margin-bottom: var(--space-md);
+}
+
+.favorites-link-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: var(--radius-md);
+  color: #D97706;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.favorites-link-btn:hover {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 191, 36, 0.1) 100%);
+  border-color: rgba(251, 191, 36, 0.5);
+}
+
+.favorites-link-btn:active {
+  transform: scale(0.98);
+}
+
+.favorites-link-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: #FBBF24;
+  stroke: #FBBF24;
+}
+
+.favorites-count {
+  background: #FBBF24;
+  color: #78350F;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+[data-theme="dark"] .favorites-link-btn {
+  color: #FBBF24;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 191, 36, 0.08) 100%);
+}
+
+[data-theme="dark"] .favorites-link-btn:hover {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(251, 191, 36, 0.12) 100%);
+}
+
+/* RTL Support for new elements */
+[dir="rtl"] .polish-card-actions {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .output-actions {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .favorites-link-btn {
+  flex-direction: row-reverse;
+}

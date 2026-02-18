@@ -11,6 +11,9 @@ let selectionPopup = null;
 let selectionPopupShadow = null;
 let selectionPopupEnabled = false;
 let selectionDebounceTimer = null;
+let currentPolishOriginalText = null; // Store original text for regeneration
+let currentTranslationData = null; // Store current translation for favorites
+let currentDictionaryData = null; // Store current dictionary result for favorites
 
 /**
  * Initialize the content script
@@ -114,7 +117,7 @@ async function translateAndShow(text) {
     if (response.error) {
       showError(response.error);
     } else {
-      showTranslation(response);
+      showTranslation(response, text);
     }
   } catch (error) {
     showError(error.message || 'Translation failed');
@@ -128,6 +131,9 @@ async function polishAndShow(text) {
   if (!text || text.trim().length === 0) {
     return;
   }
+
+  // Store original text for regeneration
+  currentPolishOriginalText = text;
 
   // Get selection position for box placement
   const selection = window.getSelection();
@@ -251,13 +257,20 @@ function createFloatingBox(position) {
     </div>
     <div class="parsipad-footer">
       <span class="parsipad-cache-badge"></span>
-      <button class="parsipad-copy">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-        </svg>
-        Copy
-      </button>
+      <div class="parsipad-footer-actions">
+        <button class="parsipad-favorite" title="Add to favorites">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        </button>
+        <button class="parsipad-copy">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Copy
+        </button>
+      </div>
     </div>
   `;
 
@@ -272,6 +285,9 @@ function createFloatingBox(position) {
 
   const copyBtn = shadowRoot.querySelector('.parsipad-copy');
   copyBtn.addEventListener('click', handleCopy);
+
+  const favBtn = shadowRoot.querySelector('.parsipad-favorite');
+  favBtn.addEventListener('click', handleTranslationFavorite);
 
   // Prevent clicks inside box from closing it
   box.addEventListener('click', (e) => e.stopPropagation());
@@ -313,10 +329,19 @@ function formatDirectionBadge(direction) {
 /**
  * Show translation result
  */
-function showTranslation(result) {
+function showTranslation(result, originalText) {
   if (!shadowRoot) return;
 
   const { translation, direction, displayDirection, fromCache, provider } = result;
+
+  // Store translation data for favorites
+  currentTranslationData = {
+    type: 'translation',
+    original: originalText,
+    saved: translation,
+    direction: displayDirection || formatDirectionBadge(direction),
+    provider: provider
+  };
 
   // Update direction badge - use displayDirection if available, otherwise format from direction
   const badge = shadowRoot.querySelector('.parsipad-badge');
@@ -342,6 +367,9 @@ function showTranslation(result) {
   // Update cache badge
   const cacheBadge = shadowRoot.querySelector('.parsipad-cache-badge');
   cacheBadge.textContent = fromCache ? 'From cache' : '';
+
+  // Check if already favorited
+  checkTranslationFavoriteStatus();
 }
 
 /**
@@ -407,6 +435,80 @@ async function handleCopy() {
 }
 
 /**
+ * Check if current translation is already favorited
+ */
+async function checkTranslationFavoriteStatus() {
+  if (!shadowRoot || !currentTranslationData) return;
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      action: 'CHECK_FAVORITE',
+      original: currentTranslationData.original,
+      saved: currentTranslationData.saved
+    });
+
+    if (response.isFavorite) {
+      const favBtn = shadowRoot.querySelector('.parsipad-favorite');
+      if (favBtn) {
+        favBtn.classList.add('favorited');
+        favBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        `;
+      }
+    }
+  } catch (error) {
+    // Silently handle errors
+  }
+}
+
+/**
+ * Handle favorite button click for translation
+ */
+async function handleTranslationFavorite() {
+  if (!shadowRoot || !currentTranslationData) return;
+
+  const favBtn = shadowRoot.querySelector('.parsipad-favorite');
+  if (!favBtn) return;
+
+  const isFavorited = favBtn.classList.contains('favorited');
+
+  try {
+    if (isFavorited) {
+      // Remove from favorites
+      await chrome.runtime.sendMessage({
+        action: 'REMOVE_FAVORITE',
+        original: currentTranslationData.original,
+        saved: currentTranslationData.saved
+      });
+
+      favBtn.classList.remove('favorited');
+      favBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      `;
+    } else {
+      // Add to favorites
+      await chrome.runtime.sendMessage({
+        action: 'ADD_FAVORITE',
+        item: currentTranslationData
+      });
+
+      favBtn.classList.add('favorited');
+      favBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      `;
+    }
+  } catch (error) {
+    // Silently handle errors
+  }
+}
+
+/**
  * Remove the floating box
  */
 function removeFloatingBox() {
@@ -415,6 +517,9 @@ function removeFloatingBox() {
     floatingBox = null;
     shadowRoot = null;
   }
+  // Clear stored data
+  currentTranslationData = null;
+  currentDictionaryData = null;
 }
 
 /**
@@ -527,41 +632,90 @@ function showPolishResults(result) {
     providerBadge.className = `parsipad-provider-badge parsipad-provider-${provider.toLowerCase()}`;
   }
 
+  // Store polish data for favorites
+  const polishData = {
+    original: currentPolishOriginalText,
+    provider: provider,
+    variants: { professional, conversational, concise }
+  };
+
   const content = shadowRoot.querySelector('.parsipad-polish-content');
   content.innerHTML = `
-    <div class="parsipad-polish-card">
+    <div class="parsipad-polish-card" data-variant="professional">
       <div class="parsipad-polish-card-header">
         <span class="parsipad-polish-title">Professional</span>
-        <button class="parsipad-polish-copy" data-version="professional" title="Copy">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>
-        </button>
+        <div class="parsipad-polish-actions">
+          <button class="parsipad-polish-favorite" data-version="professional" title="Add to favorites">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </button>
+          <button class="parsipad-polish-regenerate" data-version="professional" title="Regenerate">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"/>
+              <path d="M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+          </button>
+          <button class="parsipad-polish-copy" data-version="professional" title="Copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          </button>
+        </div>
       </div>
       <div class="parsipad-polish-text">${escapeHtml(professional)}</div>
     </div>
-    <div class="parsipad-polish-card">
+    <div class="parsipad-polish-card" data-variant="conversational">
       <div class="parsipad-polish-card-header">
         <span class="parsipad-polish-title">Conversational</span>
-        <button class="parsipad-polish-copy" data-version="conversational" title="Copy">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>
-        </button>
+        <div class="parsipad-polish-actions">
+          <button class="parsipad-polish-favorite" data-version="conversational" title="Add to favorites">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </button>
+          <button class="parsipad-polish-regenerate" data-version="conversational" title="Regenerate">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"/>
+              <path d="M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+          </button>
+          <button class="parsipad-polish-copy" data-version="conversational" title="Copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          </button>
+        </div>
       </div>
       <div class="parsipad-polish-text">${escapeHtml(conversational)}</div>
     </div>
-    <div class="parsipad-polish-card">
+    <div class="parsipad-polish-card" data-variant="concise">
       <div class="parsipad-polish-card-header">
         <span class="parsipad-polish-title">Concise</span>
-        <button class="parsipad-polish-copy" data-version="concise" title="Copy">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>
-        </button>
+        <div class="parsipad-polish-actions">
+          <button class="parsipad-polish-favorite" data-version="concise" title="Add to favorites">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </button>
+          <button class="parsipad-polish-regenerate" data-version="concise" title="Regenerate">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"/>
+              <path d="M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+          </button>
+          <button class="parsipad-polish-copy" data-version="concise" title="Copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          </button>
+        </div>
       </div>
       <div class="parsipad-polish-text">${escapeHtml(concise)}</div>
     </div>
@@ -571,6 +725,19 @@ function showPolishResults(result) {
   content.querySelectorAll('.parsipad-polish-copy').forEach(btn => {
     btn.addEventListener('click', () => handlePolishCopy(btn, result));
   });
+
+  // Add regenerate handlers
+  content.querySelectorAll('.parsipad-polish-regenerate').forEach(btn => {
+    btn.addEventListener('click', () => handlePolishRegenerate(btn));
+  });
+
+  // Add favorite handlers
+  content.querySelectorAll('.parsipad-polish-favorite').forEach(btn => {
+    btn.addEventListener('click', () => handlePolishFavorite(btn, polishData));
+  });
+
+  // Check favorite status for each variant
+  checkPolishFavoriteStatus(polishData);
 }
 
 /**
@@ -598,6 +765,161 @@ async function handlePolishCopy(btn, result) {
     }, 1500);
   } catch (error) {
     // Silently handle copy errors
+  }
+}
+
+/**
+ * Handle regenerate for a specific polish variant
+ */
+async function handlePolishRegenerate(btn) {
+  if (!currentPolishOriginalText || !shadowRoot) return;
+
+  const variant = btn.dataset.version;
+  const card = shadowRoot.querySelector(`.parsipad-polish-card[data-variant="${variant}"]`);
+  if (!card) return;
+
+  // Show loading state on the button
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  // Show skeleton in the text area
+  const textEl = card.querySelector('.parsipad-polish-text');
+  const originalText = textEl.textContent;
+  textEl.innerHTML = `
+    <div class="parsipad-loading">
+      <div class="parsipad-skeleton" style="width: 90%;"></div>
+      <div class="parsipad-skeleton" style="width: 70%;"></div>
+    </div>
+  `;
+
+  try {
+    // Send regenerate request to background script
+    const response = await chrome.runtime.sendMessage({
+      action: 'REGENERATE_POLISH_VARIANT',
+      text: currentPolishOriginalText,
+      variant: variant
+    });
+
+    if (response.error) {
+      // Restore original text on error
+      textEl.textContent = originalText;
+    } else {
+      // Update with new text
+      textEl.textContent = response.text;
+
+      // Update the copy button's reference to the new text
+      const copyBtn = card.querySelector('.parsipad-polish-copy');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(response.text);
+            copyBtn.classList.add('copied');
+            const originalSvg = copyBtn.innerHTML;
+            copyBtn.innerHTML = `
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            `;
+            setTimeout(() => {
+              copyBtn.classList.remove('copied');
+              copyBtn.innerHTML = originalSvg;
+            }, 1500);
+          } catch (error) {
+            // Silently handle copy errors
+          }
+        });
+      }
+    }
+  } catch (error) {
+    // Restore original text on error
+    textEl.textContent = originalText;
+  } finally {
+    // Remove loading state
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
+}
+
+/**
+ * Check favorite status for polish variants
+ */
+async function checkPolishFavoriteStatus(polishData) {
+  if (!shadowRoot) return;
+
+  const variants = ['professional', 'conversational', 'concise'];
+
+  for (const variant of variants) {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'CHECK_FAVORITE',
+        original: polishData.original,
+        saved: polishData.variants[variant]
+      });
+
+      if (response.isFavorite) {
+        const favBtn = shadowRoot.querySelector(`.parsipad-polish-favorite[data-version="${variant}"]`);
+        if (favBtn) {
+          favBtn.classList.add('favorited');
+          favBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          `;
+        }
+      }
+    } catch (error) {
+      // Silently handle errors
+    }
+  }
+}
+
+/**
+ * Handle favorite button click for polish variant
+ */
+async function handlePolishFavorite(btn, polishData) {
+  if (!shadowRoot) return;
+
+  const variant = btn.dataset.version;
+  const variantText = polishData.variants[variant];
+  const isFavorited = btn.classList.contains('favorited');
+
+  try {
+    if (isFavorited) {
+      // Remove from favorites
+      await chrome.runtime.sendMessage({
+        action: 'REMOVE_FAVORITE',
+        original: polishData.original,
+        saved: variantText
+      });
+
+      btn.classList.remove('favorited');
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      `;
+    } else {
+      // Add to favorites
+      await chrome.runtime.sendMessage({
+        action: 'ADD_FAVORITE',
+        item: {
+          type: 'polish',
+          original: polishData.original,
+          saved: variantText,
+          variant: variant,
+          provider: polishData.provider
+        }
+      });
+
+      btn.classList.add('favorited');
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      `;
+    }
+  } catch (error) {
+    // Silently handle errors
   }
 }
 
@@ -748,6 +1070,17 @@ function showDictionaryResult(result) {
   const { word, phonetic, partOfSpeech, definitions, synonyms, antonyms, translation, targetLang, provider } = result;
   const isTargetRTL = ['fa', 'ar', 'he'].includes(targetLang);
 
+  // Store dictionary data for favorites
+  if (translation) {
+    currentDictionaryData = {
+      type: 'translation',
+      original: word,
+      saved: translation,
+      direction: isTargetRTL ? 'EN → FA' : 'FA → EN',
+      provider: provider
+    };
+  }
+
   // Update provider badge
   const providerBadge = shadowRoot.querySelector('.parsipad-provider-badge');
   if (providerBadge && provider) {
@@ -811,12 +1144,19 @@ function showDictionaryResult(result) {
       <div class="parsipad-dict-translation">
         <div class="parsipad-dict-section-title">Translation</div>
         <div class="parsipad-dict-translation-text" ${isTargetRTL ? 'dir="rtl"' : ''}>${escapeHtml(translation)}</div>
-        <button class="parsipad-dict-copy-translation" title="Copy translation">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>
-        </button>
+        <div class="parsipad-dict-translation-actions">
+          <button class="parsipad-dict-favorite-translation" title="Add to favorites">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </button>
+          <button class="parsipad-dict-copy-translation" title="Copy translation">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          </button>
+        </div>
       </div>
     ` : ''}
   `;
@@ -825,6 +1165,14 @@ function showDictionaryResult(result) {
   const copyBtn = shadowRoot.querySelector('.parsipad-dict-copy-translation');
   if (copyBtn) {
     copyBtn.addEventListener('click', () => handleDictionaryCopy(copyBtn, translation));
+  }
+
+  // Add favorite handler for translation
+  const favBtn = shadowRoot.querySelector('.parsipad-dict-favorite-translation');
+  if (favBtn) {
+    favBtn.addEventListener('click', handleDictionaryFavorite);
+    // Check if already favorited
+    checkDictionaryFavoriteStatus();
   }
 }
 
@@ -850,6 +1198,80 @@ async function handleDictionaryCopy(btn, text) {
     }, 1500);
   } catch (error) {
     // Silently handle copy errors
+  }
+}
+
+/**
+ * Check if current dictionary translation is favorited
+ */
+async function checkDictionaryFavoriteStatus() {
+  if (!shadowRoot || !currentDictionaryData) return;
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      action: 'CHECK_FAVORITE',
+      original: currentDictionaryData.original,
+      saved: currentDictionaryData.saved
+    });
+
+    if (response.isFavorite) {
+      const favBtn = shadowRoot.querySelector('.parsipad-dict-favorite-translation');
+      if (favBtn) {
+        favBtn.classList.add('favorited');
+        favBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        `;
+      }
+    }
+  } catch (error) {
+    // Silently handle errors
+  }
+}
+
+/**
+ * Handle favorite button click for dictionary
+ */
+async function handleDictionaryFavorite() {
+  if (!shadowRoot || !currentDictionaryData) return;
+
+  const favBtn = shadowRoot.querySelector('.parsipad-dict-favorite-translation');
+  if (!favBtn) return;
+
+  const isFavorited = favBtn.classList.contains('favorited');
+
+  try {
+    if (isFavorited) {
+      // Remove from favorites
+      await chrome.runtime.sendMessage({
+        action: 'REMOVE_FAVORITE',
+        original: currentDictionaryData.original,
+        saved: currentDictionaryData.saved
+      });
+
+      favBtn.classList.remove('favorited');
+      favBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      `;
+    } else {
+      // Add to favorites
+      await chrome.runtime.sendMessage({
+        action: 'ADD_FAVORITE',
+        item: currentDictionaryData
+      });
+
+      favBtn.classList.add('favorited');
+      favBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      `;
+    }
+  } catch (error) {
+    // Silently handle errors
   }
 }
 
@@ -1435,6 +1857,43 @@ function getStyles() {
       background: #10b981;
     }
 
+    .parsipad-footer-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .parsipad-favorite {
+      width: 32px;
+      height: 32px;
+      background: none;
+      border: 1px solid #e5e7eb;
+      cursor: pointer;
+      color: #9ca3af;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+
+    .parsipad-favorite:hover {
+      background: #fef3c7;
+      border-color: #fbbf24;
+      color: #f59e0b;
+    }
+
+    .parsipad-favorite svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .parsipad-favorite.favorited {
+      background: #fef3c7;
+      border-color: #fbbf24;
+      color: #f59e0b;
+    }
+
     .parsipad-loading {
       padding: 4px 0;
       display: flex;
@@ -1536,7 +1995,15 @@ function getStyles() {
       letter-spacing: 0.5px;
     }
 
-    .parsipad-polish-copy {
+    .parsipad-polish-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .parsipad-polish-copy,
+    .parsipad-polish-regenerate,
+    .parsipad-polish-favorite {
       width: 24px;
       height: 24px;
       background: none;
@@ -1547,21 +2014,52 @@ function getStyles() {
       align-items: center;
       justify-content: center;
       border-radius: 4px;
-      transition: background-color 0.15s, color 0.15s;
+      transition: background-color 0.15s, color 0.15s, transform 0.15s;
     }
 
-    .parsipad-polish-copy:hover {
+    .parsipad-polish-copy:hover,
+    .parsipad-polish-regenerate:hover {
       background: #e5e7eb;
       color: #374151;
     }
 
-    .parsipad-polish-copy svg {
+    .parsipad-polish-favorite:hover {
+      background: #fef3c7;
+      color: #f59e0b;
+    }
+
+    .parsipad-polish-copy svg,
+    .parsipad-polish-regenerate svg,
+    .parsipad-polish-favorite svg {
       width: 14px;
       height: 14px;
     }
 
     .parsipad-polish-copy.copied {
       color: #10b981;
+    }
+
+    .parsipad-polish-favorite.favorited {
+      color: #f59e0b;
+      background: #fef3c7;
+    }
+
+    .parsipad-polish-regenerate.loading {
+      color: #6366f1;
+    }
+
+    .parsipad-polish-regenerate.loading svg {
+      animation: parsipad-spin 1s linear infinite;
+    }
+
+    @keyframes parsipad-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .parsipad-polish-regenerate:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
     }
 
     .parsipad-polish-text {
@@ -1694,20 +2192,27 @@ function getStyles() {
       font-weight: 500;
       color: #111827;
       line-height: 1.5;
-      padding-right: 32px;
+      padding-right: 70px;
     }
 
     .parsipad-dict-translation-text[dir="rtl"] {
       font-family: 'Vazirmatn', 'Tahoma', sans-serif;
       text-align: right;
       padding-right: 0;
-      padding-left: 32px;
+      padding-left: 70px;
     }
 
-    .parsipad-dict-copy-translation {
+    .parsipad-dict-translation-actions {
       position: absolute;
       top: 12px;
       right: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .parsipad-dict-copy-translation,
+    .parsipad-dict-favorite-translation {
       width: 28px;
       height: 28px;
       background: none;
@@ -1726,13 +2231,24 @@ function getStyles() {
       color: #374151;
     }
 
-    .parsipad-dict-copy-translation svg {
+    .parsipad-dict-favorite-translation:hover {
+      background: #fef3c7;
+      color: #f59e0b;
+    }
+
+    .parsipad-dict-copy-translation svg,
+    .parsipad-dict-favorite-translation svg {
       width: 16px;
       height: 16px;
     }
 
     .parsipad-dict-copy-translation.copied {
       color: #10b981;
+    }
+
+    .parsipad-dict-favorite-translation.favorited {
+      background: #fef3c7;
+      color: #f59e0b;
     }
 
     .parsipad-dictionary-content::-webkit-scrollbar {

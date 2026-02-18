@@ -1,7 +1,7 @@
 import { getTextDirection } from '../lib/language-detect.js';
 import { getHistory, clearHistory, getPolishHistory, clearPolishHistory, getDictionaryHistory, clearDictionaryHistory } from '../lib/history.js';
-import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider } from '../lib/storage.js';
-import { PROVIDER_CONFIGS } from '../lib/constants.js';
+import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider, getFavorites, isFavorite } from '../lib/storage.js';
+import { PROVIDER_CONFIGS, ACTIONS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 
 // DOM Elements
@@ -107,6 +107,11 @@ const statPolishes = document.getElementById('stat-polishes');
 const statInputTokens = document.getElementById('stat-input-tokens');
 const statOutputTokens = document.getElementById('stat-output-tokens');
 const resetStatsBtn = document.getElementById('reset-stats-btn');
+// Favorites elements
+const favoriteTranslationBtn = document.getElementById('favorite-translation-btn');
+const favoritesLinkSection = document.getElementById('favorites-link-section');
+const viewFavoritesBtn = document.getElementById('view-favorites-btn');
+const favoritesCount = document.getElementById('favorites-count');
 
 // State
 let isProcessing = false;
@@ -116,6 +121,8 @@ let currentLang = 'en';
 let uploadedFile = null;
 let translatedContent = null;
 let selectedImage = null;
+let currentPolishHistoryId = null; // Track the current polish history entry
+let currentPolishOriginalText = null; // Track the original text for polish
 
 // Computed mode for backwards compatibility
 function getCurrentMode() {
@@ -134,6 +141,7 @@ async function init() {
   await checkApiKey();
   await loadHistory();
   await loadStats();
+  await loadFavoritesCount();
   setupEventListeners();
   updateCharCount();
   updateTab('text');
@@ -346,6 +354,26 @@ function setupEventListeners() {
   document.querySelectorAll('.polish-copy-btn').forEach(btn => {
     btn.addEventListener('click', () => handlePolishCopy(btn));
   });
+
+  // Regenerate buttons for polish outputs
+  document.querySelectorAll('.polish-regenerate-btn').forEach(btn => {
+    btn.addEventListener('click', () => handlePolishRegenerate(btn));
+  });
+
+  // Favorite buttons for polish outputs
+  document.querySelectorAll('.polish-favorite-btn').forEach(btn => {
+    btn.addEventListener('click', () => handlePolishFavorite(btn));
+  });
+
+  // Favorite button for translation output
+  if (favoriteTranslationBtn) {
+    favoriteTranslationBtn.addEventListener('click', handleTranslationFavorite);
+  }
+
+  // View favorites button
+  if (viewFavoritesBtn) {
+    viewFavoritesBtn.addEventListener('click', openFavoritesPage);
+  }
 
   // Clear history button
   clearHistoryBtn.addEventListener('click', handleClearHistory);
@@ -601,7 +629,8 @@ async function handlePolish() {
       return;
     }
 
-    displayPolishResults(response);
+    displayPolishResults(response, text);
+    await loadPolishHistory();
 
     // Update usage stats
     await updateUsageStats({
@@ -643,6 +672,9 @@ async function displayTranslation(result) {
   } else {
     grammarSection.hidden = true;
   }
+
+  // Update favorite button state
+  await updateTranslationFavoriteState();
 }
 
 /**
@@ -684,15 +716,24 @@ function displayGrammarExplanation(grammarPointsList) {
 /**
  * Display polish results
  * @param {Object} result - Polish result with professional, conversational, concise
+ * @param {string} originalText - Original text that was polished
+ * @param {number} historyId - History entry ID (if available)
  */
-async function displayPolishResults(result) {
+async function displayPolishResults(result, originalText = null, historyId = null) {
   // Show provider badge
   await updateProviderBadge(polishProviderBadge);
+
+  // Store original text and history ID for regenerate/favorite
+  currentPolishOriginalText = originalText || inputText.value.trim();
+  currentPolishHistoryId = historyId;
 
   polishProfessional.textContent = result.professional;
   polishConversational.textContent = result.conversational;
   polishConcise.textContent = result.concise;
   polishSection.hidden = false;
+
+  // Update favorite button states
+  await updatePolishFavoriteStates();
 }
 
 /**
@@ -791,6 +832,7 @@ function renderPolishHistory(history) {
   polishHistoryList.innerHTML = history.map(entry => {
     return `
       <div class="history-item polish-history-item"
+           data-id="${entry.id}"
            data-original="${escapeAttr(entry.original)}"
            data-professional="${escapeAttr(entry.professional)}"
            data-conversational="${escapeAttr(entry.conversational)}"
@@ -806,6 +848,7 @@ function renderPolishHistory(history) {
 
   polishHistoryList.querySelectorAll('.polish-history-item').forEach(item => {
     item.addEventListener('click', () => {
+      const historyId = parseInt(item.dataset.id, 10);
       const original = item.dataset.original;
       const professional = item.dataset.professional;
       const conversational = item.dataset.conversational;
@@ -815,8 +858,8 @@ function renderPolishHistory(history) {
       updateCharCount();
       updateInputDirection();
 
-      // Show polish results directly
-      displayPolishResults({ professional, conversational, concise });
+      // Show polish results directly with history ID
+      displayPolishResults({ professional, conversational, concise }, original, historyId);
     });
   });
 }
@@ -1483,6 +1526,241 @@ async function handleImageCopy() {
     }, 1500);
   } catch (error) {
     showError('Failed to copy to clipboard');
+  }
+}
+
+// ============================================
+// Favorites Functions
+// ============================================
+
+/**
+ * Load and display favorites count
+ */
+async function loadFavoritesCount() {
+  try {
+    const favorites = await getFavorites();
+    if (favorites.length > 0) {
+      favoritesCount.textContent = favorites.length;
+      favoritesCount.hidden = false;
+      favoritesLinkSection.hidden = false;
+    } else {
+      favoritesCount.hidden = true;
+      favoritesLinkSection.hidden = true;
+    }
+  } catch (error) {
+    favoritesLinkSection.hidden = true;
+  }
+}
+
+/**
+ * Open the favorites page
+ */
+function openFavoritesPage() {
+  chrome.tabs.create({ url: chrome.runtime.getURL('favorites/favorites.html') });
+}
+
+/**
+ * Handle adding/removing translation from favorites
+ */
+async function handleTranslationFavorite() {
+  const original = inputText.value.trim();
+  const saved = outputText.textContent;
+  const direction = directionBadge.textContent;
+
+  if (!original || !saved) return;
+
+  try {
+    // Check if already favorited
+    const existingFav = await isFavorite(original, saved);
+
+    if (existingFav) {
+      // Remove from favorites
+      const response = await chrome.runtime.sendMessage({
+        action: ACTIONS.REMOVE_FAVORITE,
+        id: existingFav.id
+      });
+
+      if (response.success) {
+        favoriteTranslationBtn.classList.remove('favorited');
+      }
+    } else {
+      // Add to favorites
+      const providerId = await getSelectedProvider();
+      const response = await chrome.runtime.sendMessage({
+        action: ACTIONS.ADD_FAVORITE,
+        item: {
+          type: 'translation',
+          original,
+          saved,
+          direction,
+          provider: providerId
+        }
+      });
+
+      if (response.success) {
+        favoriteTranslationBtn.classList.add('favorited');
+      }
+    }
+
+    await loadFavoritesCount();
+  } catch (error) {
+    showError('Failed to update favorites');
+  }
+}
+
+/**
+ * Handle adding/removing polish variant from favorites
+ * @param {HTMLElement} btn - The clicked favorite button
+ */
+async function handlePolishFavorite(btn) {
+  const version = btn.dataset.version;
+  let saved = '';
+
+  if (version === 'professional') {
+    saved = polishProfessional.textContent;
+  } else if (version === 'conversational') {
+    saved = polishConversational.textContent;
+  } else if (version === 'concise') {
+    saved = polishConcise.textContent;
+  }
+
+  const original = currentPolishOriginalText || inputText.value.trim();
+
+  if (!original || !saved) return;
+
+  try {
+    // Check if already favorited
+    const existingFav = await isFavorite(original, saved);
+
+    if (existingFav) {
+      // Remove from favorites
+      const response = await chrome.runtime.sendMessage({
+        action: ACTIONS.REMOVE_FAVORITE,
+        id: existingFav.id
+      });
+
+      if (response.success) {
+        btn.classList.remove('favorited');
+      }
+    } else {
+      // Add to favorites
+      const providerId = await getSelectedProvider();
+      const response = await chrome.runtime.sendMessage({
+        action: ACTIONS.ADD_FAVORITE,
+        item: {
+          type: 'polish',
+          original,
+          saved,
+          variant: version,
+          provider: providerId
+        }
+      });
+
+      if (response.success) {
+        btn.classList.add('favorited');
+      }
+    }
+
+    await loadFavoritesCount();
+  } catch (error) {
+    showError('Failed to update favorites');
+  }
+}
+
+/**
+ * Update favorite button states for polish cards
+ */
+async function updatePolishFavoriteStates() {
+  const original = currentPolishOriginalText || inputText.value.trim();
+
+  const versions = ['professional', 'conversational', 'concise'];
+  for (const version of versions) {
+    let saved = '';
+    if (version === 'professional') saved = polishProfessional.textContent;
+    else if (version === 'conversational') saved = polishConversational.textContent;
+    else if (version === 'concise') saved = polishConcise.textContent;
+
+    const btn = document.querySelector(`.polish-favorite-btn[data-version="${version}"]`);
+    if (btn && saved) {
+      const existingFav = await isFavorite(original, saved);
+      btn.classList.toggle('favorited', !!existingFav);
+    }
+  }
+}
+
+/**
+ * Update favorite button state for translation
+ */
+async function updateTranslationFavoriteState() {
+  const original = inputText.value.trim();
+  const saved = outputText.textContent;
+
+  if (!original || !saved || !favoriteTranslationBtn) return;
+
+  const existingFav = await isFavorite(original, saved);
+  favoriteTranslationBtn.classList.toggle('favorited', !!existingFav);
+}
+
+// ============================================
+// Polish Regenerate Functions
+// ============================================
+
+/**
+ * Handle regenerate button click for polish variants
+ * @param {HTMLElement} btn - The clicked regenerate button
+ */
+async function handlePolishRegenerate(btn) {
+  const version = btn.dataset.version;
+  const original = currentPolishOriginalText || inputText.value.trim();
+
+  if (!original) {
+    showError('No text to regenerate');
+    return;
+  }
+
+  if (isProcessing) return;
+
+  // Set loading state on the button
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      action: ACTIONS.REGENERATE_POLISH_VARIANT,
+      text: original,
+      variant: version,
+      historyId: currentPolishHistoryId
+    });
+
+    if (response.error) {
+      showError(response.error);
+      return;
+    }
+
+    // Update the specific card
+    if (version === 'professional') {
+      polishProfessional.textContent = response.text;
+    } else if (version === 'conversational') {
+      polishConversational.textContent = response.text;
+    } else if (version === 'concise') {
+      polishConcise.textContent = response.text;
+    }
+
+    // Update usage stats
+    await updateUsageStats({
+      inputTokens: response.inputTokens || 0,
+      outputTokens: response.outputTokens || 0,
+      polishes: 0 // Don't count regenerate as new polish
+    });
+    await loadStats();
+
+    // Update favorite state for this variant
+    await updatePolishFavoriteStates();
+  } catch (error) {
+    showError(error.message || 'Regenerate failed');
+  } finally {
+    btn.classList.remove('loading');
+    btn.disabled = false;
   }
 }
 

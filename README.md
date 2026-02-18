@@ -27,7 +27,10 @@
 
 ## Features
 
-- **Multi-AI Provider Support** - Choose between Claude, Gemini, or ChatGPT (NEW in v2.3)
+- **Multi-AI Provider Support** - Choose between Claude, Gemini, or ChatGPT
+- **Favorites System** - Star translations and polished text to save them (NEW in v2.4)
+- **New Tab Flashcards** - Learn vocabulary on every new tab with interactive flashcards (NEW in v2.4)
+- **Regenerate Polish** - Regenerate individual polish variants for fresh alternatives (NEW in v2.4)
 - **AI-Powered Translation** - Accurate, context-aware translations using your preferred AI
 - **Grammar Explanations** - Learn grammar while translating with detailed explanations
 - **Image Translation** - Extract and translate text from images using OCR
@@ -105,6 +108,8 @@ Get three polished versions of your text:
 - **Conversational** - Friendly, casual tone
 - **Concise** - Brief, to-the-point version
 
+Not happy with a variant? Click the regenerate button to get a fresh alternative while keeping the others.
+
 ### Dictionary Mode (NEW in v2.0)
 
 Look up any word to see:
@@ -142,6 +147,26 @@ Useful for translating:
 - Screenshots of foreign text
 - Photos of signs, menus, or documents
 - Images with embedded text
+
+### Favorites (NEW in v2.4)
+
+Save your best translations and polished text:
+1. Click the star icon on any translation or polish result
+2. Access all favorites from the dedicated favorites page
+3. Remove favorites by clicking the star again
+
+### New Tab Flashcards (NEW in v2.4)
+
+Learn vocabulary every time you open a new tab:
+1. Enable "Show favorites on new tab" in Settings
+2. Choose how many items to show (1-10)
+3. Open a new tab to see your favorites as flashcards
+4. Click cards to flip and reveal the original text
+5. Use keyboard shortcuts:
+   - `←` / `→` - Navigate between cards
+   - `Space` - Flip card
+   - `C` - Copy text
+   - `R` - Refresh with different favorites
 
 ## Development
 

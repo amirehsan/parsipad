@@ -10,7 +10,11 @@ import {
   getDictionaryTranslationSettings,
   setDictionaryTranslationSettings,
   getSelectionPopupEnabled,
-  setSelectionPopupEnabled
+  setSelectionPopupEnabled,
+  getNewTabEnabled,
+  setNewTabEnabled,
+  getNewTabPhraseCount,
+  setNewTabPhraseCount
 } from '../lib/storage.js';
 import { PROVIDERS, PROVIDER_CONFIGS } from '../lib/constants.js';
 import { translationCache } from '../lib/cache.js';
@@ -26,6 +30,12 @@ const dictFaToEnCheckbox = document.getElementById('dict-fa-to-en');
 
 // DOM Elements - Selection Popup
 const selectionPopupToggle = document.getElementById('selection-popup-toggle');
+
+// DOM Elements - New Tab
+const newtabToggle = document.getElementById('newtab-toggle');
+const phraseCountSlider = document.getElementById('phrase-count-slider');
+const phraseCountValue = document.getElementById('phrase-count-value');
+const phraseCountSection = document.getElementById('phrase-count-section');
 
 // DOM Elements - Theme
 const themeToggle = document.getElementById('theme-toggle');
@@ -66,6 +76,7 @@ async function init() {
   await loadLanguage();
   await loadDictionarySettings();
   await loadSelectionPopupSetting();
+  await loadNewTabSetting();
   await loadProviderSettings();
   await loadAllApiKeyStatuses();
   await loadCacheStats();
@@ -125,6 +136,31 @@ async function loadDictionarySettings() {
 async function loadSelectionPopupSetting() {
   const enabled = await getSelectionPopupEnabled();
   selectionPopupToggle.checked = enabled;
+}
+
+/**
+ * Load new tab setting
+ */
+async function loadNewTabSetting() {
+  const enabled = await getNewTabEnabled();
+  newtabToggle.checked = enabled;
+
+  // Load phrase count
+  const count = await getNewTabPhraseCount();
+  phraseCountSlider.value = count;
+  phraseCountValue.textContent = count;
+
+  // Show/hide phrase count section based on toggle state
+  updatePhraseCountVisibility(enabled);
+}
+
+/**
+ * Update phrase count section visibility
+ */
+function updatePhraseCountVisibility(enabled) {
+  if (phraseCountSection) {
+    phraseCountSection.style.display = enabled ? 'flex' : 'none';
+  }
 }
 
 /**
@@ -250,6 +286,14 @@ function setupEventListeners() {
   // Selection popup setting
   selectionPopupToggle.addEventListener('change', handleSelectionPopupChange);
 
+  // New tab setting
+  newtabToggle.addEventListener('change', handleNewTabChange);
+
+  // Phrase count slider
+  if (phraseCountSlider) {
+    phraseCountSlider.addEventListener('input', handlePhraseCountChange);
+  }
+
   // Provider selection
   providerRadios.forEach(radio => {
     radio.addEventListener('change', handleProviderChange);
@@ -319,6 +363,24 @@ async function handleDictionarySettingChange() {
 async function handleSelectionPopupChange() {
   const enabled = selectionPopupToggle.checked;
   await setSelectionPopupEnabled(enabled);
+}
+
+/**
+ * Handle new tab setting change
+ */
+async function handleNewTabChange() {
+  const enabled = newtabToggle.checked;
+  await setNewTabEnabled(enabled);
+  updatePhraseCountVisibility(enabled);
+}
+
+/**
+ * Handle phrase count slider change
+ */
+async function handlePhraseCountChange() {
+  const count = parseInt(phraseCountSlider.value, 10);
+  phraseCountValue.textContent = count;
+  await setNewTabPhraseCount(count);
 }
 
 /**
