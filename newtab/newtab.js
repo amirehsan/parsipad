@@ -18,7 +18,6 @@ const themeBtn = document.getElementById('theme-btn');
 const copyBtn = document.getElementById('copy-btn');
 const prevBtn = document.getElementById('prev-btn');
 const nextBtn = document.getElementById('next-btn');
-const openPopupBtn = document.getElementById('open-popup-btn');
 const openSettingsBtn = document.getElementById('open-settings-btn');
 const viewAllLink = document.getElementById('view-all-link');
 const openSettingsLink = document.getElementById('open-settings-link');
@@ -319,13 +318,6 @@ async function copyCurrentCard() {
 function setupCommonEventListeners() {
   // Theme toggle
   themeBtn.addEventListener('click', toggleTheme);
-
-  // Open popup button (empty state)
-  if (openPopupBtn) {
-    openPopupBtn.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ action: 'OPEN_POPUP' });
-    });
-  }
 
   // Open settings button (disabled state)
   if (openSettingsBtn) {
