@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings page now includes New Tab Flashcards toggle and phrase count selector
 - Updated manifest with new tab override for flashcard feature
 - Added favorites link in popup footer
+- Full i18n support for Favorites page and New Tab page (English & Persian)
+- Persian font (Vazirmatn) support for RTL content in flashcards
 
 ### Technical
 - New `favorites/` directory with favorites.html, favorites.js, favorites.css
