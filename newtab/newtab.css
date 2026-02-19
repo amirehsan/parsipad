@@ -356,11 +356,20 @@ body {
   font-weight: 500;
 }
 
-/* Persian text support */
-[dir="rtl"].flashcard-saved,
-[dir="rtl"].flashcard-original,
-[dir="rtl"].flashcard-saved-small {
+/* Persian/RTL text support */
+html[dir="rtl"] {
   font-family: var(--font-persian);
+}
+
+html[dir="rtl"] body {
+  font-family: var(--font-persian);
+}
+
+.flashcard-saved[dir="rtl"],
+.flashcard-original[dir="rtl"],
+.flashcard-saved-small[dir="rtl"] {
+  font-family: var(--font-persian);
+  text-align: right;
 }
 
 /* Card Actions */

@@ -1,4 +1,5 @@
-import { getRandomFavorites, getNewTabEnabled, getTheme, setTheme, getNewTabPhraseCount } from '../lib/storage.js';
+import { getRandomFavorites, getNewTabEnabled, getTheme, setTheme, getNewTabPhraseCount, getLanguage } from '../lib/storage.js';
+import { t, applyTranslations } from '../lib/i18n.js';
 
 // DOM Elements
 const flashcardContainer = document.getElementById('flashcard-container');
@@ -27,11 +28,13 @@ const keyboardHints = document.getElementById('keyboard-hints');
 let favorites = [];
 let currentIndex = 0;
 let isFlipped = false;
+let currentLang = 'en';
 
 /**
  * Initialize the new tab page
  */
 async function init() {
+  await initLanguage();
   await initTheme();
 
   // Check 3D transform support
@@ -51,6 +54,14 @@ async function init() {
   await loadFavorites();
   setupFlashcardEventListeners();
   setupKeyboardShortcuts();
+}
+
+/**
+ * Initialize language
+ */
+async function initLanguage() {
+  currentLang = await getLanguage();
+  applyTranslations(currentLang);
 }
 
 /**
@@ -198,12 +209,13 @@ function getBadgeInfo(item) {
     const direction = item.direction || 'EN → FA';
     return { text: direction, type: 'translation' };
   } else if (item.type === 'polish') {
-    const variantLabel = item.variant ? item.variant.charAt(0).toUpperCase() + item.variant.slice(1) : 'Polish';
+    const variantKey = item.variant || 'polish';
+    const variantLabel = t(variantKey, currentLang) || item.variant?.charAt(0).toUpperCase() + item.variant?.slice(1) || t('polish', currentLang);
     return { text: variantLabel, type: 'polish' };
   } else if (item.type === 'dictionary') {
-    return { text: 'Dictionary', type: 'translation' };
+    return { text: t('dictionary', currentLang), type: 'translation' };
   }
-  return { text: 'Saved', type: 'translation' };
+  return { text: t('favorites', currentLang), type: 'translation' };
 }
 
 /**

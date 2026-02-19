@@ -157,9 +157,10 @@ function renderFavoriteCard(item) {
     const direction = item.direction || 'EN → FA';
     badges = `<span class="favorite-badge translation">${escapeHtml(direction)}</span>`;
   } else if (item.type === 'polish') {
-    const variantLabel = item.variant ? item.variant.charAt(0).toUpperCase() + item.variant.slice(1) : 'Polish';
+    const variantKey = item.variant || 'polish';
+    const variantLabel = t(variantKey, currentLang) || item.variant?.charAt(0).toUpperCase() + item.variant?.slice(1) || 'Polish';
     badges = `
-      <span class="favorite-badge polish">Polish</span>
+      <span class="favorite-badge polish">${t('polish', currentLang) || 'Polish'}</span>
       <span class="favorite-badge variant">${escapeHtml(variantLabel)}</span>
     `;
   }
@@ -313,15 +314,24 @@ function formatTimeAgo(timestamp) {
   const days = Math.floor(hours / 24);
 
   if (days > 0) {
-    return days === 1 ? '1 day ago' : `${days} days ago`;
+    if (days === 1) {
+      return t('dayAgo', currentLang) || '1 day ago';
+    }
+    return (t('daysAgo', currentLang) || '{n} days ago').replace('{n}', days);
   }
   if (hours > 0) {
-    return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
+    if (hours === 1) {
+      return t('hourAgo', currentLang) || '1 hour ago';
+    }
+    return (t('hoursAgo', currentLang) || '{n} hours ago').replace('{n}', hours);
   }
   if (minutes > 0) {
-    return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`;
+    if (minutes === 1) {
+      return t('minuteAgo', currentLang) || '1 minute ago';
+    }
+    return (t('minutesAgo', currentLang) || '{n} minutes ago').replace('{n}', minutes);
   }
-  return 'Just now';
+  return t('justNow', currentLang) || 'Just now';
 }
 
 /**
