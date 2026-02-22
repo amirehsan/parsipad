@@ -5,6 +5,13 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.1] - 2025-02-22
+
+### Fixed
+- **Claude API Model Update** - Updated Claude model from deprecated `claude-3-5-haiku` to `claude-haiku-4-5-20251001`
+  - Fixes "model not found" errors when using Claude provider
+  - Uses the latest Claude Haiku 4.5 model for faster, more capable translations
+
 ## [2.4.0] - 2025-02-18
 
 ### Added
