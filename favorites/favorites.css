@@ -309,6 +309,17 @@ body {
   font-size: 9px;
 }
 
+.favorite-badge.grammar {
+  background: #10b981;
+  color: white;
+}
+
+.favorite-badge.direction {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  font-size: 9px;
+}
+
 .favorite-time {
   font-size: 11px;
   color: var(--color-text-secondary);
@@ -389,6 +400,48 @@ body {
   text-align: right;
   border-left: none;
   border-right: 3px solid var(--color-favorite);
+}
+
+/* Grammar Card Styles */
+.grammar-card::before {
+  background: #10b981;
+}
+
+.grammar-lesson-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-sm);
+  padding: var(--space-sm);
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: var(--radius-sm);
+}
+
+.grammar-lesson-title.persian-text {
+  font-family: var(--font-persian);
+  text-align: right;
+}
+
+.grammar-lesson-title[dir="rtl"] {
+  font-family: var(--font-persian);
+  text-align: right;
+}
+
+.grammar-points-count {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.grammar-card .favorite-card-saved {
+  border-left-color: #10b981;
+}
+
+.grammar-card .favorite-card-saved[dir="rtl"] {
+  border-left: none;
+  border-right: 3px solid #10b981;
 }
 
 /* Empty State */

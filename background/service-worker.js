@@ -1,4 +1,4 @@
-import { translate, polish, translateImage, regeneratePolishVariant } from '../lib/api.js';
+import { translate, polish, translateImage, regeneratePolishVariant, getGrammarLesson } from '../lib/api.js';
 import { lookupWord } from '../lib/dictionary.js';
 import { translateDocument, validateFile, readFileContent } from '../lib/document-translator.js';
 import { translationCache } from '../lib/cache.js';
@@ -64,6 +64,9 @@ async function handleMessage(message, sender) {
 
     case ACTIONS.CHECK_API_KEY:
       return { hasApiKey: await hasApiKey() };
+
+    case ACTIONS.GET_GRAMMAR_LESSON:
+      return handleGrammarLesson(message.originalText, message.translation, message.direction);
 
     default:
       throw new Error(`Unknown action: ${message.action}`);
@@ -341,6 +344,33 @@ async function handleRemoveFavorite(id, original, saved) {
 async function handleCheckFavorite(original, saved) {
   const favorite = await isFavorite(original, saved);
   return { isFavorite: !!favorite, favorite };
+}
+
+/**
+ * Handle grammar lesson request
+ * @param {string} originalText - Original text
+ * @param {string} translation - Translated text
+ * @param {string} direction - Translation direction ('en-to-fa' or 'fa-to-en')
+ * @returns {Promise<Object>}
+ */
+async function handleGrammarLesson(originalText, translation, direction) {
+  if (!originalText || !translation) {
+    throw new Error('Original text and translation are required');
+  }
+
+  // Get current provider info
+  const providerId = await getSelectedProvider();
+  const providerConfig = PROVIDER_CONFIGS[providerId];
+
+  // Call API
+  const result = await getGrammarLesson(originalText, translation, direction);
+
+  return {
+    lesson: result.lesson,
+    inputTokens: result.inputTokens,
+    outputTokens: result.outputTokens,
+    provider: providerConfig?.name || 'AI'
+  };
 }
 
 /**

@@ -80,6 +80,7 @@ const grammarToggleSection = document.getElementById('grammar-toggle-section');
 const grammarCheckbox = document.getElementById('grammar-checkbox');
 const grammarSection = document.getElementById('grammar-section');
 const grammarPoints = document.getElementById('grammar-points');
+const grammarLearnMoreBtn = document.getElementById('grammar-learn-more');
 // Image elements
 const imageUploadSection = document.getElementById('image-upload-section');
 const imageUploadArea = document.getElementById('image-upload-area');
@@ -128,6 +129,7 @@ let translatedContent = null;
 let selectedImage = null;
 let currentPolishHistoryId = null; // Track the current polish history entry
 let currentPolishOriginalText = null; // Track the original text for polish
+let currentTranslationData = null; // Track current translation for grammar page
 
 // Computed mode for backwards compatibility
 function getCurrentMode() {
@@ -379,6 +381,11 @@ function setupEventListeners() {
   // View favorites button
   if (viewFavoritesBtn) {
     viewFavoritesBtn.addEventListener('click', openFavoritesPage);
+  }
+
+  // Grammar Learn More button
+  if (grammarLearnMoreBtn) {
+    grammarLearnMoreBtn.addEventListener('click', openGrammarPage);
   }
 
   // Review prompt buttons
@@ -683,11 +690,26 @@ async function displayTranslation(result) {
   cacheBadge.hidden = !fromCache;
   outputSection.hidden = false;
 
+  // Store translation data for grammar page
+  currentTranslationData = {
+    original: inputText.value.trim(),
+    translation: translation,
+    direction: direction
+  };
+
   // Display grammar explanations if available
   if (grammar && grammar.length > 0) {
-    displayGrammarExplanation(grammar);
+    displayGrammarExplanation(grammar, direction);
+    // Show Learn More button
+    if (grammarLearnMoreBtn) {
+      grammarLearnMoreBtn.hidden = false;
+    }
   } else {
     grammarSection.hidden = true;
+    // Hide Learn More button
+    if (grammarLearnMoreBtn) {
+      grammarLearnMoreBtn.hidden = true;
+    }
   }
 
   // Update favorite button state
@@ -718,12 +740,20 @@ async function updateProviderBadge(badgeElement) {
 /**
  * Display grammar explanation
  * @param {Array} grammarPointsList - Array of grammar points with point and explanation
+ * @param {string} direction - Translation direction ('en-to-fa' or 'fa-to-en')
  */
-function displayGrammarExplanation(grammarPointsList) {
+function displayGrammarExplanation(grammarPointsList, direction) {
+  // Grammar explanations are in the target language:
+  // EN→FA means explanations are in Persian (RTL with Persian font)
+  // FA→EN means explanations are in English (LTR)
+  const isRtl = direction === 'en-to-fa' || direction === 'en-fa';
+  const persianClass = isRtl ? ' persian-text' : '';
+  const dirAttr = isRtl ? ' dir="rtl"' : '';
+
   grammarPoints.innerHTML = grammarPointsList.map(item => `
-    <div class="grammar-point">
-      <div class="grammar-point-title">${escapeHtml(item.point)}</div>
-      <div class="grammar-point-explanation">${escapeHtml(item.explanation)}</div>
+    <div class="grammar-point${persianClass}"${dirAttr}>
+      <div class="grammar-point-title${persianClass}">${escapeHtml(item.point)}</div>
+      <div class="grammar-point-explanation${persianClass}">${escapeHtml(item.explanation)}</div>
     </div>
   `).join('');
 
@@ -916,6 +946,11 @@ function hideAllOutputs() {
   outputSection.hidden = true;
   polishSection.hidden = true;
   dictionarySection.hidden = true;
+  grammarSection.hidden = true;
+  if (grammarLearnMoreBtn) {
+    grammarLearnMoreBtn.hidden = true;
+  }
+  currentTranslationData = null;
 }
 
 /**
@@ -1574,6 +1609,23 @@ async function loadFavoritesCount() {
  */
 function openFavoritesPage() {
   chrome.tabs.create({ url: chrome.runtime.getURL('favorites/favorites.html') });
+}
+
+/**
+ * Open the grammar learning page with current translation data
+ */
+function openGrammarPage() {
+  if (!currentTranslationData) return;
+
+  const params = new URLSearchParams({
+    original: currentTranslationData.original,
+    translation: currentTranslationData.translation,
+    direction: currentTranslationData.direction
+  });
+
+  chrome.tabs.create({
+    url: chrome.runtime.getURL(`grammar/grammar.html?${params.toString()}`)
+  });
 }
 
 /**

@@ -27,26 +27,40 @@
 
 ## Features
 
-- **Welcome/Onboarding Page** - Beautiful first-time setup with feature showcase (NEW in v2.5)
-- **Data Backup & Restore** - Export and import favorites, history, and cache (NEW in v2.5)
+### Core Translation
 - **Multi-AI Provider Support** - Choose between Claude, Gemini, or ChatGPT
+- **AI-Powered Translation** - Accurate, context-aware translations using your preferred AI
+- **Image Translation** - Extract and translate text from images using OCR
+- **Document Translation** - Upload and translate TXT files with progress tracking
+- **Text Polishing** - Get 3 versions: Professional, Conversational, and Concise
+
+### Grammar Learning (NEW in v2.6)
+- **Grammar Explanations** - Learn grammar while translating with detailed explanations
+- **Grammar Learning Page** - Dedicated page with comprehensive lessons
+  - Explanations in target language (Persian for EN→FA, English for FA→EN)
+  - Multiple examples per grammar point
+  - Compare & Contrast between English and Persian
+  - Common mistakes to avoid
+  - Interactive quizzes to test understanding
+  - Save lessons to Favorites for review
+
+### Organization & Learning
 - **Favorites System** - Star translations and polished text to save them
 - **New Tab Flashcards** - Learn vocabulary on every new tab with interactive flashcards
-- **Regenerate Polish** - Regenerate individual polish variants for fresh alternatives
-- **AI-Powered Translation** - Accurate, context-aware translations using your preferred AI
-- **Grammar Explanations** - Learn grammar while translating with detailed explanations
-- **Image Translation** - Extract and translate text from images using OCR
-- **Text Polishing** - Get 3 versions: Professional, Conversational, and Concise
 - **Dictionary Lookup** - Look up definitions, phonetics, synonyms, and antonyms
-- **Document Translation** - Upload and translate TXT files with progress tracking
+
+### Quick Access
 - **Selection Popup** - Quick action icons when selecting text on webpages
-- **Right-Click Menu** - Select text on any webpage, right-click to translate, polish, or look up
 - **Keyboard Shortcuts** - `Alt+T` to translate, `Alt+D` for dictionary lookup
+- **Right-Click Menu** - Translate, polish, or look up from any webpage
+
+### Settings & Data
+- **Data Backup & Restore** - Export and import favorites, history, and cache
+- **Welcome/Onboarding Page** - Beautiful first-time setup with feature showcase
 - **Dark Mode** - Beautiful dark theme that syncs with system preferences
-- **Translation History** - Access and manage your past translations
+- **Bilingual Support** - Full English and Persian (فارسی) interface
 - **Usage Statistics** - Track your translation and token usage
 - **Offline Caching** - Previously translated text loads instantly
-- **Bilingual Support** - Full English and Persian (فارسی) interface
 
 ## Installation
 
@@ -95,13 +109,23 @@
 
 Enter any text in English or Persian - the extension automatically detects the language and translates to the other.
 
-#### Grammar Explanation Mode (NEW in v2.2)
+#### Grammar Explanation Mode
 
 Enable "Explain grammar" checkbox to receive grammar notes with your translation:
 - Word order differences between Persian and English
 - Verb conjugations and tense explanations
 - Idiomatic expressions and their meanings
 - Register and formality choices
+
+#### Grammar Learning Page (NEW in v2.6)
+
+Click "Learn More with Examples" on any grammar explanation to open the dedicated grammar learning page:
+- **Detailed Explanations** - Comprehensive grammar lessons in your target language
+- **Multiple Examples** - 3 examples per grammar point with highlighted patterns
+- **Compare & Contrast** - Side-by-side comparison of how grammar works in both languages
+- **Common Mistakes** - Learn what errors to avoid
+- **Interactive Quizzes** - Test your understanding with challenging questions
+- **Save to Favorites** - Save grammar lessons for later review on New Tab flashcards
 
 ### Polish Mode
 
@@ -198,18 +222,21 @@ parsipad/
 ├── history/            # Translation history page
 ├── favorites/          # Favorites page
 ├── newtab/             # New tab flashcards page
-├── welcome/            # Welcome/onboarding page (NEW in v2.5)
+├── welcome/            # Welcome/onboarding page
+├── grammar/            # Grammar learning page (NEW in v2.6)
 ├── background/         # Service worker
 ├── content/            # Content script for webpage integration
 ├── lib/                # Shared utilities
-│   ├── api.js          # Claude API integration
+│   ├── api.js          # AI provider API integration
+│   ├── providers/      # Provider implementations (Claude, Gemini, ChatGPT)
 │   ├── storage.js      # Chrome storage wrapper
 │   ├── cache.js        # Translation caching
 │   ├── dictionary.js   # Dictionary lookup API
 │   ├── document-translator.js  # Document translation
 │   ├── history.js      # History management
 │   ├── i18n.js         # Internationalization
-│   └── ...
+│   └── constants.js    # Prompts and constants
+├── landing/            # Landing page website
 └── icons/              # Extension icons
 ```
 

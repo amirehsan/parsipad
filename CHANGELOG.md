@@ -5,6 +5,39 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-02-26
+
+### Added
+- **Grammar Learning Page** - Comprehensive interactive grammar lessons
+  - Dedicated page with detailed grammar explanations in target language
+  - Multiple examples per grammar point with highlighted patterns
+  - Compare & Contrast section showing differences between English and Persian
+  - Common mistakes section to avoid typical learner errors
+  - Interactive quizzes with challenging, plausible wrong answers
+  - Save grammar lessons to Favorites for later review
+  - "Learn More" button on grammar explanations opens the learning page
+  - Full RTL support with Persian font for Persian content
+  - Dark mode support
+
+### Changed
+- **Landing Page Simplified** - Cleaner, less busy feature presentation
+  - Reduced from 16 features to 9 core features
+  - Focused 3×3 grid layout highlighting key differentiators
+  - Removed: Dark Mode, Right-Click Menu, Keyboard Shortcut, Translation History, Regenerate Polish, Welcome Page, Data Backup (still available, just not featured)
+  - Fixed CSS linter errors (canonical Tailwind class names)
+
+- **Grammar Explanations Enhanced** - Language-aware explanations
+  - EN→FA translations: Grammar explanations in Persian
+  - FA→EN translations: Grammar explanations in English
+  - Proper RTL alignment and Persian font in popup
+
+### Technical
+- New `grammar/` directory with grammar.html, grammar.js, grammar.css
+- Updated `GRAMMAR_LEARNING_PROMPT` for detailed lessons with quiz requirements
+- Extended favorites storage to support grammar lesson type
+- Updated `popup/popup.js` with grammar page navigation
+- Comprehensive RTL CSS support for Persian grammar content
+
 ## [2.5.0] - 2025-02-25
 
 ### Added
