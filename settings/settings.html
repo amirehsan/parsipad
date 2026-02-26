@@ -433,6 +433,92 @@
       </div>
     </section>
 
+    <!-- Data Backup Card -->
+    <section class="settings-card">
+      <div class="card-header">
+        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
+          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="card-title" data-i18n="dataBackup">Data Backup</h2>
+          <p class="card-subtitle" data-i18n="dataBackupSubtitle">Export and import your favorites, history, and cache</p>
+        </div>
+      </div>
+      <div class="card-content">
+        <!-- Export Section -->
+        <div class="backup-section">
+          <h3 class="section-label" data-i18n="exportData">Export Data</h3>
+          <div class="checkbox-group">
+            <label class="checkbox-row">
+              <input type="checkbox" id="export-favorites" checked>
+              <span class="checkbox-label" data-i18n="favorites">Favorites</span>
+              <span class="item-count" id="favorites-count">(0)</span>
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox" id="export-translation-history" checked>
+              <span class="checkbox-label" data-i18n="translationHistory">Translation History</span>
+              <span class="item-count" id="translation-history-count">(0)</span>
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox" id="export-polish-history" checked>
+              <span class="checkbox-label" data-i18n="polishHistory">Polish History</span>
+              <span class="item-count" id="polish-history-count">(0)</span>
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox" id="export-dictionary-history" checked>
+              <span class="checkbox-label" data-i18n="dictionaryHistory">Dictionary History</span>
+              <span class="item-count" id="dictionary-history-count">(0)</span>
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox" id="export-cache">
+              <span class="checkbox-label" data-i18n="translationCache">Translation Cache</span>
+              <span class="item-count" id="cache-count-export">(0)</span>
+            </label>
+          </div>
+          <button type="button" id="export-btn" class="btn btn-primary btn-full">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            <span data-i18n="exportToJson">Export to JSON</span>
+          </button>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Import Section -->
+        <div class="backup-section">
+          <h3 class="section-label" data-i18n="importData">Import Data</h3>
+          <div class="import-strategy">
+            <label class="radio-row">
+              <input type="radio" name="import-strategy" value="merge" checked>
+              <div class="radio-info">
+                <span class="radio-label" data-i18n="mergeData">Merge with existing</span>
+                <span class="radio-hint" data-i18n="mergeDataHint">Add imported items, keeping existing data</span>
+              </div>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="import-strategy" value="replace">
+              <div class="radio-info">
+                <span class="radio-label" data-i18n="replaceData">Replace existing</span>
+                <span class="radio-hint" data-i18n="replaceDataHint">Clear and replace with imported data</span>
+              </div>
+            </label>
+          </div>
+          <input type="file" id="import-file" accept=".json" hidden>
+          <button type="button" id="import-btn" class="btn btn-secondary btn-full">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            <span data-i18n="importFromJson">Import from JSON</span>
+          </button>
+        </div>
+
+        <div id="backup-status" class="status-message" hidden></div>
+      </div>
+    </section>
+
     <!-- About Card -->
     <section class="settings-card">
       <div class="card-header">
@@ -450,7 +536,7 @@
         <div class="about-info">
           <div class="about-row">
             <span class="about-label">Version</span>
-            <span class="about-value">2.4.1</span>
+            <span class="about-value">2.5.0</span>
           </div>
           <div class="about-row">
             <span class="about-label">Powered by</span>
@@ -461,18 +547,37 @@
             <span class="about-value">MIT</span>
           </div>
         </div>
+        <!-- Primary actions with text -->
         <div class="about-links">
-          <a href="https://github.com/amirehsan/parsipad" target="_blank" class="about-link">
+          <a href="https://chromewebstore.google.com/detail/parsipad/kmifhjlofnblfogkjjcmhlmcecghhfbp/reviews" target="_blank" class="about-link about-link-highlight">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+            </svg>
+            <span data-i18n="rateExtension">Rate Extension</span>
+          </a>
+          <button type="button" id="welcome-guide-btn" class="about-link">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span data-i18n="viewWelcomeGuide">View Welcome Guide</span>
+          </button>
+        </div>
+        <!-- Secondary icon-only links -->
+        <div class="about-links-secondary">
+          <a href="https://parsipad.com" target="_blank" class="about-link-icon" data-i18n-title="website" title="Website">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+            </svg>
+          </a>
+          <a href="https://github.com/amirehsan/parsipad" target="_blank" class="about-link-icon" title="GitHub">
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
             </svg>
-            GitHub
           </a>
-          <a href="https://github.com/amirehsan/parsipad/issues" target="_blank" class="about-link">
+          <a href="https://github.com/amirehsan/parsipad/issues" target="_blank" class="about-link-icon" data-i18n-title="reportIssue" title="Report Issue">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
             </svg>
-            Report Issue
           </a>
         </div>
       </div>

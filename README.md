@@ -27,10 +27,12 @@
 
 ## Features
 
+- **Welcome/Onboarding Page** - Beautiful first-time setup with feature showcase (NEW in v2.5)
+- **Data Backup & Restore** - Export and import favorites, history, and cache (NEW in v2.5)
 - **Multi-AI Provider Support** - Choose between Claude, Gemini, or ChatGPT
-- **Favorites System** - Star translations and polished text to save them (NEW in v2.4)
-- **New Tab Flashcards** - Learn vocabulary on every new tab with interactive flashcards (NEW in v2.4)
-- **Regenerate Polish** - Regenerate individual polish variants for fresh alternatives (NEW in v2.4)
+- **Favorites System** - Star translations and polished text to save them
+- **New Tab Flashcards** - Learn vocabulary on every new tab with interactive flashcards
+- **Regenerate Polish** - Regenerate individual polish variants for fresh alternatives
 - **AI-Powered Translation** - Accurate, context-aware translations using your preferred AI
 - **Grammar Explanations** - Learn grammar while translating with detailed explanations
 - **Image Translation** - Extract and translate text from images using OCR
@@ -148,14 +150,14 @@ Useful for translating:
 - Photos of signs, menus, or documents
 - Images with embedded text
 
-### Favorites (NEW in v2.4)
+### Favorites
 
 Save your best translations and polished text:
 1. Click the star icon on any translation or polish result
 2. Access all favorites from the dedicated favorites page
 3. Remove favorites by clicking the star again
 
-### New Tab Flashcards (NEW in v2.4)
+### New Tab Flashcards
 
 Learn vocabulary every time you open a new tab:
 1. Enable "Show favorites on new tab" in Settings
@@ -168,6 +170,22 @@ Learn vocabulary every time you open a new tab:
    - `C` - Copy text
    - `R` - Refresh with different favorites
 
+### Data Backup & Restore (NEW in v2.5)
+
+Keep your data safe and portable:
+1. Go to Settings → Data Backup section
+2. **Export**: Select data types to export (favorites, history, cache)
+3. Click "Export to JSON" to download a backup file
+4. **Import**: Choose merge (add to existing) or replace strategy
+5. Click "Import from JSON" and select your backup file
+
+### Welcome Guide (NEW in v2.5)
+
+First-time users see a beautiful welcome page with:
+- Feature showcase with all ParsiPad capabilities
+- Integrated API key setup
+- Access anytime via Settings → "View Welcome Guide"
+
 ## Development
 
 ### Project Structure
@@ -178,6 +196,9 @@ parsipad/
 ├── popup/              # Extension popup UI
 ├── settings/           # Settings page
 ├── history/            # Translation history page
+├── favorites/          # Favorites page
+├── newtab/             # New tab flashcards page
+├── welcome/            # Welcome/onboarding page (NEW in v2.5)
 ├── background/         # Service worker
 ├── content/            # Content script for webpage integration
 ├── lib/                # Shared utilities

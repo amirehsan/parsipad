@@ -1,6 +1,6 @@
 import { getTextDirection } from '../lib/language-detect.js';
 import { getHistory, clearHistory, getPolishHistory, clearPolishHistory, getDictionaryHistory, clearDictionaryHistory } from '../lib/history.js';
-import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider, getFavorites, isFavorite } from '../lib/storage.js';
+import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider, getFavorites, isFavorite, shouldShowReviewPrompt, dismissReviewPrompt, markReviewClicked } from '../lib/storage.js';
 import { PROVIDER_CONFIGS, ACTIONS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 
@@ -112,6 +112,11 @@ const favoriteTranslationBtn = document.getElementById('favorite-translation-btn
 const favoritesLinkSection = document.getElementById('favorites-link-section');
 const viewFavoritesBtn = document.getElementById('view-favorites-btn');
 const favoritesCount = document.getElementById('favorites-count');
+// Review prompt elements
+const reviewPromptBanner = document.getElementById('review-prompt-banner');
+const reviewRateBtn = document.getElementById('review-rate-btn');
+const reviewLaterBtn = document.getElementById('review-later-btn');
+const reviewDismissBtn = document.getElementById('review-dismiss-btn');
 
 // State
 let isProcessing = false;
@@ -142,6 +147,7 @@ async function init() {
   await loadHistory();
   await loadStats();
   await loadFavoritesCount();
+  await checkReviewPrompt();
   setupEventListeners();
   updateCharCount();
   updateTab('text');
@@ -373,6 +379,17 @@ function setupEventListeners() {
   // View favorites button
   if (viewFavoritesBtn) {
     viewFavoritesBtn.addEventListener('click', openFavoritesPage);
+  }
+
+  // Review prompt buttons
+  if (reviewRateBtn) {
+    reviewRateBtn.addEventListener('click', handleReviewRateClick);
+  }
+  if (reviewLaterBtn) {
+    reviewLaterBtn.addEventListener('click', handleReviewDismiss);
+  }
+  if (reviewDismissBtn) {
+    reviewDismissBtn.addEventListener('click', handleReviewDismiss);
   }
 
   // Clear history button
@@ -1599,6 +1616,8 @@ async function handleTranslationFavorite() {
 
       if (response.success) {
         favoriteTranslationBtn.classList.add('favorited');
+        // Check if we should show review prompt after adding favorite
+        await checkReviewPrompt();
       }
     }
 
@@ -1658,6 +1677,8 @@ async function handlePolishFavorite(btn) {
 
       if (response.success) {
         btn.classList.add('favorited');
+        // Check if we should show review prompt after adding favorite
+        await checkReviewPrompt();
       }
     }
 
@@ -1761,6 +1782,53 @@ async function handlePolishRegenerate(btn) {
   } finally {
     btn.classList.remove('loading');
     btn.disabled = false;
+  }
+}
+
+// ============================================
+// Review Prompt Functions
+// ============================================
+
+/**
+ * Check if review prompt should be shown
+ */
+async function checkReviewPrompt() {
+  if (!reviewPromptBanner) return;
+
+  try {
+    const shouldShow = await shouldShowReviewPrompt();
+    reviewPromptBanner.hidden = !shouldShow;
+  } catch (error) {
+    // Silently handle errors
+    reviewPromptBanner.hidden = true;
+  }
+}
+
+/**
+ * Handle "Rate Now" button click
+ */
+async function handleReviewRateClick() {
+  try {
+    await markReviewClicked();
+    if (reviewPromptBanner) {
+      reviewPromptBanner.hidden = true;
+    }
+  } catch (error) {
+    // Silently handle errors
+  }
+}
+
+/**
+ * Handle "Maybe Later" or dismiss button click
+ */
+async function handleReviewDismiss() {
+  try {
+    await dismissReviewPrompt();
+    if (reviewPromptBanner) {
+      reviewPromptBanner.hidden = true;
+    }
+  } catch (error) {
+    // Silently handle errors
   }
 }
 

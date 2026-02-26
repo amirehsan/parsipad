@@ -846,7 +846,9 @@ main {
 
 .about-links {
   display: flex;
-  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
 }
 
 .about-link {
@@ -855,10 +857,14 @@ main {
   gap: 0.5rem;
   padding: 0.625rem 1rem;
   background: var(--gray-100);
+  border: none;
   border-radius: 0.75rem;
   color: var(--gray-700);
   text-decoration: none;
+  font-size: inherit;
+  font-family: inherit;
   font-weight: 500;
+  cursor: pointer;
   transition: all 0.15s ease;
 }
 
@@ -873,6 +879,65 @@ main {
 }
 
 .dark .about-link:hover {
+  background: var(--gray-600);
+  color: var(--primary-400);
+}
+
+/* Highlighted about link (Rate Extension) */
+.about-link-highlight {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #78350f !important;
+}
+
+.about-link-highlight:hover {
+  background: linear-gradient(135deg, #fcd34d 0%, #fbbf24 100%);
+  color: #78350f !important;
+  transform: translateY(-1px);
+}
+
+.dark .about-link-highlight {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #78350f !important;
+}
+
+.dark .about-link-highlight:hover {
+  background: linear-gradient(135deg, #fcd34d 0%, #fbbf24 100%);
+  color: #78350f !important;
+}
+
+/* Secondary icon-only links */
+.about-links-secondary {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.about-link-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background: var(--gray-100);
+  border-radius: 0.5rem;
+  color: var(--gray-500);
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.about-link-icon:hover {
+  background: var(--gray-200);
+  color: var(--primary-500);
+  transform: translateY(-1px);
+}
+
+.dark .about-link-icon {
+  background: var(--gray-700);
+  color: var(--gray-400);
+}
+
+.dark .about-link-icon:hover {
   background: var(--gray-600);
   color: var(--primary-400);
 }
@@ -1205,3 +1270,164 @@ html {
     min-width: 80px;
   }
 }
+
+/* ============================================
+   Data Backup Section Styles
+   ============================================ */
+
+.backup-section {
+  margin-bottom: 1.5rem;
+}
+
+.backup-section:last-of-type {
+  margin-bottom: 0;
+}
+
+.section-label {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--gray-800);
+  margin-bottom: 0.75rem;
+}
+
+.dark .section-label {
+  color: var(--gray-200);
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: background-color 0.15s ease;
+}
+
+.checkbox-row:hover {
+  background: var(--gray-50);
+}
+
+.dark .checkbox-row:hover {
+  background: var(--gray-700);
+}
+
+.checkbox-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary-500);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.checkbox-row .checkbox-label {
+  color: var(--gray-700);
+  flex: 1;
+}
+
+.dark .checkbox-row .checkbox-label {
+  color: var(--gray-300);
+}
+
+.item-count {
+  font-size: 0.8125rem;
+  color: var(--gray-500);
+  font-weight: 500;
+}
+
+.dark .item-count {
+  color: var(--gray-400);
+}
+
+.divider {
+  height: 1px;
+  background: var(--gray-200);
+  margin: 1.5rem 0;
+}
+
+.dark .divider {
+  background: var(--gray-700);
+}
+
+.import-strategy {
+  margin-bottom: 1rem;
+}
+
+.radio-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: background-color 0.15s ease;
+}
+
+.radio-row:hover {
+  background: var(--gray-50);
+}
+
+.dark .radio-row:hover {
+  background: var(--gray-700);
+}
+
+.radio-row input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 0.125rem;
+  accent-color: var(--primary-500);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.radio-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.radio-label {
+  font-weight: 500;
+  color: var(--gray-800);
+}
+
+.dark .radio-label {
+  color: var(--gray-200);
+}
+
+.radio-hint {
+  font-size: 0.8125rem;
+  color: var(--gray-500);
+}
+
+.dark .radio-hint {
+  color: var(--gray-400);
+}
+
+/* RTL Support for backup section */
+[dir="rtl"] .checkbox-row {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .checkbox-row .checkbox-label {
+  text-align: right;
+}
+
+[dir="rtl"] .radio-row {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .radio-info {
+  text-align: right;
+}
+
+/* Animation delay for backup card (8th card) */
+.settings-card:nth-child(8) { animation-delay: 0.4s; }
+.settings-card:nth-child(9) { animation-delay: 0.45s; }

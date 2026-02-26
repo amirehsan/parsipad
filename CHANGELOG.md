@@ -5,6 +5,48 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2025-02-25
+
+### Added
+- **Welcome/Onboarding Page** - Beautiful first-time setup experience
+  - Feature showcase with 8 feature cards displaying all ParsiPad capabilities
+  - Integrated API key setup for any provider (Claude, Gemini, ChatGPT)
+  - Auto-opens on fresh install to guide new users
+  - Access anytime via "View Welcome Guide" button in Settings
+  - Full i18n support (English & Persian)
+  - Dark mode support
+
+- **Data Backup & Restore** - Export and import your data
+  - Export favorites, translation history, polish history, dictionary history, and cache
+  - Selective export - choose which data types to include
+  - Import with merge or replace strategy
+  - JSON format for easy portability
+  - Item counts displayed next to each export option
+
+- **Clear Cache Confirmation** - Prevent accidental data loss
+  - Confirmation dialog before clearing translation cache
+  - Translated message in both English and Persian
+
+- **Review Prompt Banner** - Encourage users to rate the extension
+  - Non-intrusive banner appears after adding 3+ favorites
+  - Shows in popup footer with "Rate Now" and "Maybe Later" options
+  - Remembers user's choice to not show again
+  - Full i18n support (English & Persian)
+
+### Changed
+- Settings page now includes Data Backup section with export/import functionality
+- Added "View Welcome Guide" button in Settings About section
+- Welcome page opens automatically on first install via service worker
+
+### Technical
+- New `welcome/` directory with welcome.html, welcome.js, welcome.css
+- Extended `lib/storage.js` with `hasCompletedOnboarding()` and `setOnboardingComplete()`
+- Extended `lib/constants.js` with `onboardingComplete` storage key
+- New backup/restore functions in `settings/settings.js`
+- Updated `background/service-worker.js` to open welcome page on install
+- Extended `lib/storage.js` with review prompt state functions
+- Extended `lib/constants.js` with `reviewPromptDismissed` and `reviewPromptClicked` storage keys
+
 ## [2.4.1] - 2025-02-22
 
 ### Fixed
