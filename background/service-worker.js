@@ -2,7 +2,7 @@ import { translate, polish, translateImage, regeneratePolishVariant } from '../l
 import { lookupWord } from '../lib/dictionary.js';
 import { translateDocument, validateFile, readFileContent } from '../lib/document-translator.js';
 import { translationCache } from '../lib/cache.js';
-import { hasApiKey, getDictionaryTranslationSettings, isTranslationCancelled, setTranslationCancelled, getSelectedProvider, getFavorites, addFavorite, removeFavorite, isFavorite } from '../lib/storage.js';
+import { hasApiKey, getDictionaryTranslationSettings, isTranslationCancelled, setTranslationCancelled, getSelectedProvider, getFavorites, addFavorite, removeFavorite, isFavorite, hasCompletedOnboarding } from '../lib/storage.js';
 import { detectLanguageCode } from '../lib/language-detect.js';
 import { addToHistory, addToPolishHistory, addToDictionaryHistory, updatePolishVariant, getPolishHistory } from '../lib/history.js';
 import { ACTIONS, PROVIDER_CONFIGS } from '../lib/constants.js';
@@ -344,9 +344,9 @@ async function handleCheckFavorite(original, saved) {
 }
 
 /**
- * Create context menus on install
+ * Create context menus on install and open welcome page for new installs
  */
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async (details) => {
   // Create context menu for translation
   chrome.contextMenus.create({
     id: 'translate-selection',
@@ -367,6 +367,16 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'Look up in Dictionary',
     contexts: ['selection']
   });
+
+  // Open welcome page on fresh install
+  if (details.reason === 'install') {
+    const hasOnboarded = await hasCompletedOnboarding();
+    if (!hasOnboarded) {
+      chrome.tabs.create({
+        url: chrome.runtime.getURL('welcome/welcome.html')
+      });
+    }
+  }
 });
 
 /**

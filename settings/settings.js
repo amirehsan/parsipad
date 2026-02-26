@@ -14,11 +14,17 @@ import {
   getNewTabEnabled,
   setNewTabEnabled,
   getNewTabPhraseCount,
-  setNewTabPhraseCount
+  setNewTabPhraseCount,
+  getFavorites
 } from '../lib/storage.js';
-import { PROVIDERS, PROVIDER_CONFIGS } from '../lib/constants.js';
+import { PROVIDERS, PROVIDER_CONFIGS, STORAGE_KEYS } from '../lib/constants.js';
 import { translationCache } from '../lib/cache.js';
 import { t, applyTranslations } from '../lib/i18n.js';
+import {
+  getHistory,
+  getPolishHistory,
+  getDictionaryHistory
+} from '../lib/history.js';
 
 // DOM Elements - Language
 const langEnRadio = document.getElementById('lang-en');
@@ -64,6 +70,28 @@ const clearCacheBtn = document.getElementById('clear-cache-btn');
 // DOM Elements - Status
 const apiStatusEl = document.getElementById('api-status');
 
+// DOM Elements - Data Backup
+const exportFavoritesCheckbox = document.getElementById('export-favorites');
+const exportTranslationHistoryCheckbox = document.getElementById('export-translation-history');
+const exportPolishHistoryCheckbox = document.getElementById('export-polish-history');
+const exportDictionaryHistoryCheckbox = document.getElementById('export-dictionary-history');
+const exportCacheCheckbox = document.getElementById('export-cache');
+const exportBtn = document.getElementById('export-btn');
+const importFileInput = document.getElementById('import-file');
+const importBtn = document.getElementById('import-btn');
+const backupStatusEl = document.getElementById('backup-status');
+
+// Count display elements for backup
+const favoritesCountEl = document.getElementById('favorites-count');
+const translationHistoryCountEl = document.getElementById('translation-history-count');
+const polishHistoryCountEl = document.getElementById('polish-history-count');
+const dictionaryHistoryCountEl = document.getElementById('dictionary-history-count');
+const cacheCountExportEl = document.getElementById('cache-count-export');
+
+// Backup constants
+const BACKUP_VERSION = '1.0';
+const EXTENSION_VERSION = '2.5.0';
+
 // State
 let currentLang = 'en';
 let currentProvider = PROVIDERS.CLAUDE;
@@ -80,6 +108,7 @@ async function init() {
   await loadProviderSettings();
   await loadAllApiKeyStatuses();
   await loadCacheStats();
+  await loadDataCounts();
   setupEventListeners();
 }
 
@@ -336,6 +365,27 @@ function setupEventListeners() {
 
   // Clear cache
   clearCacheBtn.addEventListener('click', handleClearCache);
+
+  // Data Backup
+  if (exportBtn) {
+    exportBtn.addEventListener('click', handleExport);
+  }
+  if (importBtn) {
+    importBtn.addEventListener('click', handleImport);
+  }
+  if (importFileInput) {
+    importFileInput.addEventListener('change', processImportFile);
+  }
+
+  // Welcome Guide button
+  const welcomeGuideBtn = document.getElementById('welcome-guide-btn');
+  if (welcomeGuideBtn) {
+    welcomeGuideBtn.addEventListener('click', () => {
+      chrome.tabs.create({
+        url: chrome.runtime.getURL('welcome/welcome.html')
+      });
+    });
+  }
 }
 
 /**
@@ -481,6 +531,11 @@ async function handleClearApiKey(provider) {
  * Handle clear cache button click
  */
 async function handleClearCache() {
+  // Confirm before clearing
+  if (!confirm(t('confirmClearCache', currentLang))) {
+    return;
+  }
+
   await translationCache.clear();
   await loadCacheStats();
   showStatus(t('cacheCleared', currentLang), 'success');
@@ -497,6 +552,330 @@ function showStatus(message, type) {
   setTimeout(() => {
     apiStatusEl.hidden = true;
   }, 3000);
+}
+
+// ============================================
+// Data Backup Functions
+// ============================================
+
+/**
+ * Load and display data counts for export checkboxes
+ */
+async function loadDataCounts() {
+  try {
+    // Favorites count
+    const favorites = await getFavorites();
+    if (favoritesCountEl) {
+      favoritesCountEl.textContent = `(${favorites.length})`;
+    }
+
+    // Translation history count
+    const translationHistory = await getHistory();
+    if (translationHistoryCountEl) {
+      translationHistoryCountEl.textContent = `(${translationHistory.length})`;
+    }
+
+    // Polish history count
+    const polishHistory = await getPolishHistory();
+    if (polishHistoryCountEl) {
+      polishHistoryCountEl.textContent = `(${polishHistory.length})`;
+    }
+
+    // Dictionary history count
+    const dictionaryHistory = await getDictionaryHistory();
+    if (dictionaryHistoryCountEl) {
+      dictionaryHistoryCountEl.textContent = `(${dictionaryHistory.length})`;
+    }
+
+    // Translation cache count
+    const cacheStats = await translationCache.getStats();
+    if (cacheCountExportEl) {
+      cacheCountExportEl.textContent = `(${cacheStats.size})`;
+    }
+  } catch (error) {
+    console.error('Error loading data counts:', error);
+  }
+}
+
+/**
+ * Export selected data to JSON file
+ */
+async function handleExport() {
+  // Check if at least one option is selected
+  const exportOptions = {
+    favorites: exportFavoritesCheckbox?.checked,
+    translationHistory: exportTranslationHistoryCheckbox?.checked,
+    polishHistory: exportPolishHistoryCheckbox?.checked,
+    dictionaryHistory: exportDictionaryHistoryCheckbox?.checked,
+    cache: exportCacheCheckbox?.checked
+  };
+
+  if (!Object.values(exportOptions).some(v => v)) {
+    showBackupStatus(t('noDataSelected', currentLang), 'error');
+    return;
+  }
+
+  try {
+    const exportData = {
+      meta: {
+        version: BACKUP_VERSION,
+        exportedAt: new Date().toISOString(),
+        extensionVersion: EXTENSION_VERSION,
+        source: 'ParsiPad'
+      },
+      data: {}
+    };
+
+    // Gather selected data
+    if (exportOptions.favorites) {
+      exportData.data.favorites = await getFavorites();
+    }
+
+    if (exportOptions.translationHistory) {
+      exportData.data.translationHistory = await getHistory();
+    }
+
+    if (exportOptions.polishHistory) {
+      exportData.data.polishHistory = await getPolishHistory();
+    }
+
+    if (exportOptions.dictionaryHistory) {
+      exportData.data.dictionaryHistory = await getDictionaryHistory();
+    }
+
+    if (exportOptions.cache) {
+      const cacheData = await chrome.storage.local.get([
+        STORAGE_KEYS.translationCache,
+        STORAGE_KEYS.dictionaryCache
+      ]);
+      exportData.data.translationCache = cacheData[STORAGE_KEYS.translationCache] || {};
+      exportData.data.dictionaryCache = cacheData[STORAGE_KEYS.dictionaryCache] || {};
+    }
+
+    // Generate filename with date
+    const date = new Date().toISOString().split('T')[0];
+    const filename = `parsipad-backup-${date}.json`;
+
+    // Create and download file
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showBackupStatus(t('exportSuccess', currentLang), 'success');
+  } catch (error) {
+    console.error('Export error:', error);
+    showBackupStatus(t('importFailed', currentLang), 'error');
+  }
+}
+
+/**
+ * Validate backup file structure
+ * @param {Object} data - Parsed JSON data
+ * @returns {boolean}
+ */
+function validateBackupFile(data) {
+  // Check meta object exists
+  if (!data || typeof data !== 'object') return false;
+  if (!data.meta || typeof data.meta !== 'object') return false;
+  if (!data.meta.source || data.meta.source !== 'ParsiPad') return false;
+  if (!data.meta.version) return false;
+  if (!data.data || typeof data.data !== 'object') return false;
+
+  // Validate data arrays if present
+  if (data.data.favorites && !Array.isArray(data.data.favorites)) return false;
+  if (data.data.translationHistory && !Array.isArray(data.data.translationHistory)) return false;
+  if (data.data.polishHistory && !Array.isArray(data.data.polishHistory)) return false;
+  if (data.data.dictionaryHistory && !Array.isArray(data.data.dictionaryHistory)) return false;
+
+  // Cache should be objects
+  if (data.data.translationCache && typeof data.data.translationCache !== 'object') return false;
+  if (data.data.dictionaryCache && typeof data.data.dictionaryCache !== 'object') return false;
+
+  return true;
+}
+
+/**
+ * Merge arrays by unique identifier
+ * @param {Array} existing - Existing array
+ * @param {Array} imported - Imported array
+ * @param {string} idField - Field to use as unique identifier
+ * @returns {Array}
+ */
+function mergeArraysById(existing, imported, idField = 'id') {
+  const existingIds = new Set(existing.map(item => item[idField]));
+  const newItems = imported.filter(item => !existingIds.has(item[idField]));
+  return [...newItems, ...existing]; // New items first, then existing
+}
+
+/**
+ * Merge cache objects
+ * @param {Object} existing - Existing cache
+ * @param {Object} imported - Imported cache
+ * @returns {Object}
+ */
+function mergeCacheObjects(existing, imported) {
+  return { ...imported, ...existing }; // Existing takes precedence
+}
+
+/**
+ * Handle file import button click
+ */
+function handleImport() {
+  importFileInput?.click();
+}
+
+/**
+ * Process imported file
+ */
+async function processImportFile(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const importedData = JSON.parse(text);
+
+    // Validate file structure
+    if (!validateBackupFile(importedData)) {
+      showBackupStatus(t('invalidBackupFile', currentLang), 'error');
+      importFileInput.value = ''; // Reset file input
+      return;
+    }
+
+    // Get import strategy
+    const strategyRadio = document.querySelector('input[name="import-strategy"]:checked');
+    const strategy = strategyRadio?.value || 'merge';
+    const isReplace = strategy === 'replace';
+
+    let totalImported = 0;
+    const { data } = importedData;
+
+    // Import favorites
+    if (data.favorites && data.favorites.length > 0) {
+      if (isReplace) {
+        await chrome.storage.local.set({ [STORAGE_KEYS.favorites]: data.favorites });
+        totalImported += data.favorites.length;
+      } else {
+        const existing = await getFavorites();
+        const merged = mergeArraysById(existing, data.favorites, 'id');
+        await chrome.storage.local.set({ [STORAGE_KEYS.favorites]: merged });
+        totalImported += data.favorites.length;
+      }
+    }
+
+    // Import translation history
+    if (data.translationHistory && data.translationHistory.length > 0) {
+      if (isReplace) {
+        await chrome.storage.local.set({ [STORAGE_KEYS.translationHistory]: data.translationHistory });
+        totalImported += data.translationHistory.length;
+      } else {
+        const existing = await getHistory();
+        const merged = mergeArraysById(existing, data.translationHistory, 'id');
+        // Limit to 50 items (MAX_HISTORY_SIZE)
+        await chrome.storage.local.set({
+          [STORAGE_KEYS.translationHistory]: merged.slice(0, 50)
+        });
+        totalImported += data.translationHistory.length;
+      }
+    }
+
+    // Import polish history
+    if (data.polishHistory && data.polishHistory.length > 0) {
+      if (isReplace) {
+        await chrome.storage.local.set({ [STORAGE_KEYS.polishHistory]: data.polishHistory });
+        totalImported += data.polishHistory.length;
+      } else {
+        const existing = await getPolishHistory();
+        const merged = mergeArraysById(existing, data.polishHistory, 'id');
+        await chrome.storage.local.set({
+          [STORAGE_KEYS.polishHistory]: merged.slice(0, 50)
+        });
+        totalImported += data.polishHistory.length;
+      }
+    }
+
+    // Import dictionary history
+    if (data.dictionaryHistory && data.dictionaryHistory.length > 0) {
+      if (isReplace) {
+        await chrome.storage.local.set({ [STORAGE_KEYS.dictionaryHistory]: data.dictionaryHistory });
+        totalImported += data.dictionaryHistory.length;
+      } else {
+        const existing = await getDictionaryHistory();
+        const merged = mergeArraysById(existing, data.dictionaryHistory, 'id');
+        await chrome.storage.local.set({
+          [STORAGE_KEYS.dictionaryHistory]: merged.slice(0, 50)
+        });
+        totalImported += data.dictionaryHistory.length;
+      }
+    }
+
+    // Import caches
+    if (data.translationCache) {
+      if (isReplace) {
+        await chrome.storage.local.set({ [STORAGE_KEYS.translationCache]: data.translationCache });
+      } else {
+        const existing = await chrome.storage.local.get(STORAGE_KEYS.translationCache);
+        const merged = mergeCacheObjects(
+          existing[STORAGE_KEYS.translationCache] || {},
+          data.translationCache
+        );
+        await chrome.storage.local.set({ [STORAGE_KEYS.translationCache]: merged });
+      }
+      totalImported += Object.keys(data.translationCache).length;
+    }
+
+    if (data.dictionaryCache) {
+      if (isReplace) {
+        await chrome.storage.local.set({ [STORAGE_KEYS.dictionaryCache]: data.dictionaryCache });
+      } else {
+        const existing = await chrome.storage.local.get(STORAGE_KEYS.dictionaryCache);
+        const merged = mergeCacheObjects(
+          existing[STORAGE_KEYS.dictionaryCache] || {},
+          data.dictionaryCache
+        );
+        await chrome.storage.local.set({ [STORAGE_KEYS.dictionaryCache]: merged });
+      }
+      totalImported += Object.keys(data.dictionaryCache).length;
+    }
+
+    // Refresh UI
+    await loadDataCounts();
+    await loadCacheStats();
+
+    // Show success message
+    const message = t('itemsImported', currentLang).replace('{n}', totalImported);
+    showBackupStatus(message, 'success');
+
+  } catch (error) {
+    console.error('Import error:', error);
+    showBackupStatus(t('importFailed', currentLang), 'error');
+  }
+
+  // Reset file input
+  if (importFileInput) {
+    importFileInput.value = '';
+  }
+}
+
+/**
+ * Show backup status message
+ */
+function showBackupStatus(message, type) {
+  if (!backupStatusEl) return;
+
+  backupStatusEl.textContent = message;
+  backupStatusEl.className = `status-message ${type}`;
+  backupStatusEl.hidden = false;
+
+  setTimeout(() => {
+    backupStatusEl.hidden = true;
+  }, 4000);
 }
 
 // Initialize when DOM is ready
