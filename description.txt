@@ -1,0 +1,62 @@
+ParsiPad - AI-Powered Persian ↔ English Translator
+
+The most powerful Persian-English translator for Chrome! Choose your favorite AI provider (Claude, Gemini, or ChatGPT), bring your own API key, and enjoy seamless translations with advanced learning features.
+
+KEY FEATURES:
+
+🤖 Multi-AI Provider Support
+Choose between Claude (Anthropic), Gemini (Google), or ChatGPT (OpenAI). Use your own API key for complete privacy.
+
+🖼️ Image Translation
+Extract and translate text from images using AI-powered OCR. Perfect for screenshots, photos of signs, menus, or documents.
+
+📚 Grammar Learning
+Learn while you translate! Enable grammar explanations to understand word order, verb conjugations, and idiomatic expressions. Click "Learn More" to access a dedicated grammar page with:
+• Detailed explanations in your target language
+• Multiple examples for each grammar point
+• Compare & contrast between languages
+• Interactive quizzes to test your understanding
+• Save grammar lessons to favorites
+
+✍️ Text Polishing
+Get 3 versions of your text: Professional, Conversational, and Concise. Regenerate any variant for fresh alternatives.
+
+📖 Dictionary Lookup
+Look up words with definitions, phonetics, synonyms, and antonyms. Press Alt+D or right-click any word.
+
+⭐ Favorites & Flashcards
+Star your best translations to save them. Review favorites as interactive flashcards every time you open a new tab.
+
+📄 Document Translation
+Upload TXT files and translate entire documents with progress tracking.
+
+🎯 Quick Access
+• Selection popup: Select text and click floating icons
+• Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary)
+• Right-click menu: Translate or polish from any webpage
+
+💾 Data Backup
+Export and import your favorites, history, and cache to JSON for easy backup or device migration.
+
+🌙 Dark Mode
+Beautiful dark theme that syncs with your system preferences.
+
+🌐 Bilingual Interface
+Full English and Persian (فارسی) interface support.
+
+PRIVACY-FIRST:
+• No data collection
+• No analytics or tracking
+• All data stored locally on your device
+• Direct API calls to your chosen provider
+• Open source
+
+GETTING STARTED:
+1. Install the extension
+2. Get an API key from Claude, Gemini, or ChatGPT
+3. Enter your API key in Settings
+4. Start translating!
+
+Perfect for students, professionals, language learners, and anyone who needs accurate Persian-English translations with the power of modern AI.
+
+Free to use - you only pay for your own API usage (typically just a few cents per day).

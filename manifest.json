@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "ParsiPad - Persian English Translator",
-  "version": "2.5.0",
-  "description": "AI-powered Persian ↔ English translator with text polishing, right-click menu, Alt+T shortcut & dark mode.",
+  "version": "2.6.0",
+  "description": "AI-powered Persian ↔ English translator with grammar learning, image OCR, text polishing, favorites & flashcards. Choose Claude, Gemini, or ChatGPT.",
 
   "permissions": [
     "storage",
@@ -72,7 +72,7 @@
 
   "web_accessible_resources": [
     {
-      "resources": ["icons/*.png"],
+      "resources": ["icons/*.png", "grammar/grammar.html"],
       "matches": ["<all_urls>"]
     }
   ]

@@ -130,6 +130,8 @@ function renderFavorites() {
       emptyMessage.textContent = t('noTranslationFavorites', currentLang) || 'No translation favorites';
     } else if (currentFilter === 'polish') {
       emptyMessage.textContent = t('noPolishFavorites', currentLang) || 'No polish favorites';
+    } else if (currentFilter === 'grammar') {
+      emptyMessage.textContent = t('noGrammarFavorites', currentLang) || 'No grammar favorites';
     } else {
       emptyMessage.textContent = t('noFavoritesYet', currentLang) || 'No favorites yet';
     }
@@ -150,7 +152,10 @@ function renderFavorites() {
  */
 function renderFavoriteCard(item) {
   const timeAgo = formatTimeAgo(item.timestamp);
-  const isRTL = detectRTL(item.saved);
+  // Support both old (original/saved) and new (originalText/savedText) field names
+  const originalText = item.originalText || item.original || '';
+  const savedText = item.savedText || item.saved || '';
+  const isRTL = detectRTL(savedText);
 
   let badges = '';
   if (item.type === 'translation') {
@@ -163,6 +168,17 @@ function renderFavoriteCard(item) {
       <span class="favorite-badge polish">${t('polish', currentLang) || 'Polish'}</span>
       <span class="favorite-badge variant">${escapeHtml(variantLabel)}</span>
     `;
+  } else if (item.type === 'grammar') {
+    const direction = item.direction === 'en-to-fa' ? 'EN → FA' : 'FA → EN';
+    badges = `
+      <span class="favorite-badge grammar">${t('grammarLesson', currentLang) || 'Grammar'}</span>
+      <span class="favorite-badge direction">${direction}</span>
+    `;
+  }
+
+  // Special rendering for grammar lessons
+  if (item.type === 'grammar' && item.lesson) {
+    return renderGrammarCard(item, timeAgo, badges, originalText, savedText, isRTL);
   }
 
   return `
@@ -173,7 +189,7 @@ function renderFavoriteCard(item) {
           <span class="favorite-time">${timeAgo}</span>
         </div>
         <div class="favorite-card-actions">
-          <button class="card-action-btn copy" data-text="${escapeAttr(item.saved)}" title="${t('copyToClipboard', currentLang) || 'Copy'}">
+          <button class="card-action-btn copy" data-text="${escapeAttr(savedText)}" title="${t('copyToClipboard', currentLang) || 'Copy'}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -189,10 +205,56 @@ function renderFavoriteCard(item) {
       </div>
       <div class="favorite-card-original">
         <div class="favorite-card-original-label">${t('original', currentLang) || 'Original'}</div>
-        ${escapeHtml(item.original)}
+        ${escapeHtml(originalText)}
       </div>
       <div class="favorite-card-saved" dir="${isRTL ? 'rtl' : 'ltr'}">
-        ${escapeHtml(item.saved)}
+        ${escapeHtml(savedText)}
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Render a grammar lesson card
+ */
+function renderGrammarCard(item, timeAgo, badges, originalText, savedText, isRTL) {
+  const lessonTitle = item.lesson?.title || t('grammarLesson', currentLang) || 'Grammar Lesson';
+  const pointsCount = item.lesson?.points?.length || 0;
+
+  // For grammar, original and translation have opposite directions
+  // EN→FA: original is English (LTR), translation is Persian (RTL)
+  // FA→EN: original is Persian (RTL), translation is English (LTR)
+  const originalIsRTL = detectRTL(originalText);
+  const translationIsRTL = isRTL; // Already calculated from savedText
+
+  return `
+    <div class="favorite-card grammar-card" data-id="${escapeAttr(item.id)}">
+      <div class="favorite-card-header">
+        <div class="favorite-card-meta">
+          ${badges}
+          <span class="favorite-time">${timeAgo}</span>
+        </div>
+        <div class="favorite-card-actions">
+          <button class="card-action-btn delete" data-id="${escapeAttr(item.id)}" title="${t('removeFromFavorites', currentLang) || 'Remove'}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="grammar-lesson-title${translationIsRTL ? ' persian-text' : ''}" dir="${translationIsRTL ? 'rtl' : 'ltr'}">
+        ${escapeHtml(lessonTitle)}
+      </div>
+      <div class="favorite-card-original${originalIsRTL ? ' persian-text' : ''}" dir="${originalIsRTL ? 'rtl' : 'ltr'}">
+        <div class="favorite-card-original-label">${t('original', currentLang) || 'Original'}</div>
+        ${escapeHtml(originalText)}
+      </div>
+      <div class="favorite-card-saved${translationIsRTL ? ' persian-text' : ''}" dir="${translationIsRTL ? 'rtl' : 'ltr'}">
+        ${escapeHtml(savedText)}
+      </div>
+      <div class="grammar-points-count">
+        ${pointsCount} ${t('grammarPoints', currentLang) || 'grammar points'}
       </div>
     </div>
   `;

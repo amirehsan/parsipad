@@ -165,9 +165,9 @@ nav p {
   height: 1.25rem;
 }
 
-.hidden { display: none !important; }
+.hidden { display: none; }
 .block { display: block; }
-.dark .dark\:block { display: block; }
+.dark .dark\:block { display: block !important; }
 .dark .dark\:hidden { display: none !important; }
 
 /* Main Content */
