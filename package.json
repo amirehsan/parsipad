@@ -4,7 +4,8 @@
   "description": "AI-powered Persian ↔ English translation & text polishing browser extension with dictionary lookup and document translation",
   "type": "module",
   "scripts": {
-    "lint": "echo 'No linter configured'",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "test": "echo 'No tests configured'"
   },
   "keywords": [
@@ -30,5 +31,9 @@
   "homepage": "https://github.com/amirehsan/parsipad#readme",
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.3",
+    "globals": "^17.3.0"
   }
 }
