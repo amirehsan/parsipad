@@ -369,8 +369,8 @@ function showTranslation(result, originalText) {
   // Store translation data for favorites
   currentTranslationData = {
     type: 'translation',
-    original: originalText,
-    saved: translation,
+    originalText: originalText,
+    savedText: translation,
     direction: displayDirection || formatDirectionBadge(direction),
     provider: provider
   };
@@ -475,8 +475,8 @@ async function checkTranslationFavoriteStatus() {
   try {
     const response = await chrome.runtime.sendMessage({
       action: 'CHECK_FAVORITE',
-      original: currentTranslationData.original,
-      saved: currentTranslationData.saved
+      originalText: currentTranslationData.originalText,
+      savedText: currentTranslationData.savedText
     });
 
     if (response.isFavorite) {
@@ -511,8 +511,8 @@ async function handleTranslationFavorite() {
       // Remove from favorites
       await chrome.runtime.sendMessage({
         action: 'REMOVE_FAVORITE',
-        original: currentTranslationData.original,
-        saved: currentTranslationData.saved
+        originalText: currentTranslationData.originalText,
+        savedText: currentTranslationData.savedText
       });
 
       favBtn.classList.remove('favorited');
@@ -666,7 +666,7 @@ function showPolishResults(result) {
 
   // Store polish data for favorites
   const polishData = {
-    original: currentPolishOriginalText,
+    originalText: currentPolishOriginalText,
     provider: provider,
     variants: { professional, conversational, concise }
   };
@@ -884,8 +884,8 @@ async function checkPolishFavoriteStatus(polishData) {
     try {
       const response = await chrome.runtime.sendMessage({
         action: 'CHECK_FAVORITE',
-        original: polishData.original,
-        saved: polishData.variants[variant]
+        originalText: polishData.originalText,
+        savedText: polishData.variants[variant]
       });
 
       if (response.isFavorite) {
@@ -920,8 +920,8 @@ async function handlePolishFavorite(btn, polishData) {
       // Remove from favorites
       await chrome.runtime.sendMessage({
         action: 'REMOVE_FAVORITE',
-        original: polishData.original,
-        saved: variantText
+        originalText: polishData.originalText,
+        savedText: variantText
       });
 
       btn.classList.remove('favorited');
@@ -936,8 +936,8 @@ async function handlePolishFavorite(btn, polishData) {
         action: 'ADD_FAVORITE',
         item: {
           type: 'polish',
-          original: polishData.original,
-          saved: variantText,
+          originalText: polishData.originalText,
+          savedText: variantText,
           variant: variant,
           provider: polishData.provider
         }
@@ -1105,9 +1105,9 @@ function showDictionaryResult(result) {
   // Store dictionary data for favorites
   if (translation) {
     currentDictionaryData = {
-      type: 'translation',
-      original: word,
-      saved: translation,
+      type: 'dictionary',
+      originalText: word,
+      savedText: translation,
       direction: isTargetRTL ? 'EN → FA' : 'FA → EN',
       provider: provider
     };
@@ -1242,8 +1242,8 @@ async function checkDictionaryFavoriteStatus() {
   try {
     const response = await chrome.runtime.sendMessage({
       action: 'CHECK_FAVORITE',
-      original: currentDictionaryData.original,
-      saved: currentDictionaryData.saved
+      originalText: currentDictionaryData.originalText,
+      savedText: currentDictionaryData.savedText
     });
 
     if (response.isFavorite) {
@@ -1278,8 +1278,8 @@ async function handleDictionaryFavorite() {
       // Remove from favorites
       await chrome.runtime.sendMessage({
         action: 'REMOVE_FAVORITE',
-        original: currentDictionaryData.original,
-        saved: currentDictionaryData.saved
+        originalText: currentDictionaryData.originalText,
+        savedText: currentDictionaryData.savedText
       });
 
       favBtn.classList.remove('favorited');
