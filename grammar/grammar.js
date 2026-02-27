@@ -26,6 +26,7 @@ let originalText = '';
 let translation = '';
 let direction = '';
 let isSaved = false;
+let isSpeaking = false;
 
 /**
  * Initialize the grammar page
@@ -91,6 +92,103 @@ function setupEventListeners() {
   backBtn.addEventListener('click', () => window.close());
   saveBtn.addEventListener('click', handleSave);
   retryBtn.addEventListener('click', loadLesson);
+
+  // Initialize TTS
+  initTTS();
+}
+
+/**
+ * Initialize Text-to-Speech functionality
+ */
+function initTTS() {
+  // Check if SpeechSynthesis is supported
+  if (!('speechSynthesis' in window)) {
+    // Hide TTS buttons if not supported
+    document.querySelectorAll('.tts-btn').forEach(btn => {
+      btn.hidden = true;
+    });
+    return;
+  }
+
+  // Set up TTS button handlers (will be called after content loads)
+  document.addEventListener('click', (e) => {
+    const ttsBtn = e.target.closest('.tts-btn');
+    if (!ttsBtn) return;
+
+    const target = ttsBtn.dataset.target;
+    let text = '';
+    let lang = '';
+
+    if (target === 'original') {
+      text = originalText;
+      // Original language: for en-to-fa, original is English; for fa-to-en, original is Persian
+      lang = (direction === 'en-to-fa' || direction === 'en-fa') ? 'en' : 'fa';
+    } else if (target === 'translation') {
+      text = translation;
+      // Translation language: for en-to-fa, translation is Persian; for fa-to-en, translation is English
+      lang = (direction === 'en-to-fa' || direction === 'en-fa') ? 'fa' : 'en';
+    }
+
+    if (text) {
+      speakText(text, lang, ttsBtn);
+    }
+  });
+}
+
+/**
+ * Speak text using SpeechSynthesis API
+ */
+function speakText(text, lang, button) {
+  // If already speaking, stop
+  if (isSpeaking) {
+    speechSynthesis.cancel();
+    isSpeaking = false;
+    updateTTSButtonState(button, false);
+    return;
+  }
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = lang === 'fa' ? 'fa-IR' : 'en-US';
+
+  // Find a suitable voice
+  const voices = speechSynthesis.getVoices();
+  const langCode = lang === 'fa' ? 'fa' : 'en';
+  const voice = voices.find(v => v.lang.startsWith(langCode));
+  if (voice) {
+    utterance.voice = voice;
+  }
+
+  utterance.onstart = () => {
+    isSpeaking = true;
+    updateTTSButtonState(button, true);
+  };
+
+  utterance.onend = () => {
+    isSpeaking = false;
+    updateTTSButtonState(button, false);
+  };
+
+  utterance.onerror = () => {
+    isSpeaking = false;
+    updateTTSButtonState(button, false);
+  };
+
+  speechSynthesis.speak(utterance);
+}
+
+/**
+ * Update TTS button visual state
+ */
+function updateTTSButtonState(button, speaking) {
+  if (!button) return;
+
+  if (speaking) {
+    button.classList.add('speaking');
+    button.setAttribute('aria-pressed', 'true');
+  } else {
+    button.classList.remove('speaking');
+    button.setAttribute('aria-pressed', 'false');
+  }
 }
 
 /**
@@ -267,16 +365,33 @@ function createGrammarPointElement(point, number) {
   const div = document.createElement('div');
   div.className = 'grammar-point';
 
+  // Determine if content is RTL (Persian)
+  const contentIsRtl = direction === 'en-to-fa' || direction === 'en-fa';
+
   div.innerHTML = `
     <div class="grammar-point-header">
       <span class="grammar-point-number">${number}</span>
       <h3 class="grammar-point-title">${escapeHtml(point.title)}</h3>
+      ${point.register ? createRegisterBadge(point.register) : ''}
     </div>
     <div class="grammar-point-content">
       <!-- Explanation -->
       <div class="explanation-section">
         <p class="explanation-text">${escapeHtml(point.explanation)}</p>
       </div>
+
+      <!-- Register Info (if has alternative) -->
+      ${point.register && point.register.alternative ? `
+        <div class="register-info">
+          <span class="register-note">${escapeHtml(point.register.note || '')}</span>
+          ${point.register.alternative ? `
+            <div class="register-alternative">
+              <span class="register-alt-label">${contentIsRtl ? 'شکل دیگر:' : 'Alternative:'}</span>
+              <span class="register-alt-text">${escapeHtml(point.register.alternative)}</span>
+            </div>
+          ` : ''}
+        </div>
+      ` : ''}
 
       <!-- Examples -->
       ${point.examples && point.examples.length > 0 ? `
@@ -291,58 +406,51 @@ function createGrammarPointElement(point, number) {
             ${point.examples.map(ex => `
               <div class="example-item">
                 <div class="example-source">${highlightText(escapeHtml(ex.source), ex.highlight)}</div>
-                <div class="example-target">${highlightText(escapeHtml(ex.target), ex.highlight)}</div>
+                <div class="example-target">
+                  ${highlightText(escapeHtml(ex.target), ex.highlight)}
+                  ${ex.transliteration ? `<span class="transliteration">${escapeHtml(ex.transliteration)}</span>` : ''}
+                </div>
               </div>
             `).join('')}
           </div>
         </div>
       ` : ''}
 
-      <!-- Compare & Contrast -->
-      ${point.compareContrast ? `
-        <div class="compare-section">
-          <h4 class="section-title">
-            <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
-            </svg>
-            <span data-i18n="compareContrast">${t('compareContrast', currentLang)}</span>
-          </h4>
-          <div class="compare-table">
-            <div class="compare-column">
-              <div class="compare-label" data-i18n="sourceLanguage">${t('sourceLanguage', currentLang)}</div>
-              <div class="compare-text">${escapeHtml(point.compareContrast.sourceLanguage)}</div>
-            </div>
-            <div class="compare-column">
-              <div class="compare-label" data-i18n="targetLanguage">${t('targetLanguage', currentLang)}</div>
-              <div class="compare-text">${escapeHtml(point.compareContrast.targetLanguage)}</div>
-            </div>
+      <!-- Compare & Contrast (Collapsible) -->
+      ${point.compareContrast ? createCollapsibleSection(
+        t('compareContrast', currentLang),
+        `<div class="compare-table">
+          <div class="compare-column">
+            <div class="compare-label" data-i18n="sourceLanguage">${t('sourceLanguage', currentLang)}</div>
+            <div class="compare-text">${escapeHtml(point.compareContrast.sourceLanguage)}</div>
           </div>
-        </div>
-      ` : ''}
+          <div class="compare-column">
+            <div class="compare-label" data-i18n="targetLanguage">${t('targetLanguage', currentLang)}</div>
+            <div class="compare-text">${escapeHtml(point.compareContrast.targetLanguage)}</div>
+          </div>
+        </div>`,
+        'compare',
+        true
+      ) : ''}
 
-      <!-- Common Mistakes -->
-      ${point.commonMistakes && point.commonMistakes.length > 0 ? `
-        <div class="mistakes-section">
-          <h4 class="section-title">
-            <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-            </svg>
-            <span data-i18n="commonMistakes">${t('commonMistakes', currentLang)}</span>
-          </h4>
-          <div class="mistakes-list">
-            ${point.commonMistakes.map(mistake => `
-              <div class="mistake-item">
-                <svg class="mistake-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="15" y1="9" x2="9" y2="15"/>
-                  <line x1="9" y1="9" x2="15" y2="15"/>
-                </svg>
-                <span>${escapeHtml(mistake)}</span>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      ` : ''}
+      <!-- Common Mistakes (Collapsible) -->
+      ${point.commonMistakes && point.commonMistakes.length > 0 ? createCollapsibleSection(
+        t('commonMistakes', currentLang),
+        `<div class="mistakes-list">
+          ${point.commonMistakes.map(mistake => `
+            <div class="mistake-item">
+              <svg class="mistake-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+              </svg>
+              <span>${escapeHtml(mistake)}</span>
+            </div>
+          `).join('')}
+        </div>`,
+        'mistakes',
+        true
+      ) : ''}
 
       <!-- Quiz -->
       ${point.quiz ? createQuizHTML(point.quiz, number) : ''}
@@ -358,9 +466,71 @@ function createGrammarPointElement(point, number) {
 }
 
 /**
+ * Create register badge HTML
+ */
+function createRegisterBadge(register) {
+  if (!register || !register.level) return '';
+
+  const levelLabels = {
+    formal: { en: 'Formal', fa: 'رسمی' },
+    informal: { en: 'Informal', fa: 'محاوره‌ای' },
+    neutral: { en: 'Neutral', fa: 'معمولی' }
+  };
+
+  const contentIsRtl = direction === 'en-to-fa' || direction === 'en-fa';
+  const label = contentIsRtl
+    ? levelLabels[register.level]?.fa || register.level
+    : levelLabels[register.level]?.en || register.level;
+
+  return `<span class="register-badge register-${register.level}" title="${escapeHtml(register.note || '')}">${label}</span>`;
+}
+
+/**
+ * Create collapsible section HTML
+ */
+function createCollapsibleSection(title, content, type, defaultOpen = true) {
+  const iconMap = {
+    compare: `<svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
+    </svg>`,
+    mistakes: `<svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+    </svg>`
+  };
+
+  return `
+    <details class="collapsible-section collapsible-${type}" ${defaultOpen ? 'open' : ''}>
+      <summary class="collapsible-header">
+        <div class="collapsible-title">
+          ${iconMap[type] || ''}
+          <span>${title}</span>
+        </div>
+        <svg class="collapsible-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+        </svg>
+      </summary>
+      <div class="collapsible-content">
+        ${content}
+      </div>
+    </details>
+  `;
+}
+
+/**
  * Create quiz HTML
  */
 function createQuizHTML(quiz, pointNumber) {
+  // Handle both old format (string options) and new format (object options with explanations)
+  const getOptionText = (option) => {
+    if (typeof option === 'string') return option;
+    return option.text || '';
+  };
+
+  const getOptionExplanation = (option) => {
+    if (typeof option === 'string') return '';
+    return option.explanation || '';
+  };
+
   return `
     <div class="quiz-section" data-quiz="${pointNumber}">
       <h4 class="section-title">
@@ -372,9 +542,9 @@ function createQuizHTML(quiz, pointNumber) {
       <p class="quiz-question">${escapeHtml(quiz.question)}</p>
       <div class="quiz-options">
         ${quiz.options.map((option, idx) => `
-          <div class="quiz-option" data-index="${idx}">
+          <div class="quiz-option" data-index="${idx}" data-explanation="${escapeHtml(getOptionExplanation(option))}">
             <span class="quiz-radio"></span>
-            <span class="quiz-option-text">${escapeHtml(option)}</span>
+            <span class="quiz-option-text">${escapeHtml(getOptionText(option))}</span>
           </div>
         `).join('')}
       </div>
@@ -420,6 +590,14 @@ function setupQuizInteractions(container, quiz, pointNumber) {
     answered = true;
     const isCorrect = selectedIndex === quiz.correctIndex;
 
+    // Get the explanation for the selected option
+    const selectedOption = options[selectedIndex];
+    const selectedExplanation = selectedOption?.dataset.explanation || '';
+
+    // Get the explanation for the correct option (for wrong answers)
+    const correctOption = options[quiz.correctIndex];
+    const correctExplanation = correctOption?.dataset.explanation || '';
+
     options.forEach((option, idx) => {
       option.classList.remove('selected');
       if (idx === quiz.correctIndex) {
@@ -431,9 +609,28 @@ function setupQuizInteractions(container, quiz, pointNumber) {
 
     feedback.hidden = false;
     feedback.className = `quiz-feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+
+    // Use per-option explanation if available, otherwise fall back to global explanation
+    let explanationText = '';
+    if (isCorrect) {
+      // For correct answer: show the correct option's explanation or global explanation
+      explanationText = selectedExplanation || quiz.explanation || '';
+    } else {
+      // For wrong answer: show why the selected answer is wrong, then why the correct one is right
+      if (selectedExplanation) {
+        explanationText = selectedExplanation;
+        if (correctExplanation) {
+          explanationText += `<br><br><strong>${t('correctAnswer', currentLang) || 'Correct answer'}:</strong> ${escapeHtml(correctExplanation)}`;
+        }
+      } else {
+        // Fall back to global explanation
+        explanationText = quiz.explanation || '';
+      }
+    }
+
     feedback.innerHTML = `
       <strong>${isCorrect ? t('correct', currentLang) : t('incorrect', currentLang)}</strong>
-      <div class="quiz-explanation">${escapeHtml(quiz.explanation)}</div>
+      <div class="quiz-explanation">${explanationText}</div>
     `;
 
     checkBtn.hidden = true;

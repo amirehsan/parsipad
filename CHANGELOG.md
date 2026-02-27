@@ -5,6 +5,42 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-02-26
+
+### Added
+- **Grammar Learning UX Improvements** - Enhanced grammar learning experience
+  - **Skeleton UI Loader** - Beautiful shimmer animation during lesson generation instead of plain spinner
+  - **Text-to-Speech (TTS)** - Listen to original text and translation with speaker buttons
+    - Supports both English and Persian voices
+    - Click to play/pause with visual feedback
+    - Graceful fallback when TTS unavailable
+  - **Transliteration (Pinglish)** - Phonetic romanization for Persian text in examples
+    - Helps English speakers read Persian script
+    - Consistent romanization system (aa, kh, gh, sh, zh, ch)
+  - **Register/Formality Badges** - Visual indicators for language register
+    - Formal (رسمی), Informal (محاوره‌ای), Neutral (معمولی) badges
+    - Alternative register expressions when meaningfully different
+  - **Collapsible Sections** - Reduce cognitive overload
+    - Compare & Contrast and Common Mistakes sections are now expandable
+    - Default open but can be collapsed for cleaner view
+  - **Per-Option Quiz Explanations** - Educational feedback for each quiz answer
+    - Wrong answers show why that specific option is incorrect
+    - Explains common L1-interference mistakes
+    - Correct answer shows additional context
+
+### Changed
+- **Context-Driven Grammar Analysis** - Lessons now reference specific words from user's input
+  - Explanations dissect exact syntax used in the provided sentence
+  - No more generic grammar rules - everything tied to actual text
+- **Enhanced Quiz Feedback** - Shows targeted explanation for selected answer
+  - On wrong answer: shows why it's wrong + why correct answer is right
+
+### Technical
+- Updated `GRAMMAR_LEARNING_PROMPT` with transliteration, register, and per-option explanations
+- New CSS styles for skeleton UI, TTS buttons, transliteration, register badges, collapsibles
+- Added `createCollapsibleSection()`, `createRegisterBadge()`, TTS functions in grammar.js
+- Extended i18n with `correctAnswer` translation key
+
 ## [2.6.0] - 2026-02-26
 
 ### Added
