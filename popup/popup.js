@@ -110,7 +110,6 @@ const statOutputTokens = document.getElementById('stat-output-tokens');
 const resetStatsBtn = document.getElementById('reset-stats-btn');
 // Favorites elements
 const favoriteTranslationBtn = document.getElementById('favorite-translation-btn');
-const favoritesLinkSection = document.getElementById('favorites-link-section');
 const viewFavoritesBtn = document.getElementById('view-favorites-btn');
 const favoritesCount = document.getElementById('favorites-count');
 // Review prompt elements
@@ -413,6 +412,33 @@ function setupEventListeners() {
   clearDictHistoryBtn.addEventListener('click', handleClearDictionaryHistory);
   dictCopyBtn.addEventListener('click', handleDictCopy);
 
+  // History toggle handlers (collapsible sections)
+  const historyToggle = document.getElementById('history-toggle');
+  const polishHistoryToggle = document.getElementById('polish-history-toggle');
+  const dictHistoryToggle = document.getElementById('dict-history-toggle');
+
+  if (historyToggle) {
+    historyToggle.addEventListener('click', (e) => {
+      // Don't toggle if clicking action buttons
+      if (e.target.closest('.history-actions')) return;
+      toggleHistorySection(historyToggle, historyList);
+    });
+  }
+
+  if (polishHistoryToggle) {
+    polishHistoryToggle.addEventListener('click', (e) => {
+      if (e.target.closest('.history-actions')) return;
+      toggleHistorySection(polishHistoryToggle, polishHistoryList);
+    });
+  }
+
+  if (dictHistoryToggle) {
+    dictHistoryToggle.addEventListener('click', (e) => {
+      if (e.target.closest('.history-actions')) return;
+      toggleHistorySection(dictHistoryToggle, dictionaryHistoryList);
+    });
+  }
+
   // Document buttons
   selectFileBtn.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', handleFileSelect);
@@ -427,6 +453,12 @@ function setupEventListeners() {
   removeImageBtn.addEventListener('click', clearImage);
   translateImageBtn.addEventListener('click', handleImageTranslate);
   imageCopyBtn.addEventListener('click', handleImageCopy);
+
+  // Translate Page button
+  const translatePageBtn = document.getElementById('translate-page-btn');
+  if (translatePageBtn) {
+    translatePageBtn.addEventListener('click', handleTranslatePage);
+  }
 
   // Clipboard paste for images
   document.addEventListener('paste', handlePaste);
@@ -824,6 +856,22 @@ async function handlePolishCopy(btn) {
     }, 1500);
   } catch (error) {
     showError('Failed to copy to clipboard');
+  }
+}
+
+/**
+ * Toggle a collapsible history section
+ * @param {HTMLElement} toggleEl - The toggle header element
+ * @param {HTMLElement} listEl - The history list element to show/hide
+ */
+function toggleHistorySection(toggleEl, listEl) {
+  const isExpanded = toggleEl.classList.contains('expanded');
+  if (isExpanded) {
+    toggleEl.classList.remove('expanded');
+    listEl.hidden = true;
+  } else {
+    toggleEl.classList.add('expanded');
+    listEl.hidden = false;
   }
 }
 
@@ -1594,13 +1642,13 @@ async function loadFavoritesCount() {
     if (favorites.length > 0) {
       favoritesCount.textContent = favorites.length;
       favoritesCount.hidden = false;
-      favoritesLinkSection.hidden = false;
+      viewFavoritesBtn.hidden = false;
     } else {
       favoritesCount.hidden = true;
-      favoritesLinkSection.hidden = true;
+      viewFavoritesBtn.hidden = true;
     }
   } catch (error) {
-    favoritesLinkSection.hidden = true;
+    if (viewFavoritesBtn) viewFavoritesBtn.hidden = true;
   }
 }
 
@@ -1881,6 +1929,45 @@ async function handleReviewDismiss() {
     }
   } catch (error) {
     // Silently handle errors
+  }
+}
+
+// ============================================
+// Page Translation Functions
+// ============================================
+
+/**
+ * Handle translate page button click
+ * Sends message to content script to start page translation
+ */
+async function handleTranslatePage() {
+  const translatePageBtn = document.getElementById('translate-page-btn');
+  if (!translatePageBtn) return;
+
+  // Set loading state
+  translatePageBtn.disabled = true;
+  translatePageBtn.classList.add('loading');
+
+  try {
+    // Get active tab
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) {
+      showError('No active tab found');
+      return;
+    }
+
+    // Send message to content script
+    await chrome.tabs.sendMessage(tab.id, {
+      action: 'TRANSLATE_PAGE'
+    });
+
+    // Close popup after triggering (user will see progress on page)
+    window.close();
+  } catch (error) {
+    showError(error.message || 'Failed to start page translation');
+  } finally {
+    translatePageBtn.disabled = false;
+    translatePageBtn.classList.remove('loading');
   }
 }
 

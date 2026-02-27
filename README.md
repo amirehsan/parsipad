@@ -30,11 +30,12 @@
 ### Core Translation
 - **Multi-AI Provider Support** - Choose between Claude, Gemini, or ChatGPT
 - **AI-Powered Translation** - Accurate, context-aware translations using your preferred AI
+- **Full Page Translation** - Translate entire webpages with one click (NEW in v2.7)
 - **Image Translation** - Extract and translate text from images using OCR
 - **Document Translation** - Upload and translate TXT files with progress tracking
 - **Text Polishing** - Get 3 versions: Professional, Conversational, and Concise
 
-### Grammar Learning (NEW in v2.6)
+### Grammar Learning (NEW in v2.7)
 - **Grammar Explanations** - Learn grammar while translating with detailed explanations
 - **Grammar Learning Page** - Dedicated page with comprehensive lessons
   - Explanations in target language (Persian for EN→FA, English for FA→EN)
@@ -51,8 +52,8 @@
 
 ### Quick Access
 - **Selection Popup** - Quick action icons when selecting text on webpages
-- **Keyboard Shortcuts** - `Alt+T` to translate, `Alt+D` for dictionary lookup
-- **Right-Click Menu** - Translate, polish, or look up from any webpage
+- **Keyboard Shortcuts** - `Alt+T` to translate, `Alt+D` for dictionary, `Alt+P` to translate page
+- **Right-Click Menu** - Translate, polish, look up, or translate page from any webpage
 
 ### Settings & Data
 - **Data Backup & Restore** - Export and import favorites, history, and cache
@@ -193,6 +194,16 @@ Learn vocabulary every time you open a new tab:
    - `Space` - Flip card
    - `C` - Copy text
    - `R` - Refresh with different favorites
+
+### Page Translation (NEW in v2.7)
+
+Translate entire webpages:
+1. Right-click on any webpage and select "Translate this page"
+   - Or press `Alt+P`
+2. Watch the progress as text chunks are translated
+3. Use the floating toggle button to switch between original and translated text
+4. Persian content uses Vazirmatn font for optimal readability
+5. Cancel at any time with the cancel button
 
 ### Data Backup & Restore (NEW in v2.5)
 
