@@ -186,15 +186,18 @@ function renderCurrentCard() {
   cardBadgeBack.textContent = badgeInfo.text;
   cardBadgeBack.className = `flashcard-badge ${badgeInfo.type}`;
 
-  // Update text content
-  cardSaved.textContent = item.saved;
-  cardSaved.dir = detectRTL(item.saved) ? 'rtl' : 'ltr';
+  // Update text content (support both new and legacy field names)
+  const savedText = item.savedText || item.saved;
+  const originalText = item.originalText || item.original;
 
-  cardOriginal.textContent = item.original;
-  cardOriginal.dir = detectRTL(item.original) ? 'rtl' : 'ltr';
+  cardSaved.textContent = savedText;
+  cardSaved.dir = detectRTL(savedText) ? 'rtl' : 'ltr';
 
-  cardSavedBack.textContent = item.saved;
-  cardSavedBack.dir = detectRTL(item.saved) ? 'rtl' : 'ltr';
+  cardOriginal.textContent = originalText;
+  cardOriginal.dir = detectRTL(originalText) ? 'rtl' : 'ltr';
+
+  cardSavedBack.textContent = savedText;
+  cardSavedBack.dir = detectRTL(savedText) ? 'rtl' : 'ltr';
 
   // Update progress indicator
   currentCardEl.textContent = currentIndex + 1;

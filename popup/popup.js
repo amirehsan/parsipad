@@ -1707,8 +1707,8 @@ async function handleTranslationFavorite() {
         action: ACTIONS.ADD_FAVORITE,
         item: {
           type: 'translation',
-          original,
-          saved,
+          originalText: original,
+          savedText: saved,
           direction,
           provider: providerId
         }
@@ -1768,8 +1768,8 @@ async function handlePolishFavorite(btn) {
         action: ACTIONS.ADD_FAVORITE,
         item: {
           type: 'polish',
-          original,
-          saved,
+          originalText: original,
+          savedText: saved,
           variant: version,
           provider: providerId
         }

@@ -54,13 +54,13 @@ async function handleMessage(message, sender) {
       return handleAddFavorite(message.item);
 
     case ACTIONS.REMOVE_FAVORITE:
-      return handleRemoveFavorite(message.id, message.original, message.saved);
+      return handleRemoveFavorite(message.id, message.originalText, message.savedText);
 
     case ACTIONS.GET_FAVORITES:
       return { favorites: await getFavorites() };
 
     case ACTIONS.CHECK_FAVORITE:
-      return handleCheckFavorite(message.original, message.saved);
+      return handleCheckFavorite(message.originalText, message.savedText);
 
     case ACTIONS.CHECK_API_KEY:
       return { hasApiKey: await hasApiKey() };
@@ -330,18 +330,18 @@ async function handleAddFavorite(item) {
  * Handle remove favorite request
  * @param {string} id - Favorite ID to remove (optional)
  * @param {string} original - Original text (optional, used with saved)
- * @param {string} saved - Saved text (optional, used with original)
+ * @param {string} savedText - Saved text (optional, used with originalText)
  * @returns {Promise<Object>}
  */
-async function handleRemoveFavorite(id, original, saved) {
+async function handleRemoveFavorite(id, originalText, savedText) {
   if (id) {
     const removed = await removeFavorite(id);
     return { success: removed };
   }
 
   // Remove by original and saved text
-  if (original && saved) {
-    const favorite = await isFavorite(original, saved);
+  if (originalText && savedText) {
+    const favorite = await isFavorite(originalText, savedText);
     if (favorite) {
       const removed = await removeFavorite(favorite.id);
       return { success: removed };
@@ -353,12 +353,12 @@ async function handleRemoveFavorite(id, original, saved) {
 
 /**
  * Handle check favorite request
- * @param {string} original - Original text
- * @param {string} saved - Saved text
+ * @param {string} originalText - Original text
+ * @param {string} savedText - Saved text
  * @returns {Promise<Object>}
  */
-async function handleCheckFavorite(original, saved) {
-  const favorite = await isFavorite(original, saved);
+async function handleCheckFavorite(originalText, savedText) {
+  const favorite = await isFavorite(originalText, savedText);
   return { isFavorite: !!favorite, favorite };
 }
 

@@ -4,67 +4,135 @@
 ParsiPad - Persian English Translator
 
 ## Short Description (132 chars max)
-AI-powered Persian ↔ English translator with dictionary, document translation, text polishing, Alt+T/Alt+D shortcuts & dark mode.
+Learn Persian while you translate. Full page translation, grammar lessons, flashcards. Choose Claude, Gemini, or ChatGPT
 
 ## Detailed Description
 
 ParsiPad is a powerful AI-powered translation extension that makes Persian-English translation seamless and intelligent.
 
-🌐 **Instant Translation**
-Select any text on any webpage and get accurate Persian ↔ English translations instantly. ParsiPad automatically detects the language and translates accordingly.
+Version 2.7.0:
+• Full Page Translation - Translate entire webpages with one click (Alt+P)
+• Floating Toggle Button - Switch between original and translated text
+• Vazirmatn Font - Persian translations display with optimal readability
+• Grammar Learning Page - Interactive lessons with quizzes, TTS, and transliteration
+• Text-to-Speech - Listen to original text and translations in English or Persian
+• Transliteration (Pinglish) - Phonetic romanization helps you read Persian script
+• Register Badges - See formality levels (Formal, Informal, Neutral) for expressions
+• Keyboard Shortcuts Reference - New section in Settings page
+
+🤖 **Choose Your AI**
+Pick your preferred AI provider:
+• Claude (Anthropic) - Excellent for nuanced translations
+• Gemini (Google) - Fast and efficient
+• ChatGPT (OpenAI) - Versatile and reliable
+Switch providers anytime in Settings!
+
+🌐 **Full Page Translation** (NEW!)
+Translate entire webpages instantly:
+• Right-click "Translate this page" or press Alt+P
+• Smart chunking for reliable translation
+• Progress overlay with real-time status
+• Toggle button to switch between original/translated
+• Vazirmatn font for beautiful Persian text
+• Cancel anytime
+
+🎓 **Grammar Learning**
+Master grammar while you translate:
+• Dedicated grammar learning page with detailed explanations
+• Interactive quizzes with educational feedback for each answer
+• Text-to-Speech - hear correct pronunciation
+• Transliteration - read Persian script phonetically (Pinglish)
+• Register badges show formal vs informal usage
+• Compare & Contrast sections for English/Persian differences
+• Common mistakes section to avoid typical errors
+• Save grammar lessons to Favorites for review
+
+🖼️ **Image Translation**
+Extract and translate text from images:
+• Upload images or paste from clipboard
+• OCR extracts text automatically
+• Supports JPG, PNG, WebP (up to 5MB)
 
 ✨ **Smart Text Polishing**
 Not just translation! Polish your text in three styles:
 • Professional - formal, business-ready text
 • Conversational - natural, friendly tone
 • Concise - shorter, to-the-point version
+• Regenerate any variant for fresh alternatives
 
-🎯 **Multiple Ways to Translate**
-• Select text and use the floating button
-• Right-click context menu ("Translate with ParsiPad" / "Polish with ParsiPad")
-• Keyboard shortcut: Alt+T (customizable)
-• Popup for quick translations
+📖 **Dictionary Lookup**
+Look up any word to get comprehensive lexical information:
+• Definitions with example sentences
+• Phonetic transcription (IPA)
+• Synonyms and antonyms
+• Persian/English translation
+• Right-click or press Alt+D to look up instantly
 
-📖 **Dictionary Lookup** (NEW!)
-• Look up any word for definitions, phonetics, synonyms & antonyms
-• Keyboard shortcut: Alt+D
-• Right-click any word → "Look up in Dictionary"
-• Control translation direction in settings
-
-📄 **Document Translation** (NEW!)
-• Upload TXT files and translate entire documents
+📄 **Document Translation**
+Translate entire documents with ease:
+• Upload TXT files directly
 • Progress tracking with chunk indicator
-• Cancel long translations anytime
-• Download translated files instantly
+• Cancel anytime during long translations
+• Download translated file when complete
+
+⭐ **Favorites & Flashcards**
+Save your best translations and learn vocabulary:
+• Star any translation, polished text, or grammar lesson
+• Access all favorites from dedicated page
+• New tab flashcards for vocabulary learning
+• Flip cards to reveal original text
+• Navigate with keyboard shortcuts
+
+🎯 **Multiple Ways to Use**
+• Select text and use the floating popup
+• Right-click context menu for translation, polish, dictionary, or page translation
+• Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary), Alt+P (page)
+• Popup interface with 4 tabs: Text, Dictionary, Document, Image
 
 📚 **Translation History**
 • View past translations, polish operations, and dictionary lookups
-• Search and filter by type
+• Click any history item to quickly reuse
 • Organized by date with easy navigation
+
+💾 **Data Backup**
+Keep your data safe and portable:
+• Export favorites, history, and cache to JSON
+• Import with merge or replace strategy
+• Selective export - choose what to include
+• Easy device migration
 
 🎨 **Beautiful Design**
 • Clean, modern interface
-• Dark mode support
+• Dark mode support (syncs with system preference)
 • Full RTL support for Persian text
 • Smooth animations
+• Bilingual UI (English/Persian)
 
-⚡ **Performance**
-• Smart caching reduces API calls
-• Fast response times
-• Lightweight and efficient
+⚙️ **Customizable Settings**
+• Choose your AI provider (Claude, Gemini, ChatGPT)
+• Enable/disable new tab flashcards
+• Export and import your data
+• Control dictionary translation directions (EN→FA, FA→EN)
+• Choose UI language
+• Manage translation cache
+• View usage statistics
 
 🔒 **Privacy First**
-• Your API key stays on your device
+• Your API keys stay on your device
 • No data collection or tracking
 • All history stored locally
-• Open source and transparent
+• Offline caching for instant repeat lookups
 
 **How to Use:**
-1. Get your free API key from console.anthropic.com
-2. Enter it in extension settings
-3. Start translating!
+1. Get an API key from your preferred provider:
+   • Claude: console.anthropic.com
+   • Gemini: aistudio.google.com/apikey
+   • ChatGPT: platform.openai.com/api-keys
+2. Select your provider in Settings
+3. Enter your API key and save
+4. Start translating!
 
-Powered by Claude AI for the highest quality translations.
+Powered by Claude, Gemini, and ChatGPT for the highest quality translations.
 
 ---
 
@@ -76,7 +144,7 @@ English, Persian
 
 ## Privacy Practices
 - This extension stores data locally on your device
-- Your API key is only sent to Anthropic's servers for translation
+- Your API key is only sent to your chosen AI provider's servers for translation
 - No personal data is collected or shared
 - See our privacy policy for details
 
@@ -86,14 +154,17 @@ English, Persian
 
 You'll need to create these screenshots (1280x800 or 640x400):
 
-1. **Translation in action** - Show the floating translation box on a webpage
-2. **Polish feature** - Show the polishing options (Professional/Conversational/Concise)
-3. **Dictionary lookup** - Show dictionary results with definitions and synonyms
-4. **Document translation** - Show progress bar during document translation
-5. **Popup interface** - Show the main popup with translation
-6. **Settings page** - Show the clean settings interface
-7. **History page** - Show the history with filters
-8. **Dark mode** - Show any view in dark mode
+1. **Full page translation** - Show the floating toggle button and translated content
+2. **Grammar learning page** - Show interactive quiz and TTS buttons
+3. **Translation in action** - Show the floating translation box on a webpage
+4. **Polish feature** - Show the polishing options (Professional/Conversational/Concise)
+5. **Dictionary lookup** - Show dictionary results with definitions and synonyms
+6. **Image translation** - Show OCR extraction and translation
+7. **Document translation** - Show progress bar during document translation
+8. **New tab flashcards** - Show vocabulary learning flashcards
+9. **Popup interface** - Show the main popup with translation
+10. **Settings page** - Show AI provider selection and settings
+11. **Dark mode** - Show any view in dark mode
 
 ---
 
@@ -102,4 +173,5 @@ You'll need to create these screenshots (1280x800 or 640x400):
 Create a promotional image showing:
 - ParsiPad logo
 - "Persian ↔ English"
-- Key features icons (translate, polish, history)
+- Key features: Page Translation, Grammar Learning, Multi-AI
+- "Choose Claude, Gemini, or ChatGPT"
