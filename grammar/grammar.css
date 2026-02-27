@@ -1054,7 +1054,433 @@ body.dark {
   text-align: right;
 }
 
-/* Responsive */
+/* ============================================
+   Skeleton UI Loader
+   ============================================ */
+
+.skeleton-container {
+  width: 100%;
+  max-width: 100%;
+}
+
+.skeleton-card {
+  background: #ffffff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--gray-200);
+}
+
+.dark .skeleton-card {
+  background: var(--gray-800);
+  border-color: var(--gray-700);
+}
+
+.skeleton-source {
+  padding: 1.25rem 1.5rem;
+}
+
+.skeleton-grammar-point {
+  padding: 1rem 1.5rem;
+}
+
+.skeleton-fade {
+  opacity: 0.5;
+}
+
+.skeleton-row {
+  margin-bottom: 0.75rem;
+}
+
+.skeleton-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.skeleton-content {
+  margin-bottom: 1rem;
+}
+
+.skeleton-examples {
+  padding-top: 0.5rem;
+}
+
+.skeleton-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--gray-200);
+  flex-shrink: 0;
+  animation: shimmer 1.5s infinite;
+}
+
+.dark .skeleton-circle {
+  background: var(--gray-700);
+}
+
+.skeleton-line {
+  height: 1rem;
+  background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 50%, var(--gray-200) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.dark .skeleton-line {
+  background: linear-gradient(90deg, var(--gray-700) 25%, var(--gray-600) 50%, var(--gray-700) 75%);
+  background-size: 200% 100%;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Skeleton width utilities */
+.skeleton-w-15 { width: 15%; }
+.skeleton-w-40 { width: 40%; }
+.skeleton-w-50 { width: 50%; }
+.skeleton-w-60 { width: 60%; }
+.skeleton-w-65 { width: 65%; }
+.skeleton-w-70 { width: 70%; }
+.skeleton-w-75 { width: 75%; }
+.skeleton-w-80 { width: 80%; }
+.skeleton-w-85 { width: 85%; }
+.skeleton-w-90 { width: 90%; }
+.skeleton-w-full { width: 100%; }
+
+/* ============================================
+   Text-to-Speech (TTS) Button Styles
+   ============================================ */
+
+.source-text-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.source-text-wrapper .source-text {
+  flex: 1;
+}
+
+.tts-btn {
+  background: transparent;
+  border: none;
+  color: var(--gray-400);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: color 0.2s, background 0.2s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.tts-btn:hover {
+  color: var(--primary-600);
+  background: var(--gray-100);
+}
+
+.tts-btn:active {
+  transform: scale(0.95);
+}
+
+.tts-btn svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.tts-btn .tts-icon {
+  display: block;
+}
+
+.tts-btn .tts-stop-icon {
+  display: none;
+}
+
+.tts-btn.speaking .tts-icon {
+  display: none;
+}
+
+.tts-btn.speaking .tts-stop-icon {
+  display: block;
+}
+
+.tts-btn.speaking {
+  color: var(--primary-600);
+  animation: tts-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes tts-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.dark .tts-btn {
+  color: var(--gray-500);
+}
+
+.dark .tts-btn:hover {
+  color: var(--primary-400);
+  background: var(--gray-700);
+}
+
+.dark .tts-btn.speaking {
+  color: var(--primary-400);
+}
+
+/* RTL TTS button positioning */
+[dir="rtl"] .source-text-wrapper {
+  flex-direction: row-reverse;
+}
+
+/* ============================================
+   Transliteration Styles
+   ============================================ */
+
+.transliteration {
+  display: block;
+  font-family: var(--font-sans);
+  font-style: italic;
+  font-size: 0.8125rem;
+  color: var(--gray-500);
+  margin-top: 0.25rem;
+  direction: ltr;
+  text-align: left;
+}
+
+.dark .transliteration {
+  color: var(--gray-400);
+}
+
+/* In RTL context, transliteration should still be LTR */
+[dir="rtl"] .transliteration {
+  direction: ltr;
+  text-align: left;
+  font-family: var(--font-sans);
+}
+
+/* ============================================
+   Register Badge Styles
+   ============================================ */
+
+.register-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+[dir="rtl"] .register-badge {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.register-formal {
+  background: var(--primary-100);
+  color: var(--primary-700);
+}
+
+.dark .register-formal {
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--primary-300);
+}
+
+.register-informal {
+  background: var(--warning-light);
+  color: #92400e;
+}
+
+.dark .register-informal {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--warning);
+}
+
+.register-neutral {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.dark .register-neutral {
+  background: var(--gray-700);
+  color: var(--gray-400);
+}
+
+/* Register info section */
+.register-info {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--gray-50);
+  border-radius: 0.5rem;
+  border-left: 3px solid var(--primary-400);
+}
+
+.dark .register-info {
+  background: var(--gray-700);
+  border-left-color: var(--primary-500);
+}
+
+[dir="rtl"] .register-info {
+  border-left: none;
+  border-right: 3px solid var(--primary-400);
+}
+
+.register-note {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--gray-600);
+  line-height: 1.5;
+}
+
+.dark .register-note {
+  color: var(--gray-400);
+}
+
+.register-alternative {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--gray-300);
+}
+
+.dark .register-alternative {
+  border-top-color: var(--gray-600);
+}
+
+.register-alt-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gray-500);
+  margin-right: 0.25rem;
+}
+
+.dark .register-alt-label {
+  color: var(--gray-400);
+}
+
+.register-alt-text {
+  font-size: 0.875rem;
+  color: var(--gray-700);
+}
+
+.dark .register-alt-text {
+  color: var(--gray-300);
+}
+
+/* ============================================
+   Collapsible Section Styles
+   ============================================ */
+
+.collapsible-section {
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.dark .collapsible-section {
+  border-color: var(--gray-700);
+}
+
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  background: var(--gray-50);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+  list-style: none;
+}
+
+.collapsible-header::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-header:hover {
+  background: var(--gray-100);
+}
+
+.dark .collapsible-header {
+  background: var(--gray-700);
+}
+
+.dark .collapsible-header:hover {
+  background: var(--gray-600);
+}
+
+.collapsible-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gray-700);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dark .collapsible-title {
+  color: var(--gray-400);
+}
+
+.collapsible-title .section-icon {
+  width: 1rem;
+  height: 1rem;
+  color: var(--primary-500);
+}
+
+.collapsible-chevron {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--gray-400);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+details[open] .collapsible-chevron {
+  transform: rotate(180deg);
+}
+
+.collapsible-content {
+  padding: 1rem;
+  background: #ffffff;
+}
+
+.dark .collapsible-content {
+  background: var(--gray-800);
+}
+
+/* Reset margins inside collapsible */
+.collapsible-content .compare-table,
+.collapsible-content .mistakes-list {
+  margin: 0;
+}
+
+/* RTL collapsible adjustments */
+[dir="rtl"] .collapsible-header {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .collapsible-title {
+  flex-direction: row-reverse;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+
 @media (max-width: 640px) {
   .grammar-container {
     padding: 0.75rem 1rem 3rem;
@@ -1089,5 +1515,29 @@ body.dark {
 
   .btn {
     width: 100%;
+  }
+
+  /* Skeleton mobile adjustments */
+  .skeleton-card {
+    padding: 1rem;
+  }
+
+  /* TTS button mobile */
+  .tts-btn {
+    padding: 6px;
+  }
+
+  .tts-btn svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  /* Collapsible mobile */
+  .collapsible-header {
+    padding: 0.75rem;
+  }
+
+  .collapsible-content {
+    padding: 0.75rem;
   }
 }

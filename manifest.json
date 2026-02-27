@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ParsiPad - Persian English Translator",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "description": "AI-powered Persian ↔ English translator with grammar learning, image OCR, text polishing, favorites & flashcards. Choose Claude, Gemini, or ChatGPT.",
 
   "permissions": [
