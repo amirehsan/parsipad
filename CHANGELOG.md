@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.7.0] - 2026-02-26
 
 ### Added
+- **Full Page Translation** - Translate entire webpages with one click
+  - Translates all visible text content on any webpage
+  - Smart chunking with numbered batches for reliable translation
+  - Progress overlay showing real-time translation status
+  - Cancel button for long translations
+  - Floating toggle button (FAB) to switch between original and translated text
+  - Automatic RTL direction for Persian content
+  - Vazirmatn font applied to all translated Persian text for better readability
+  - Context menu: "Translate this page"
+  - Keyboard shortcut: `Alt+P`
+
+- **Keyboard Shortcuts Reference** - New section in Settings page
+  - Lists all global shortcuts (Alt+T, Alt+D, Alt+P)
+  - Popup shortcuts (Ctrl+Enter for translate)
+  - Flashcard shortcuts (Space, Arrow keys, C, R)
+  - Full i18n support (English & Persian)
+
 - **Grammar Learning UX Improvements** - Enhanced grammar learning experience
   - **Skeleton UI Loader** - Beautiful shimmer animation during lesson generation instead of plain spinner
   - **Text-to-Speech (TTS)** - Listen to original text and translation with speaker buttons
@@ -34,12 +51,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - No more generic grammar rules - everything tied to actual text
 - **Enhanced Quiz Feedback** - Shows targeted explanation for selected answer
   - On wrong answer: shows why it's wrong + why correct answer is right
+- **Toggle Button Design** - Material Design FAB best practices
+  - Circular 48px floating action button
+  - Icon-only design with tooltip (Bootstrap translate icon)
+  - Material-style elevation shadows
+  - Smooth hover/active states
 
 ### Technical
 - Updated `GRAMMAR_LEARNING_PROMPT` with transliteration, register, and per-option explanations
 - New CSS styles for skeleton UI, TTS buttons, transliteration, register badges, collapsibles
 - Added `createCollapsibleSection()`, `createRegisterBadge()`, TTS functions in grammar.js
 - Extended i18n with `correctAnswer` translation key
+- Page translation with Vazirmatn font via Google Fonts CDN injection
+- Data attribute `data-parsipad-translated` for font styling
+- New ACTIONS: `TRANSLATE_PAGE`, `CANCEL_PAGE_TRANSLATION`, `TOGGLE_PAGE_TRANSLATION`, `GET_PAGE_TRANSLATION_STATE`
+- Keyboard shortcuts section with `kbd` styling in settings
 
 ## [2.6.0] - 2026-02-26
 

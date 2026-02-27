@@ -67,6 +67,13 @@
         "mac": "Alt+D"
       },
       "description": "Look up selected word in dictionary"
+    },
+    "translate-page": {
+      "suggested_key": {
+        "default": "Alt+P",
+        "mac": "Alt+P"
+      },
+      "description": "Translate current page"
     }
   },
 

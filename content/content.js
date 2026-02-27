@@ -15,6 +15,14 @@ let currentPolishOriginalText = null; // Store original text for regeneration
 let currentTranslationData = null; // Store current translation for favorites
 let currentDictionaryData = null; // Store current dictionary result for favorites
 
+// Page translation state
+let pageTranslationState = null;
+let pageProgressOverlay = null;
+let pageProgressShadow = null;
+let pageToggleButton = null;
+let pageToggleShadow = null;
+let pageTranslationCancelled = false;
+
 /**
  * Initialize the content script
  */
@@ -84,6 +92,30 @@ function handleMessage(message, sender, sendResponse) {
         dictionaryAndShow(selectedWord);
       }
       break;
+
+    case 'TRANSLATE_PAGE':
+      // Translate entire page
+      handleTranslatePage();
+      break;
+
+    case 'CANCEL_PAGE_TRANSLATION':
+      // Cancel page translation
+      pageTranslationCancelled = true;
+      break;
+
+    case 'TOGGLE_PAGE_TRANSLATION':
+      // Toggle between original and translated
+      handleTogglePageTranslation();
+      break;
+
+    case 'GET_PAGE_TRANSLATION_STATE':
+      // Return current page translation state
+      sendResponse({
+        isTranslated: pageTranslationState?.isTranslated || false,
+        isTranslating: pageTranslationState?.isTranslating || false,
+        isShowingTranslated: pageTranslationState?.isShowingTranslated || false
+      });
+      return true;
   }
 
   sendResponse({ success: true });
@@ -1291,6 +1323,647 @@ function showDictionaryError(message) {
       </svg>
       ${escapeHtml(message)}
     </div>
+  `;
+}
+
+// ============================================
+// Page Translation Functions
+// ============================================
+
+/**
+ * Handle page translation request
+ */
+async function handleTranslatePage() {
+  // If already translating, ignore
+  if (pageTranslationState?.isTranslating) {
+    return;
+  }
+
+  // If already translated, toggle instead
+  if (pageTranslationState?.isTranslated) {
+    handleTogglePageTranslation();
+    return;
+  }
+
+  // Initialize state
+  pageTranslationState = {
+    isTranslated: false,
+    isTranslating: true,
+    isShowingTranslated: false,
+    originalTexts: new Map(),
+    translatedTexts: new Map(),
+    originalDirections: new Map(),
+    sourceLanguage: null,
+    targetLanguage: null,
+    textNodes: [],
+    totalChunks: 0,
+    translatedChunks: 0
+  };
+
+  pageTranslationCancelled = false;
+
+  // Show progress overlay
+  showPageProgressOverlay();
+
+  try {
+    // Extract text nodes
+    pageTranslationState.textNodes = extractVisibleTextNodes(document.body);
+
+    if (pageTranslationState.textNodes.length === 0) {
+      hidePageProgressOverlay();
+      pageTranslationState.isTranslating = false;
+      alert('No translatable text found on this page.');
+      return;
+    }
+
+    // Store original texts
+    for (const { node, text } of pageTranslationState.textNodes) {
+      pageTranslationState.originalTexts.set(node, text);
+    }
+
+    // Detect language
+    pageTranslationState.sourceLanguage = detectPageLanguage(pageTranslationState.textNodes);
+    pageTranslationState.targetLanguage = pageTranslationState.sourceLanguage === 'fa' ? 'en' : 'fa';
+
+    // Group text nodes into batches for translation
+    const batches = batchTextNodesForTranslation(pageTranslationState.textNodes);
+    pageTranslationState.totalChunks = batches.length;
+
+    updatePageProgress(0, batches.length, 0);
+
+    // Translate each batch
+    for (let i = 0; i < batches.length; i++) {
+      if (pageTranslationCancelled) {
+        break;
+      }
+
+      const batch = batches[i];
+
+      try {
+        // Build the batch text with numbered markers
+        const batchText = batch.map((item, idx) => `[${idx + 1}] ${item.text}`).join('\n');
+
+        const response = await chrome.runtime.sendMessage({
+          action: 'TRANSLATE',
+          text: batchText,
+          sourceLang: pageTranslationState.sourceLanguage
+        });
+
+        if (response.error) {
+          console.error('Batch translation error:', response.error);
+          continue;
+        }
+
+        // Parse numbered translations back to individual nodes
+        const translations = parseNumberedTranslations(response.translation, batch.length);
+
+        for (let j = 0; j < batch.length; j++) {
+          const node = batch[j].node;
+          const translatedText = translations[j] || batch[j].text;
+          pageTranslationState.translatedTexts.set(node, translatedText);
+        }
+      } catch (error) {
+        console.error('Batch translation failed:', error);
+      }
+
+      pageTranslationState.translatedChunks = i + 1;
+      const percent = Math.round(((i + 1) / batches.length) * 100);
+      updatePageProgress(i + 1, batches.length, percent);
+
+      // Delay between batches
+      if (i < batches.length - 1 && !pageTranslationCancelled) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
+
+    // Apply translations to DOM
+    if (!pageTranslationCancelled) {
+      applyPageTranslations();
+      pageTranslationState.isTranslated = true;
+      pageTranslationState.isShowingTranslated = true;
+      showPageToggleButton();
+    }
+  } catch (error) {
+    console.error('Page translation error:', error);
+  } finally {
+    pageTranslationState.isTranslating = false;
+    hidePageProgressOverlay();
+  }
+}
+
+/**
+ * Extract visible text nodes from the page
+ */
+function extractVisibleTextNodes(root) {
+  const SKIP_TAGS = new Set([
+    'SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME', 'OBJECT', 'EMBED',
+    'SVG', 'CANVAS', 'VIDEO', 'AUDIO', 'MAP', 'TEMPLATE'
+  ]);
+
+  const textNodes = [];
+
+  const walker = document.createTreeWalker(
+    root,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode: (node) => {
+        if (!node.textContent || !node.textContent.trim()) {
+          return NodeFilter.FILTER_REJECT;
+        }
+
+        let parent = node.parentElement;
+        while (parent && parent !== root) {
+          if (SKIP_TAGS.has(parent.tagName)) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          const style = window.getComputedStyle(parent);
+          if (style.display === 'none' || style.visibility === 'hidden') {
+            return NodeFilter.FILTER_REJECT;
+          }
+          if (parent.hasAttribute('contenteditable') || parent.isContentEditable) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          if (parent.tagName === 'INPUT' || parent.tagName === 'TEXTAREA') {
+            return NodeFilter.FILTER_REJECT;
+          }
+          // Skip ParsiPad's own elements
+          if (parent.id === 'parsipad-host' || parent.id === 'parsipad-page-progress' || parent.id === 'parsipad-page-toggle') {
+            return NodeFilter.FILTER_REJECT;
+          }
+          parent = parent.parentElement;
+        }
+
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    }
+  );
+
+  let node;
+  while ((node = walker.nextNode())) {
+    textNodes.push({
+      node,
+      text: node.textContent,
+      parent: node.parentElement
+    });
+  }
+
+  return textNodes;
+}
+
+/**
+ * Detect primary language of the page
+ */
+function detectPageLanguage(textNodes) {
+  const sampleSize = Math.min(textNodes.length, 10);
+  let persianChars = 0;
+  let englishChars = 0;
+
+  for (let i = 0; i < sampleSize; i++) {
+    const text = textNodes[i].text;
+    persianChars += (text.match(/[\u0600-\u06FF]/g) || []).length;
+    englishChars += (text.match(/[a-zA-Z]/g) || []).length;
+  }
+
+  return persianChars > englishChars ? 'fa' : 'en';
+}
+
+/**
+ * Batch text nodes for translation with numbered markers
+ * Each batch contains nodes that will be translated together with [1], [2], etc. markers
+ */
+function batchTextNodesForTranslation(textNodes) {
+  const MAX_CHARS_PER_BATCH = 3000;
+  const MAX_NODES_PER_BATCH = 20;
+
+  if (textNodes.length === 0) {
+    return [];
+  }
+
+  const batches = [];
+  let currentBatch = [];
+  let currentLength = 0;
+
+  for (const nodeInfo of textNodes) {
+    const text = nodeInfo.text;
+    // Account for marker like "[1] " which adds ~4-5 chars per item
+    const itemLength = text.length + 6;
+
+    // Start new batch if this would exceed limits
+    if (currentBatch.length >= MAX_NODES_PER_BATCH ||
+        (currentLength + itemLength > MAX_CHARS_PER_BATCH && currentBatch.length > 0)) {
+      batches.push(currentBatch);
+      currentBatch = [];
+      currentLength = 0;
+    }
+
+    currentBatch.push(nodeInfo);
+    currentLength += itemLength;
+  }
+
+  // Add remaining batch
+  if (currentBatch.length > 0) {
+    batches.push(currentBatch);
+  }
+
+  return batches;
+}
+
+/**
+ * Parse numbered translations back to array
+ * Expects format like "[1] translated text\n[2] another translation"
+ */
+function parseNumberedTranslations(translatedText, expectedCount) {
+  const results = new Array(expectedCount).fill('');
+
+  // Split by numbered markers [1], [2], etc.
+  const lines = translatedText.split(/\n/);
+  let currentIndex = -1;
+  let currentText = '';
+
+  for (const line of lines) {
+    // Check if line starts with a numbered marker
+    const markerMatch = line.match(/^\[(\d+)\]\s*(.*)/);
+
+    if (markerMatch) {
+      // Save previous item if any
+      if (currentIndex >= 0 && currentIndex < expectedCount) {
+        results[currentIndex] = currentText.trim();
+      }
+
+      // Start new item
+      currentIndex = parseInt(markerMatch[1], 10) - 1; // Convert to 0-based index
+      currentText = markerMatch[2];
+    } else if (currentIndex >= 0) {
+      // Continuation of current item
+      currentText += '\n' + line;
+    }
+  }
+
+  // Save last item
+  if (currentIndex >= 0 && currentIndex < expectedCount) {
+    results[currentIndex] = currentText.trim();
+  }
+
+  return results;
+}
+
+/**
+ * Inject Vazir font styles for translated Persian content
+ */
+function injectPageTranslationStyles() {
+  const styleId = 'parsipad-page-translation-styles';
+  if (document.getElementById(styleId)) return;
+
+  const style = document.createElement('style');
+  style.id = styleId;
+  style.textContent = `
+    @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap');
+
+    [data-parsipad-translated="true"] {
+      font-family: 'Vazirmatn', 'Tahoma', sans-serif !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+/**
+ * Apply translations to the DOM
+ */
+function applyPageTranslations() {
+  if (!pageTranslationState) return;
+
+  // Inject Vazir font styles for Persian text
+  injectPageTranslationStyles();
+
+  const rtlLangs = ['fa', 'ar', 'he'];
+  const targetDir = rtlLangs.includes(pageTranslationState.targetLanguage) ? 'rtl' : 'ltr';
+
+  for (const { node, parent } of pageTranslationState.textNodes) {
+    const translatedText = pageTranslationState.translatedTexts.get(node);
+    if (translatedText) {
+      node.textContent = translatedText;
+
+      if (parent) {
+        if (!pageTranslationState.originalDirections.has(parent)) {
+          pageTranslationState.originalDirections.set(parent, parent.getAttribute('dir'));
+        }
+        parent.setAttribute('dir', targetDir);
+        // Mark as translated for Vazir font styling
+        parent.setAttribute('data-parsipad-translated', 'true');
+      }
+    }
+  }
+}
+
+/**
+ * Restore original text to the DOM
+ */
+function restorePageOriginals() {
+  if (!pageTranslationState) return;
+
+  for (const { node, parent } of pageTranslationState.textNodes) {
+    const originalText = pageTranslationState.originalTexts.get(node);
+    if (originalText) {
+      node.textContent = originalText;
+
+      if (parent) {
+        // Remove translated marker
+        parent.removeAttribute('data-parsipad-translated');
+
+        if (pageTranslationState.originalDirections.has(parent)) {
+          const originalDir = pageTranslationState.originalDirections.get(parent);
+          if (originalDir) {
+            parent.setAttribute('dir', originalDir);
+          } else {
+            parent.removeAttribute('dir');
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Toggle between original and translated text
+ */
+function handleTogglePageTranslation() {
+  if (!pageTranslationState?.isTranslated) return;
+
+  if (pageTranslationState.isShowingTranslated) {
+    restorePageOriginals();
+    pageTranslationState.isShowingTranslated = false;
+  } else {
+    applyPageTranslations();
+    pageTranslationState.isShowingTranslated = true;
+  }
+
+  updatePageToggleButton();
+}
+
+/**
+ * Show page progress overlay
+ */
+function showPageProgressOverlay() {
+  if (pageProgressOverlay) {
+    hidePageProgressOverlay();
+  }
+
+  const host = document.createElement('div');
+  host.id = 'parsipad-page-progress';
+  host.style.cssText = `
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2147483647;
+  `;
+
+  pageProgressShadow = host.attachShadow({ mode: 'closed' });
+
+  const style = document.createElement('style');
+  style.textContent = getPageProgressStyles();
+  pageProgressShadow.appendChild(style);
+
+  const overlay = document.createElement('div');
+  overlay.className = 'parsipad-progress-overlay';
+  overlay.innerHTML = `
+    <div class="parsipad-progress-header">
+      <img src="${chrome.runtime.getURL('icons/icon-48.png')}" alt="ParsiPad" class="parsipad-progress-logo">
+      <span class="parsipad-progress-title">Translating page...</span>
+    </div>
+    <div class="parsipad-progress-bar-container">
+      <div class="parsipad-progress-bar" style="width: 0%"></div>
+    </div>
+    <div class="parsipad-progress-text">Preparing...</div>
+    <button class="parsipad-progress-cancel">Cancel</button>
+  `;
+
+  pageProgressShadow.appendChild(overlay);
+  document.body.appendChild(host);
+  pageProgressOverlay = host;
+
+  // Cancel button handler
+  const cancelBtn = pageProgressShadow.querySelector('.parsipad-progress-cancel');
+  cancelBtn.addEventListener('click', () => {
+    pageTranslationCancelled = true;
+  });
+}
+
+/**
+ * Update progress display
+ */
+function updatePageProgress(current, total, percent) {
+  if (!pageProgressShadow) return;
+
+  const progressBar = pageProgressShadow.querySelector('.parsipad-progress-bar');
+  const progressText = pageProgressShadow.querySelector('.parsipad-progress-text');
+
+  if (progressBar) {
+    progressBar.style.width = `${percent}%`;
+  }
+  if (progressText) {
+    progressText.textContent = `Processing chunk ${current} of ${total} (${percent}%)`;
+  }
+}
+
+/**
+ * Hide progress overlay
+ */
+function hidePageProgressOverlay() {
+  if (pageProgressOverlay) {
+    pageProgressOverlay.remove();
+    pageProgressOverlay = null;
+    pageProgressShadow = null;
+  }
+}
+
+/**
+ * Show toggle button after translation
+ */
+function showPageToggleButton() {
+  if (pageToggleButton) {
+    return;
+  }
+
+  const host = document.createElement('div');
+  host.id = 'parsipad-page-toggle';
+  host.style.cssText = `
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 2147483646;
+  `;
+
+  pageToggleShadow = host.attachShadow({ mode: 'closed' });
+
+  const style = document.createElement('style');
+  style.textContent = getPageToggleStyles();
+  pageToggleShadow.appendChild(style);
+
+  const button = document.createElement('button');
+  button.className = 'parsipad-toggle-btn showing-translated';
+  button.title = 'Show original';
+  button.setAttribute('aria-label', 'Toggle between original and translated text');
+  button.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M4.545 6.714 4.11 8H3l1.862-5h1.284L8 8H6.833l-.435-1.286zm1.634-.736L5.5 3.956h-.049l-.679 2.022z"/>
+      <path d="M0 2a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v3h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm7.138 9.995q.289.451.63.846c-.748.575-1.673 1.001-2.768 1.292.178.217.451.635.555.867 1.125-.359 2.08-.844 2.886-1.494.777.665 1.739 1.165 2.93 1.472.133-.254.414-.673.629-.89-1.125-.253-2.057-.694-2.82-1.284.681-.747 1.222-1.651 1.621-2.757H14V8h-3v1.047h.765c-.318.844-.74 1.546-1.272 2.13a6 6 0 0 1-.415-.492 2 2 0 0 1-.94.31"/>
+    </svg>
+  `;
+
+  pageToggleShadow.appendChild(button);
+  document.body.appendChild(host);
+  pageToggleButton = host;
+
+  button.addEventListener('click', handleTogglePageTranslation);
+}
+
+/**
+ * Update toggle button state
+ */
+function updatePageToggleButton() {
+  if (!pageToggleShadow) return;
+
+  const button = pageToggleShadow.querySelector('.parsipad-toggle-btn');
+  if (button) {
+    if (pageTranslationState?.isShowingTranslated) {
+      button.classList.add('showing-translated');
+      button.classList.remove('showing-original');
+      button.title = 'Show original';
+    } else {
+      button.classList.remove('showing-translated');
+      button.classList.add('showing-original');
+      button.title = 'Show translated';
+    }
+  }
+}
+
+/**
+ * Get styles for progress overlay
+ */
+function getPageProgressStyles() {
+  return `
+    .parsipad-progress-overlay {
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.25);
+      padding: 16px 24px;
+      min-width: 300px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .parsipad-progress-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .parsipad-progress-logo {
+      width: 24px;
+      height: 24px;
+    }
+
+    .parsipad-progress-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #111827;
+    }
+
+    .parsipad-progress-bar-container {
+      height: 6px;
+      background: #e5e7eb;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .parsipad-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #6366f1, #8b5cf6);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    .parsipad-progress-text {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 12px;
+    }
+
+    .parsipad-progress-cancel {
+      width: 100%;
+      padding: 8px 16px;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      color: #374151;
+      font-size: 13px;
+      font-weight: 400;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .parsipad-progress-cancel:hover {
+      background: #e5e7eb;
+      border-color: #d1d5db;
+    }
+  `;
+}
+
+/**
+ * Get styles for toggle button
+ */
+function getPageToggleStyles() {
+  return `
+    .parsipad-toggle-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15),
+                  0 2px 4px rgba(0, 0, 0, 0.1);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease;
+    }
+
+    .parsipad-toggle-btn svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .parsipad-toggle-btn.showing-translated {
+      background: #6366f1;
+      color: white;
+    }
+
+    .parsipad-toggle-btn.showing-translated:hover {
+      background: #4f46e5;
+      transform: scale(1.08);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4),
+                  0 3px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    .parsipad-toggle-btn.showing-original {
+      background: #ffffff;
+      color: #6b7280;
+      border: 1px solid #e5e7eb;
+    }
+
+    .parsipad-toggle-btn.showing-original:hover {
+      background: #f9fafb;
+      transform: scale(1.08);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15),
+                  0 3px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .parsipad-toggle-btn:active {
+      transform: scale(0.96);
+    }
   `;
 }
 

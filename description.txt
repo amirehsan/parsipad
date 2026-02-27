@@ -30,10 +30,13 @@ Star your best translations to save them. Review favorites as interactive flashc
 📄 Document Translation
 Upload TXT files and translate entire documents with progress tracking.
 
+🌐 Full Page Translation
+Translate entire webpages with one click! Right-click and select "Translate this page" or press Alt+P. Toggle between original and translated text with the floating button. Persian text uses Vazirmatn font for optimal readability.
+
 🎯 Quick Access
 • Selection popup: Select text and click floating icons
-• Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary)
-• Right-click menu: Translate or polish from any webpage
+• Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary), Alt+P (page)
+• Right-click menu: Translate, polish, or translate page from any webpage
 
 💾 Data Backup
 Export and import your favorites, history, and cache to JSON for easy backup or device migration.

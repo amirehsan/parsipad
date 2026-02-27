@@ -15,6 +15,12 @@
         <span class="logo-text">ParsiPad</span>
       </div>
       <div class="header-actions">
+        <button id="view-favorites-btn" class="icon-btn favorites-header-btn" data-i18n-title="viewFavorites" title="View Favorites" hidden>
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          <span id="favorites-count" class="favorites-header-count" hidden>0</span>
+        </button>
         <button id="theme-btn" class="icon-btn" data-i18n-title="toggleTheme" title="Toggle theme">
           <svg id="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="5"/>
@@ -45,6 +51,15 @@
       <p data-i18n="apiKeyNotConfigured">API key not configured.</p>
       <button id="configure-api-btn" class="link-btn" data-i18n="configureInSettings">Configure in Settings</button>
     </div>
+
+    <!-- Translate Page Quick Action -->
+    <button id="translate-page-btn" class="translate-page-btn">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M4.545 6.714 4.11 8H3l1.862-5h1.284L8 8H6.833l-.435-1.286zm1.634-.736L5.5 3.956h-.049l-.679 2.022z"/>
+        <path d="M0 2a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v3h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm7.138 9.995q.289.451.63.846c-.748.575-1.673 1.001-2.768 1.292.178.217.451.635.555.867 1.125-.359 2.08-.844 2.886-1.494.777.665 1.739 1.165 2.93 1.472.133-.254.414-.673.629-.89-1.125-.253-2.057-.694-2.82-1.284.681-.747 1.222-1.651 1.621-2.757H14V8h-3v1.047h.765c-.318.844-.74 1.546-1.272 2.13a6 6 0 0 1-.415-.492 2 2 0 0 1-.94.31"/>
+      </svg>
+      <span data-i18n="translatePage">Translate Page</span>
+    </button>
 
     <!-- Tab Navigation (4 tabs: Text, Dictionary, Document, Image) -->
     <nav class="tab-nav">
@@ -397,17 +412,6 @@
       <p id="error-message"></p>
     </div>
 
-    <!-- Favorites Link -->
-    <section id="favorites-link-section" class="favorites-link-section" hidden>
-      <button id="view-favorites-btn" class="favorites-link-btn">
-        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-        </svg>
-        <span data-i18n="viewFavorites">View Favorites</span>
-        <span id="favorites-count" class="favorites-count" hidden>0</span>
-      </button>
-    </section>
-
     <!-- Review Prompt Banner -->
     <section id="review-prompt-banner" class="review-prompt-banner" hidden>
       <div class="review-prompt-content">
@@ -424,37 +428,52 @@
 
     <!-- Translation History Section -->
     <section id="history-section" class="history-section" hidden>
-      <div class="history-header">
+      <div class="history-header history-toggle" id="history-toggle">
         <span class="history-title" data-i18n="recentTranslations">Recent Translations</span>
-        <div class="history-actions">
-          <button id="view-all-history-btn" class="link-btn" data-i18n="viewAll">View All</button>
-          <button id="clear-history-btn" class="link-btn" data-i18n="clearAll">Clear All</button>
+        <div class="history-header-right">
+          <div class="history-actions">
+            <button id="view-all-history-btn" class="link-btn" data-i18n="viewAll">View All</button>
+            <button id="clear-history-btn" class="link-btn" data-i18n="clearAll">Clear All</button>
+          </div>
+          <svg class="history-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
         </div>
       </div>
-      <div id="history-list" class="history-list"></div>
+      <div id="history-list" class="history-list" hidden></div>
     </section>
 
     <!-- Polish History Section -->
     <section id="polish-history-section" class="history-section" hidden>
-      <div class="history-header">
+      <div class="history-header history-toggle" id="polish-history-toggle">
         <span class="history-title" data-i18n="recentPolishes">Recent Polishes</span>
-        <div class="history-actions">
-          <button id="view-all-polish-history-btn" class="link-btn" data-i18n="viewAll">View All</button>
-          <button id="clear-polish-history-btn" class="link-btn" data-i18n="clearAll">Clear All</button>
+        <div class="history-header-right">
+          <div class="history-actions">
+            <button id="view-all-polish-history-btn" class="link-btn" data-i18n="viewAll">View All</button>
+            <button id="clear-polish-history-btn" class="link-btn" data-i18n="clearAll">Clear All</button>
+          </div>
+          <svg class="history-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
         </div>
       </div>
-      <div id="polish-history-list" class="history-list"></div>
+      <div id="polish-history-list" class="history-list" hidden></div>
     </section>
 
     <!-- Dictionary History Section -->
     <section id="dictionary-history-section" class="history-section" hidden>
-      <div class="history-header">
+      <div class="history-header history-toggle" id="dict-history-toggle">
         <span class="history-title" data-i18n="recentLookups">Recent Lookups</span>
-        <div class="history-actions">
-          <button id="clear-dict-history-btn" class="link-btn" data-i18n="clearAll">Clear All</button>
+        <div class="history-header-right">
+          <div class="history-actions">
+            <button id="clear-dict-history-btn" class="link-btn" data-i18n="clearAll">Clear All</button>
+          </div>
+          <svg class="history-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
         </div>
       </div>
-      <div id="dictionary-history-list" class="history-list"></div>
+      <div id="dictionary-history-list" class="history-list" hidden></div>
     </section>
 
     <!-- Usage Stats Section -->

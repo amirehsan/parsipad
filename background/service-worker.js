@@ -68,6 +68,22 @@ async function handleMessage(message, sender) {
     case ACTIONS.GET_GRAMMAR_LESSON:
       return handleGrammarLesson(message.originalText, message.translation, message.direction);
 
+    case ACTIONS.TRANSLATE_PAGE:
+      // Forward to content script - handled there
+      return { action: 'forward_to_content' };
+
+    case ACTIONS.CANCEL_PAGE_TRANSLATION:
+      // Forward to content script - handled there
+      return { action: 'forward_to_content' };
+
+    case ACTIONS.TOGGLE_PAGE_TRANSLATION:
+      // Forward to content script - handled there
+      return { action: 'forward_to_content' };
+
+    case ACTIONS.GET_PAGE_TRANSLATION_STATE:
+      // Forward to content script - handled there
+      return { action: 'forward_to_content' };
+
     default:
       throw new Error(`Unknown action: ${message.action}`);
   }
@@ -398,6 +414,13 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     contexts: ['selection']
   });
 
+  // Create context menu for page translation
+  chrome.contextMenus.create({
+    id: 'translate-page',
+    title: 'Translate this page',
+    contexts: ['page']
+  });
+
   // Open welcome page on fresh install
   if (details.reason === 'install') {
     const hasOnboarded = await hasCompletedOnboarding();
@@ -461,6 +484,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
           word: word
         });
       }
+    } else if (info.menuItemId === 'translate-page') {
+      // Translate entire page
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'TRANSLATE_PAGE'
+      });
     }
   } catch (error) {
     // Silently handle context menu action errors
@@ -487,6 +515,10 @@ chrome.commands.onCommand.addListener(async (command) => {
     } else if (command === 'dictionary-lookup') {
       await chrome.tabs.sendMessage(tab.id, {
         action: 'DICTIONARY_SELECTION'
+      });
+    } else if (command === 'translate-page') {
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'TRANSLATE_PAGE'
       });
     }
   } catch (error) {
