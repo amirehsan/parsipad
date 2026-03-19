@@ -4,21 +4,16 @@
 ParsiPad - Persian English Translator
 
 ## Short Description (132 chars max)
-Learn Persian while you translate. Full page translation, grammar lessons, flashcards. Choose Claude, Gemini, or ChatGPT
+Learn Persian while you translate. Screenshot translate, grammar lessons, flashcards. Choose Claude, Gemini, or ChatGPT
 
 ## Detailed Description
 
 ParsiPad is a powerful AI-powered translation extension that makes Persian-English translation seamless and intelligent.
 
-Version 2.7.0:
-• Full Page Translation - Translate entire webpages with one click (Alt+P)
-• Floating Toggle Button - Switch between original and translated text
-• Vazirmatn Font - Persian translations display with optimal readability
-• Grammar Learning Page - Interactive lessons with quizzes, TTS, and transliteration
-• Text-to-Speech - Listen to original text and translations in English or Persian
-• Transliteration (Pinglish) - Phonetic romanization helps you read Persian script
-• Register Badges - See formality levels (Formal, Informal, Neutral) for expressions
-• Keyboard Shortcuts Reference - New section in Settings page
+Version 2.8.0:
+• Screenshot Region Translate - Select any area on a webpage to translate text from images (Alt+S)
+• Screenshot button in Image tab for quick access
+• Save all API keys at once from Settings
 
 🤖 **Choose Your AI**
 Pick your preferred AI provider:
@@ -46,6 +41,13 @@ Master grammar while you translate:
 • Compare & Contrast sections for English/Persian differences
 • Common mistakes section to avoid typical errors
 • Save grammar lessons to Favorites for review
+
+📸 **Screenshot Region Translate** (NEW!)
+Translate text from any area on a webpage:
+• Press Alt+S or right-click "Screenshot & Translate"
+• Drag to select region with crosshair cursor
+• AI extracts and translates text from the captured area
+• Perfect for images, banners, and non-selectable text
 
 🖼️ **Image Translation**
 Extract and translate text from images:
@@ -85,8 +87,8 @@ Save your best translations and learn vocabulary:
 
 🎯 **Multiple Ways to Use**
 • Select text and use the floating popup
-• Right-click context menu for translation, polish, dictionary, or page translation
-• Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary), Alt+P (page)
+• Right-click context menu for translation, polish, dictionary, page, or screenshot translate
+• Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary), Alt+P (page), Alt+S (screenshot)
 • Popup interface with 4 tabs: Text, Dictionary, Document, Image
 
 📚 **Translation History**
@@ -154,9 +156,10 @@ English, Persian
 
 You'll need to create these screenshots (1280x800 or 640x400):
 
-1. **Full page translation** - Show the floating toggle button and translated content
-2. **Grammar learning page** - Show interactive quiz and TTS buttons
-3. **Translation in action** - Show the floating translation box on a webpage
+1. **Screenshot region translate** - Show the crosshair selection overlay on a webpage
+2. **Full page translation** - Show the floating toggle button and translated content
+3. **Grammar learning page** - Show interactive quiz and TTS buttons
+4. **Translation in action** - Show the floating translation box on a webpage
 4. **Polish feature** - Show the polishing options (Professional/Conversational/Concise)
 5. **Dictionary lookup** - Show dictionary results with definitions and synonyms
 6. **Image translation** - Show OCR extraction and translation

@@ -5,6 +5,34 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2026-03-18
+
+### Added
+- **Screenshot Region Translate** - macOS-style screenshot selection tool for translating text in images on any webpage
+  - Press `Alt+S` or right-click "Screenshot & Translate" to activate
+  - Screen freezes with crosshair cursor for precise region selection
+  - Drag to select any area - dimmed overlay with cutout effect shows your selection
+  - Selected region is cropped and sent to AI vision API for OCR + translation
+  - Results displayed in floating translation box with extracted text and translation
+  - Supports favorites - star screenshot translations for later review
+  - DPR-aware cropping for pixel-perfect results on Retina displays
+  - Cancel anytime with `Escape` key
+  - "Screenshot" button added to Image tab in popup for quick access
+
+### Changed
+- **Settings: Save All API Keys** - Clicking any "Save" button now saves all changed API keys across all providers at once
+  - No longer need to switch tabs and save each key individually
+  - Shows combined success message (e.g., "Claude, Gemini API keys saved successfully")
+- Image tab now shows two side-by-side buttons: "Select File" and "Screenshot"
+
+### Technical
+- New `CAPTURE_SCREENSHOT` action in constants.js
+- `chrome.tabs.captureVisibleTab()` with "capture first, select second" pattern
+- Screenshot overlay uses closed Shadow DOM with pointer capture for reliable drag tracking
+- Canvas-based cropping with `devicePixelRatio` scaling for Retina displays
+- New keyboard shortcut command `screenshot-translate` (Alt+S) in manifest
+- New context menu item "Screenshot & Translate" for page context
+
 ## [2.7.0] - 2026-02-26
 
 ### Added

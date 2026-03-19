@@ -86,6 +86,7 @@ const imageUploadSection = document.getElementById('image-upload-section');
 const imageUploadArea = document.getElementById('image-upload-area');
 const imageInput = document.getElementById('image-input');
 const selectImageBtn = document.getElementById('select-image-btn');
+const screenshotTranslateBtn = document.getElementById('screenshot-translate-btn');
 const imagePreview = document.getElementById('image-preview');
 const previewImg = document.getElementById('preview-img');
 const removeImageBtn = document.getElementById('remove-image-btn');
@@ -449,6 +450,7 @@ function setupEventListeners() {
 
   // Image buttons
   selectImageBtn.addEventListener('click', () => imageInput.click());
+  screenshotTranslateBtn.addEventListener('click', handleScreenshotTranslate);
   imageInput.addEventListener('change', handleImageFileSelect);
   removeImageBtn.addEventListener('click', clearImage);
   translateImageBtn.addEventListener('click', handleImageTranslate);
@@ -1522,6 +1524,35 @@ async function readImageAsBase64(file) {
 /**
  * Handle image translation
  */
+/**
+ * Handle screenshot translate button click
+ * Triggers screenshot capture on the active tab and closes popup
+ */
+async function handleScreenshotTranslate() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return;
+
+    // Capture viewport from background (must happen before popup closes)
+    const response = await chrome.runtime.sendMessage({
+      action: 'CAPTURE_SCREENSHOT'
+    });
+
+    if (response?.screenshotDataUrl) {
+      // Send to content script to start selection
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'START_SCREENSHOT_SELECT',
+        screenshotDataUrl: response.screenshotDataUrl
+      });
+    }
+
+    // Close the popup so user can interact with the page
+    window.close();
+  } catch (error) {
+    showError('Could not start screenshot mode');
+  }
+}
+
 async function handleImageTranslate() {
   if (!selectedImage) {
     showError('Please select an image');

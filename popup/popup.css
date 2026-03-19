@@ -1316,6 +1316,17 @@ body {
   margin-bottom: var(--space-md);
 }
 
+.image-upload-actions {
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: center;
+  margin-top: var(--space-sm);
+}
+
+.image-upload-actions .action-btn {
+  flex: 1;
+}
+
 /* Ensure hidden elements in image section don't display */
 .image-section [hidden] {
   display: none !important;

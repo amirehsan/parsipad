@@ -47,6 +47,9 @@ async function handleMessage(message, sender) {
     case ACTIONS.TRANSLATE_IMAGE:
       return handleImageTranslation(message.imageData, message.mimeType);
 
+    case ACTIONS.CAPTURE_SCREENSHOT:
+      return handleScreenshotCapture();
+
     case ACTIONS.REGENERATE_POLISH_VARIANT:
       return handleRegeneratePolishVariant(message.text, message.variant, message.historyId);
 
@@ -280,6 +283,15 @@ async function handleImageTranslation(base64Data, mimeType) {
 }
 
 /**
+ * Handle screenshot capture request
+ * @returns {Promise<Object>} Screenshot data URL
+ */
+async function handleScreenshotCapture() {
+  const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
+  return { screenshotDataUrl: dataUrl };
+}
+
+/**
  * Handle regenerate polish variant request
  * @param {string} text - Original text to polish
  * @param {'professional' | 'conversational' | 'concise'} variant - Variant to regenerate
@@ -421,6 +433,13 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     contexts: ['page']
   });
 
+  // Create context menu for screenshot translation
+  chrome.contextMenus.create({
+    id: 'screenshot-translate',
+    title: 'Screenshot & Translate',
+    contexts: ['page']
+  });
+
   // Open welcome page on fresh install
   if (details.reason === 'install') {
     const hasOnboarded = await hasCompletedOnboarding();
@@ -455,11 +474,23 @@ async function ensureContentScript(tabId) {
  * Handle context menu clicks
  */
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  const selectedText = info.selectionText;
-
-  if (!selectedText || !tab?.id) return;
+  if (!tab?.id) return;
 
   try {
+    // Handle screenshot-translate separately (no selection needed)
+    if (info.menuItemId === 'screenshot-translate') {
+      const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
+      await ensureContentScript(tab.id);
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'START_SCREENSHOT_SELECT',
+        screenshotDataUrl: dataUrl
+      });
+      return;
+    }
+
+    const selectedText = info.selectionText;
+    if (!selectedText) return;
+
     // Ensure content script is loaded
     await ensureContentScript(tab.id);
 
@@ -519,6 +550,13 @@ chrome.commands.onCommand.addListener(async (command) => {
     } else if (command === 'translate-page') {
       await chrome.tabs.sendMessage(tab.id, {
         action: 'TRANSLATE_PAGE'
+      });
+    } else if (command === 'screenshot-translate') {
+      // Capture viewport first (before any overlay renders)
+      const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'START_SCREENSHOT_SELECT',
+        screenshotDataUrl: dataUrl
       });
     }
   } catch (error) {

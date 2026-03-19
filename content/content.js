@@ -15,6 +15,10 @@ let currentPolishOriginalText = null; // Store original text for regeneration
 let currentTranslationData = null; // Store current translation for favorites
 let currentDictionaryData = null; // Store current dictionary result for favorites
 
+// Screenshot selection state
+let screenshotOverlay = null;
+let screenshotShadow = null;
+
 // Page translation state
 let pageTranslationState = null;
 let pageProgressOverlay = null;
@@ -116,6 +120,10 @@ function handleMessage(message, sender, sendResponse) {
         isShowingTranslated: pageTranslationState?.isShowingTranslated || false
       });
       return true;
+
+    case 'START_SCREENSHOT_SELECT':
+      startScreenshotSelection(message.screenshotDataUrl);
+      break;
   }
 
   sendResponse({ success: true });
@@ -1985,6 +1993,10 @@ function handleDocumentClick(event) {
  */
 function handleKeyDown(event) {
   if (event.key === 'Escape') {
+    if (screenshotOverlay) {
+      cancelScreenshotMode();
+      return;
+    }
     if (floatingBox) {
       removeFloatingBox();
     }
@@ -2001,6 +2013,352 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// ============================================
+// Screenshot Selection Functions
+// ============================================
+
+/**
+ * Get styles for screenshot overlay
+ */
+function getScreenshotStyles() {
+  return `
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    .screenshot-container {
+      position: fixed;
+      inset: 0;
+      z-index: 2147483647;
+      cursor: crosshair;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .screenshot-image {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      pointer-events: none;
+    }
+
+    .screenshot-dimmer {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.4);
+      pointer-events: none;
+    }
+
+    .screenshot-dimmer-full {
+      inset: 0;
+    }
+
+    .screenshot-selection {
+      position: absolute;
+      border: 2px solid #6366f1;
+      box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.3), 0 4px 12px rgba(0, 0, 0, 0.15);
+      pointer-events: none;
+      display: none;
+    }
+
+    .screenshot-tooltip {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.75);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      white-space: nowrap;
+      pointer-events: none;
+      backdrop-filter: blur(4px);
+    }
+
+    .screenshot-tooltip kbd {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 12px;
+      margin: 0 2px;
+    }
+  `;
+}
+
+/**
+ * Start screenshot region selection
+ * @param {string} screenshotDataUrl - Data URL of the captured viewport
+ */
+function startScreenshotSelection(screenshotDataUrl) {
+  // Cancel any existing screenshot mode
+  cancelScreenshotMode();
+
+  // Create host element
+  const host = document.createElement('div');
+  host.id = 'parsipad-screenshot-host';
+  host.style.cssText = 'position: fixed; inset: 0; z-index: 2147483647;';
+
+  // Create shadow root
+  screenshotShadow = host.attachShadow({ mode: 'closed' });
+
+  // Inject styles
+  const style = document.createElement('style');
+  style.textContent = getScreenshotStyles();
+  screenshotShadow.appendChild(style);
+
+  // Create container
+  const container = document.createElement('div');
+  container.className = 'screenshot-container';
+
+  // Screenshot image
+  const img = document.createElement('img');
+  img.className = 'screenshot-image';
+  img.src = screenshotDataUrl;
+  container.appendChild(img);
+
+  // Full-screen dimmer (shown initially, replaced by 4 dimmers during selection)
+  const dimmerFull = document.createElement('div');
+  dimmerFull.className = 'screenshot-dimmer screenshot-dimmer-full';
+  container.appendChild(dimmerFull);
+
+  // 4 dimmers for cutout effect (hidden initially)
+  const dimmerTop = document.createElement('div');
+  dimmerTop.className = 'screenshot-dimmer';
+  dimmerTop.style.display = 'none';
+  const dimmerBottom = document.createElement('div');
+  dimmerBottom.className = 'screenshot-dimmer';
+  dimmerBottom.style.display = 'none';
+  const dimmerLeft = document.createElement('div');
+  dimmerLeft.className = 'screenshot-dimmer';
+  dimmerLeft.style.display = 'none';
+  const dimmerRight = document.createElement('div');
+  dimmerRight.className = 'screenshot-dimmer';
+  dimmerRight.style.display = 'none';
+  container.appendChild(dimmerTop);
+  container.appendChild(dimmerBottom);
+  container.appendChild(dimmerLeft);
+  container.appendChild(dimmerRight);
+
+  // Selection rectangle
+  const selectionRect = document.createElement('div');
+  selectionRect.className = 'screenshot-selection';
+  container.appendChild(selectionRect);
+
+  // Tooltip
+  const tooltip = document.createElement('div');
+  tooltip.className = 'screenshot-tooltip';
+  tooltip.innerHTML = 'Drag to select region \u2022 <kbd>Esc</kbd> to cancel';
+  container.appendChild(tooltip);
+
+  screenshotShadow.appendChild(container);
+  document.body.appendChild(host);
+  screenshotOverlay = host;
+
+  // Selection state
+  let isDragging = false;
+  let startX = 0;
+  let startY = 0;
+
+  container.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    container.setPointerCapture(e.pointerId);
+
+    // Hide full dimmer, show 4 dimmers
+    dimmerFull.style.display = 'none';
+    dimmerTop.style.display = 'block';
+    dimmerBottom.style.display = 'block';
+    dimmerLeft.style.display = 'block';
+    dimmerRight.style.display = 'block';
+
+    selectionRect.style.display = 'block';
+    tooltip.style.display = 'none';
+  });
+
+  container.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+
+    const x = Math.min(startX, e.clientX);
+    const y = Math.min(startY, e.clientY);
+    const w = Math.abs(e.clientX - startX);
+    const h = Math.abs(e.clientY - startY);
+
+    // Update selection rectangle
+    selectionRect.style.left = `${x}px`;
+    selectionRect.style.top = `${y}px`;
+    selectionRect.style.width = `${w}px`;
+    selectionRect.style.height = `${h}px`;
+
+    // Update 4 dimmers around selection (cutout effect)
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    dimmerTop.style.cssText = `position:absolute; background:rgba(0,0,0,0.4); pointer-events:none; left:0; top:0; width:${vw}px; height:${y}px;`;
+    dimmerBottom.style.cssText = `position:absolute; background:rgba(0,0,0,0.4); pointer-events:none; left:0; top:${y + h}px; width:${vw}px; height:${vh - y - h}px;`;
+    dimmerLeft.style.cssText = `position:absolute; background:rgba(0,0,0,0.4); pointer-events:none; left:0; top:${y}px; width:${x}px; height:${h}px;`;
+    dimmerRight.style.cssText = `position:absolute; background:rgba(0,0,0,0.4); pointer-events:none; left:${x + w}px; top:${y}px; width:${vw - x - w}px; height:${h}px;`;
+  });
+
+  container.addEventListener('pointerup', (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+
+    const x = Math.min(startX, e.clientX);
+    const y = Math.min(startY, e.clientY);
+    const w = Math.abs(e.clientX - startX);
+    const h = Math.abs(e.clientY - startY);
+
+    // Minimum selection size
+    if (w < 20 || h < 20) {
+      cancelScreenshotMode();
+      return;
+    }
+
+    cropAndTranslate({ x, y, w, h }, screenshotDataUrl);
+  });
+}
+
+/**
+ * Crop the screenshot to the selected region and translate
+ * @param {Object} rect - Selection rectangle {x, y, w, h} in CSS pixels
+ * @param {string} screenshotDataUrl - Full viewport screenshot data URL
+ */
+async function cropAndTranslate(rect, screenshotDataUrl) {
+  const { x, y, w, h } = rect;
+
+  // Calculate position for floating box (center of selection)
+  const boxTop = y + h + 8 + window.scrollY;
+  const boxLeft = Math.max(12, Math.min(x + window.scrollX, window.innerWidth - 450 - 12));
+
+  // Remove screenshot overlay
+  cancelScreenshotMode();
+
+  // Create floating box at selection position
+  createFloatingBox({ top: boxTop, left: boxLeft });
+  showLoading();
+
+  try {
+    // Load screenshot image
+    const img = new Image();
+    const imageLoaded = new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = () => reject(new Error('Failed to load screenshot'));
+    });
+    img.src = screenshotDataUrl;
+    await imageLoaded;
+
+    // DPR scaling - captureVisibleTab captures at native resolution
+    const dpr = window.devicePixelRatio || 1;
+    const sx = Math.round(x * dpr);
+    const sy = Math.round(y * dpr);
+    const sw = Math.round(w * dpr);
+    const sh = Math.round(h * dpr);
+
+    // Crop using canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = sw;
+    canvas.height = sh;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+    // Extract base64 data
+    const dataUrl = canvas.toDataURL('image/png');
+    const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
+
+    // Send to existing image translation API
+    const response = await chrome.runtime.sendMessage({
+      action: 'TRANSLATE_IMAGE',
+      imageData: base64Data,
+      mimeType: 'image/png'
+    });
+
+    if (response.error) {
+      showError(response.error);
+    } else {
+      showImageTranslationResult(response);
+    }
+  } catch (error) {
+    showError(error.message || 'Screenshot translation failed');
+  }
+}
+
+/**
+ * Display image translation result in the floating box
+ * @param {Object} response - Translation response with extractedText, translation, direction, provider
+ */
+function showImageTranslationResult(response) {
+  if (!shadowRoot) return;
+
+  const { extractedText, translation, direction, provider } = response;
+
+  // Update badge
+  const badge = shadowRoot.querySelector('.parsipad-badge');
+  const dirDisplay = direction === 'en-fa' ? 'EN → FA' : direction === 'fa-en' ? 'FA → EN' : direction?.toUpperCase() || 'OCR';
+  badge.textContent = dirDisplay;
+
+  // Update provider badge
+  const providerBadge = shadowRoot.querySelector('.parsipad-provider-badge');
+  if (providerBadge && provider) {
+    providerBadge.textContent = provider;
+    providerBadge.className = `parsipad-provider-badge parsipad-provider-${provider.toLowerCase()}`;
+  }
+
+  // Build content
+  const content = shadowRoot.querySelector('.parsipad-content');
+  const isTranslationRTL = direction === 'en-fa';
+  const isExtractedRTL = direction === 'fa-en';
+
+  let html = '';
+  if (extractedText) {
+    html += `<div class="parsipad-text" dir="${isExtractedRTL ? 'rtl' : 'ltr'}" style="font-size:12px; color:#6B7280; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid #E5E7EB;">${escapeHtml(extractedText)}</div>`;
+  }
+  if (translation) {
+    html += `<div class="parsipad-text" dir="${isTranslationRTL ? 'rtl' : 'ltr'}">${escapeHtml(translation)}</div>`;
+  }
+  if (!extractedText && !translation) {
+    html = '<div class="parsipad-text" style="color:#6B7280;">No text found in selected region.</div>';
+  }
+
+  content.innerHTML = html;
+
+  // Show footer
+  const footer = shadowRoot.querySelector('.parsipad-footer');
+  footer.style.display = 'flex';
+
+  // Hide cache badge
+  const cacheBadge = shadowRoot.querySelector('.parsipad-cache-badge');
+  cacheBadge.textContent = '';
+
+  // Store for favorites
+  if (translation && extractedText) {
+    currentTranslationData = {
+      type: 'translation',
+      originalText: extractedText,
+      savedText: translation,
+      direction: dirDisplay,
+      provider: provider
+    };
+    checkTranslationFavoriteStatus();
+  }
+}
+
+/**
+ * Cancel screenshot selection mode
+ */
+function cancelScreenshotMode() {
+  if (screenshotOverlay) {
+    screenshotOverlay.remove();
+    screenshotOverlay = null;
+    screenshotShadow = null;
+  }
 }
 
 // ============================================
