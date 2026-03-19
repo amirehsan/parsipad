@@ -90,7 +90,7 @@ const cacheCountExportEl = document.getElementById('cache-count-export');
 
 // Backup constants
 const BACKUP_VERSION = '1.0';
-const EXTENSION_VERSION = '2.7.0';
+const EXTENSION_VERSION = '2.8.0';
 
 // State
 let currentLang = 'en';
@@ -377,6 +377,14 @@ function setupEventListeners() {
     importFileInput.addEventListener('change', processImportFile);
   }
 
+  // Customize Shortcuts button
+  const customizeShortcutsBtn = document.getElementById('customizeShortcutsBtn');
+  if (customizeShortcutsBtn) {
+    customizeShortcutsBtn.addEventListener('click', () => {
+      chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+    });
+  }
+
   // Welcome Guide button
   const welcomeGuideBtn = document.getElementById('welcome-guide-btn');
   if (welcomeGuideBtn) {
@@ -489,23 +497,56 @@ function togglePasswordVisibility(inputId) {
  * Handle save API key button click
  */
 async function handleSaveApiKey(provider) {
-  const input = getApiKeyInput(provider);
-  if (!input) return;
+  const savedProviders = [];
 
-  const apiKey = input.value.trim();
-  const config = PROVIDER_CONFIGS[provider];
+  // Save all providers that have new/changed values
+  const allProviders = [PROVIDERS.CLAUDE, PROVIDERS.GEMINI, PROVIDERS.OPENAI];
 
-  if (!apiKey) {
-    showStatus(t('pleaseEnterApiKey', currentLang), 'error');
-    return;
+  for (const p of allProviders) {
+    const input = getApiKeyInput(p);
+    if (!input) continue;
+
+    const apiKey = input.value.trim();
+    if (!apiKey) continue;
+
+    // Check if this key is different from what's stored
+    const existingKey = await getProviderApiKey(p);
+    if (apiKey !== existingKey) {
+      try {
+        await setProviderApiKey(p, apiKey);
+        await updateKeyStatus(p);
+        savedProviders.push(PROVIDER_CONFIGS[p].name);
+      } catch (error) {
+        showStatus(error.message, 'error');
+        return;
+      }
+    }
   }
 
-  try {
-    await setProviderApiKey(provider, apiKey);
-    await updateKeyStatus(provider);
-    showStatus(`${config.name} API key saved successfully`, 'success');
-  } catch (error) {
-    showStatus(error.message, 'error');
+  // Also ensure the clicked provider's key is saved even if unchanged (in case it's a first save)
+  const input = getApiKeyInput(provider);
+  if (input) {
+    const apiKey = input.value.trim();
+    if (!apiKey) {
+      showStatus(t('pleaseEnterApiKey', currentLang), 'error');
+      return;
+    }
+    if (!savedProviders.includes(PROVIDER_CONFIGS[provider].name)) {
+      try {
+        await setProviderApiKey(provider, apiKey);
+        await updateKeyStatus(provider);
+        savedProviders.push(PROVIDER_CONFIGS[provider].name);
+      } catch (error) {
+        showStatus(error.message, 'error');
+        return;
+      }
+    }
+  }
+
+  if (savedProviders.length > 0) {
+    showStatus(`${savedProviders.join(', ')} API key${savedProviders.length > 1 ? 's' : ''} saved successfully`, 'success');
+  } else {
+    showStatus('No changes to save', 'success');
   }
 }
 

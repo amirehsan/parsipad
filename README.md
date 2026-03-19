@@ -30,6 +30,7 @@
 ### Core Translation
 - **Multi-AI Provider Support** - Choose between Claude, Gemini, or ChatGPT
 - **AI-Powered Translation** - Accurate, context-aware translations using your preferred AI
+- **Screenshot Region Translate** - Select any area on a webpage and translate text from images (NEW in v2.8)
 - **Full Page Translation** - Translate entire webpages with one click (NEW in v2.7)
 - **Image Translation** - Extract and translate text from images using OCR
 - **Document Translation** - Upload and translate TXT files with progress tracking
@@ -52,8 +53,8 @@
 
 ### Quick Access
 - **Selection Popup** - Quick action icons when selecting text on webpages
-- **Keyboard Shortcuts** - `Alt+T` to translate, `Alt+D` for dictionary, `Alt+P` to translate page
-- **Right-Click Menu** - Translate, polish, look up, or translate page from any webpage
+- **Keyboard Shortcuts** - `Alt+T` to translate, `Alt+D` for dictionary, `Alt+P` to translate page, `Alt+S` to screenshot translate
+- **Right-Click Menu** - Translate, polish, look up, translate page, or screenshot translate from any webpage
 
 ### Settings & Data
 - **Data Backup & Restore** - Export and import favorites, history, and cache
@@ -174,6 +175,22 @@ Useful for translating:
 - Screenshots of foreign text
 - Photos of signs, menus, or documents
 - Images with embedded text
+
+### Screenshot Region Translate (NEW in v2.8)
+
+Translate text directly from any area on a webpage:
+1. Press `Alt+S` or right-click and select "Screenshot & Translate"
+   - Or click the "Screenshot" button in the Image tab
+2. The page freezes with a crosshair cursor
+3. Drag to select the region containing text you want to translate
+4. Release to capture - AI extracts and translates the text
+5. View results in the floating translation box
+6. Press `Escape` to cancel selection
+
+Perfect for translating:
+- Text embedded in images or banners
+- Non-selectable text on webpages
+- Text in videos or interactive content
 
 ### Favorites
 

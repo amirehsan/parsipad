@@ -356,7 +356,16 @@
         <p class="upload-text" data-i18n="uploadImage">Upload Image</p>
         <p class="upload-hint" data-i18n="imageFormats">JPG, PNG • Paste with Ctrl+V</p>
         <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp" hidden>
-        <button id="select-image-btn" class="action-btn secondary" data-i18n="selectFile">Select File</button>
+        <div class="image-upload-actions">
+          <button id="select-image-btn" class="action-btn secondary" data-i18n="selectFile">Select File</button>
+          <button id="screenshot-translate-btn" class="action-btn secondary" title="Screenshot & Translate (Alt+S)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            Screenshot
+          </button>
+        </div>
       </div>
 
       <!-- Image Preview -->
