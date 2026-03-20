@@ -43,6 +43,9 @@
 
     <!-- Main content area -->
     <main class="newtab-main">
+      <div class="newtab-columns">
+      <!-- Left column: Flashcards -->
+      <div class="column-left">
       <!-- Flashcard container -->
       <div id="flashcard-container" class="flashcard-container">
         <!-- Progress indicator -->
@@ -158,6 +161,29 @@
           <span data-i18n="settings">Open Settings</span>
         </button>
       </div>
+      </div><!-- /column-left -->
+
+      <!-- Right column: Bookmarks -->
+      <div class="column-right" id="bookmarks-panel">
+        <div class="bookmark-panel-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span data-i18n="bookmarks">Bookmarks</span>
+        </div>
+        <div class="bookmark-search-wrapper">
+          <input type="text" id="bookmark-search" class="bookmark-search" data-i18n-placeholder="searchBookmarks" placeholder="Search bookmarks...">
+        </div>
+        <div id="bookmark-tree" class="bookmark-tree"></div>
+        <div id="bookmark-empty" class="bookmark-empty" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32" style="margin-bottom: 8px; opacity: 0.5;">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <p data-i18n="noBookmarksFound">No bookmarks found</p>
+        </div>
+      </div><!-- /column-right -->
+      </div><!-- /newtab-columns -->
     </main>
 
     <!-- Footer -->
@@ -183,6 +209,7 @@
       <span class="hint-item"><kbd>←</kbd><kbd>→</kbd> <span data-i18n="navigate">Navigate</span></span>
       <span class="hint-item"><kbd>Space</kbd> <span data-i18n="flip">Flip</span></span>
       <span class="hint-item"><kbd>C</kbd> <span data-i18n="copy">Copy</span></span>
+      <span class="hint-item"><kbd>/</kbd> <span data-i18n="searchBookmarks">Search bookmarks</span></span>
     </div>
   </div>
 

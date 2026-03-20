@@ -4,8 +4,6 @@ Version 2.9.0:
 - Analytics Dashboard: Track API usage and estimated costs per provider
 - Cost breakdown by action type and time-based usage trends
 - Export analytics data as JSON
-
-Version 2.8.0:
 - Screenshot Region Translate: Select any area on a webpage to translate text from images (Alt+S)
 - Screenshot button in Image tab for quick access
 - Save all API keys at once from Settings
@@ -92,9 +90,17 @@ Favorites and Flashcards
 Save your best translations and learn vocabulary:
 - Star any translation, polished text, or grammar lesson
 - Access all favorites from dedicated page
-- New tab flashcards for vocabulary learning
+- New tab page with flashcards and Chrome bookmark browser
 - Flip cards to reveal original text
 - Navigate with keyboard shortcuts
+
+New Tab Bookmark Browser
+Browse your Chrome bookmarks directly from the new tab page:
+- File and folder tree structure with expand and collapse
+- Search and filter bookmarks instantly
+- Two-column layout: flashcards on the left, bookmarks on the right
+- Works even when flashcard feature is disabled
+- All data stays local, read-only access to bookmarks
 
 Translation History
 - View past translations, polish operations, and dictionary lookups
@@ -129,6 +135,7 @@ Privacy First
 - No data collection or tracking
 - All history stored locally
 - Offline caching for instant repeat lookups
+- Bookmark access is read-only and never leaves your device
 
 How to Use:
 1. Get an API key from your preferred provider:
