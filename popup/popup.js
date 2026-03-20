@@ -109,6 +109,7 @@ const statPolishes = document.getElementById('stat-polishes');
 const statInputTokens = document.getElementById('stat-input-tokens');
 const statOutputTokens = document.getElementById('stat-output-tokens');
 const resetStatsBtn = document.getElementById('reset-stats-btn');
+const analyticsBtn = document.getElementById('analytics-btn');
 // Favorites elements
 const favoriteTranslationBtn = document.getElementById('favorite-translation-btn');
 const viewFavoritesBtn = document.getElementById('view-favorites-btn');
@@ -480,6 +481,11 @@ function setupEventListeners() {
     await resetUsageStats();
     await loadStats();
   });
+
+  // Analytics button
+  analyticsBtn.addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('analytics/analytics.html') });
+  });
 }
 
 /**
@@ -643,7 +649,7 @@ async function handleTranslate() {
     displayTranslation(response);
     await loadHistory();
 
-    // Update usage stats (always count translations, only track tokens for non-cached)
+    // Update usage stats (analytics event logged in service worker)
     await updateUsageStats({
       inputTokens: response.fromCache ? 0 : (response.inputTokens || 0),
       outputTokens: response.fromCache ? 0 : (response.outputTokens || 0),
@@ -690,7 +696,7 @@ async function handlePolish() {
     displayPolishResults(response, text);
     await loadPolishHistory();
 
-    // Update usage stats
+    // Update usage stats (analytics event logged in service worker)
     await updateUsageStats({
       inputTokens: response.inputTokens || 0,
       outputTokens: response.outputTokens || 0,
@@ -1350,7 +1356,7 @@ async function handleDocumentTranslate() {
     downloadSection.hidden = false;
     updateProgress(100, response.chunks || 1, response.totalChunks || response.chunks || 1);
 
-    // Update usage stats
+    // Update usage stats (analytics event logged in service worker)
     await updateUsageStats({
       inputTokens: response.totalInputTokens || 0,
       outputTokens: response.totalOutputTokens || 0,
@@ -1583,7 +1589,7 @@ async function handleImageTranslate() {
 
     displayImageResult(response);
 
-    // Update usage stats
+    // Update usage stats (analytics event logged in service worker)
     await updateUsageStats({
       inputTokens: response.inputTokens || 0,
       outputTokens: response.outputTokens || 0,
@@ -1898,7 +1904,7 @@ async function handlePolishRegenerate(btn) {
       polishConcise.textContent = response.text;
     }
 
-    // Update usage stats
+    // Update usage stats (analytics event logged in service worker)
     await updateUsageStats({
       inputTokens: response.inputTokens || 0,
       outputTokens: response.outputTokens || 0,

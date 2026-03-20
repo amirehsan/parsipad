@@ -385,6 +385,14 @@ function setupEventListeners() {
     });
   }
 
+  // Analytics button
+  const openAnalyticsBtn = document.getElementById('openAnalyticsBtn');
+  if (openAnalyticsBtn) {
+    openAnalyticsBtn.addEventListener('click', () => {
+      chrome.tabs.create({ url: chrome.runtime.getURL('analytics/analytics.html') });
+    });
+  }
+
   // Welcome Guide button
   const welcomeGuideBtn = document.getElementById('welcome-guide-btn');
   if (welcomeGuideBtn) {
