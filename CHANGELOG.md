@@ -5,6 +5,25 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2026-03-20
+
+### Added
+- Analytics Dashboard: dedicated page to track API usage and estimated costs
+  - Cost estimation per provider (Claude, Gemini, ChatGPT)
+  - Per-action breakdown (translate, polish, dictionary, document, image, grammar)
+  - Time-based usage trends (7 days, 30 days, all time)
+  - Export analytics data as JSON
+  - Clear analytics data while preserving cumulative stats
+- Usage event logging for all API actions in the service worker
+- Analytics accessible from popup stats section and settings page
+- Full i18n support for analytics (English and Farsi)
+
+### Technical
+- New storage functions: logUsageEvent, getUsageEvents, clearUsageEvents
+- Compact event schema (~120 bytes per event, capped at 5000)
+- Provider pricing constants for cost calculation
+- ACTION_TYPES enum for standardized action tracking
+
 ## [2.8.0] - 2026-03-18
 
 ### Added
