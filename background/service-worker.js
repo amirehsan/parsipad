@@ -2,10 +2,10 @@ import { translate, polish, translateImage, regeneratePolishVariant, getGrammarL
 import { lookupWord } from '../lib/dictionary.js';
 import { translateDocument, validateFile, readFileContent } from '../lib/document-translator.js';
 import { translationCache } from '../lib/cache.js';
-import { hasApiKey, getDictionaryTranslationSettings, isTranslationCancelled, setTranslationCancelled, getSelectedProvider, getFavorites, addFavorite, removeFavorite, isFavorite, hasCompletedOnboarding } from '../lib/storage.js';
+import { hasApiKey, getDictionaryTranslationSettings, isTranslationCancelled, setTranslationCancelled, getSelectedProvider, getFavorites, addFavorite, removeFavorite, isFavorite, hasCompletedOnboarding, logUsageEvent } from '../lib/storage.js';
 import { detectLanguageCode } from '../lib/language-detect.js';
 import { addToHistory, addToPolishHistory, addToDictionaryHistory, updatePolishVariant, getPolishHistory } from '../lib/history.js';
-import { ACTIONS, PROVIDER_CONFIGS } from '../lib/constants.js';
+import { ACTIONS, PROVIDER_CONFIGS, ACTION_TYPES } from '../lib/constants.js';
 
 /**
  * Handle incoming messages from popup or content scripts
@@ -133,6 +133,13 @@ async function handleTranslate(text, sourceLang = 'auto', withGrammar = false) {
   // Add to history
   await addToHistory(text, result.translation, result.direction);
 
+  // Log analytics event
+  await logUsageEvent({
+    action: ACTION_TYPES.TRANSLATE, provider: providerId,
+    inputTokens: result.inputTokens || 0,
+    outputTokens: result.outputTokens || 0
+  });
+
   return {
     translation: result.translation,
     direction: result.direction,
@@ -164,6 +171,13 @@ async function handlePolish(text) {
 
   // Add to polish history
   await addToPolishHistory(text, result.professional, result.conversational, result.concise);
+
+  // Log analytics event
+  await logUsageEvent({
+    action: ACTION_TYPES.POLISH, provider: providerId,
+    inputTokens: result.inputTokens || 0,
+    outputTokens: result.outputTokens || 0
+  });
 
   return {
     professional: result.professional,
@@ -217,6 +231,13 @@ async function handleDictionaryLookup(word, sourceLang = 'auto') {
   // Add to dictionary history
   await addToDictionaryHistory(cleanWord, result);
 
+  // Log analytics event
+  await logUsageEvent({
+    action: ACTION_TYPES.DICTIONARY, provider: providerId,
+    inputTokens: result.inputTokens || 0,
+    outputTokens: result.outputTokens || 0
+  });
+
   return {
     ...result,
     provider: providerConfig?.name || 'AI'
@@ -236,12 +257,24 @@ async function handleDocumentTranslation(content) {
   // Reset cancellation flag before starting
   await setTranslationCancelled(false);
 
+  // Get current provider info
+  const providerId = await getSelectedProvider();
+
   // Translate document with cancellation check
   const result = await translateDocument(
     content,
     () => {}, // onProgress - not used in service worker
     isTranslationCancelled // checkCancelled callback
   );
+
+  // Log analytics event
+  if (!result.cancelled) {
+    await logUsageEvent({
+      action: ACTION_TYPES.DOCUMENT, provider: providerId,
+      inputTokens: result.totalInputTokens || 0,
+      outputTokens: result.totalOutputTokens || 0
+    });
+  }
 
   return {
     translation: result.translation,
@@ -271,6 +304,13 @@ async function handleImageTranslation(base64Data, mimeType) {
 
   // Call API
   const result = await translateImage(base64Data, mimeType);
+
+  // Log analytics event
+  await logUsageEvent({
+    action: ACTION_TYPES.IMAGE, provider: providerId,
+    inputTokens: result.inputTokens || 0,
+    outputTokens: result.outputTokens || 0
+  });
 
   return {
     extractedText: result.extractedText,
@@ -318,6 +358,13 @@ async function handleRegeneratePolishVariant(text, variant, historyId) {
   if (historyId) {
     await updatePolishVariant(historyId, variant, result.text);
   }
+
+  // Log analytics event
+  await logUsageEvent({
+    action: ACTION_TYPES.REGENERATE, provider: providerId,
+    inputTokens: result.inputTokens || 0,
+    outputTokens: result.outputTokens || 0
+  });
 
   return {
     text: result.text,
@@ -392,6 +439,13 @@ async function handleGrammarLesson(originalText, translation, direction) {
 
   // Call API
   const result = await getGrammarLesson(originalText, translation, direction);
+
+  // Log analytics event
+  await logUsageEvent({
+    action: ACTION_TYPES.GRAMMAR, provider: providerId,
+    inputTokens: result.inputTokens || 0,
+    outputTokens: result.outputTokens || 0
+  });
 
   return {
     lesson: result.lesson,

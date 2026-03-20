@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics - ParsiPad</title>
+  <link rel="stylesheet" href="analytics.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <a href="#" id="back-btn" class="back-btn" data-i18n-title="back" title="Back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="19" y1="12" x2="5" y2="12"/>
+            <polyline points="12 19 5 12 12 5"/>
+          </svg>
+        </a>
+        <div class="logo">
+          <span class="logo-icon">P</span>
+          <span class="logo-text">ParsiPad</span>
+        </div>
+      </div>
+      <h1 class="page-title" data-i18n="analytics">Analytics</h1>
+      <div class="header-right">
+        <button id="theme-btn" class="icon-btn" data-i18n-title="toggleTheme" title="Toggle theme">
+          <svg id="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Summary Cards -->
+    <section class="summary-cards">
+      <div class="summary-card">
+        <span class="summary-value" id="total-cost">$0.00</span>
+        <span class="summary-label" data-i18n="analyticsEstCost">Est. Cost</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-value" id="total-actions">0</span>
+        <span class="summary-label" data-i18n="analyticsTotalActions">Total Actions</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-value" id="total-tokens">0</span>
+        <span class="summary-label" data-i18n="analyticsTotalTokens">Total Tokens</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-value" id="top-provider">-</span>
+        <span class="summary-label" data-i18n="analyticsTopProvider">Top Provider</span>
+      </div>
+    </section>
+
+    <!-- Cost by Provider -->
+    <section class="section">
+      <h2 class="section-title" data-i18n="analyticsCostByProvider">Cost by Provider</h2>
+      <div id="provider-breakdown" class="provider-breakdown">
+        <p class="empty-text" data-i18n="analyticsNoData">No usage data yet</p>
+      </div>
+    </section>
+
+    <!-- Action Breakdown -->
+    <section class="section">
+      <h2 class="section-title" data-i18n="analyticsActionBreakdown">Action Breakdown</h2>
+      <div id="action-breakdown" class="action-breakdown">
+        <p class="empty-text" data-i18n="analyticsNoData">No usage data yet</p>
+      </div>
+    </section>
+
+    <!-- Time Trends -->
+    <section class="section">
+      <h2 class="section-title" data-i18n="analyticsTimeTrends">Usage Over Time</h2>
+      <nav class="time-tabs">
+        <button class="time-tab active" data-range="7" data-i18n="analytics7Days">7 Days</button>
+        <button class="time-tab" data-range="30" data-i18n="analytics30Days">30 Days</button>
+        <button class="time-tab" data-range="all" data-i18n="analyticsAllTime">All Time</button>
+      </nav>
+      <div id="time-chart" class="time-chart">
+        <p class="empty-text" data-i18n="analyticsNoData">No usage data yet</p>
+      </div>
+    </section>
+
+    <!-- Footer Actions -->
+    <footer class="footer-actions">
+      <button id="export-btn" class="action-btn export-btn" data-i18n="analyticsExport">Export JSON</button>
+      <button id="clear-btn" class="action-btn clear-btn" data-i18n="analyticsClear">Clear Analytics</button>
+    </footer>
+
+    <p class="disclaimer" data-i18n="analyticsDisclaimer">Cost estimates are approximate and based on published API pricing.</p>
+  </div>
+
+  <script type="module" src="analytics.js"></script>
+</body>
+</html>

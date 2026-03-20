@@ -770,10 +770,20 @@ body {
   letter-spacing: 0.3px;
 }
 
+.stats-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 4px;
+}
+
 .stats-reset {
-  display: block;
-  margin: 0 auto;
   font-size: 11px;
+}
+
+.stats-analytics {
+  font-size: 11px;
+  color: var(--color-primary);
 }
 
 /* RTL Support for Farsi UI */
