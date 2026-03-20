@@ -8,7 +8,8 @@
     "storage",
     "contextMenus",
     "activeTab",
-    "scripting"
+    "scripting",
+    "bookmarks"
   ],
 
   "host_permissions": [

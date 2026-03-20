@@ -1,6 +1,12 @@
 import { getRandomFavorites, getNewTabEnabled, getTheme, setTheme, getNewTabPhraseCount, getLanguage } from '../lib/storage.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 
+// DOM Elements - Bookmarks
+const bookmarksPanel = document.getElementById('bookmarks-panel');
+const bookmarkSearch = document.getElementById('bookmark-search');
+const bookmarkTree = document.getElementById('bookmark-tree');
+const bookmarkEmpty = document.getElementById('bookmark-empty');
+
 // DOM Elements
 const flashcardContainer = document.getElementById('flashcard-container');
 const flashcard = document.getElementById('flashcard');
@@ -29,6 +35,7 @@ let favorites = [];
 let currentIndex = 0;
 let isFlipped = false;
 let currentLang = 'en';
+let bookmarkData = [];
 
 /**
  * Initialize the new tab page
@@ -43,11 +50,15 @@ async function init() {
   // Setup common event listeners first (theme, settings links, etc.)
   setupCommonEventListeners();
 
+  // Load bookmarks (always, independent of flashcard setting)
+  await loadBookmarks();
+
   // Check if feature is enabled
   const isEnabled = await getNewTabEnabled();
 
   if (!isEnabled) {
     showDisabledState();
+    setupKeyboardShortcuts();
     return;
   }
 
@@ -394,8 +405,23 @@ function setupFlashcardEventListeners() {
  */
 function setupKeyboardShortcuts() {
   document.addEventListener('keydown', (e) => {
+    // Handle Escape in search input
+    if (e.key === 'Escape' && e.target === bookmarkSearch) {
+      bookmarkSearch.value = '';
+      filterBookmarks('');
+      bookmarkSearch.blur();
+      return;
+    }
+
     // Ignore if typing in an input
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    // Focus bookmark search with /
+    if (e.key === '/') {
+      e.preventDefault();
+      if (bookmarkSearch) bookmarkSearch.focus();
+      return;
+    }
 
     // Ignore if no favorites
     if (favorites.length === 0) return;
@@ -438,6 +464,212 @@ function detectRTL(text) {
   if (!text) return false;
   const rtlRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\u0590-\u05FF]/;
   return rtlRegex.test(text);
+}
+
+// ============================================
+// Bookmarks
+// ============================================
+
+/**
+ * Load Chrome bookmarks
+ */
+async function loadBookmarks() {
+  try {
+    const tree = await chrome.bookmarks.getTree();
+    bookmarkData = tree[0].children || [];
+    renderBookmarkTree(bookmarkData);
+    setupBookmarkEventListeners();
+  } catch (error) {
+    // Bookmarks API unavailable — hide panel gracefully
+    if (bookmarksPanel) bookmarksPanel.hidden = true;
+  }
+}
+
+/**
+ * Render the bookmark tree into the container
+ */
+function renderBookmarkTree(nodes) {
+  bookmarkTree.innerHTML = '';
+  bookmarkEmpty.hidden = true;
+
+  for (const node of nodes) {
+    const el = createBookmarkNode(node, true);
+    if (el) bookmarkTree.appendChild(el);
+  }
+}
+
+/**
+ * Create a DOM element for a bookmark node (recursive)
+ */
+function createBookmarkNode(node, isTopLevel) {
+  if (node.children) {
+    // It's a folder
+    // Skip empty folders (no children with URLs or sub-folders with URLs)
+    if (!hasBookmarks(node)) return null;
+
+    const folder = document.createElement('div');
+    folder.className = 'bookmark-folder';
+    if (isTopLevel) folder.classList.add('open');
+
+    const header = document.createElement('div');
+    header.className = 'bookmark-folder-header';
+    header.innerHTML = `
+      <svg class="folder-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+      <svg class="folder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+      </svg>
+      <span class="folder-title">${escapeHtml(node.title || 'Bookmarks')}</span>
+    `;
+    folder.appendChild(header);
+
+    const children = document.createElement('div');
+    children.className = 'bookmark-folder-children';
+
+    for (const child of node.children) {
+      const childEl = createBookmarkNode(child, false);
+      if (childEl) children.appendChild(childEl);
+    }
+
+    folder.appendChild(children);
+    return folder;
+  } else if (node.url) {
+    // It's a bookmark
+    const item = document.createElement('a');
+    item.className = 'bookmark-item';
+    item.href = node.url;
+    item.title = node.url;
+    item.innerHTML = `
+      <svg class="bookmark-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+      </svg>
+      <span class="bookmark-title">${escapeHtml(node.title || node.url)}</span>
+    `;
+    return item;
+  }
+  return null;
+}
+
+/**
+ * Check if a folder node contains any bookmarks (recursively)
+ */
+function hasBookmarks(node) {
+  if (!node.children) return !!node.url;
+  return node.children.some(child => hasBookmarks(child));
+}
+
+/**
+ * Setup bookmark event listeners
+ */
+function setupBookmarkEventListeners() {
+  // Folder toggle via event delegation
+  bookmarkTree.addEventListener('click', (e) => {
+    const header = e.target.closest('.bookmark-folder-header');
+    if (header) {
+      e.preventDefault();
+      header.parentElement.classList.toggle('open');
+    }
+  });
+
+  // Search with debounce
+  let searchTimeout;
+  bookmarkSearch.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      filterBookmarks(bookmarkSearch.value.trim());
+    }, 200);
+  });
+}
+
+/**
+ * Filter bookmarks by search query
+ */
+function filterBookmarks(query) {
+  if (!query) {
+    renderBookmarkTree(bookmarkData);
+    return;
+  }
+
+  const lowerQuery = query.toLowerCase();
+  const matches = [];
+  collectMatchingBookmarks(bookmarkData, lowerQuery, matches);
+
+  bookmarkTree.innerHTML = '';
+
+  if (matches.length === 0) {
+    bookmarkEmpty.hidden = false;
+    return;
+  }
+
+  bookmarkEmpty.hidden = true;
+
+  for (const bookmark of matches) {
+    const item = document.createElement('a');
+    item.className = 'bookmark-search-result';
+    item.href = bookmark.url;
+    item.title = bookmark.url;
+
+    const titleHtml = highlightMatch(bookmark.title || bookmark.url, lowerQuery);
+    let urlHost = '';
+    try {
+      urlHost = new URL(bookmark.url).hostname;
+    } catch (e) {
+      urlHost = bookmark.url;
+    }
+
+    item.innerHTML = `
+      <svg class="bookmark-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+      </svg>
+      <div class="bookmark-result-info">
+        <div class="bookmark-result-title">${titleHtml}</div>
+        <div class="bookmark-result-url">${escapeHtml(urlHost)}</div>
+      </div>
+    `;
+    bookmarkTree.appendChild(item);
+  }
+}
+
+/**
+ * Recursively collect bookmarks matching query
+ */
+function collectMatchingBookmarks(nodes, query, results) {
+  for (const node of nodes) {
+    if (node.children) {
+      collectMatchingBookmarks(node.children, query, results);
+    } else if (node.url) {
+      const title = (node.title || '').toLowerCase();
+      const url = (node.url || '').toLowerCase();
+      if (title.includes(query) || url.includes(query)) {
+        results.push(node);
+      }
+    }
+  }
+}
+
+/**
+ * Highlight matching text in a string
+ */
+function highlightMatch(text, query) {
+  const escaped = escapeHtml(text);
+  const lowerEscaped = escaped.toLowerCase();
+  const idx = lowerEscaped.indexOf(query);
+  if (idx === -1) return escaped;
+  return escaped.slice(0, idx) +
+    '<mark class="bookmark-highlight">' + escaped.slice(idx, idx + query.length) + '</mark>' +
+    escaped.slice(idx + query.length);
+}
+
+/**
+ * Escape HTML entities
+ */
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 // Initialize when DOM is ready

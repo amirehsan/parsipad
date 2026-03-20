@@ -16,6 +16,7 @@ All data is stored locally on your device using Chrome's storage API:
 - **Provider Preference**: Your selected AI provider is stored locally.
 - **Translation History**: Recent translations (up to 50 entries) are stored locally for your convenience.
 - **Translation Cache**: Recent translations are cached locally to reduce API calls and improve response times.
+- **Bookmarks (Read-Only)**: The new tab page reads your Chrome bookmarks to display them in a browsable tree. Bookmark data is never modified, stored separately, or sent anywhere.
 
 ### What We Do NOT Collect
 
