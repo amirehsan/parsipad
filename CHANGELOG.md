@@ -5,6 +5,26 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2026-03-20
+
+### Added
+- **New Tab Bookmark Browser** — browse Chrome bookmarks in a collapsible file/folder tree directly from the new tab page
+  - Search and filter bookmarks with debounced input and highlighted matches
+  - Keyboard shortcuts: `/` to focus search, `Escape` to clear
+  - Two-column layout: flashcards (left) and bookmarks (right)
+  - Responsive: columns stack vertically on narrow screens
+  - Dark mode and RTL support
+  - Privacy-first: read-only access, no data leaves the device
+
+### Changed
+- New tab page redesigned from single-column centered layout to two-column grid
+- Bookmarks panel visible even when flashcard feature is disabled
+
+### Fixed
+- HTML `hidden` attribute override by CSS `display` properties
+- RTL arrow direction in flashcard navigation
+- Button font-family consistency across the app
+
 ## [2.9.0] - 2026-03-20
 
 ### Added
