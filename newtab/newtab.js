@@ -426,14 +426,16 @@ function setupKeyboardShortcuts() {
     // Ignore if no favorites
     if (favorites.length === 0) return;
 
+    const isRTL = document.documentElement.dir === 'rtl';
+
     switch (e.key) {
       case 'ArrowLeft':
         e.preventDefault();
-        prevCard();
+        isRTL ? nextCard() : prevCard();
         break;
       case 'ArrowRight':
         e.preventDefault();
-        nextCard();
+        isRTL ? prevCard() : nextCard();
         break;
       case ' ':
         e.preventDefault();

@@ -228,6 +228,7 @@ body {
   font-size: 14px;
   color: var(--color-text-secondary);
   font-weight: 500;
+  margin-top: var(--space-sm);
 }
 
 /* Flashcard */
