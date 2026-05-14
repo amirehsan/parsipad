@@ -743,7 +743,7 @@ async function handlePolish() {
  * @param {Object} result - Translation result
  */
 async function displayTranslation(result) {
-  const { translation, direction, displayDirection, fromCache, grammar } = result;
+  const { translation, direction, displayDirection, fromCache, grammar, corrections, alternatives, examples, nuance } = result;
 
   directionBadge.textContent = displayDirection || formatDirectionBadge(direction);
 
@@ -757,6 +757,12 @@ async function displayTranslation(result) {
 
   cacheBadge.hidden = !fromCache;
   outputSection.hidden = false;
+
+  // Render the "Did you mean: X" hint + rich linguistic context (alternatives,
+  // examples, nuance). Cached results don't carry these fields so they read as
+  // a clean basic translation.
+  renderTranslationCorrections(corrections);
+  renderTranslationRichContext({ alternatives, examples, nuance, direction });
 
   // Store translation data for grammar page
   currentTranslationData = {
@@ -782,6 +788,141 @@ async function displayTranslation(result) {
 
   // Update favorite button state
   await updateTranslationFavoriteState();
+}
+
+/**
+ * Render a small "Did you mean: X" hint above the output when the model
+ * auto-corrected the user's input. Idempotent: rebuilds the node on every
+ * call, removes it when there are no corrections.
+ *
+ * @param {Array<{original: string, corrected: string}>|undefined} corrections
+ */
+function renderTranslationCorrections(corrections) {
+  let hint = document.getElementById('translation-correction-hint');
+  if (!corrections || corrections.length === 0) {
+    if (hint) hint.remove();
+    return;
+  }
+  if (!hint) {
+    hint = document.createElement('div');
+    hint.id = 'translation-correction-hint';
+    hint.className = 'correction-hint';
+    hint.setAttribute('role', 'status');
+    outputText.parentElement.insertBefore(hint, outputText);
+  }
+  // Build content via DOM API to avoid innerHTML interpolation of model output.
+  hint.replaceChildren();
+  const icon = document.createElement('span');
+  icon.className = 'correction-hint-icon';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = '✎';
+  const label = document.createElement('span');
+  label.className = 'correction-hint-label';
+  label.textContent = t('didYouMean', currentLang) || 'Did you mean:';
+  hint.append(icon, label, document.createTextNode(' '));
+  corrections.forEach((c, i) => {
+    if (i > 0) hint.appendChild(document.createTextNode(', '));
+    const orig = document.createElement('span');
+    orig.className = 'correction-original';
+    orig.textContent = c.original;
+    const arrow = document.createElement('span');
+    arrow.className = 'correction-arrow';
+    arrow.textContent = ' → ';
+    const corr = document.createElement('strong');
+    corr.className = 'correction-corrected';
+    corr.textContent = c.corrected;
+    hint.append(orig, arrow, corr);
+  });
+}
+
+/**
+ * Render the rich linguistic context (alternatives, examples, nuance) below
+ * the translation. Collapsible to keep the popup compact.
+ *
+ * @param {{alternatives?: string[], examples?: Array<{source: string, target: string}>, nuance?: string, direction: string}} ctx
+ */
+function renderTranslationRichContext({ alternatives, examples, nuance, direction }) {
+  let section = document.getElementById('translation-rich-context');
+  const hasAny = (alternatives && alternatives.length) ||
+                 (examples && examples.length) ||
+                 (typeof nuance === 'string' && nuance.trim().length);
+  if (!hasAny) {
+    if (section) section.remove();
+    return;
+  }
+  if (!section) {
+    section = document.createElement('details');
+    section.id = 'translation-rich-context';
+    section.className = 'rich-context';
+    section.open = false;
+    outputText.parentElement.appendChild(section);
+  }
+  section.replaceChildren();
+
+  const targetLang = direction.split('-')[1] || 'fa';
+  const targetIsRtl = ['fa', 'ar', 'he'].includes(targetLang);
+
+  const summary = document.createElement('summary');
+  summary.className = 'rich-context-summary';
+  summary.textContent = t('moreContext', currentLang) || 'Linguistic context';
+  section.appendChild(summary);
+
+  if (typeof nuance === 'string' && nuance.trim()) {
+    const block = document.createElement('div');
+    block.className = 'rich-context-block';
+    const title = document.createElement('div');
+    title.className = 'rich-context-title';
+    title.textContent = t('nuance', currentLang) || 'Nuance';
+    const body = document.createElement('p');
+    body.className = 'rich-context-text';
+    body.textContent = nuance;
+    block.append(title, body);
+    section.appendChild(block);
+  }
+
+  if (alternatives && alternatives.length) {
+    const block = document.createElement('div');
+    block.className = 'rich-context-block';
+    const title = document.createElement('div');
+    title.className = 'rich-context-title';
+    title.textContent = t('alternatives', currentLang) || 'Alternative translations';
+    const list = document.createElement('ul');
+    list.className = 'rich-context-list';
+    if (targetIsRtl) list.dir = 'rtl';
+    alternatives.forEach(alt => {
+      const li = document.createElement('li');
+      li.textContent = alt;
+      list.appendChild(li);
+    });
+    block.append(title, list);
+    section.appendChild(block);
+  }
+
+  if (examples && examples.length) {
+    const block = document.createElement('div');
+    block.className = 'rich-context-block';
+    const title = document.createElement('div');
+    title.className = 'rich-context-title';
+    title.textContent = t('examples', currentLang) || 'Examples';
+    const list = document.createElement('div');
+    list.className = 'rich-context-examples';
+    examples.forEach(ex => {
+      if (!ex || (!ex.source && !ex.target)) return;
+      const row = document.createElement('div');
+      row.className = 'rich-context-example';
+      const src = document.createElement('div');
+      src.className = 'rich-context-example-source';
+      src.textContent = ex.source || '';
+      const tgt = document.createElement('div');
+      tgt.className = 'rich-context-example-target';
+      if (targetIsRtl) tgt.dir = 'rtl';
+      tgt.textContent = ex.target || '';
+      row.append(src, tgt);
+      list.appendChild(row);
+    });
+    block.append(title, list);
+    section.appendChild(block);
+  }
 }
 
 /**

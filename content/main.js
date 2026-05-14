@@ -562,7 +562,7 @@ function formatDirectionBadge(direction) {
 function showTranslation(result, originalText) {
   if (!shadowRoot) return;
 
-  const { translation, direction, displayDirection, fromCache, provider } = result;
+  const { translation, direction, displayDirection, fromCache, provider, corrections, alternatives, nuance } = result;
 
   // Store translation data for favorites
   currentTranslationData = {
@@ -584,11 +584,68 @@ function showTranslation(result, originalText) {
     providerBadge.className = `parsipad-provider-badge parsipad-provider-${provider.toLowerCase()}`;
   }
 
-  // Update content - target language determines text direction
+  // Update content via DOM API (no innerHTML interpolation of model output).
+  // Renders, in order: optional auto-correction hint -> translation -> optional
+  // alternatives / nuance summary as a compact bullet list.
   const content = shadowRoot.querySelector('.parsipad-content');
   const targetLang = direction.split('-')[1] || 'fa';
   const textDir = ['fa', 'ar', 'he'].includes(targetLang) ? 'rtl' : 'ltr';
-  content.innerHTML = `<div class="parsipad-text" dir="${textDir}">${escapeHtml(translation)}</div>`;
+  content.replaceChildren();
+
+  if (Array.isArray(corrections) && corrections.length) {
+    const hint = document.createElement('div');
+    hint.className = 'parsipad-correction-hint';
+    hint.setAttribute('role', 'status');
+    const label = document.createElement('span');
+    label.className = 'parsipad-correction-label';
+    label.textContent = 'Did you mean:';
+    hint.append(label, document.createTextNode(' '));
+    corrections.forEach((c, i) => {
+      if (i > 0) hint.appendChild(document.createTextNode(', '));
+      const orig = document.createElement('span');
+      orig.className = 'parsipad-correction-original';
+      orig.textContent = c.original || '';
+      const arrow = document.createTextNode(' → ');
+      const corr = document.createElement('strong');
+      corr.className = 'parsipad-correction-corrected';
+      corr.textContent = c.corrected || '';
+      hint.append(orig, arrow, corr);
+    });
+    content.appendChild(hint);
+  }
+
+  const textEl = document.createElement('div');
+  textEl.className = 'parsipad-text';
+  textEl.setAttribute('dir', textDir);
+  textEl.textContent = translation;
+  content.appendChild(textEl);
+
+  if ((Array.isArray(alternatives) && alternatives.length) || (typeof nuance === 'string' && nuance.trim())) {
+    const extras = document.createElement('div');
+    extras.className = 'parsipad-rich-context';
+    if (typeof nuance === 'string' && nuance.trim()) {
+      const note = document.createElement('div');
+      note.className = 'parsipad-rich-context-nuance';
+      note.textContent = nuance;
+      extras.appendChild(note);
+    }
+    if (Array.isArray(alternatives) && alternatives.length) {
+      const title = document.createElement('div');
+      title.className = 'parsipad-rich-context-title';
+      title.textContent = 'Alternatives';
+      extras.appendChild(title);
+      const list = document.createElement('ul');
+      list.className = 'parsipad-rich-context-list';
+      if (textDir === 'rtl') list.setAttribute('dir', 'rtl');
+      alternatives.forEach(alt => {
+        const li = document.createElement('li');
+        li.textContent = alt;
+        list.appendChild(li);
+      });
+      extras.appendChild(list);
+    }
+    content.appendChild(extras);
+  }
 
   // Show footer
   const footer = shadowRoot.querySelector('.parsipad-footer');

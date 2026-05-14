@@ -2,10 +2,10 @@ import { translate, polish, translateImage, regeneratePolishVariant, getGrammarL
 import { lookupWord } from '../lib/dictionary.js';
 import { translateDocument } from '../lib/document-translator.js';
 import { translationCache } from '../lib/cache.js';
-import { hasApiKey, getDictionaryTranslationSettings, isTranslationCancelled, setTranslationCancelled, getSelectedProvider, getFavorites, addFavorite, removeFavorite, isFavorite, hasCompletedOnboarding, logUsageEvent } from '../lib/storage.js';
-import { detectLanguageCode } from '../lib/language-detect.js';
+import { hasApiKey, getDictionaryTranslationSettings, isTranslationCancelled, setTranslationCancelled, getSelectedProvider, getFavorites, addFavorite, removeFavorite, isFavorite, hasCompletedOnboarding, logUsageEvent, runCacheMigrations } from '../lib/storage.js';
+import { detectLanguageCode, isSupportedLanguage } from '../lib/language-detect.js';
 import { addToHistory, addToPolishHistory, addToDictionaryHistory, updatePolishVariant } from '../lib/history.js';
-import { ACTIONS, PROVIDER_CONFIGS, ACTION_TYPES } from '../lib/constants.js';
+import { ACTIONS, PROVIDER_CONFIGS, ACTION_TYPES, ERROR_MESSAGES } from '../lib/constants.js';
 
 /**
  * Handle incoming messages from popup or content scripts
@@ -108,6 +108,17 @@ async function handleTranslate(text, sourceLang = 'auto', withGrammar = false) {
     throw new Error('No text provided for translation');
   }
 
+  // Persian/English only - reject other scripts before burning tokens.
+  // Page-translation sends numbered batches we can't reliably gate, so skip
+  // the check for those (detected by the [1] prefix used by api.js).
+  const isNumberedBatch = /^\[1\]\s/.test(text);
+  if (!isNumberedBatch) {
+    const gate = isSupportedLanguage(text);
+    if (!gate.supported) {
+      throw new Error(ERROR_MESSAGES.UNSUPPORTED_LANGUAGE);
+    }
+  }
+
   // Get current provider info
   const providerId = await getSelectedProvider();
   const providerConfig = PROVIDER_CONFIGS[providerId];
@@ -150,6 +161,11 @@ async function handleTranslate(text, sourceLang = 'auto', withGrammar = false) {
     direction: result.direction,
     displayDirection: result.displayDirection,
     grammar: result.grammar || null,
+    // Rich linguistic context (short queries only - LLM omits these for long inputs)
+    corrections: result.corrections,
+    alternatives: result.alternatives,
+    examples: result.examples,
+    nuance: result.nuance,
     fromCache: false,
     inputTokens: result.inputTokens,
     outputTokens: result.outputTokens,
@@ -165,6 +181,12 @@ async function handleTranslate(text, sourceLang = 'auto', withGrammar = false) {
 async function handlePolish(text) {
   if (!text || text.trim().length === 0) {
     throw new Error('No text provided for polishing');
+  }
+
+  // Polish currently only handles English copy, so non-en input is rejected.
+  const gate = isSupportedLanguage(text);
+  if (!gate.supported) {
+    throw new Error(ERROR_MESSAGES.UNSUPPORTED_LANGUAGE);
   }
 
   // Get current provider info
@@ -188,6 +210,7 @@ async function handlePolish(text) {
     professional: result.professional,
     conversational: result.conversational,
     concise: result.concise,
+    corrections: result.corrections,
     inputTokens: result.inputTokens,
     outputTokens: result.outputTokens,
     provider: providerConfig?.name || 'AI'
@@ -209,6 +232,12 @@ async function handleDictionaryLookup(word, sourceLang = 'auto') {
   const cleanWord = word.trim();
   if (cleanWord.split(/\s+/).length > 1) {
     throw new Error('Dictionary lookup is for single words only');
+  }
+
+  // Persian/English only
+  const gate = isSupportedLanguage(cleanWord);
+  if (!gate.supported) {
+    throw new Error(ERROR_MESSAGES.UNSUPPORTED_LANGUAGE);
   }
 
   // Get current provider info
@@ -508,7 +537,17 @@ async function handleGrammarLesson(originalText, translation, direction) {
 /**
  * Create context menus on install and open welcome page for new installs
  */
+// Run migrations on browser startup too so existing users who haven't
+// reinstalled the extension still get the legacy cache cleared. The migration
+// is idempotent (gated by STORAGE_KEYS.cacheMigrationVersion) so double-firing
+// is harmless.
+chrome.runtime.onStartup.addListener(() => { runCacheMigrations(); });
+
 chrome.runtime.onInstalled.addListener(async (details) => {
+  // Drop any legacy v1 cache entries that pre-date the SHA-256 keying fix.
+  // Idempotent: only runs on first start after the bump.
+  runCacheMigrations();
+
   // Localized context menus via chrome.i18n; falls back to English when no _locales match.
   chrome.contextMenus.create({
     id: 'translate-selection',

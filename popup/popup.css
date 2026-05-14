@@ -519,6 +519,164 @@ body {
   white-space: pre-wrap;
 }
 
+/*
+ * Auto-correction hint: small chip above the output translation that surfaces
+ * the typo the model fixed silently. Read-only, status role.
+ */
+.correction-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--space-3);
+  padding: 8px 12px;
+  background: var(--color-warning-100, rgba(245, 158, 11, 0.12));
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  color: var(--color-text);
+}
+
+.correction-hint-icon {
+  font-size: 13px;
+  color: var(--color-warning);
+}
+
+.correction-hint-label {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.correction-original {
+  color: var(--color-text-secondary);
+  text-decoration: line-through;
+}
+
+.correction-arrow {
+  color: var(--color-text-secondary);
+}
+
+.correction-corrected {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+/*
+ * Rich linguistic context: collapsible <details> block under the translation
+ * with alternatives, examples, and nuance for short queries.
+ */
+.rich-context {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.rich-context[open] {
+  background: var(--color-bg);
+}
+
+.rich-context-summary {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rich-context-summary::-webkit-details-marker {
+  display: none;
+}
+
+.rich-context-summary::before {
+  content: '›';
+  font-size: 16px;
+  line-height: 1;
+  transition: transform var(--motion-fast) var(--ease-out);
+  display: inline-block;
+}
+
+.rich-context[open] .rich-context-summary::before {
+  transform: rotate(90deg);
+}
+
+.rich-context-block {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-divider, var(--color-border));
+}
+
+.rich-context-block:first-of-type {
+  border-top: 0;
+  padding-top: var(--space-2);
+}
+
+.rich-context-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.rich-context-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.rich-context-list {
+  margin: 0;
+  padding-left: 1.25em;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--color-text);
+}
+
+.rich-context-list[dir="rtl"] {
+  padding-left: 0;
+  padding-right: 1.25em;
+  font-family: var(--font-persian);
+}
+
+.rich-context-examples {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.rich-context-example {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.rich-context-example-source {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.rich-context-example-target {
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.55;
+}
+
+.rich-context-example-target[dir="rtl"] {
+  font-family: var(--font-persian);
+  text-align: right;
+}
+
 .cache-badge {
   font-size: 11px;
   color: var(--color-text-secondary);
