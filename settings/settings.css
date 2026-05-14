@@ -187,24 +187,30 @@ main {
  */
 .settings-tabs {
   /*
-   * Not sticky on purpose: the top nav is already sticky and the two were
-   * fighting for the same band, leaving the tab bar half-covered on scroll.
-   * Now the tabs scroll with the content (matching chrome://settings and
-   * chrome://extensions). Tab content is short enough per group (<=4 cards)
-   * that re-scrolling up to switch tabs is not painful.
+   * Sticky just BELOW the top nav so the tabs stay reachable as users scroll.
+   *  - top: 88px clears the nav fully (nav renders ~78px including its
+   *    border-bottom; 88 leaves an 8px visible gap).
+   *  - z-index: 30 sits BELOW the nav's z-50 so the nav paints on top
+   *    rather than the tab bar pushing up over it.
+   *  - backdrop-blur keeps card edges legible when they scroll behind.
    */
+  position: sticky;
+  top: 88px;
+  z-index: 30;
   display: flex;
   gap: 0.25rem;
   margin-bottom: 1.5rem;
   padding: 0.5rem;
-  background: var(--gray-50);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--gray-200);
   border-radius: 0.75rem;
   flex-wrap: wrap;
 }
 
 .dark .settings-tabs {
-  background: var(--gray-800);
+  background: rgba(31, 41, 55, 0.85);
   border-color: var(--gray-700);
 }
 
