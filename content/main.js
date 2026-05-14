@@ -11,6 +11,7 @@ import {
   getSelectionPopupStyles,
   getStyles
 } from './styles/index.js';
+import { t } from '../lib/i18n.js';
 
 // Re-injection guard: skip if the script has already run in this isolated world.
 // Without this, chrome.scripting.executeScript on an already-injected tab throws
@@ -26,6 +27,9 @@ let shadowRoot = null;
 let selectionPopup = null;
 let selectionPopupShadow = null;
 let selectionPopupEnabled = false;
+// Cached user-language preference for translating floating-box copy. Read once
+// on init and kept fresh by the chrome.storage.onChanged listener below.
+let userLang = 'en';
 let selectionDebounceTimer = null;
 let currentPolishOriginalText = null; // Store original text for regeneration
 let currentTranslationData = null; // Store current translation for favorites
@@ -125,11 +129,16 @@ function init() {
 
   // Load selection popup setting
   loadSelectionPopupSetting();
+  loadUserLang();
 
-  // Listen for storage changes to update setting
+  // Listen for storage changes to update settings + UI language
   chrome.storage.onChanged.addListener((changes, namespace) => {
-    if (namespace === 'local' && changes.selection_popup_enabled) {
+    if (namespace !== 'local') return;
+    if (changes.selection_popup_enabled) {
       selectionPopupEnabled = changes.selection_popup_enabled.newValue ?? false;
+    }
+    if (changes.ui_language) {
+      userLang = changes.ui_language.newValue || 'en';
     }
   });
 
@@ -596,9 +605,12 @@ function showTranslation(result, originalText) {
     const hint = document.createElement('div');
     hint.className = 'parsipad-correction-hint';
     hint.setAttribute('role', 'status');
+    // Keep the correction line itself LTR so the "<original> → <corrected>" reads
+    // left-to-right even when the surrounding box inherits RTL from a Persian page.
+    hint.setAttribute('dir', 'ltr');
     const label = document.createElement('span');
     label.className = 'parsipad-correction-label';
-    label.textContent = 'Did you mean:';
+    label.textContent = t('didYouMean', userLang) || 'Did you mean:';
     hint.append(label, document.createTextNode(' '));
     corrections.forEach((c, i) => {
       if (i > 0) hint.appendChild(document.createTextNode(', '));
@@ -632,7 +644,7 @@ function showTranslation(result, originalText) {
     if (Array.isArray(alternatives) && alternatives.length) {
       const title = document.createElement('div');
       title.className = 'parsipad-rich-context-title';
-      title.textContent = 'Alternatives';
+      title.textContent = t('alternatives', userLang) || 'Alternatives';
       extras.appendChild(title);
       const list = document.createElement('ul');
       list.className = 'parsipad-rich-context-list';
@@ -2557,6 +2569,20 @@ function cancelScreenshotMode() {
 // ============================================
 // Selection Popup Functions
 // ============================================
+
+/**
+ * Load the user's preferred UI language (en or fa) so the floating box's
+ * copy ("Did you mean:", "Alternatives", "Nuance") matches the extension's
+ * popup/settings language. Idempotent; refreshed via chrome.storage.onChanged.
+ */
+async function loadUserLang() {
+  try {
+    const result = await chrome.storage.local.get('ui_language');
+    userLang = result.ui_language || 'en';
+  } catch {
+    userLang = 'en';
+  }
+}
 
 /**
  * Load selection popup setting from storage
