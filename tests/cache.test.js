@@ -69,4 +69,31 @@ describe('translationCache', () => {
     expect(k1).toBe(k2);
     expect(k1).toMatch(/^[a-f0-9]{64}$/);
   });
+
+  it('persists corrections / alternatives / examples / nuance and returns them on hit', async () => {
+    const rich = {
+      corrections: [{ original: 'whit', corrected: 'white' }],
+      alternatives: ['snowy', 'pale'],
+      examples: [{ source: 'white wall', target: 'دیوار سفید' }],
+      nuance: 'Refers to a neutral color.'
+    };
+    await translationCache.set('whit', 'سفید', 'en-fa', 'claude', 'auto', rich);
+
+    const hit = await translationCache.get('whit', 'claude', 'auto');
+    expect(hit?.translation).toBe('سفید');
+    expect(hit?.corrections).toEqual(rich.corrections);
+    expect(hit?.alternatives).toEqual(rich.alternatives);
+    expect(hit?.examples).toEqual(rich.examples);
+    expect(hit?.nuance).toBe(rich.nuance);
+  });
+
+  it('omits rich fields from the stored entry when not provided', async () => {
+    await translationCache.set('long sentence with no rich context', 'جمله بلند', 'en-fa', 'claude', 'auto');
+    const hit = await translationCache.get('long sentence with no rich context', 'claude', 'auto');
+    expect(hit?.translation).toBe('جمله بلند');
+    expect(hit?.corrections).toBeUndefined();
+    expect(hit?.alternatives).toBeUndefined();
+    expect(hit?.examples).toBeUndefined();
+    expect(hit?.nuance).toBeUndefined();
+  });
 });
