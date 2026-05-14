@@ -1,4 +1,4 @@
-import { getLanguage, addFavorite, isFavorite, removeFavorite } from '../lib/storage.js';
+import { getLanguage, addFavorite, isFavorite, removeFavorite, getTheme, setTheme } from '../lib/storage.js';
 import { ACTIONS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 import { setSafeInnerHTML } from '../lib/sanitize.js';
@@ -45,26 +45,24 @@ async function init() {
 }
 
 /**
- * Initialize theme from localStorage or system preference
+ * Initialize theme from chrome.storage (shared across all extension surfaces)
+ * or system preference if unset.
  */
-function initTheme() {
+async function initTheme() {
   const html = document.documentElement;
-
-  if (localStorage.getItem('theme') === 'dark' ||
-      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    html.classList.add('dark');
-  } else {
-    html.classList.remove('dark');
-  }
+  const theme = await getTheme();
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const useDark = theme === 'dark' || (theme === 'system' && prefersDark);
+  html.classList.toggle('dark', useDark);
 }
 
 /**
- * Toggle dark/light theme
+ * Toggle dark/light theme; persisted to chrome.storage so popup/newtab/settings stay in sync.
  */
-function toggleTheme() {
+async function toggleTheme() {
   const html = document.documentElement;
   html.classList.toggle('dark');
-  localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
+  await setTheme(html.classList.contains('dark') ? 'dark' : 'light');
 }
 
 /**

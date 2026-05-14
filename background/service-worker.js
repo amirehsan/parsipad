@@ -114,8 +114,9 @@ async function handleTranslate(text, sourceLang = 'auto', withGrammar = false) {
 
   // Don't use cache when grammar mode is enabled (explanations should be fresh)
   if (!withGrammar) {
-    // Check cache first
-    const cached = await translationCache.get(text);
+    // Cache key is scoped to provider + sourceLang so switching providers does
+    // not return another provider's cached output.
+    const cached = await translationCache.get(text, providerId, sourceLang);
     if (cached) {
       return {
         translation: cached.translation,
@@ -131,7 +132,7 @@ async function handleTranslate(text, sourceLang = 'auto', withGrammar = false) {
 
   // Store in cache (only for non-grammar translations)
   if (!withGrammar) {
-    await translationCache.set(text, result.translation, result.direction);
+    await translationCache.set(text, result.translation, result.direction, providerId, sourceLang);
   }
 
   // Add to history
@@ -253,7 +254,7 @@ async function handleDictionaryLookup(word, sourceLang = 'auto') {
  * @param {string} content - Document content to translate
  * @returns {Promise<Object>}
  */
-async function handleDocumentTranslation(content) {
+async function handleDocumentTranslation(content, onProgress = () => {}) {
   if (!content || content.trim().length === 0) {
     throw new Error('No content provided for translation');
   }
@@ -264,11 +265,11 @@ async function handleDocumentTranslation(content) {
   // Get current provider info
   const providerId = await getSelectedProvider();
 
-  // Translate document with cancellation check
+  // Translate document with cancellation check and progress streaming
   const result = await translateDocument(
     content,
-    () => {}, // onProgress - not used in service worker
-    isTranslationCancelled // checkCancelled callback
+    onProgress,
+    isTranslationCancelled
   );
 
   // Log analytics event
@@ -290,6 +291,51 @@ async function handleDocumentTranslation(content) {
     cancelled: result.cancelled || false
   };
 }
+
+/**
+ * Port-based document translation. Popup opens a connection named
+ * "translate-document"; we stream { type: 'progress', current, total, percent }
+ * messages back during the translation and send { type: 'done', ... } or
+ * { type: 'error', error } when finished.
+ */
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== 'translate-document') return;
+
+  let cancelled = false;
+  port.onDisconnect.addListener(() => {
+    // If the popup closes mid-translation, cancel so the background worker
+    // doesn't keep burning tokens for a UI nobody will see.
+    cancelled = true;
+    setTranslationCancelled(true).catch(() => {});
+  });
+
+  port.onMessage.addListener(async (msg) => {
+    if (msg?.action === 'cancel') {
+      cancelled = true;
+      await setTranslationCancelled(true);
+      return;
+    }
+
+    if (msg?.action !== 'start' || typeof msg.content !== 'string') {
+      port.postMessage({ type: 'error', error: 'Invalid request' });
+      return;
+    }
+
+    try {
+      const result = await handleDocumentTranslation(msg.content, (current, total, percent) => {
+        if (cancelled) return;
+        try {
+          port.postMessage({ type: 'progress', current, total, percent });
+        } catch {
+          // Port closed; nothing to do.
+        }
+      });
+      try { port.postMessage({ type: 'done', ...result }); } catch { /* port closed */ }
+    } catch (err) {
+      try { port.postMessage({ type: 'error', error: err.message || 'Translation failed' }); } catch { /* port closed */ }
+    }
+  });
+});
 
 /**
  * Handle image translation request

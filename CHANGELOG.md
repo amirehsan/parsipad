@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (review follow-up)
+- **Cache key collisions** in `lib/cache.js`: replaced the 32-char base64 truncation with SHA-256 of `provider|sourceLang|text`. Two long inputs sharing a prefix no longer return each other's translation, and switching providers no longer surfaces the previous provider's cached output. Added `tests/cache.test.js` covering both cases.
+- **Document translation progress** is now streamed end-to-end. Background exposes a `translate-document` Port; the popup connects to it, sends `{action: 'start', content}`, receives `{type: 'progress', current, total, percent}` per chunk, and gets `{type: 'done', ...}` or `{type: 'error', error}` at the end. Cancel is also delivered through the port so an in-flight chunk no longer has to finish before the user's cancel takes effect.
+- **Gemini auth** moved from `?key=` in the URL to the documented `x-goog-api-key` header (text + vision + key validation), keeping the secret out of URL logs and matches Google's current REST pattern.
+- **Theme storage unified**: `settings/settings.js`, `welcome/welcome.js`, and `grammar/grammar.js` now read/write through `chrome.storage.local` via `getTheme()`/`setTheme()`, the same source the popup and new-tab page already use. Toggling theme in one surface now stays consistent across all of them.
+
+### Known limitations (called out in review)
+- **Full-page translation still operates on raw DOM text nodes.** Inline markup that splits a sentence across nodes can still produce grammatically broken output. Fixing this requires reworking the batching to group by block-level ancestors and re-distribute translations across the original nodes; tracked as a separate effort.
+- **`<all_urls>` content-script host permission** is retained because the selection-popup feature depends on the script being live before the user clicks anything. Narrowing this would require a UX decision on selection popup behavior.
+
 ### Added
 - **Build pipeline** (`scripts/build.mjs`) using esbuild; emits ESM bundles for the service worker, popup, settings, new tab, welcome, grammar, history, favorites, and analytics pages, plus an IIFE bundle for the content script. Static assets and `_locales/` are copied alongside.
 - **Unit tests with Vitest** covering `lib/json-utils`, `lib/language-detect`, and `lib/retry`. `npm test` and `npm run test:watch` available.
