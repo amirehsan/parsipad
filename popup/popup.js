@@ -128,6 +128,7 @@ let currentTextMode = 'translate'; // 'translate' or 'polish' (for text tab)
 let currentLang = 'en';
 let uploadedFile = null;
 let translatedContent = null;
+let docTranslationPort = null;
 let selectedImage = null;
 let currentPolishHistoryId = null; // Track the current polish history entry
 let currentPolishOriginalText = null; // Track the original text for polish
@@ -1326,50 +1327,61 @@ async function handleDocumentTranslate() {
   cancelTranslationBtn.disabled = false;
   cancelTranslationBtn.textContent = t('cancel', currentLang);
 
-  try {
-    const response = await chrome.runtime.sendMessage({
-      action: 'TRANSLATE_DOCUMENT',
-      content: content,
-      filename: uploadedFile.name,
-      sourceLang: 'auto'
+  // Streaming Port: per-chunk progress + final result, instead of waiting on a
+  // single sendMessage round-trip.
+  await new Promise((resolve) => {
+    const port = chrome.runtime.connect({ name: 'translate-document' });
+    docTranslationPort = port;
+
+    port.onMessage.addListener(async (msg) => {
+      if (msg.type === 'progress') {
+        updateProgress(msg.percent, msg.current, msg.total);
+        return;
+      }
+      if (msg.type === 'error') {
+        showError(msg.error);
+        translationProgress.hidden = true;
+        try { port.disconnect(); } catch { /* already closed */ }
+        docTranslationPort = null;
+        setDocLoadingState(false);
+        resolve();
+        return;
+      }
+      if (msg.type === 'done') {
+        if (msg.cancelled) {
+          showError(t('translationCancelled', currentLang));
+          translationProgress.hidden = true;
+        } else {
+          translatedContent = msg.translation;
+          downloadSection.hidden = false;
+          updateProgress(100, msg.chunks || 1, msg.totalChunks || msg.chunks || 1);
+          await updateUsageStats({
+            inputTokens: msg.totalInputTokens || 0,
+            outputTokens: msg.totalOutputTokens || 0,
+            translations: 1
+          });
+          await loadStats();
+        }
+        try { port.disconnect(); } catch { /* already closed */ }
+        docTranslationPort = null;
+        setDocLoadingState(false);
+        resolve();
+      }
     });
 
-    if (!response) {
-      showError('No response from translation service');
-      translationProgress.hidden = true;
-      return;
-    }
-
-    if (response.error) {
-      showError(response.error);
-      translationProgress.hidden = true;
-      return;
-    }
-
-    // Check if translation was cancelled
-    if (response.cancelled) {
-      showError(t('translationCancelled', currentLang));
-      translationProgress.hidden = true;
-      return;
-    }
-
-    translatedContent = response.translation;
-    downloadSection.hidden = false;
-    updateProgress(100, response.chunks || 1, response.totalChunks || response.chunks || 1);
-
-    // Update usage stats (analytics event logged in service worker)
-    await updateUsageStats({
-      inputTokens: response.totalInputTokens || 0,
-      outputTokens: response.totalOutputTokens || 0,
-      translations: 1
+    port.onDisconnect.addListener(() => {
+      if (docTranslationPort === port) {
+        // Background went away mid-translation.
+        showError('Translation interrupted');
+        translationProgress.hidden = true;
+        docTranslationPort = null;
+        setDocLoadingState(false);
+        resolve();
+      }
     });
-    await loadStats();
-  } catch (error) {
-    showError(error.message || 'Document translation failed');
-    translationProgress.hidden = true;
-  } finally {
-    setDocLoadingState(false);
-  }
+
+    port.postMessage({ action: 'start', content, sourceLang: 'auto' });
+  });
 }
 
 /**
@@ -1379,11 +1391,14 @@ async function handleCancelTranslation() {
   cancelTranslationBtn.disabled = true;
   cancelTranslationBtn.textContent = t('translationCancelled', currentLang);
 
+  // Prefer the active port so the background can short-circuit immediately
+  // without waiting for the cancel flag to be observed on the next chunk.
+  if (docTranslationPort) {
+    try { docTranslationPort.postMessage({ action: 'cancel' }); } catch { /* port closed */ }
+  }
   try {
-    await chrome.runtime.sendMessage({
-      action: 'CANCEL_DOCUMENT_TRANSLATION'
-    });
-  } catch (error) {
+    await chrome.runtime.sendMessage({ action: 'CANCEL_DOCUMENT_TRANSLATION' });
+  } catch {
     // Silently handle cancel errors
   }
 }

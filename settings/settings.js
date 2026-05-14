@@ -15,7 +15,9 @@ import {
   setNewTabEnabled,
   getNewTabPhraseCount,
   setNewTabPhraseCount,
-  getFavorites
+  getFavorites,
+  getTheme,
+  setTheme
 } from '../lib/storage.js';
 import { PROVIDERS, PROVIDER_CONFIGS, STORAGE_KEYS } from '../lib/constants.js';
 import { translationCache } from '../lib/cache.js';
@@ -113,26 +115,24 @@ async function init() {
 }
 
 /**
- * Initialize theme from localStorage or system preference
+ * Initialize theme from chrome.storage (shared across all extension surfaces)
+ * or system preference if unset.
  */
-function initTheme() {
+async function initTheme() {
   const html = document.documentElement;
-
-  if (localStorage.getItem('theme') === 'dark' ||
-      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    html.classList.add('dark');
-  } else {
-    html.classList.remove('dark');
-  }
+  const theme = await getTheme();
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const useDark = theme === 'dark' || (theme === 'system' && prefersDark);
+  html.classList.toggle('dark', useDark);
 }
 
 /**
- * Toggle dark/light theme
+ * Toggle dark/light theme; persisted to chrome.storage so popup/newtab/grammar stay in sync.
  */
-function toggleTheme() {
+async function toggleTheme() {
   const html = document.documentElement;
   html.classList.toggle('dark');
-  localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
+  await setTheme(html.classList.contains('dark') ? 'dark' : 'light');
 }
 
 /**
