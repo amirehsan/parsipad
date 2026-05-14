@@ -95,7 +95,7 @@ async function initTheme() {
   applyTheme(storedTheme);
 
   // Listen for system theme changes
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', async (e) => {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', async (_e) => {
     const currentTheme = await getTheme();
     if (currentTheme === 'system') {
       applyTheme('system');

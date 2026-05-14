@@ -1,10 +1,10 @@
 import { translate, polish, translateImage, regeneratePolishVariant, getGrammarLesson } from '../lib/api.js';
 import { lookupWord } from '../lib/dictionary.js';
-import { translateDocument, validateFile, readFileContent } from '../lib/document-translator.js';
+import { translateDocument } from '../lib/document-translator.js';
 import { translationCache } from '../lib/cache.js';
 import { hasApiKey, getDictionaryTranslationSettings, isTranslationCancelled, setTranslationCancelled, getSelectedProvider, getFavorites, addFavorite, removeFavorite, isFavorite, hasCompletedOnboarding, logUsageEvent } from '../lib/storage.js';
 import { detectLanguageCode } from '../lib/language-detect.js';
-import { addToHistory, addToPolishHistory, addToDictionaryHistory, updatePolishVariant, getPolishHistory } from '../lib/history.js';
+import { addToHistory, addToPolishHistory, addToDictionaryHistory, updatePolishVariant } from '../lib/history.js';
 import { ACTIONS, PROVIDER_CONFIGS, ACTION_TYPES } from '../lib/constants.js';
 
 /**
@@ -26,7 +26,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  * @param {Object} sender - Sender information
  * @returns {Promise<Object>}
  */
-async function handleMessage(message, sender) {
+async function handleMessage(message, _sender) {
   switch (message.action) {
     case ACTIONS.TRANSLATE:
       return handleTranslate(message.text, message.sourceLang, message.withGrammar);
@@ -86,6 +86,10 @@ async function handleMessage(message, sender) {
     case ACTIONS.GET_PAGE_TRANSLATION_STATE:
       // Forward to content script - handled there
       return { action: 'forward_to_content' };
+
+    case ACTIONS.OPEN_OPTIONS:
+      await chrome.runtime.openOptionsPage();
+      return { success: true };
 
     default:
       throw new Error(`Unknown action: ${message.action}`);
@@ -459,38 +463,30 @@ async function handleGrammarLesson(originalText, translation, direction) {
  * Create context menus on install and open welcome page for new installs
  */
 chrome.runtime.onInstalled.addListener(async (details) => {
-  // Create context menu for translation
+  // Localized context menus via chrome.i18n; falls back to English when no _locales match.
   chrome.contextMenus.create({
     id: 'translate-selection',
-    title: 'Translate with ParsiPad',
+    title: chrome.i18n.getMessage('ctxTranslateSelection') || 'Translate with ParsiPad',
     contexts: ['selection']
   });
-
-  // Create context menu for polishing
   chrome.contextMenus.create({
     id: 'polish-selection',
-    title: 'Polish with ParsiPad',
+    title: chrome.i18n.getMessage('ctxPolishSelection') || 'Polish with ParsiPad',
     contexts: ['selection']
   });
-
-  // Create context menu for dictionary lookup
   chrome.contextMenus.create({
     id: 'dictionary-lookup',
-    title: 'Look up in Dictionary',
+    title: chrome.i18n.getMessage('ctxDictionaryLookup') || 'Look up in Dictionary',
     contexts: ['selection']
   });
-
-  // Create context menu for page translation
   chrome.contextMenus.create({
     id: 'translate-page',
-    title: 'Translate this page',
+    title: chrome.i18n.getMessage('ctxTranslatePage') || 'Translate this page',
     contexts: ['page']
   });
-
-  // Create context menu for screenshot translation
   chrome.contextMenus.create({
     id: 'screenshot-translate',
-    title: 'Screenshot & Translate',
+    title: chrome.i18n.getMessage('ctxScreenshotTranslate') || 'Screenshot & Translate',
     contexts: ['page']
   });
 
@@ -506,22 +502,40 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 });
 
 /**
- * Ensure content script is injected into the tab
+ * Ping the content script. Resolves true on PING ack, false otherwise.
+ * @param {number} tabId
+ * @returns {Promise<boolean>}
+ */
+async function pingContentScript(tabId) {
+  try {
+    const response = await chrome.tabs.sendMessage(tabId, { action: 'PING' });
+    return response?.success === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Ensure content script is injected into the tab and ready to receive messages.
+ * Uses a PING handshake instead of a fixed delay; the content script's listener
+ * is registered inside init(), which may be deferred to DOMContentLoaded.
  * @param {number} tabId - Tab ID to inject into
  */
 async function ensureContentScript(tabId) {
-  try {
-    // Try to send a ping to check if content script is loaded
-    await chrome.tabs.sendMessage(tabId, { action: 'PING' });
-  } catch {
-    // Content script not loaded, inject it
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ['content/content.js']
-    });
-    // Small delay to let script initialize
-    await new Promise(resolve => setTimeout(resolve, 100));
+  if (await pingContentScript(tabId)) return;
+
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ['content/content.js']
+  });
+
+  // Poll until the content script's onMessage listener is live.
+  const deadline = Date.now() + 2000;
+  while (Date.now() < deadline) {
+    if (await pingContentScript(tabId)) return;
+    await new Promise(resolve => setTimeout(resolve, 50));
   }
+  throw new Error('Content script did not respond to PING within 2s');
 }
 
 /**

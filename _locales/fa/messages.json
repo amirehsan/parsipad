@@ -1,0 +1,35 @@
+{
+  "extensionName": {
+    "message": "ParsiPad - مترجم فارسی انگلیسی"
+  },
+  "extensionDescription": {
+    "message": "همزمان با ترجمه، فارسی یاد بگیرید. ترجمه با اسکرین‌شات، درس‌های گرامر، فلش‌کارت. انتخاب بین Claude، Gemini یا ChatGPT"
+  },
+  "cmdTranslateSelection": {
+    "message": "ترجمه متن انتخاب‌شده"
+  },
+  "cmdDictionaryLookup": {
+    "message": "جستجوی کلمه انتخاب‌شده در فرهنگ لغت"
+  },
+  "cmdTranslatePage": {
+    "message": "ترجمه صفحه فعلی"
+  },
+  "cmdScreenshotTranslate": {
+    "message": "اسکرین‌شات از ناحیه و ترجمه"
+  },
+  "ctxTranslateSelection": {
+    "message": "ترجمه با ParsiPad"
+  },
+  "ctxPolishSelection": {
+    "message": "ویرایش با ParsiPad"
+  },
+  "ctxDictionaryLookup": {
+    "message": "جستجو در فرهنگ لغت"
+  },
+  "ctxTranslatePage": {
+    "message": "ترجمه این صفحه"
+  },
+  "ctxScreenshotTranslate": {
+    "message": "اسکرین‌شات و ترجمه"
+  }
+}

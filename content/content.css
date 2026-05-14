@@ -3,7 +3,7 @@
 /* Aligned with landing page styling */
 
 /* Import Inter & Vazirmatn fonts for consistency with landing page */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&display=swap');
+@import url('../fonts/fonts.css');
 
 :host {
   all: initial;
@@ -51,6 +51,13 @@
   border-bottom: 1px solid #e5e7eb;
   background: #f9fafb;
   border-radius: 16px 16px 0 0;
+  cursor: grab;
+  touch-action: none;
+}
+
+.parsipad-header.parsipad-dragging {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .parsipad-logo {

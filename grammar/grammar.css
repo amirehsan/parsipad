@@ -2,8 +2,8 @@
    ParsiPad Grammar Learning Page Styles
    ============================================ */
 
-/* Google Fonts - Inter & Vazirmatn (same as popup) */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&display=swap');
+/* Local fonts (see fonts/fonts.css) */
+@import url('../fonts/fonts.css');
 
 /* CSS Variables */
 :root {

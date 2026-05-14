@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+.history
 
 # OS files
 .DS_Store

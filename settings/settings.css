@@ -2,6 +2,8 @@
    ParsiPad Settings - Landing Page Style
    ============================================ */
 
+@import url('../fonts/fonts.css');
+
 /* CSS Variables - Matching Landing Page */
 :root {
   /* Primary Colors - Indigo palette from landing */

@@ -5,6 +5,33 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Build pipeline** (`scripts/build.mjs`) using esbuild; emits ESM bundles for the service worker, popup, settings, new tab, welcome, grammar, history, favorites, and analytics pages, plus an IIFE bundle for the content script. Static assets and `_locales/` are copied alongside.
+- **Unit tests with Vitest** covering `lib/json-utils`, `lib/language-detect`, and `lib/retry`. `npm test` and `npm run test:watch` available.
+- **CI workflow** (`.github/workflows/ci.yml`) runs lint (`--max-warnings=0`), tests, build verification, and uploads the bundled extension as an artifact on every push and pull request.
+- **`SECURITY.md`** with private disclosure address, supported versions, threat model, and known limitations.
+- **`CODE_OF_CONDUCT.md`** based on Contributor Covenant 2.1.
+- **`_locales/en/messages.json`** and **`_locales/fa/messages.json`** with extension name, description, command descriptions, and context-menu titles; manifest now uses `__MSG_*__` references and a `default_locale`.
+- **DOMPurify-based sanitizer** (`lib/sanitize.js`) for defense-in-depth on LLM-generated HTML; applied at the grammar lesson and dictionary render paths. DOMPurify is vendored locally so the source folder loads natively in Chrome without bundling.
+- **Local Inter and Vazirmatn fonts** under `fonts/` (woff2 only) plus `fonts/fonts.css`. Replaces the previous `@import` from `fonts.googleapis.com` to comply with Chrome Web Store's no-remote-code policy and avoid third-party requests at startup. The content-script-injected Persian font now loads via `chrome.runtime.getURL`.
+- **Missing-API-key toast and CTA** in the floating box and as a standalone Shadow DOM toast (during page translation), with an "Open Settings" button wired through a new `OPEN_OPTIONS` action.
+- **ARIA pass** on the floating translation box (role=dialog, aria-live content region, role=alert errors, role=status loading) and an auto-mirroring of `data-i18n-title` to `aria-label` in `applyTranslations`.
+
+### Changed
+- **Service-worker `ensureContentScript`** now polls a PING handshake (up to 2 s) instead of using a fixed 100 ms `setTimeout`, eliminating races against `document_idle` initialization.
+- **`lib/retry.js`** rewritten to support per-attempt timeouts and external `AbortSignal` cancellation; all three provider implementations thread the signal into `fetch`.
+- **Page translation cancel** now uses an `AbortController` plus `Promise.race` so the cancel button doesn't have to wait for the current batch's network round-trip. SPA navigation (`popstate` + patched `pushState`/`replaceState`) also resets the stale `pageTranslationState`.
+- **Content script structure**: `content/content.js` is now a 15-line bootstrap that dynamically imports `content/main.js`. The full module entry lives in `content/main.js`, with shared helpers split into `content/utils/text.js` and `content/styles/index.js`. This works whether the user loads the source folder directly or the built `dist/` bundle.
+- **ESLint config** ignores `lib/vendor/**`, `.history/**`, and `dist/**`; adds Node globals for `scripts/` and `tests/`; treats catch-error variables as intentionally unused.
+- Manifest `web_accessible_resources` extended with fonts, content module files, and the i18n message catalog.
+
+### Fixed
+- **Content-script re-injection** no longer fails with `Identifier 'X' has already been declared` when `chrome.scripting.executeScript` runs on a tab that already has the manifest-injected script — `window.__parsipadBootstrapped` guard short-circuits the second load.
+- **Sender validation**: the content-script `onMessage` handler now rejects messages whose `sender.id` doesn't match `chrome.runtime.id`.
+- **Stale release zips** removed from version control; `store-assets/` is now ignored as intended.
+
 ## [2.10.0] - 2026-03-20
 
 ### Added

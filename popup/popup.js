@@ -3,6 +3,7 @@ import { getHistory, clearHistory, getPolishHistory, clearPolishHistory, getDict
 import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider, getFavorites, isFavorite, shouldShowReviewPrompt, dismissReviewPrompt, markReviewClicked } from '../lib/storage.js';
 import { PROVIDER_CONFIGS, ACTIONS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
+import { setSafeInnerHTML } from '../lib/sanitize.js';
 
 // DOM Elements
 const settingsBtn = document.getElementById('settings-btn');
@@ -1095,21 +1096,21 @@ async function displayDictionaryResult(result) {
 
   // Definitions
   if (definitions && definitions.length > 0) {
-    dictDefinitions.innerHTML = definitions.map((def, i) => `
+    setSafeInnerHTML(dictDefinitions, definitions.map((def, i) => `
       <div class="dict-definition-item">
         <div class="dict-meaning">${i + 1}. ${escapeHtml(def.meaning)}</div>
         ${def.example ? `<div class="dict-example">"${escapeHtml(def.example)}"</div>` : ''}
       </div>
-    `).join('');
+    `).join(''));
   } else {
     dictDefinitions.innerHTML = '';
   }
 
   // Synonyms
   if (synonyms && synonyms.length > 0) {
-    dictSynonyms.innerHTML = synonyms.slice(0, 5).map(s =>
+    setSafeInnerHTML(dictSynonyms, synonyms.slice(0, 5).map(s =>
       `<span class="dict-tag">${escapeHtml(s)}</span>`
-    ).join('');
+    ).join(''));
     dictSynonymsSection.hidden = false;
   } else {
     dictSynonymsSection.hidden = true;
@@ -1117,9 +1118,9 @@ async function displayDictionaryResult(result) {
 
   // Antonyms
   if (antonyms && antonyms.length > 0) {
-    dictAntonyms.innerHTML = antonyms.slice(0, 3).map(a =>
+    setSafeInnerHTML(dictAntonyms, antonyms.slice(0, 3).map(a =>
       `<span class="dict-tag dict-tag-antonym">${escapeHtml(a)}</span>`
-    ).join('');
+    ).join(''));
     dictAntonymsSection.hidden = false;
   } else {
     dictAntonymsSection.hidden = true;

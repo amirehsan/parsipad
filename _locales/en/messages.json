@@ -1,0 +1,37 @@
+{
+  "extensionName": {
+    "message": "ParsiPad - Persian English Translator",
+    "description": "Extension name shown in the Chrome Web Store and Extensions page."
+  },
+  "extensionDescription": {
+    "message": "Learn Persian while you translate. Screenshot translate, grammar lessons, flashcards. Choose Claude, Gemini, or ChatGPT",
+    "description": "Short description shown in the Web Store listing."
+  },
+  "cmdTranslateSelection": {
+    "message": "Translate selected text"
+  },
+  "cmdDictionaryLookup": {
+    "message": "Look up selected word in dictionary"
+  },
+  "cmdTranslatePage": {
+    "message": "Translate current page"
+  },
+  "cmdScreenshotTranslate": {
+    "message": "Screenshot region and translate"
+  },
+  "ctxTranslateSelection": {
+    "message": "Translate with ParsiPad"
+  },
+  "ctxPolishSelection": {
+    "message": "Polish with ParsiPad"
+  },
+  "ctxDictionaryLookup": {
+    "message": "Look up in Dictionary"
+  },
+  "ctxTranslatePage": {
+    "message": "Translate this page"
+  },
+  "ctxScreenshotTranslate": {
+    "message": "Screenshot & Translate"
+  }
+}

@@ -1,5 +1,5 @@
 import { getTheme, setTheme, getUsageStats, getUsageEvents, clearUsageEvents, getLanguage } from '../lib/storage.js';
-import { PROVIDER_PRICING, PROVIDER_CONFIGS, PROVIDERS } from '../lib/constants.js';
+import { PROVIDER_PRICING, PROVIDER_CONFIGS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 
 // DOM Elements
