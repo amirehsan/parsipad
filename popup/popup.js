@@ -481,13 +481,12 @@ function setupEventListeners() {
   translateImageBtn.addEventListener('click', handleImageTranslate);
   imageCopyBtn.addEventListener('click', handleImageCopy);
 
-  // Explicit "Paste from clipboard" button - uses the async Clipboard API so
-  // users don't have to know about Ctrl+V. Falls back to the document-level
-  // paste listener (handlePaste) which still handles native Ctrl+V.
-  const pasteImageBtn = document.getElementById('paste-image-btn');
-  if (pasteImageBtn) {
-    pasteImageBtn.addEventListener('click', handlePasteImageClick);
-  }
+  // Note: a dedicated "Paste" button was tried but removed - Chrome
+  // extension popups need the `clipboardRead` permission to call
+  // navigator.clipboard.read(), and requesting it on update would
+  // trigger a permission-change warning for every existing user.
+  // The document-level Ctrl+V handler below (handlePaste) covers paste
+  // and the inline tip in popup.html tells users about it.
 
   // Translate Page button
   const translatePageBtn = document.getElementById('translate-page-btn');
@@ -1707,34 +1706,6 @@ function handlePaste(event) {
   }
 }
 
-/**
- * Explicit clipboard-paste handler triggered by the "Paste" button. Uses the
- * async Clipboard API (Chrome 86+) so users can paste without remembering the
- * Ctrl+V shortcut. Falls back gracefully if the clipboard is empty or contains
- * no image.
- */
-async function handlePasteImageClick() {
-  try {
-    if (!navigator.clipboard?.read) {
-      showError(t('pasteNotSupported', currentLang) || 'Clipboard paste is not available in this browser.');
-      return;
-    }
-    const clipboardItems = await navigator.clipboard.read();
-    for (const item of clipboardItems) {
-      const imageType = item.types.find(t => t.startsWith('image/'));
-      if (!imageType) continue;
-      const blob = await item.getType(imageType);
-      const ext = imageType.split('/')[1] || 'png';
-      const file = new File([blob], `clipboard-image.${ext}`, { type: imageType });
-      handleImageSelect(file);
-      return;
-    }
-    showError(t('clipboardNoImage', currentLang) || 'No image found in clipboard. Copy an image first, then click Paste.');
-  } catch (err) {
-    // Permissions or empty clipboard
-    showError(t('clipboardReadFailed', currentLang) || 'Could not read from clipboard. Try Ctrl+V instead.');
-  }
-}
 
 /**
  * Handle image selection (from file input or paste)
