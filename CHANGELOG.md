@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### UI/UX density rebuild (industry best practices)
+- **Popup vertical rhythm rebuilt** with semantic `--section-gap` (24px), `--item-gap` (12px), and `--content-pad` (20px) tokens. Replaces the uniform 16px-everywhere spacing that flattened all visual hierarchy. Header → tabs → content now read as three distinct zones.
+- **Density bumps inside the popup**: textarea padding 8/16 → 12/16; output section inset 16 → 20; output text line-height 1.6 → 1.7; polish cards 8/16 → 16/20 with 12px header margin and 12px gap between cards; history items now 44px min-height (WCAG 2.5.5) with 12/16 padding; action button now 40px min-height (Apple HIG).
+- **Translate Page button demoted** from a full-width indigo gradient CTA to a quiet ghost row with `--color-border`, so the textarea action button below is the unambiguous primary action ("one filled button per context").
+- **Floating UI density bumps**: header padding 10/12 → 12/16; content padding 12 → 16 with max-height 200 → 280; footer 8/12 → 12/16; polish content 8 / 8 gap → 16 / 12 gap with max-height 350 → 380; dict header 12/10 → 16/14; polish and dict text line-height 1.5 → 1.65.
+- **Selection-popup tooltip bug fix**: replaced the CSS `::before` pseudo-element tooltips (which used `background: #1f2937` hardcoded — invisible on dark hosts) with real `<span class="pp-tooltip" role="tooltip">` DOM nodes. Now uses `background: var(--pp-text)` / `color: var(--pp-bg)` — the inverse of the surface — so the tooltip stays legible in both light and dark themes. Built via `document.createElement` + `textContent` for safe interpolation.
+
 ### UI/UX visual refresh
 - **New shared design system**: `lib/design-tokens.css` and `lib/components.css` are now the single source of truth for colors, typography, spacing, radius, shadows, motion, focus rings, and dark-mode overrides. The token set mirrors the landing's Tailwind theme so the extension and landing stay visually aligned, and a `prefers-reduced-motion` media query zeroes all transition durations.
 - **Popup refresh**: imports the canonical tokens, normalizes header logo to 32px, retires the full-width Translate/Polish segmented control in favor of a quieter pill above the textarea, upgrades the top tabs to a proper ARIA tablist with `aria-selected`/`aria-controls`/keyboard arrow + Home/End navigation, replaces unguarded "Clear All" buttons with a two-stage confirm pattern, adds a global `:focus-visible` ring, and fixes the `.dict-pos` purple-on-purple WCAG AA contrast failure.

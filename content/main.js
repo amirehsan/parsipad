@@ -2616,23 +2616,61 @@ function createSelectionPopup(position, selectedText) {
   popup.className = 'selection-popup';
   popup.setAttribute('role', 'toolbar');
   popup.setAttribute('aria-label', 'Text actions');
-  popup.innerHTML = `
-    <button class="selection-btn" data-action="translate" data-tooltip="Translate" role="button" aria-label="Translate selected text">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <path d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
-      </svg>
-    </button>
-    <button class="selection-btn" data-action="polish" data-tooltip="Polish" role="button" aria-label="Polish and improve text">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z"/>
-      </svg>
-    </button>
-    <button class="selection-btn ${!isSingleWord ? 'disabled' : ''}" data-action="dictionary" data-tooltip="${isSingleWord ? 'Dictionary' : 'Single word only'}" role="button" aria-label="Look up in dictionary${!isSingleWord ? ' (single word only)' : ''}" ${!isSingleWord ? 'aria-disabled="true"' : ''}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-      </svg>
-    </button>
-  `;
+  // Build the three icon buttons via DOM API so we can safely append a real
+  // <span class="pp-tooltip"> for each label without relying on innerHTML
+  // interpolation. Tooltips use theme-aware tokens so they stay legible on
+  // dark host pages (previous ::before approach was dark-on-dark).
+  const dictTooltipText = isSingleWord ? 'Dictionary' : 'Single word only';
+  const dictAria = 'Look up in dictionary' + (isSingleWord ? '' : ' (single word only)');
+  const buttons = [
+    {
+      action: 'translate',
+      label: 'Translate',
+      ariaLabel: 'Translate selected text',
+      svgPath: 'M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129'
+    },
+    {
+      action: 'polish',
+      label: 'Polish',
+      ariaLabel: 'Polish and improve text',
+      svgPath: 'M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z'
+    },
+    {
+      action: 'dictionary',
+      label: dictTooltipText,
+      ariaLabel: dictAria,
+      disabled: !isSingleWord,
+      svgPath: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253'
+    }
+  ];
+  for (const cfg of buttons) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'selection-btn' + (cfg.disabled ? ' disabled' : '');
+    btn.dataset.action = cfg.action;
+    btn.setAttribute('aria-label', cfg.ariaLabel);
+    if (cfg.disabled) btn.setAttribute('aria-disabled', 'true');
+
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', cfg.svgPath);
+    svg.appendChild(path);
+    btn.appendChild(svg);
+
+    const tooltip = document.createElement('span');
+    tooltip.className = 'pp-tooltip';
+    tooltip.setAttribute('role', 'tooltip');
+    tooltip.textContent = cfg.label;
+    btn.appendChild(tooltip);
+
+    popup.appendChild(btn);
+  }
 
   selectionPopupShadow.appendChild(popup);
   document.body.appendChild(host);
