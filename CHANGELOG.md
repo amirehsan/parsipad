@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### UI/UX visual refresh
+- **New shared design system**: `lib/design-tokens.css` and `lib/components.css` are now the single source of truth for colors, typography, spacing, radius, shadows, motion, focus rings, and dark-mode overrides. The token set mirrors the landing's Tailwind theme so the extension and landing stay visually aligned, and a `prefers-reduced-motion` media query zeroes all transition durations.
+- **Popup refresh**: imports the canonical tokens, normalizes header logo to 32px, retires the full-width Translate/Polish segmented control in favor of a quieter pill above the textarea, upgrades the top tabs to a proper ARIA tablist with `aria-selected`/`aria-controls`/keyboard arrow + Home/End navigation, replaces unguarded "Clear All" buttons with a two-stage confirm pattern, adds a global `:focus-visible` ring, and fixes the `.dict-pos` purple-on-purple WCAG AA contrast failure.
+- **Floating UI consolidation**: deleted the dead `content/content.css` (rules never reached the Shadow DOM), made `content/styles/index.js` the single source of truth, and replaced 56 hardcoded neutral hexes with `var(--pp-*)` tokens. A new `themeVars()` helper is prepended to every Shadow DOM `<style>` block.
+- **Host-page-aware dark mode**: the floating box, polish box, dictionary box, selection popup, page progress overlay, page toggle button, and screenshot overlay now detect the host page's effective background luminance and apply `data-theme="dark"` to their hosts. A single `MutationObserver` on `<html>` / `<body>` propagates runtime theme switches (Twitter, YouTube, GitHub, etc.) to every known host.
+- **Cross-surface token unification**: `settings/`, `welcome/`, `newtab/`, `grammar/`, `history/`, `favorites/`, and `analytics/` now import the canonical token files. Hardcoded `#8b5cf6` polish badge color replaced with `var(--accent-polish)` so the violet accent stays consistent everywhere.
+- **i18n**: new `tapToConfirm` string in en/fa for the two-stage confirm.
+
 ### Fixed (review follow-up)
 - **Cache key collisions** in `lib/cache.js`: replaced the 32-char base64 truncation with SHA-256 of `provider|sourceLang|text`. Two long inputs sharing a prefix no longer return each other's translation, and switching providers no longer surfaces the previous provider's cached output. Added `tests/cache.test.js` covering both cases.
 - **Document translation progress** is now streamed end-to-end. Background exposes a `translate-document` Port; the popup connects to it, sends `{action: 'start', content}`, receives `{type: 'progress', current, total, percent}` per chunk, and gets `{type: 'done', ...}` or `{type: 'error', error}` at the end. Cancel is also delivered through the port so an in-flight chunk no longer has to finish before the user's cancel takes effect.

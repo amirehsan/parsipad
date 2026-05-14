@@ -62,19 +62,19 @@
     </button>
 
     <!-- Tab Navigation (4 tabs: Text, Dictionary, Document, Image) -->
-    <nav class="tab-nav">
-      <button id="tab-text" class="tab active" data-mode="text" data-i18n="text" title="Text">Text</button>
-      <button id="tab-dictionary" class="tab" data-mode="dictionary" data-i18n="dictionary" title="Dictionary">Dictionary</button>
-      <button id="tab-document" class="tab" data-mode="document" data-i18n="document" title="Document">Document</button>
-      <button id="tab-image" class="tab" data-mode="image" data-i18n="image" title="Image">Image</button>
+    <nav class="tab-nav" role="tablist" aria-label="Translation mode">
+      <button id="tab-text" class="tab active" data-mode="text" data-i18n="text" role="tab" aria-selected="true" aria-controls="text-mode-section">Text</button>
+      <button id="tab-dictionary" class="tab" data-mode="dictionary" data-i18n="dictionary" role="tab" aria-selected="false" aria-controls="dictionary-section">Dictionary</button>
+      <button id="tab-document" class="tab" data-mode="document" data-i18n="document" role="tab" aria-selected="false" aria-controls="document-upload-section">Document</button>
+      <button id="tab-image" class="tab" data-mode="image" data-i18n="image" role="tab" aria-selected="false" aria-controls="image-upload-section">Image</button>
     </nav>
 
-    <!-- Text Mode Section (Translate/Polish with segmented control) -->
-    <section id="text-mode-section" class="section">
-      <!-- Segmented Control for Translate/Polish -->
-      <div class="segmented-control">
-        <button id="mode-translate" class="segment active" data-i18n="translate">Translate</button>
-        <button id="mode-polish" class="segment" data-i18n="polish">Polish</button>
+    <!-- Text Mode Section (Translate/Polish with mode switcher) -->
+    <section id="text-mode-section" class="section" role="tabpanel" aria-labelledby="tab-text">
+      <!-- Mode Switcher (replaces full-width segmented control: quieter pill above input) -->
+      <div class="mode-switcher" role="tablist" aria-label="Text mode">
+        <button id="mode-translate" class="mode-switcher-btn" role="tab" aria-selected="true" data-i18n="translate">Translate</button>
+        <button id="mode-polish" class="mode-switcher-btn" role="tab" aria-selected="false" data-i18n="polish">Polish</button>
       </div>
 
       <!-- Text Input -->

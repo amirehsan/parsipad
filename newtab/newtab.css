@@ -1,11 +1,13 @@
 /* Local fonts (see fonts/fonts.css) */
 @import url('../fonts/fonts.css');
+@import url('../lib/design-tokens.css');
+@import url('../lib/components.css');
 
 /* Design Tokens */
 :root {
-  --color-primary: #6366F1;
-  --color-primary-hover: #4F46E5;
-  --color-polish: #8b5cf6;
+  --color-primary: var(--color-primary-600);
+  --color-primary-hover: var(--color-primary-700);
+  --color-polish: var(--accent-polish);
   --color-favorite: #FBBF24;
   --color-bg: #F3F4F6;
   --color-bg-secondary: #FFFFFF;

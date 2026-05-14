@@ -4,6 +4,8 @@
 
 /* Local fonts (see fonts/fonts.css) */
 @import url('../fonts/fonts.css');
+@import url('../lib/design-tokens.css');
+@import url('../lib/components.css');
 
 /* CSS Variables */
 :root {
