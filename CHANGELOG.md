@@ -5,7 +5,15 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.11.0] - 2026-05-14
+
+### Highlights
+- Typo-aware translation (auto-corrected with a "Did you mean: X → Y" hint).
+- Richer translation results: alternative English expressions, examples, and nuance notes for short queries.
+- Persian/English-only language gate that catches Cyrillic/CJK/Hebrew/Greek/etc. before burning tokens.
+- Brand-new design system, density rebuild, host-aware dark mode in the floating UI.
+- Settings reorganized into 4 tabs; image clipboard paste button; polish and dictionary boxes are now draggable.
+- Engineering hardening: esbuild build pipeline, Vitest tests, CI, DOMPurify sanitization, AbortController + timeout in all provider fetches.
 
 ### UX iteration round 2 (typo tolerance, English alternatives, drag, paste, settings)
 
