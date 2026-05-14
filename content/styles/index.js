@@ -582,11 +582,6 @@ export function getStyles() {
     .parsipad-rich-context-list li:last-child {
       margin-bottom: 0;
     }
-    .parsipad-rich-context-list[dir='rtl'] {
-      padding-inline-start: 0;
-      padding-inline-end: 18px;
-      font-family: 'Vazirmatn', 'Tahoma', sans-serif;
-    }
 
     .parsipad-text {
       font-size: 14px;

@@ -186,22 +186,25 @@ main {
  * scrolling forever. Sticky just below the top nav for fast switching.
  */
 .settings-tabs {
-  position: sticky;
-  top: 73px; /* matches the sticky top-nav height */
-  z-index: 40;
+  /*
+   * Not sticky on purpose: the top nav is already sticky and the two were
+   * fighting for the same band, leaving the tab bar half-covered on scroll.
+   * Now the tabs scroll with the content (matching chrome://settings and
+   * chrome://extensions). Tab content is short enough per group (<=4 cards)
+   * that re-scrolling up to switch tabs is not painful.
+   */
   display: flex;
   gap: 0.25rem;
   margin-bottom: 1.5rem;
   padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(8px);
+  background: var(--gray-50);
   border: 1px solid var(--gray-200);
   border-radius: 0.75rem;
   flex-wrap: wrap;
 }
 
 .dark .settings-tabs {
-  background: rgba(31, 41, 55, 0.85);
+  background: var(--gray-800);
   border-color: var(--gray-700);
 }
 
@@ -396,10 +399,11 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 }
 
 .option-flag {
-  width: 32px;
-  height: 21px;
+  /* Doubled from 32x21 -> 64x42 so the language flags read as a hero choice */
+  width: 64px;
+  height: 42px;
   object-fit: cover;
-  border-radius: 3px;
+  border-radius: 5px;
 }
 
 .option-label {
