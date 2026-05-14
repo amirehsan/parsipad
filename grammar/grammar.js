@@ -1,6 +1,7 @@
 import { getLanguage, addFavorite, isFavorite, removeFavorite } from '../lib/storage.js';
 import { ACTIONS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
+import { setSafeInnerHTML } from '../lib/sanitize.js';
 
 // DOM Elements
 const themeToggle = document.getElementById('theme-toggle');
@@ -368,7 +369,7 @@ function createGrammarPointElement(point, number) {
   // Determine if content is RTL (Persian)
   const contentIsRtl = direction === 'en-to-fa' || direction === 'en-fa';
 
-  div.innerHTML = `
+  const html = `
     <div class="grammar-point-header">
       <span class="grammar-point-number">${number}</span>
       <h3 class="grammar-point-title">${escapeHtml(point.title)}</h3>
@@ -456,6 +457,7 @@ function createGrammarPointElement(point, number) {
       ${point.quiz ? createQuizHTML(point.quiz, number) : ''}
     </div>
   `;
+  setSafeInnerHTML(div, html);
 
   // Set up quiz interactions
   if (point.quiz) {

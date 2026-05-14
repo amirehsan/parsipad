@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "ParsiPad - Persian English Translator",
+  "name": "__MSG_extensionName__",
   "version": "2.10.0",
-  "description": "Learn Persian while you translate. Screenshot translate, grammar lessons, flashcards. Choose Claude, Gemini, or ChatGPT",
+  "description": "__MSG_extensionDescription__",
+  "default_locale": "en",
 
   "permissions": [
     "storage",
@@ -60,34 +61,42 @@
         "default": "Alt+T",
         "mac": "Alt+T"
       },
-      "description": "Translate selected text"
+      "description": "__MSG_cmdTranslateSelection__"
     },
     "dictionary-lookup": {
       "suggested_key": {
         "default": "Alt+D",
         "mac": "Alt+D"
       },
-      "description": "Look up selected word in dictionary"
+      "description": "__MSG_cmdDictionaryLookup__"
     },
     "translate-page": {
       "suggested_key": {
         "default": "Alt+P",
         "mac": "Alt+P"
       },
-      "description": "Translate current page"
+      "description": "__MSG_cmdTranslatePage__"
     },
     "screenshot-translate": {
       "suggested_key": {
         "default": "Alt+S",
         "mac": "Alt+S"
       },
-      "description": "Screenshot region and translate"
+      "description": "__MSG_cmdScreenshotTranslate__"
     }
   },
 
   "web_accessible_resources": [
     {
-      "resources": ["icons/*.png", "grammar/grammar.html"],
+      "resources": [
+        "icons/*.png",
+        "grammar/grammar.html",
+        "fonts/*.woff2",
+        "fonts/fonts.css",
+        "content/main.js",
+        "content/utils/*.js",
+        "content/styles/*.js"
+      ],
       "matches": ["<all_urls>"]
     }
   ]

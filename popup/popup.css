@@ -1,5 +1,5 @@
-/* Google Fonts - Inter & Vazirmatn (same as landing page) */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&display=swap');
+/* Local fonts (see fonts/fonts.css) */
+@import url('../fonts/fonts.css');
 
 /* Design Tokens - Aligned with Landing Page */
 :root {

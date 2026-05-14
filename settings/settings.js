@@ -58,10 +58,10 @@ const claudeApiKeyInput = document.getElementById('claude-api-key');
 const geminiApiKeyInput = document.getElementById('gemini-api-key');
 const openaiApiKeyInput = document.getElementById('openai-api-key');
 
-// DOM Elements - Key Status Indicators
-const claudeKeyStatus = document.getElementById('claude-key-status');
-const geminiKeyStatus = document.getElementById('gemini-key-status');
-const openaiKeyStatus = document.getElementById('openai-key-status');
+// DOM Elements - Key Status Indicators (referenced via getElementById elsewhere, kept for parity)
+const _claudeKeyStatus = document.getElementById('claude-key-status');
+const _geminiKeyStatus = document.getElementById('gemini-key-status');
+const _openaiKeyStatus = document.getElementById('openai-key-status');
 
 // DOM Elements - Cache
 const cacheCountEl = document.getElementById('cache-count');

@@ -2,6 +2,8 @@
    ParsiPad Welcome Page Styles
    ============================================ */
 
+@import url('../fonts/fonts.css');
+
 /* CSS Variables */
 :root {
   /* Primary Colors - Indigo palette */
