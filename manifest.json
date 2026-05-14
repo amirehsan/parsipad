@@ -95,7 +95,8 @@
         "fonts/fonts.css",
         "content/main.js",
         "content/utils/*.js",
-        "content/styles/*.js"
+        "content/styles/*.js",
+        "lib/i18n.js"
       ],
       "matches": ["<all_urls>"]
     }

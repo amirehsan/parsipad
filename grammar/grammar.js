@@ -34,6 +34,10 @@ let isSpeaking = false;
  */
 async function init() {
   initTheme();
+  // Apply translations BEFORE making any section visible. The loading
+  // section starts `hidden` in the HTML so the user never sees the English
+  // fallback copy ("Creating grammar lesson...") flash before it's swapped
+  // to Persian.
   await loadLanguage();
   setupEventListeners();
   parseUrlParams();
@@ -225,7 +229,11 @@ async function loadLesson() {
     renderLesson();
   } catch (error) {
     console.error('Failed to load grammar lesson:', error);
-    showError(error.message);
+    // Translate known sentinel errors; pass through real errors verbatim.
+    const msg = error.message === 'GRAMMAR_PARSE_FAILED'
+      ? (t('grammarParseFailed', currentLang) || 'We could not build a complete grammar lesson for this text. Try a shorter sentence or hit Try Again.')
+      : error.message;
+    showError(msg);
   }
 }
 
