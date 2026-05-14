@@ -230,9 +230,14 @@ async function loadLesson() {
   } catch (error) {
     console.error('Failed to load grammar lesson:', error);
     // Translate known sentinel errors; pass through real errors verbatim.
-    const msg = error.message === 'GRAMMAR_PARSE_FAILED'
-      ? (t('grammarParseFailed', currentLang) || 'We could not build a complete grammar lesson for this text. Try a shorter sentence or hit Try Again.')
-      : error.message;
+    let msg = error.message;
+    if (error.message === 'GRAMMAR_PARSE_FAILED') {
+      msg = t('grammarParseFailed', currentLang)
+        || 'We could not build a complete grammar lesson for this text. Try a shorter sentence or hit Try Again.';
+    } else if (error.message === 'GRAMMAR_TIMEOUT') {
+      msg = t('grammarTimeout', currentLang)
+        || 'The grammar lesson took too long to generate. Try a shorter sentence or hit Try Again.';
+    }
     showError(msg);
   }
 }
