@@ -5,6 +5,14 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.1] - 2026-05-14
+
+Patch release with two fixes on top of the 2.11.0 submission that's currently in Chrome Web Store review.
+
+### Fixed
+- **Grammar lesson "Request timed out" error.** The previous fix bumped `maxTokens` 3x → 8x to prevent mid-JSON truncation, which made the request routinely exceed the default 30 s `withRetry` timeout. All three provider `complete()` methods now accept and forward an optional `timeoutMs` to `withRetry`; `getGrammarLesson` passes `timeoutMs: 120000` (2 minutes) so heavy grammar responses can complete. If a request still times out, the user sees a friendly i18n'd message ("The grammar lesson took too long to generate. Try a shorter sentence or hit Try Again." / "تولید درس گرامر بیش از حد طول کشید. متن کوتاه‌تری امتحان کنید یا دوباره تلاش کنید.") instead of a raw "Request timed out".
+- **Removed broken Paste image button.** The button called `navigator.clipboard.read()` which requires the `clipboardRead` permission in the manifest. Adding that on update would force a permission-change warning for every existing user — not worth it for one button. The button is gone; the document-level Ctrl+V paste handler still works, and the inline tip ("Tip: copy any image and paste it here with Ctrl+V (or ⌘V on Mac).") remains so users know paste is supported.
+
 ## [2.11.0] - 2026-05-14
 
 ### Highlights
