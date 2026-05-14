@@ -35,6 +35,16 @@
   --space-md: var(--space-4);
   --space-lg: var(--space-6);
 
+  /*
+   * Semantic rhythm tokens (industry standard).
+   * 24px between major sections, 12px between items inside a section,
+   * 20px card / output inset. Replaces the uniform 16px section gap
+   * that made every break look the same.
+   */
+  --section-gap: var(--space-6);   /* 24px */
+  --item-gap:    var(--space-3);   /* 12px */
+  --content-pad: var(--space-5);   /* 20px */
+
   /* Shadow aliases */
   --shadow-md: var(--shadow-card-hover);
   --shadow-lg: var(--shadow-lg);
@@ -98,7 +108,8 @@ body {
 
 /* Popup Container */
 .popup {
-  padding: var(--space-md);
+  /* Slightly more bottom padding for the stats/history footer breathing */
+  padding: var(--space-4) var(--space-4) var(--space-5);
 }
 
 /* Header */
@@ -106,7 +117,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-md);
+  /* Was 16px; bumped to 20px to separate header from tabs more clearly */
+  margin-bottom: var(--space-5);
 }
 
 .logo {
@@ -195,7 +207,9 @@ body {
 .tab-nav {
   display: flex;
   gap: var(--space-xs);
-  margin-bottom: var(--space-md);
+  /* Section break: was 16px; bumped to --section-gap (24px) so the top tab row
+     sits visibly below the header before the section content begins. */
+  margin-bottom: var(--section-gap);
   border-bottom: 2px solid var(--color-border);
   padding: 0;
 }
@@ -277,13 +291,16 @@ body {
 
 /* Section */
 .section {
-  margin-bottom: var(--space-md);
+  /* Major section break - was 16px, bumped to 24px so output → history → stats
+     all read as separate visual blocks instead of a continuous stack. */
+  margin-bottom: var(--section-gap);
 }
 
 /* Textarea */
 .textarea {
   width: 100%;
-  padding: var(--space-sm) var(--space-md);
+  /* Vertical padding 12px (was 8px) gives the cursor room to breathe */
+  padding: var(--space-3) var(--space-4);
   font-size: 14px;
   font-family: var(--font-sans);
   border: 1px solid var(--color-border);
@@ -371,7 +388,9 @@ body {
 /* Action Button (Translate/Polish) */
 .action-btn {
   width: 100%;
-  padding: var(--space-sm) var(--space-md);
+  /* min-height 40px = Apple HIG / Material touch target */
+  min-height: 40px;
+  padding: var(--space-3) var(--space-4);
   font-size: 14px;
   font-weight: 500;
   background-color: var(--color-primary);
@@ -423,7 +442,8 @@ body {
 .output-section {
   background-color: var(--color-bg-secondary);
   border-radius: var(--radius-md);
-  padding: var(--space-md);
+  /* 20px inset gives the translation result obvious card breathing */
+  padding: var(--content-pad);
   animation: fadeSlideIn 0.2s ease-out;
 }
 
@@ -492,7 +512,8 @@ body {
 
 .output-text {
   font-size: 14px;
-  line-height: 1.6;
+  /* 1.7 reads markedly more spacious at narrow 400px width */
+  line-height: 1.7;
   color: var(--color-text);
   word-wrap: break-word;
   white-space: pre-wrap;
@@ -556,10 +577,12 @@ body {
 .history-item {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm);
+  gap: var(--space-3);
+  /* 12px/16px gives the item room; min-height 44px hits WCAG 2.5.5 touch target. */
+  padding: var(--space-3) var(--space-4);
+  min-height: 44px;
   background: var(--color-bg-secondary);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: background-color 0.15s;
 }
@@ -642,7 +665,8 @@ body {
 /* Polish Section */
 .polish-section {
   flex-direction: column;
-  gap: var(--space-sm);
+  /* 12px gap between cards (was 8px) gives clearer visual separation of the 3 variants */
+  gap: var(--item-gap);
   display: none;
 }
 
@@ -654,7 +678,8 @@ body {
 .polish-card {
   background-color: var(--color-bg-secondary);
   border-radius: var(--radius-md);
-  padding: var(--space-sm) var(--space-md);
+  /* 16px/20px = card inset rhythm; title row now has room above content */
+  padding: var(--space-4) var(--content-pad);
   border: 1px solid var(--color-border);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -668,7 +693,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-xs);
+  /* Title to body 12px (was 4px) so the title is unambiguously its own element */
+  margin-bottom: var(--item-gap);
 }
 
 .polish-card-title {
@@ -1759,31 +1785,38 @@ body {
    Translate Page Button
    ============================================ */
 
+/*
+ * Demoted to a quiet secondary affordance so the textarea action button below
+ * is the unambiguous primary action. Was a full-width indigo-tinted CTA; now
+ * a ghost row matching pp-btn-ghost styling.
+ */
 .translate-page-btn {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  margin-bottom: var(--space-md);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(99, 102, 241, 0.05) 100%);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  margin-bottom: var(--section-gap);
+  min-height: 36px;
+  background: transparent;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   color: var(--color-primary);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  transition: background-color var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out);
 }
 
 .translate-page-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.1) 100%);
-  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--color-primary-200);
 }
 
-.translate-page-btn:active:not(:disabled) {
-  transform: scale(0.98);
+.translate-page-btn:focus-visible {
+  outline: var(--ring-width) solid var(--ring-color);
+  outline-offset: 2px;
 }
 
 .translate-page-btn:disabled {

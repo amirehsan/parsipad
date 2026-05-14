@@ -298,14 +298,25 @@ export function getSelectionPopupStyles(showBelow = false) {
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      color: #64748b;
+      /* Use token so the icon is readable in both light and dark themes */
+      color: var(--pp-text-secondary);
       transition: background-color 0.15s, color 0.15s, transform 0.15s;
     }
 
     .selection-btn:hover {
-      background: rgba(99, 102, 241, 0.1);
-      color: #6366f1;
+      /* Brand-tint background; brighter brand color in dark mode for legibility */
+      background: rgba(99, 102, 241, 0.18);
+      color: var(--pp-accent, #4f46e5);
       transform: scale(1.05);
+    }
+
+    :host([data-theme='dark']) .selection-btn:hover {
+      color: #a5b4fc; /* indigo-300, AA on dark popup bg */
+    }
+
+    .selection-btn:focus-visible {
+      outline: 2px solid var(--pp-accent, #6366f1);
+      outline-offset: 2px;
     }
 
     .selection-btn:active {
@@ -319,7 +330,7 @@ export function getSelectionPopupStyles(showBelow = false) {
 
     .selection-btn.disabled:hover {
       background: transparent;
-      color: #64748b;
+      color: var(--pp-text-secondary);
       transform: none;
     }
 
@@ -328,14 +339,19 @@ export function getSelectionPopupStyles(showBelow = false) {
       height: 18px;
     }
 
-    .selection-btn::before {
-      content: attr(data-tooltip);
+    /*
+     * Real <span class="pp-tooltip"> element (not ::before/::after) so the
+     * tooltip uses theme-aware tokens and stays legible on dark host pages.
+     * --pp-text is near-black in light theme, near-white in dark theme;
+     * --pp-bg is the inverse. The tooltip is the inverse of its surface.
+     */
+    .pp-tooltip {
       position: absolute;
-      bottom: calc(100% + 6px);
+      bottom: calc(100% + 8px);
       left: 50%;
       transform: translateX(-50%);
       padding: 4px 8px;
-      background: #1f2937;
+      background: var(--pp-text);
       color: var(--pp-bg);
       font-size: 11px;
       font-weight: 500;
@@ -343,36 +359,29 @@ export function getSelectionPopupStyles(showBelow = false) {
       border-radius: 4px;
       opacity: 0;
       visibility: hidden;
-      transition: opacity 0.15s, visibility 0.15s;
+      transition: opacity 150ms cubic-bezier(0.16, 1, 0.3, 1), visibility 150ms;
       pointer-events: none;
       z-index: 10;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     }
 
-    .selection-btn::after {
+    .pp-tooltip::after {
       content: '';
       position: absolute;
-      bottom: calc(100% + 2px);
+      top: 100%;
       left: 50%;
       transform: translateX(-50%);
       border: 4px solid transparent;
-      border-top-color: #1f2937;
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.15s, visibility 0.15s;
-      pointer-events: none;
-      z-index: 10;
+      border-top-color: var(--pp-text);
     }
 
-    .selection-btn:hover::before,
-    .selection-btn:hover::after {
+    .selection-btn:hover .pp-tooltip,
+    .selection-btn:focus-visible .pp-tooltip,
+    .selection-btn.disabled:hover .pp-tooltip {
       opacity: 1;
       visibility: visible;
     }
 
-    .selection-btn.disabled:hover::before {
-      opacity: 1;
-      visibility: visible;
-    }
   `;
 }
 
@@ -418,7 +427,7 @@ export function getStyles() {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 12px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--pp-border);
       background: var(--pp-bg-secondary);
       border-radius: 12px 12px 0 0;
@@ -509,13 +518,14 @@ export function getStyles() {
     }
 
     .parsipad-content {
-      padding: 12px;
-      max-height: 200px;
+      padding: 16px;
+      max-height: 280px;
       overflow-y: auto;
     }
 
     .parsipad-text {
       font-size: 14px;
+      line-height: 1.65;
       line-height: 1.6;
       color: var(--pp-text);
       word-wrap: break-word;
@@ -531,7 +541,7 @@ export function getStyles() {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px 12px;
+      padding: 12px 16px;
       border-top: 1px solid var(--pp-border);
       background: var(--pp-bg-secondary);
       border-radius: 0 0 12px 12px;
@@ -688,11 +698,11 @@ export function getStyles() {
     }
 
     .parsipad-polish-content {
-      padding: 8px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      max-height: 350px;
+      gap: 12px;
+      max-height: 380px;
       overflow-y: auto;
     }
 
@@ -793,7 +803,7 @@ export function getStyles() {
 
     .parsipad-polish-text {
       font-size: 13px;
-      line-height: 1.5;
+      line-height: 1.65;
       color: var(--pp-text);
       word-wrap: break-word;
       white-space: pre-wrap;
@@ -828,8 +838,8 @@ export function getStyles() {
     }
 
     .parsipad-dict-header {
-      margin-bottom: 12px;
-      padding-bottom: 10px;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
       border-bottom: 1px solid var(--pp-border);
     }
 
@@ -878,7 +888,7 @@ export function getStyles() {
     .parsipad-dict-meaning {
       font-size: 13px;
       color: var(--pp-text);
-      line-height: 1.5;
+      line-height: 1.65;
     }
 
     .parsipad-dict-example {
