@@ -636,7 +636,8 @@ function showTranslation(result, originalText) {
       extras.appendChild(title);
       const list = document.createElement('ul');
       list.className = 'parsipad-rich-context-list';
-      if (textDir === 'rtl') list.setAttribute('dir', 'rtl');
+      // Alternatives are always English (regardless of translation direction)
+      // so the list always renders LTR. No dir="rtl" override here.
       alternatives.forEach(alt => {
         const li = document.createElement('li');
         li.textContent = alt;
