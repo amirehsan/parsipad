@@ -523,6 +523,64 @@ export function getStyles() {
       overflow-y: auto;
     }
 
+    .parsipad-correction-hint {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 10px;
+      padding: 6px 10px;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--pp-text);
+    }
+    .parsipad-correction-label {
+      color: var(--pp-text-secondary);
+      font-weight: 500;
+    }
+    .parsipad-correction-original {
+      color: var(--pp-text-secondary);
+      text-decoration: line-through;
+    }
+    .parsipad-correction-corrected {
+      color: var(--pp-text);
+      font-weight: 600;
+    }
+    .parsipad-rich-context {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--pp-border);
+      font-size: 12px;
+      color: var(--pp-text-secondary);
+    }
+    .parsipad-rich-context-nuance {
+      font-style: italic;
+      line-height: 1.55;
+      color: var(--pp-text-secondary);
+      margin-bottom: 8px;
+    }
+    .parsipad-rich-context-title {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--pp-text-muted);
+      margin-bottom: 4px;
+    }
+    .parsipad-rich-context-list {
+      margin: 0;
+      padding-inline-start: 18px;
+      line-height: 1.55;
+      color: var(--pp-text);
+    }
+    .parsipad-rich-context-list[dir='rtl'] {
+      padding-inline-start: 0;
+      padding-inline-end: 18px;
+      font-family: 'Vazirmatn', 'Tahoma', sans-serif;
+    }
+
     .parsipad-text {
       font-size: 14px;
       line-height: 1.65;
