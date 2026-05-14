@@ -45,8 +45,18 @@
   <!-- Main Content -->
   <main class="max-w-3xl mx-auto px-6 py-8">
 
+    <!-- Settings tab navigation: groups 11 cards into 4 buckets so the page
+         stops scrolling forever. JS wires clicks; CSS hides non-active tabs. -->
+    <nav class="settings-tabs" role="tablist" aria-label="Settings sections">
+      <button type="button" class="settings-tab is-active" role="tab" aria-selected="true" data-tab-target="general" data-i18n="settingsTabGeneral">General</button>
+      <button type="button" class="settings-tab" role="tab" aria-selected="false" data-tab-target="providers" data-i18n="settingsTabProviders">AI Providers</button>
+      <button type="button" class="settings-tab" role="tab" aria-selected="false" data-tab-target="data" data-i18n="settingsTabData">Data</button>
+      <button type="button" class="settings-tab" role="tab" aria-selected="false" data-tab-target="more" data-i18n="settingsTabMore">More</button>
+    </nav>
+
+
     <!-- Language Settings Card -->
-    <section class="settings-card">
+    <section class="settings-card" data-settings-tab="general">
       <div class="card-header">
         <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
           <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,7 +89,7 @@
     </section>
 
     <!-- Dictionary Settings Card -->
-    <section class="settings-card">
+    <section class="settings-card" data-settings-tab="general">
       <div class="card-header">
         <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
           <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,7 +126,7 @@
     </section>
 
     <!-- Selection Popup Card -->
-    <section class="settings-card">
+    <section class="settings-card" data-settings-tab="general">
       <div class="card-header">
         <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
           <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,7 +153,7 @@
     </section>
 
     <!-- New Tab Card -->
-    <section class="settings-card">
+    <section class="settings-card" data-settings-tab="general">
       <div class="card-header">
         <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
           <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -182,7 +192,7 @@
     </section>
 
     <!-- AI Provider Selection Card -->
-    <section class="settings-card">
+    <section class="settings-card" data-settings-tab="providers">
       <div class="card-header">
         <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
           <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -253,7 +263,7 @@
     </section>
 
     <!-- API Keys Card -->
-    <section class="settings-card">
+    <section class="settings-card" data-settings-tab="providers">
       <div class="card-header">
         <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
           <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -404,7 +414,7 @@
     </section>
 
     <!-- Cache Card -->
-    <section class="settings-card">
+    <section class="settings-card" data-settings-tab="data">
       <div class="card-header">
         <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
           <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -433,7 +443,7 @@
     </section>
 
     <!-- Data Backup Card -->
-    <section class="settings-card">
+    <section class="settings-card" data-settings-tab="data">
       <div class="card-header">
         <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
           <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -519,7 +529,7 @@
     </section>
 
     <!-- Keyboard Shortcuts Card -->
-    <section class="settings-card">
+    <section class="settings-card" data-settings-tab="more">
       <div class="card-header">
         <div class="card-icon bg-gray-100 dark:bg-gray-800">
           <svg class="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -584,7 +594,7 @@
     </section>
 
     <!-- Analytics Card -->
-    <section class="settings-card">
+    <section class="settings-card" data-settings-tab="more">
       <div class="card-header">
         <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
           <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -602,7 +612,7 @@
     </section>
 
     <!-- About Card -->
-    <section class="settings-card">
+    <section class="settings-card" data-settings-tab="more">
       <div class="card-header">
         <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
           <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

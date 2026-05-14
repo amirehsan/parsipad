@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### UX iteration round 2 (typo tolerance, English alternatives, drag, paste, settings)
+
+- **Typo-friendly prompts**: rewrote SYSTEM/DICTIONARY/POLISH prompts to ALWAYS attempt translation of Latin-letter input (e.g. "adde" -> "added") and Persian-script input. The model now only returns `{unsupported: true}` when the primary script is clearly Cyrillic, CJK, Hebrew, Greek, Thai, or Devanagari. Misspelled fragments are corrected silently and surfaced in `corrections`.
+- **Service-worker gate relaxed**: `isSupportedLanguage()` now defers to the LLM when the input contains any Latin or Persian/Arabic characters. Only inputs that are >50% non-fa/non-en script get pre-rejected before hitting the API.
+- **Alternatives are now ENGLISH**: prompt clarified that `alternatives` always contain English words/expressions (regardless of translation direction), since the audience is Persian native speakers who already know the Persian alternatives. Improved popup + floating-box spacing for the alternatives list (line-height 1.7, 4px between list items).
+- **Softer error UI**: replaced the alarming red error style with an informational amber notice as the default. Real failures (network / invalid API key / server / rate-limit) opt into the destructive red via a `.is-destructive` class. Pattern matching done in both `showError` paths (popup + floating box).
+- **Polish + dictionary floating boxes now draggable**: previously only the translation box supported drag. `enableDrag(host, headerEl)` is now applied to all three floating UIs from the same header element.
+- **Image paste UX**: added a dedicated "Paste" button next to "Select File" and "Screenshot" that uses the async Clipboard API (`navigator.clipboard.read`) so users don't have to remember Ctrl+V. The hint copy now reads "Tip: copy any image and paste it here with Ctrl+V (or ⌘V on Mac)." Document-level Ctrl+V paste handler retained as fallback. New i18n strings: `pasteImage`, `pasteFromClipboardHint`, `pasteNotSupported`, `clipboardNoImage`, `clipboardReadFailed`.
+- **Settings page restructure**: 11 cards grouped into 4 tabs (General / AI Providers / Data / More) with a sticky tab bar below the top nav. Arrow-key navigation between tabs. Drastically reduces vertical scrolling - the General tab now shows 4 cards instead of 11. New i18n strings: `settingsTabGeneral`, `settingsTabProviders`, `settingsTabData`, `settingsTabMore`.
+
 ### Prompts, language gate, typo correction, richer translation, cache hygiene
 
 - **All LLM prompts rewritten** for clarity, anti-hallucination, and token efficiency. `SYSTEM_PROMPT`, `POLISH_SYSTEM_PROMPT`, `DICTIONARY_SYSTEM_PROMPT`, `DOCUMENT_SYSTEM_PROMPT`, `IMAGE_SYSTEM_PROMPT`, and `POLISH_VARIANT_SYSTEM_PROMPT` (plus the dictionary module's local prompts) now explicitly restrict to Persian and English, instruct the model to return `{"unsupported": true}` on any unsupported / unintelligible input, and require valid JSON output with no surrounding prose or markdown fences.

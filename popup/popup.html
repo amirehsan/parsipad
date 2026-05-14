@@ -354,10 +354,17 @@
           <polyline points="21 15 16 10 5 21"/>
         </svg>
         <p class="upload-text" data-i18n="uploadImage">Upload Image</p>
-        <p class="upload-hint" data-i18n="imageFormats">JPG, PNG • Paste with Ctrl+V</p>
+        <p class="upload-hint" data-i18n="imageFormats">JPG, PNG, WebP</p>
         <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp" hidden>
         <div class="image-upload-actions">
           <button id="select-image-btn" class="action-btn secondary" data-i18n="selectFile">Select File</button>
+          <button id="paste-image-btn" class="action-btn secondary" data-i18n-title="pasteFromClipboardHint" title="Paste image from clipboard (Ctrl+V)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+            </svg>
+            <span data-i18n="pasteImage">Paste</span>
+          </button>
           <button id="screenshot-translate-btn" class="action-btn secondary" title="Screenshot & Translate (Alt+S)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -366,6 +373,7 @@
             Screenshot
           </button>
         </div>
+        <p class="upload-paste-hint" data-i18n="pasteFromClipboardHint">Tip: copy any image and paste it here with Ctrl+V (or ⌘V on Mac).</p>
       </div>
 
       <!-- Image Preview -->

@@ -549,17 +549,17 @@ export function getStyles() {
       font-weight: 600;
     }
     .parsipad-rich-context {
-      margin-top: 12px;
-      padding-top: 10px;
+      margin-top: 16px;
+      padding-top: 12px;
       border-top: 1px solid var(--pp-border);
       font-size: 12px;
       color: var(--pp-text-secondary);
     }
     .parsipad-rich-context-nuance {
       font-style: italic;
-      line-height: 1.55;
+      line-height: 1.6;
       color: var(--pp-text-secondary);
-      margin-bottom: 8px;
+      margin-bottom: 12px;
     }
     .parsipad-rich-context-title {
       font-size: 10px;
@@ -567,13 +567,20 @@ export function getStyles() {
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: var(--pp-text-muted);
-      margin-bottom: 4px;
+      margin-bottom: 8px;
     }
     .parsipad-rich-context-list {
       margin: 0;
       padding-inline-start: 18px;
-      line-height: 1.55;
+      line-height: 1.7;
       color: var(--pp-text);
+      font-size: 13px;
+    }
+    .parsipad-rich-context-list li {
+      margin-bottom: 4px;
+    }
+    .parsipad-rich-context-list li:last-child {
+      margin-bottom: 0;
     }
     .parsipad-rich-context-list[dir='rtl'] {
       padding-inline-start: 0;
@@ -699,18 +706,36 @@ export function getStyles() {
       100% { background-position: -200% 0; }
     }
 
+    /*
+     * Default is INFO tone (amber). The .is-destructive modifier (added by
+     * showError in main.js for real failures like network/invalid-key)
+     * upgrades it to the alarming red treatment.
+     */
     .parsipad-error {
-      color: #ef4444;
-      font-size: 13px;
       display: flex;
-      align-items: center;
-      gap: 8px;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: rgba(245, 158, 11, 0.10);
+      border: 1px solid rgba(245, 158, 11, 0.28);
+      color: var(--pp-text);
+      font-size: 13px;
+      line-height: 1.5;
     }
-
     .parsipad-error svg {
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
       flex-shrink: 0;
+      color: #d97706;
+    }
+    .parsipad-error.is-destructive {
+      background: rgba(239, 68, 68, 0.10);
+      border-color: rgba(239, 68, 68, 0.28);
+      color: #b91c1c;
+    }
+    .parsipad-error.is-destructive svg {
+      color: #ef4444;
     }
 
     .parsipad-open-settings {
