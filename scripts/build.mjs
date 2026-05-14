@@ -52,9 +52,10 @@ const STATIC = [
   'history/history.html', 'history/history.css',
   'favorites/favorites.html', 'favorites/favorites.css',
   'analytics/analytics.html', 'analytics/analytics.css',
-  'content/content.css',
   '_locales',
-  'fonts'
+  'fonts',
+  'lib/design-tokens.css',
+  'lib/components.css'
 ];
 
 const COMMON = {

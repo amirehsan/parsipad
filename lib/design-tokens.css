@@ -1,0 +1,200 @@
+/**
+ * ParsiPad Design Tokens
+ * ----------------------
+ * Single source of truth for colors, type, spacing, radius, shadows, and motion.
+ * Mirrors the landing site's Tailwind theme (landing/tailwind.config.js,
+ * landing/src/input.css) so the extension and landing stay visually aligned.
+ *
+ * Every extension surface (popup/, settings/, welcome/, newtab/, grammar/,
+ * history/, favorites/, analytics/) imports this file. The content-script
+ * Shadow DOM stylesheets reference the same custom property names so a single
+ * `[data-theme="dark"]` toggle re-themes everything without rebuilding.
+ *
+ * Naming follows Tailwind for familiarity; semantic aliases (e.g. --color-bg,
+ * --color-text) sit on top of the raw scale so components can stay theme-agnostic.
+ */
+
+:root {
+  /* ----- Font families ----- */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-persian: 'Vazirmatn', 'Tahoma', system-ui, sans-serif;
+
+  /* ----- Type scale ----- */
+  --text-xs: 0.75rem;     /* 12px - captions, badges */
+  --text-sm: 0.875rem;    /* 14px - body, secondary */
+  --text-base: 1rem;      /* 16px - default body */
+  --text-lg: 1.125rem;    /* 18px - card titles, lead */
+  --text-xl: 1.25rem;     /* 20px - section titles */
+  --text-2xl: 1.5rem;     /* 24px - page subtitles */
+  --text-3xl: 1.875rem;   /* 30px - page titles */
+  --text-4xl: 2.25rem;    /* 36px - hero secondary */
+  --text-5xl: 3rem;       /* 48px - hero primary */
+
+  /* ----- Line heights ----- */
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* ----- Font weights ----- */
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ----- Spacing scale (Tailwind multiples of 0.25rem) ----- */
+  --space-0: 0;
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+  --space-20: 5rem;     /* 80px */
+
+  /* ----- Border radius ----- */
+  --radius-sm: 0.25rem; /* 4px */
+  --radius-md: 0.5rem;  /* 8px */
+  --radius-lg: 0.75rem; /* 12px */
+  --radius-xl: 1rem;    /* 16px */
+  --radius-2xl: 1.25rem; /* 20px */
+  --radius-full: 9999px;
+
+  /* ----- Primary scale (Indigo) - from landing/tailwind.config.js ----- */
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+
+  /* ----- Neutral scale (Tailwind gray) ----- */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+
+  /* ----- Semantic colors ----- */
+  --color-success-500: #10b981;
+  --color-success-100: #d1fae5;
+  --color-error-500: #ef4444;
+  --color-error-100: #fee2e2;
+  --color-warning-500: #f59e0b;
+  --color-warning-100: #fef3c7;
+
+  /* ----- Accent (Polish / secondary brand) ----- */
+  --accent-polish: #8b5cf6;        /* violet-500 */
+  --accent-polish-100: #ede9fe;
+  --accent-polish-200: #ddd6fe;
+  --accent-polish-bg: rgba(139, 92, 246, 0.12);
+
+  /* ----- Provider brand colors (kept for the provider badges only) ----- */
+  --color-claude-500: #d97706;
+  --color-claude-700: #b45309;
+  --color-gemini-500: #4285f4;
+  --color-gemini-700: #1a73e8;
+  --color-openai-500: #10b981;
+  --color-openai-700: #059669;
+
+  /* ----- Brand gradient (matches landing's .gradient-text) ----- */
+  --gradient-brand: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+
+  /* ----- Shadows ----- */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-mockup: 0 25px 50px -12px rgba(99, 102, 241, 0.25); /* from landing .mockup-shadow */
+  --shadow-button-hover: 0 10px 25px -5px rgba(99, 102, 241, 0.4);
+
+  /* ----- Focus ring ----- */
+  --ring-width: 2px;
+  --ring-color: var(--color-primary-500);
+  --ring-offset: 2px;
+
+  /* ----- Motion ----- */
+  --motion-fast: 150ms;
+  --motion-base: 250ms;
+  --motion-slow: 400ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ----- Semantic surface tokens (light mode defaults) ----- */
+  --color-bg: var(--color-gray-50);
+  --color-bg-elevated: #ffffff;
+  --color-bg-secondary: var(--color-gray-100);
+  --color-bg-hover: var(--color-gray-100);
+
+  --color-text: var(--color-gray-900);
+  --color-text-secondary: var(--color-gray-500);
+  --color-text-muted: var(--color-gray-400);
+  --color-text-inverse: #ffffff;
+
+  --color-border: var(--color-gray-200);
+  --color-border-strong: var(--color-gray-300);
+  --color-divider: var(--color-gray-100);
+
+  --color-link: var(--color-primary-600);
+  --color-link-hover: var(--color-primary-700);
+
+  /* Component-tier tokens */
+  --button-primary-bg: var(--color-primary-600);
+  --button-primary-bg-hover: var(--color-primary-700);
+  --button-primary-text: #ffffff;
+  --button-secondary-bg: var(--color-gray-100);
+  --button-secondary-bg-hover: var(--color-gray-200);
+  --button-secondary-text: var(--color-gray-700);
+  --button-ghost-bg-hover: var(--color-gray-100);
+}
+
+/* Dark mode: switches semantic tokens. Triggered by .dark on <html>. */
+:root.dark,
+:root[data-theme='dark'] {
+  --color-bg: var(--color-gray-900);
+  --color-bg-elevated: var(--color-gray-800);
+  --color-bg-secondary: var(--color-gray-800);
+  --color-bg-hover: var(--color-gray-700);
+
+  --color-text: #f9fafb;
+  --color-text-secondary: var(--color-gray-400);
+  --color-text-muted: var(--color-gray-500);
+
+  --color-border: var(--color-gray-700);
+  --color-border-strong: var(--color-gray-600);
+  --color-divider: var(--color-gray-700);
+
+  --color-link: var(--color-primary-400);
+  --color-link-hover: var(--color-primary-300);
+
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-card-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+
+  --button-secondary-bg: var(--color-gray-800);
+  --button-secondary-bg-hover: var(--color-gray-700);
+  --button-secondary-text: var(--color-gray-200);
+  --button-ghost-bg-hover: var(--color-gray-800);
+}
+
+/* Honor user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --motion-slow: 0ms;
+  }
+}

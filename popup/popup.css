@@ -1,75 +1,63 @@
 /* Local fonts (see fonts/fonts.css) */
 @import url('../fonts/fonts.css');
 
-/* Design Tokens - Aligned with Landing Page */
+/* Canonical design tokens (lib/design-tokens.css is the single source of truth) */
+@import url('../lib/design-tokens.css');
+@import url('../lib/components.css');
+
+/*
+ * Legacy alias map. Existing popup styles reference --color-primary, --space-md,
+ * etc. We keep those names alive by aliasing them to the canonical tokens, so
+ * the rest of this file can be migrated incrementally without breaking visual
+ * regressions. New code should reference the canonical names directly.
+ */
 :root {
-  /* Primary Colors - Matches landing page primary palette */
-  --color-primary: #6366F1;
-  --color-primary-hover: #4F46E5;
-  --color-primary-light: #818CF8;
-  --color-primary-50: #EEF2FF;
-  --color-primary-100: #E0E7FF;
+  --color-primary: var(--color-primary-600);
+  --color-primary-hover: var(--color-primary-700);
+  --color-primary-light: var(--color-primary-400);
+  /* --color-primary-50 / -100 come straight from design-tokens.css */
 
-  /* Background Colors - Matches landing page */
-  --color-bg: #FFFFFF;
-  --color-bg-secondary: #F9FAFB;
+  --color-bg: #ffffff;
+  --color-bg-secondary: var(--color-gray-50);
 
-  /* Text Colors - Matches landing page gray palette */
-  --color-text: #111827;
-  --color-text-secondary: #6B7280;
-  --color-text-tertiary: #9CA3AF;
+  --color-text: var(--color-gray-900);
+  --color-text-secondary: var(--color-gray-500);
+  --color-text-tertiary: var(--color-gray-400);
 
-  /* Border & UI Colors */
-  --color-border: #E5E7EB;
-  --color-success: #10B981;
-  --color-error: #EF4444;
-  --color-warning: #F59E0B;
+  --color-border: var(--color-gray-200);
+  --color-success: var(--color-success-500);
+  --color-error: var(--color-error-500);
+  --color-warning: var(--color-warning-500);
 
-  /* Fonts - Matches landing page */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-persian: 'Vazirmatn', 'Tahoma', sans-serif;
+  /* Spacing aliases (legacy four-tier scale → richer canonical scale) */
+  --space-xs: var(--space-1);
+  --space-sm: var(--space-2);
+  --space-md: var(--space-4);
+  --space-lg: var(--space-6);
 
-  /* Spacing */
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-
-  /* Border Radius - Aligned with landing page (rounded-lg = 8px, rounded-xl = 12px, rounded-2xl = 16px) */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-
-  /* Shadows - Matches landing page */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  /* Shadow aliases */
+  --shadow-md: var(--shadow-card-hover);
+  --shadow-lg: var(--shadow-lg);
 }
 
-/* Dark Mode - Aligned with Landing Page dark theme */
-[data-theme="dark"] {
-  --color-primary: #818CF8;
-  --color-primary-hover: #6366F1;
-  --color-primary-light: #A5B4FC;
+[data-theme='dark'] {
+  --color-primary: var(--color-primary-400);
+  --color-primary-hover: var(--color-primary-500);
+  --color-primary-light: var(--color-primary-300);
   --color-primary-50: rgba(99, 102, 241, 0.1);
   --color-primary-100: rgba(99, 102, 241, 0.2);
 
-  --color-bg: #111827;
-  --color-bg-secondary: #1F2937;
+  --color-bg: var(--color-gray-900);
+  --color-bg-secondary: var(--color-gray-800);
 
-  --color-text: #F9FAFB;
-  --color-text-secondary: #9CA3AF;
-  --color-text-tertiary: #6B7280;
+  --color-text: #f9fafb;
+  --color-text-secondary: var(--color-gray-400);
+  --color-text-tertiary: var(--color-gray-500);
 
-  --color-border: #374151;
-  --color-success: #34D399;
-  --color-error: #F87171;
-  --color-warning: #FBBF24;
-
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  --color-border: var(--color-gray-700);
+  --color-success: #34d399;
+  --color-error: #f87171;
+  --color-warning: #fbbf24;
 }
 
 /* Reset */
@@ -77,6 +65,19 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+/* A single global focus ring (used everywhere the local rule doesn't override). */
+:focus-visible {
+  outline: var(--ring-width) solid var(--ring-color);
+  outline-offset: var(--ring-offset);
+  border-radius: var(--radius-sm);
+}
+button:focus-visible,
+.tab:focus-visible,
+.icon-btn:focus-visible,
+.action-btn:focus-visible {
+  outline-offset: 2px;
 }
 
 /* Ensure hidden attribute works correctly */
@@ -115,16 +116,17 @@ body {
 }
 
 .logo-icon {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-md);
   object-fit: contain;
 }
 
 .logo-text {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
   color: var(--color-text);
+  letter-spacing: -0.01em;
 }
 
 .header-actions {
@@ -227,38 +229,51 @@ body {
   border-bottom-color: var(--color-primary);
 }
 
-/* Segmented Control (Translate/Polish toggle) */
-.segmented-control {
-  display: flex;
-  background: var(--color-bg-secondary);
-  border-radius: var(--radius-md);
-  padding: 3px;
-  margin-bottom: var(--space-md);
+/*
+ * Mode switcher (replaces the old full-width segmented Translate/Polish control).
+ * Now a quiet inline pill above the textarea — the primary action button below
+ * is the unambiguous "submit" affordance.
+ */
+.mode-switcher {
+  display: inline-flex;
+  align-items: center;
   gap: 2px;
+  padding: 2px;
+  margin-bottom: var(--space-3);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
 }
 
-.segment {
-  flex: 1;
-  padding: var(--space-xs) var(--space-sm);
+.mode-switcher-btn {
+  padding: var(--space-1) var(--space-3);
   background: transparent;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
   color: var(--color-text-secondary);
-  font-size: 13px;
-  font-weight: 500;
+  font-family: inherit;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out);
 }
 
-.segment:hover {
+.mode-switcher-btn:hover:not([aria-selected='true']) {
   color: var(--color-text);
 }
 
-.segment.active {
+.mode-switcher-btn[aria-selected='true'] {
   background: var(--color-bg);
   color: var(--color-primary);
   box-shadow: var(--shadow-sm);
 }
+
+.mode-switcher-btn:focus-visible {
+  outline: var(--ring-width) solid var(--ring-color);
+  outline-offset: 1px;
+}
+
 
 /* Section */
 .section {
@@ -336,6 +351,20 @@ body {
 }
 
 .link-btn:hover {
+  text-decoration: underline;
+}
+
+.link-btn:focus-visible {
+  outline: var(--ring-width) solid var(--ring-color);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+
+/* Two-stage confirm state for destructive .link-btn buttons */
+.link-btn.is-confirming {
+  color: var(--color-error);
+  font-weight: var(--weight-semibold);
   text-decoration: underline;
 }
 
@@ -881,16 +910,18 @@ body {
   display: inline-block;
   font-size: 11px;
   font-weight: 500;
-  color: #8b5cf6;
-  background: rgba(139, 92, 246, 0.1);
+  /* Was #8b5cf6 on rgba(139,92,246,0.1) — ~3:1, failed WCAG AA. */
+  /* Darken text + raise background opacity to ~5:1. */
+  color: #6d28d9;
+  background: rgba(139, 92, 246, 0.18);
   padding: 2px 8px;
   border-radius: var(--radius-sm);
   text-transform: lowercase;
 }
 
 [data-theme="dark"] .dict-pos {
-  background: rgba(139, 92, 246, 0.2);
-  color: #a78bfa;
+  background: rgba(139, 92, 246, 0.28);
+  color: #c4b5fd;
 }
 
 .dict-label {

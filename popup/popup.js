@@ -330,7 +330,29 @@ function setupEventListeners() {
   tabDocument.addEventListener('click', () => updateTab('document'));
   tabImage.addEventListener('click', () => updateTab('image'));
 
-  // Segmented control switching (Translate/Polish within Text tab)
+  // Arrow-key navigation for the ARIA tablist (Left/Right wraps).
+  const tabOrder = [
+    { el: tabText, name: 'text' },
+    { el: tabDictionary, name: 'dictionary' },
+    { el: tabDocument, name: 'document' },
+    { el: tabImage, name: 'image' }
+  ];
+  for (const { el } of tabOrder) {
+    el.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return;
+      e.preventDefault();
+      const i = tabOrder.findIndex(t => t.el === e.currentTarget);
+      let next;
+      if (e.key === 'Home') next = 0;
+      else if (e.key === 'End') next = tabOrder.length - 1;
+      else if (e.key === 'ArrowLeft') next = (i - 1 + tabOrder.length) % tabOrder.length;
+      else next = (i + 1) % tabOrder.length;
+      updateTab(tabOrder[next].name);
+      tabOrder[next].el.focus();
+    });
+  }
+
+  // Mode switcher within the Text tab (replaces the old segmented control)
   modeTranslate.addEventListener('click', () => updateTextMode('translate'));
   modePolish.addEventListener('click', () => updateTextMode('polish'));
 
@@ -402,18 +424,18 @@ function setupEventListeners() {
     reviewDismissBtn.addEventListener('click', handleReviewDismiss);
   }
 
-  // Clear history button
-  clearHistoryBtn.addEventListener('click', handleClearHistory);
+  // Clear-all buttons use a two-stage confirm (replaces unguarded data loss):
+  // first click arms the button with "Tap to confirm" copy + danger styling;
+  // second click within 3s actually clears. Mouse-leave or timeout disarms.
+  attachTwoStageConfirm(clearHistoryBtn, handleClearHistory);
+  attachTwoStageConfirm(clearPolishHistoryBtn, handleClearPolishHistory);
+  attachTwoStageConfirm(clearDictHistoryBtn, handleClearDictionaryHistory);
 
   // View all history button
   viewAllHistoryBtn.addEventListener('click', openHistoryPage);
-
-  // Polish history buttons
-  clearPolishHistoryBtn.addEventListener('click', handleClearPolishHistory);
   viewAllPolishHistoryBtn.addEventListener('click', openHistoryPage);
 
   // Dictionary buttons
-  clearDictHistoryBtn.addEventListener('click', handleClearDictionaryHistory);
   dictCopyBtn.addEventListener('click', handleDictCopy);
 
   // History toggle handlers (collapsible sections)
@@ -497,11 +519,14 @@ function setupEventListeners() {
 function updateTab(tab) {
   currentTab = tab;
 
-  // Update tab buttons
-  tabText.classList.toggle('active', tab === 'text');
-  tabDictionary.classList.toggle('active', tab === 'dictionary');
-  tabDocument.classList.toggle('active', tab === 'document');
-  tabImage.classList.toggle('active', tab === 'image');
+  // Update tab buttons; aria-selected drives the new ARIA tablist styling.
+  const tabs = { text: tabText, dictionary: tabDictionary, document: tabDocument, image: tabImage };
+  for (const [name, el] of Object.entries(tabs)) {
+    const active = name === tab;
+    el.classList.toggle('active', active);
+    el.setAttribute('aria-selected', active ? 'true' : 'false');
+    el.tabIndex = active ? 0 : -1;
+  }
 
   // Hide outputs when switching tabs
   hideAllOutputs();
@@ -527,18 +552,17 @@ function updateTab(tab) {
   }
 
   // For dictionary mode, we show the text input but change the button/placeholder
+  const modeSwitcher = document.querySelector('.mode-switcher');
   if (tab === 'dictionary') {
     textModeSection.hidden = false;
-    // Hide segmented control in dictionary mode
-    document.querySelector('.segmented-control').hidden = true;
+    if (modeSwitcher) modeSwitcher.hidden = true;
     btnText.textContent = t('lookupWord', currentLang);
     inputText.placeholder = t('enterWordToLookup', currentLang);
     grammarToggleSection.hidden = true;
     actionBtn.hidden = false;
     loadDictionaryHistory();
   } else if (tab === 'text') {
-    // Show segmented control in text mode
-    document.querySelector('.segmented-control').hidden = false;
+    if (modeSwitcher) modeSwitcher.hidden = false;
     updateTextMode(currentTextMode);
   }
 }
@@ -550,7 +574,9 @@ function updateTab(tab) {
 function updateTextMode(mode) {
   currentTextMode = mode;
 
-  // Update segmented control
+  // Update mode switcher; ARIA state drives the active-look CSS (.mode-switcher-btn[aria-selected="true"])
+  modeTranslate.setAttribute('aria-selected', mode === 'translate' ? 'true' : 'false');
+  modePolish.setAttribute('aria-selected', mode === 'polish' ? 'true' : 'false');
   modeTranslate.classList.toggle('active', mode === 'translate');
   modePolish.classList.toggle('active', mode === 'polish');
 
@@ -888,6 +914,47 @@ function toggleHistorySection(toggleEl, listEl) {
 /**
  * Handle clear history button click
  */
+/**
+ * Wire a destructive button as a two-stage confirm: first click arms it
+ * (label changes, danger styling), second click runs the action. Auto-disarms
+ * after 3 seconds of inactivity, on mouseleave, or when focus moves away.
+ * Replaces previous unguarded "Clear All" behavior - no native confirm() dialog.
+ *
+ * @param {HTMLButtonElement} btn
+ * @param {() => unknown} action
+ */
+function attachTwoStageConfirm(btn, action) {
+  if (!btn) return;
+  const originalLabel = btn.textContent;
+  let armed = false;
+  let timer = null;
+
+  const disarm = () => {
+    armed = false;
+    btn.textContent = originalLabel;
+    btn.classList.remove('is-confirming');
+    btn.removeAttribute('aria-live');
+    if (timer) { clearTimeout(timer); timer = null; }
+  };
+
+  btn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (!armed) {
+      armed = true;
+      btn.textContent = t('tapToConfirm', currentLang) || 'Tap to confirm';
+      btn.classList.add('is-confirming');
+      btn.setAttribute('aria-live', 'polite');
+      timer = setTimeout(disarm, 3000);
+      return;
+    }
+    disarm();
+    try { await action(); } catch { /* action manages its own errors */ }
+  });
+
+  btn.addEventListener('mouseleave', () => { if (armed) disarm(); });
+  btn.addEventListener('blur', () => { if (armed) disarm(); });
+}
+
 async function handleClearHistory() {
   await clearHistory();
   historySection.hidden = true;

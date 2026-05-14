@@ -2,18 +2,67 @@
  * CSS string generators for the ParsiPad content script's Shadow DOM trees.
  * Each export returns a stylesheet string keyed to a specific UI surface
  * (floating box, page-progress overlay, etc.).
+ *
+ * All floating surfaces share a `:host` theme block emitted by `themeVars()`.
+ * The host element exposes `data-theme="dark"` or `data-theme="light"`; CSS
+ * variables flip automatically, so no rebuild is required when the host page
+ * toggles between dark and light modes at runtime.
+ *
+ * Brand colors (primary indigo, accent purple, semantic greens/reds) stay
+ * literal — they're consistent across light and dark themes. Neutrals
+ * (backgrounds, text, borders) come from variables.
  */
+export function themeVars() {
+  return `
+    :host {
+      --pp-bg: #ffffff;
+      --pp-bg-secondary: #f9fafb;
+      --pp-bg-hover: #f3f4f6;
+      --pp-text: #111827;
+      --pp-text-strong: #374151;
+      --pp-text-secondary: #6b7280;
+      --pp-text-muted: #9ca3af;
+      --pp-border: #e5e7eb;
+      --pp-border-strong: #d1d5db;
+      --pp-shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      --pp-skeleton-from: #e5e7eb;
+      --pp-skeleton-to: #f3f4f6;
+    }
+    :host([data-theme='dark']) {
+      --pp-bg: #1f2937;
+      --pp-bg-secondary: #111827;
+      --pp-bg-hover: #374151;
+      --pp-text: #f9fafb;
+      --pp-text-strong: #e5e7eb;
+      --pp-text-secondary: #9ca3af;
+      --pp-text-muted: #6b7280;
+      --pp-border: #374151;
+      --pp-border-strong: #4b5563;
+      --pp-shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+      --pp-skeleton-from: #374151;
+      --pp-skeleton-to: #4b5563;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      :host {
+        --pp-motion-skeleton: none;
+      }
+    }
+  `;
+}
 
 export function getPageProgressStyles() {
   return `
+    ${themeVars()}
     .parsipad-progress-overlay {
-      background: rgba(255, 255, 255, 0.98);
+      background: var(--pp-bg);
       backdrop-filter: blur(10px);
       border-radius: 16px;
       box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.25);
       padding: 16px 24px;
       min-width: 300px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      border: 1px solid var(--pp-border);
+      color: var(--pp-text);
     }
 
     .parsipad-progress-header {
@@ -31,12 +80,12 @@ export function getPageProgressStyles() {
     .parsipad-progress-title {
       font-size: 14px;
       font-weight: 500;
-      color: #111827;
+      color: var(--pp-text);
     }
 
     .parsipad-progress-bar-container {
       height: 6px;
-      background: #e5e7eb;
+      background: var(--pp-border);
       border-radius: 3px;
       overflow: hidden;
       margin-bottom: 8px;
@@ -51,17 +100,17 @@ export function getPageProgressStyles() {
 
     .parsipad-progress-text {
       font-size: 12px;
-      color: #6b7280;
+      color: var(--pp-text-secondary);
       margin-bottom: 12px;
     }
 
     .parsipad-progress-cancel {
       width: 100%;
       padding: 8px 16px;
-      background: #f3f4f6;
-      border: 1px solid #e5e7eb;
+      background: var(--pp-bg-hover);
+      border: 1px solid var(--pp-border);
       border-radius: 8px;
-      color: #374151;
+      color: var(--pp-text-strong);
       font-size: 13px;
       font-weight: 400;
       cursor: pointer;
@@ -69,14 +118,15 @@ export function getPageProgressStyles() {
     }
 
     .parsipad-progress-cancel:hover {
-      background: #e5e7eb;
-      border-color: #d1d5db;
+      background: var(--pp-border);
+      border-color: var(--pp-border-strong);
     }
   `;
 }
 
 export function getPageToggleStyles() {
   return `
+    ${themeVars()}
     .parsipad-toggle-btn {
       width: 48px;
       height: 48px;
@@ -109,13 +159,13 @@ export function getPageToggleStyles() {
     }
 
     .parsipad-toggle-btn.showing-original {
-      background: #ffffff;
-      color: #6b7280;
-      border: 1px solid #e5e7eb;
+      background: var(--pp-bg);
+      color: var(--pp-text-secondary);
+      border: 1px solid var(--pp-border);
     }
 
     .parsipad-toggle-btn.showing-original:hover {
-      background: #f9fafb;
+      background: var(--pp-bg-secondary);
       transform: scale(1.08);
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15),
                   0 3px 8px rgba(0, 0, 0, 0.1);
@@ -129,6 +179,7 @@ export function getPageToggleStyles() {
 
 export function getScreenshotStyles() {
   return `
+    ${themeVars()}
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     .screenshot-container {
@@ -199,6 +250,7 @@ export function getSelectionPopupStyles(showBelow = false) {
   const animFrom = showBelow ? 'translateY(-8px)' : 'translateY(8px)';
 
   return `
+    ${themeVars()}
     :host {
       all: initial;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -214,7 +266,7 @@ export function getSelectionPopupStyles(showBelow = false) {
       display: flex;
       align-items: center;
       gap: 4px;
-      background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+      background: linear-gradient(180deg, var(--pp-bg) 0%, var(--pp-bg-secondary) 100%);
       border-radius: 10px;
       box-shadow:
         0 4px 16px rgba(0, 0, 0, 0.12),
@@ -284,7 +336,7 @@ export function getSelectionPopupStyles(showBelow = false) {
       transform: translateX(-50%);
       padding: 4px 8px;
       background: #1f2937;
-      color: #ffffff;
+      color: var(--pp-bg);
       font-size: 11px;
       font-weight: 500;
       white-space: nowrap;
@@ -326,6 +378,7 @@ export function getSelectionPopupStyles(showBelow = false) {
 
 export function getStyles() {
   return `
+    ${themeVars()}
     :host {
       all: initial;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -338,16 +391,16 @@ export function getStyles() {
     }
 
     .parsipad-box {
-      background: #ffffff;
+      background: var(--pp-bg);
       border-radius: 12px;
       box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-      border: 1px solid #e5e7eb;
+      border: 1px solid var(--pp-border);
       min-width: 280px;
       max-width: 450px;
       animation: parsipad-fade-in 150ms ease-out;
       font-size: 14px;
       line-height: 1.5;
-      color: #111827;
+      color: var(--pp-text);
     }
 
     @keyframes parsipad-fade-in {
@@ -366,8 +419,8 @@ export function getStyles() {
       justify-content: space-between;
       align-items: center;
       padding: 10px 12px;
-      border-bottom: 1px solid #e5e7eb;
-      background: #f9fafb;
+      border-bottom: 1px solid var(--pp-border);
+      background: var(--pp-bg-secondary);
       border-radius: 12px 12px 0 0;
       gap: 8px;
     }
@@ -394,7 +447,7 @@ export function getStyles() {
     .parsipad-logo-text {
       font-size: 13px;
       font-weight: 600;
-      color: #374151;
+      color: var(--pp-text-strong);
     }
 
     .parsipad-badges {
@@ -440,7 +493,7 @@ export function getStyles() {
       background: none;
       border: none;
       cursor: pointer;
-      color: #9ca3af;
+      color: var(--pp-text-muted);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -451,8 +504,8 @@ export function getStyles() {
     }
 
     .parsipad-close:hover {
-      background: #e5e7eb;
-      color: #374151;
+      background: var(--pp-border);
+      color: var(--pp-text-strong);
     }
 
     .parsipad-content {
@@ -464,7 +517,7 @@ export function getStyles() {
     .parsipad-text {
       font-size: 14px;
       line-height: 1.6;
-      color: #111827;
+      color: var(--pp-text);
       word-wrap: break-word;
       white-space: pre-wrap;
     }
@@ -479,14 +532,14 @@ export function getStyles() {
       justify-content: space-between;
       align-items: center;
       padding: 8px 12px;
-      border-top: 1px solid #e5e7eb;
-      background: #f9fafb;
+      border-top: 1px solid var(--pp-border);
+      background: var(--pp-bg-secondary);
       border-radius: 0 0 12px 12px;
     }
 
     .parsipad-cache-badge {
       font-size: 11px;
-      color: #9ca3af;
+      color: var(--pp-text-muted);
     }
 
     .parsipad-copy {
@@ -527,9 +580,9 @@ export function getStyles() {
       width: 32px;
       height: 32px;
       background: none;
-      border: 1px solid #e5e7eb;
+      border: 1px solid var(--pp-border);
       cursor: pointer;
-      color: #9ca3af;
+      color: var(--pp-text-muted);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -563,7 +616,7 @@ export function getStyles() {
 
     .parsipad-skeleton {
       height: 14px;
-      background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+      background: linear-gradient(90deg, var(--pp-border) 25%, var(--pp-bg-hover) 50%, var(--pp-border) 75%);
       background-size: 200% 100%;
       animation: parsipad-shimmer 1.5s infinite;
       border-radius: 4px;
@@ -617,12 +670,12 @@ export function getStyles() {
     }
 
     .parsipad-content::-webkit-scrollbar-thumb {
-      background: #d1d5db;
+      background: var(--pp-border-strong);
       border-radius: 3px;
     }
 
     .parsipad-content::-webkit-scrollbar-thumb:hover {
-      background: #9ca3af;
+      background: var(--pp-text-muted);
     }
 
     /* Polish Box Styles */
@@ -644,8 +697,8 @@ export function getStyles() {
     }
 
     .parsipad-polish-card {
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
+      background: var(--pp-bg-secondary);
+      border: 1px solid var(--pp-border);
       border-radius: 8px;
       padding: 10px 12px;
       transition: transform 0.15s, box-shadow 0.15s;
@@ -685,7 +738,7 @@ export function getStyles() {
       background: none;
       border: none;
       cursor: pointer;
-      color: #9ca3af;
+      color: var(--pp-text-muted);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -695,8 +748,8 @@ export function getStyles() {
 
     .parsipad-polish-copy:hover,
     .parsipad-polish-regenerate:hover {
-      background: #e5e7eb;
-      color: #374151;
+      background: var(--pp-border);
+      color: var(--pp-text-strong);
     }
 
     .parsipad-polish-favorite:hover {
@@ -741,7 +794,7 @@ export function getStyles() {
     .parsipad-polish-text {
       font-size: 13px;
       line-height: 1.5;
-      color: #111827;
+      color: var(--pp-text);
       word-wrap: break-word;
       white-space: pre-wrap;
     }
@@ -755,7 +808,7 @@ export function getStyles() {
     }
 
     .parsipad-polish-content::-webkit-scrollbar-thumb {
-      background: #d1d5db;
+      background: var(--pp-border-strong);
       border-radius: 3px;
     }
 
@@ -777,19 +830,19 @@ export function getStyles() {
     .parsipad-dict-header {
       margin-bottom: 12px;
       padding-bottom: 10px;
-      border-bottom: 1px solid #e5e7eb;
+      border-bottom: 1px solid var(--pp-border);
     }
 
     .parsipad-dict-word {
       font-size: 18px;
       font-weight: 600;
-      color: #111827;
+      color: var(--pp-text);
       margin-bottom: 4px;
     }
 
     .parsipad-dict-phonetic {
       font-size: 13px;
-      color: #6b7280;
+      color: var(--pp-text-secondary);
       font-style: italic;
       margin-bottom: 4px;
     }
@@ -824,17 +877,17 @@ export function getStyles() {
 
     .parsipad-dict-meaning {
       font-size: 13px;
-      color: #111827;
+      color: var(--pp-text);
       line-height: 1.5;
     }
 
     .parsipad-dict-example {
       font-size: 12px;
-      color: #6b7280;
+      color: var(--pp-text-secondary);
       font-style: italic;
       margin-top: 4px;
       padding-left: 10px;
-      border-left: 2px solid #e5e7eb;
+      border-left: 2px solid var(--pp-border);
     }
 
     .parsipad-dict-tags {
@@ -846,8 +899,8 @@ export function getStyles() {
     .parsipad-dict-tag {
       font-size: 12px;
       padding: 3px 8px;
-      background: #f3f4f6;
-      color: #374151;
+      background: var(--pp-bg-hover);
+      color: var(--pp-text-strong);
       border-radius: 4px;
     }
 
@@ -859,14 +912,14 @@ export function getStyles() {
     .parsipad-dict-translation {
       margin-top: 12px;
       padding-top: 12px;
-      border-top: 1px solid #e5e7eb;
+      border-top: 1px solid var(--pp-border);
       position: relative;
     }
 
     .parsipad-dict-translation-text {
       font-size: 15px;
       font-weight: 500;
-      color: #111827;
+      color: var(--pp-text);
       line-height: 1.5;
       padding-right: 70px;
     }
@@ -894,7 +947,7 @@ export function getStyles() {
       background: none;
       border: none;
       cursor: pointer;
-      color: #9ca3af;
+      color: var(--pp-text-muted);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -903,8 +956,8 @@ export function getStyles() {
     }
 
     .parsipad-dict-copy-translation:hover {
-      background: #f3f4f6;
-      color: #374151;
+      background: var(--pp-bg-hover);
+      color: var(--pp-text-strong);
     }
 
     .parsipad-dict-favorite-translation:hover {
@@ -936,7 +989,7 @@ export function getStyles() {
     }
 
     .parsipad-dictionary-content::-webkit-scrollbar-thumb {
-      background: #d1d5db;
+      background: var(--pp-border-strong);
       border-radius: 3px;
     }
   `;
