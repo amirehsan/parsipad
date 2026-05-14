@@ -129,9 +129,15 @@ async function handleTranslate(text, sourceLang = 'auto', withGrammar = false) {
     // not return another provider's cached output.
     const cached = await translationCache.get(text, providerId, sourceLang);
     if (cached) {
+      // Surface the rich-context fields from the cached entry so the UI
+      // shows "Did you mean", alternatives, etc. on cache hits too.
       return {
         translation: cached.translation,
         direction: cached.direction,
+        corrections: cached.corrections,
+        alternatives: cached.alternatives,
+        examples: cached.examples,
+        nuance: cached.nuance,
         fromCache: true,
         provider: providerConfig?.name || 'AI'
       };
@@ -141,9 +147,15 @@ async function handleTranslate(text, sourceLang = 'auto', withGrammar = false) {
   // Call API
   const result = await translate(text, sourceLang, withGrammar);
 
-  // Store in cache (only for non-grammar translations)
+  // Store in cache (only for non-grammar translations). Persist the rich
+  // context so the same input on second access renders the same UI.
   if (!withGrammar) {
-    await translationCache.set(text, result.translation, result.direction, providerId, sourceLang);
+    await translationCache.set(text, result.translation, result.direction, providerId, sourceLang, {
+      corrections: result.corrections,
+      alternatives: result.alternatives,
+      examples: result.examples,
+      nuance: result.nuance
+    });
   }
 
   // Add to history
