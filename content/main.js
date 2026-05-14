@@ -659,16 +659,24 @@ function showTranslation(result, originalText) {
   checkTranslationFavoriteStatus();
 }
 
+// Errors that warrant the alarming red tone vs. the friendly amber default.
+// Misspellings / unsupported language / "please enter text" stay informational.
+const PP_DESTRUCTIVE_ERROR_PATTERN = /(network|invalid api key|api key|server|rate limit|failed to fetch|timeout)/i;
+
 /**
- * Show error state. Missing-API-key errors get a CTA to open Settings.
+ * Show error state inside the floating box. Default tone is informational
+ * (amber); real failures (network/invalid key/etc) upgrade to destructive
+ * (red). Missing-API-key shows an extra "Open Settings" CTA.
  */
 function showError(message) {
   if (!shadowRoot) return;
-
   const content = shadowRoot.querySelector('.parsipad-content');
+  const destructive = PP_DESTRUCTIVE_ERROR_PATTERN.test(String(message || ''));
+  const errorClass = destructive ? 'parsipad-error is-destructive' : 'parsipad-error';
+
   if (isMissingApiKeyError(message)) {
     content.innerHTML = `
-      <div class="parsipad-error">
+      <div class="${errorClass}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/>
           <line x1="12" y1="8" x2="12" y2="12"/>
@@ -685,7 +693,7 @@ function showError(message) {
     });
   } else {
     content.innerHTML = `
-      <div class="parsipad-error">
+      <div class="${errorClass}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/>
           <line x1="12" y1="8" x2="12" y2="12"/>
@@ -943,6 +951,10 @@ function createPolishBox(position) {
 
   // Prevent clicks inside box from closing it
   box.addEventListener('click', (e) => e.stopPropagation());
+
+  // Match the translation box: header is a drag handle.
+  const headerEl = shadowRoot.querySelector('.parsipad-header');
+  enableDrag(host, headerEl);
 }
 
 /**
@@ -1427,6 +1439,10 @@ function createDictionaryBox(position) {
 
   // Prevent clicks inside box from closing it
   box.addEventListener('click', (e) => e.stopPropagation());
+
+  // Match the translation box: header is a drag handle.
+  const headerEl = shadowRoot.querySelector('.parsipad-header');
+  enableDrag(host, headerEl);
 }
 
 /**

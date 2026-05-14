@@ -481,6 +481,14 @@ function setupEventListeners() {
   translateImageBtn.addEventListener('click', handleImageTranslate);
   imageCopyBtn.addEventListener('click', handleImageCopy);
 
+  // Explicit "Paste from clipboard" button - uses the async Clipboard API so
+  // users don't have to know about Ctrl+V. Falls back to the document-level
+  // paste listener (handlePaste) which still handles native Ctrl+V.
+  const pasteImageBtn = document.getElementById('paste-image-btn');
+  if (pasteImageBtn) {
+    pasteImageBtn.addEventListener('click', handlePasteImageClick);
+  }
+
   // Translate Page button
   const translatePageBtn = document.getElementById('translate-page-btn');
   if (translatePageBtn) {
@@ -1189,12 +1197,24 @@ function setLoadingState(loading) {
 }
 
 /**
- * Show error message
+ * Patterns that classify an error as a recoverable INFO notice (amber tone)
+ * vs. a real DESTRUCTIVE failure (red tone, alarming).
+ *
+ * Unsupported language, unintelligible input, "please enter text" - amber.
+ * Network failures, invalid API key, server errors - red.
+ */
+const DESTRUCTIVE_ERROR_PATTERN = /(network|invalid api key|api key|server|rate limit|failed to fetch|timeout)/i;
+
+/**
+ * Show a notice or error in the popup. Notices use a friendly amber tone;
+ * real failures opt into the red destructive variant.
+ *
  * @param {string} message
  */
 function showError(message) {
   errorMessage.textContent = message;
   errorSection.hidden = false;
+  errorSection.classList.toggle('is-destructive', DESTRUCTIVE_ERROR_PATTERN.test(message || ''));
   hideAllOutputs();
 }
 
@@ -1684,6 +1704,35 @@ function handlePaste(event) {
         break;
       }
     }
+  }
+}
+
+/**
+ * Explicit clipboard-paste handler triggered by the "Paste" button. Uses the
+ * async Clipboard API (Chrome 86+) so users can paste without remembering the
+ * Ctrl+V shortcut. Falls back gracefully if the clipboard is empty or contains
+ * no image.
+ */
+async function handlePasteImageClick() {
+  try {
+    if (!navigator.clipboard?.read) {
+      showError(t('pasteNotSupported', currentLang) || 'Clipboard paste is not available in this browser.');
+      return;
+    }
+    const clipboardItems = await navigator.clipboard.read();
+    for (const item of clipboardItems) {
+      const imageType = item.types.find(t => t.startsWith('image/'));
+      if (!imageType) continue;
+      const blob = await item.getType(imageType);
+      const ext = imageType.split('/')[1] || 'png';
+      const file = new File([blob], `clipboard-image.${ext}`, { type: imageType });
+      handleImageSelect(file);
+      return;
+    }
+    showError(t('clipboardNoImage', currentLang) || 'No image found in clipboard. Copy an image first, then click Paste.');
+  } catch (err) {
+    // Permissions or empty clipboard
+    showError(t('clipboardReadFailed', currentLang) || 'Could not read from clipboard. Try Ctrl+V instead.');
   }
 }
 

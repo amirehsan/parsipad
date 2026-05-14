@@ -181,6 +181,85 @@ main {
   padding: 2rem 1.5rem;
 }
 
+/*
+ * Settings tab bar - groups 11 cards into 4 buckets so the page stops
+ * scrolling forever. Sticky just below the top nav for fast switching.
+ */
+.settings-tabs {
+  position: sticky;
+  top: 73px; /* matches the sticky top-nav height */
+  z-index: 40;
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--gray-200);
+  border-radius: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.dark .settings-tabs {
+  background: rgba(31, 41, 55, 0.85);
+  border-color: var(--gray-700);
+}
+
+.settings-tab {
+  flex: 1 1 auto;
+  min-width: max-content;
+  padding: 0.5rem 1rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gray-500);
+  background: transparent;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.settings-tab:hover {
+  color: var(--gray-900);
+  background: var(--gray-100);
+}
+
+.dark .settings-tab {
+  color: var(--gray-400);
+}
+
+.dark .settings-tab:hover {
+  color: #ffffff;
+  background: var(--gray-700);
+}
+
+.settings-tab.is-active,
+.settings-tab[aria-selected='true'] {
+  color: var(--primary-600);
+  background: var(--primary-50);
+}
+
+.dark .settings-tab.is-active,
+.dark .settings-tab[aria-selected='true'] {
+  color: var(--primary-300);
+  background: rgba(99, 102, 241, 0.18);
+}
+
+.settings-tab:focus-visible {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+}
+
+/* Hide cards that don't belong to the active tab. JS toggles the
+   data-settings-active attribute on <main>. */
+main[data-settings-active='general'] .settings-card:not([data-settings-tab='general']),
+main[data-settings-active='providers'] .settings-card:not([data-settings-tab='providers']),
+main[data-settings-active='data'] .settings-card:not([data-settings-tab='data']),
+main[data-settings-active='more'] .settings-card:not([data-settings-tab='more']) {
+  display: none !important;
+}
+
 /* Settings Cards - Matching landing feature cards */
 .settings-card {
   background: #ffffff;

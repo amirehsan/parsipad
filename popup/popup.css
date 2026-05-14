@@ -684,17 +684,50 @@ body {
   text-align: right;
 }
 
-/* Error Section */
+/*
+ * Notice / error section.
+ * Default tone is INFORMATIONAL (amber, not red). Real failures (network,
+ * invalid API key) opt into the destructive variant by adding .is-destructive.
+ * This avoids alarming users when the issue is recoverable (typo, unsupported
+ * language) and they just need a gentle hint.
+ */
 .error-section {
-  background-color: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  background-color: rgba(245, 158, 11, 0.10);
+  border: 1px solid rgba(245, 158, 11, 0.28);
   border-radius: var(--radius-md);
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.error-section::before {
+  content: 'ℹ';
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-warning);
+  flex-shrink: 0;
 }
 
 .error-section p {
-  color: var(--color-error);
+  color: var(--color-text);
   font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.error-section.is-destructive {
+  background-color: rgba(239, 68, 68, 0.10);
+  border-color: rgba(239, 68, 68, 0.28);
+}
+
+.error-section.is-destructive::before {
+  content: '⚠';
+  color: var(--color-error);
+}
+
+.error-section.is-destructive p {
+  color: var(--color-error);
 }
 
 /* Copy success animation */
@@ -1242,6 +1275,16 @@ body {
   margin-bottom: var(--space-md);
 }
 
+/* Subtle "Ctrl+V" tip below the image upload buttons. Lower weight than the
+   button labels so it doesn't compete for attention. */
+.upload-paste-hint {
+  margin-top: var(--space-3);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  text-align: center;
+}
+
 .action-btn.secondary {
   background: transparent;
   color: var(--color-primary);
@@ -1543,13 +1586,15 @@ body {
 
 .image-upload-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-sm);
   justify-content: center;
   margin-top: var(--space-sm);
 }
 
 .image-upload-actions .action-btn {
-  flex: 1;
+  flex: 1 1 calc(33% - var(--space-sm));
+  min-width: 90px;
 }
 
 /* Ensure hidden elements in image section don't display */

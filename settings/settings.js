@@ -300,7 +300,48 @@ async function loadCacheStats() {
 /**
  * Set up event listeners
  */
+/**
+ * Settings tab navigation. Each tab button has data-tab-target; <main> carries
+ * data-settings-active and CSS hides cards whose data-settings-tab doesn't
+ * match. Pure presentation - no card state mutates.
+ */
+function setupSettingsTabs() {
+  const tabs = document.querySelectorAll('.settings-tab');
+  const main = document.querySelector('main');
+  if (!main || tabs.length === 0) return;
+
+  const setActive = (name) => {
+    main.dataset.settingsActive = name;
+    tabs.forEach((t) => {
+      const active = t.dataset.tabTarget === name;
+      t.classList.toggle('is-active', active);
+      t.setAttribute('aria-selected', active ? 'true' : 'false');
+      t.tabIndex = active ? 0 : -1;
+    });
+    // Scroll to top so users land at the start of the new tab's content.
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Default to General on first paint.
+  setActive('general');
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => setActive(tab.dataset.tabTarget));
+    tab.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      const order = Array.from(tabs);
+      const i = order.indexOf(e.currentTarget);
+      const next = order[(i + (e.key === 'ArrowRight' ? 1 : -1) + order.length) % order.length];
+      setActive(next.dataset.tabTarget);
+      next.focus();
+    });
+  });
+}
+
 function setupEventListeners() {
+  setupSettingsTabs();
+
   // Theme toggle
   themeToggle.addEventListener('click', toggleTheme);
 
