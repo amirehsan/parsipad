@@ -962,35 +962,16 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   color: var(--gray-400);
 }
 
-.customize-shortcuts-btn {
-  display: block;
-  width: 100%;
+/*
+ * Both "Customize Shortcuts" and "View Analytics" used .customize-shortcuts-btn
+ * with a divergent indigo-tinted ghost style. They now use the canonical
+ * .btn .btn-primary .btn-full convention. The legacy class is kept here only
+ * as a small top margin shim so the buttons still sit clear of the card grid
+ * above them - no color/size overrides remain.
+ */
+#customizeShortcutsBtn,
+#openAnalyticsBtn {
   margin-top: 1rem;
-  padding: 0.625rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--primary-600);
-  background: var(--primary-50);
-  border: 1px solid var(--primary-200);
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.customize-shortcuts-btn:hover {
-  background: var(--primary-100);
-  border-color: var(--primary-300);
-}
-
-.dark .customize-shortcuts-btn {
-  color: var(--primary-400);
-  background: var(--primary-900/20);
-  border-color: var(--primary-800);
-}
-
-.dark .customize-shortcuts-btn:hover {
-  background: var(--primary-900/40);
-  border-color: var(--primary-700);
 }
 
 /* About Section */
