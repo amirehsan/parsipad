@@ -1,5 +1,18 @@
 ParsiPad is a powerful AI-powered translation extension that makes Persian-English translation seamless and intelligent.
 
+Version 2.11.0:
+- Typo correction: misspellings are auto-corrected and shown as a "Did you mean: X → Y" hint above the translation, in both English (recieve → receive) and Persian (میرم → می‌روم)
+- Richer translation results: for short queries you get alternative English expressions, example sentences, and a nuance note explaining register / idiom / context
+- Persian and English only: any other language gets a clear notice instead of being silently mistranslated
+- Image clipboard paste: new "Paste" button uses the async Clipboard API so you do not have to remember Ctrl+V (still works as a fallback)
+- Polish and Dictionary floating boxes are now draggable, matching the Translation box
+- Floating UI follows host page theme: translation popups switch to dark mode on dark sites like Twitter/X, GitHub dark, YouTube — automatically
+- Settings reorganized into 4 tabs (General / AI Providers / Data / More) for faster navigation
+- New design system: tokens shared with the landing page; tighter typography hierarchy; better spacing rhythm; WCAG-level focus rings; reduced-motion support
+- Engineering: end-to-end build pipeline, automated tests, CI checks, content-script hardening, AbortController + timeout on every provider request, SHA-256-keyed cache that never returns wrong-provider or prefix-collision results
+- Doc translation now streams real per-chunk progress; cancel takes effect immediately
+- Many bug fixes: cache no longer drops the typo hint on the second translate; selection-popup tooltips legible on dark sites; missing-API-key shows an "Open Settings" CTA; grammar lesson generation tolerates longer/more complex sentences
+
 Version 2.10.0:
 - New Tab Bookmark Browser: Browse Chrome bookmarks in a file/folder tree
 - Search and filter bookmarks instantly with keyboard shortcut (/)
