@@ -763,14 +763,12 @@ function renderInlineGrammar(slot, points, originalText, translation, direction)
   header.textContent = t('grammarExplanation', userLang) || 'Grammar Notes';
   slot.appendChild(header);
 
-  // Grammar explanations are produced in the target language - inherit dir
-  // from the translation direction so RTL content reads naturally.
-  const targetLang = (direction || '').split('-')[1] || (direction || '').split('-to-')[1] || 'fa';
-  const isRtl = ['fa', 'ar', 'he'].includes(targetLang);
-
+  // Grammar content is always English (audience: Persian speakers studying
+  // English), so the list always renders LTR even when the user is on a
+  // Persian translation direction. Same principle as the alternatives list.
   const list = document.createElement('ol');
   list.className = 'parsipad-grammar-list';
-  if (isRtl) list.setAttribute('dir', 'rtl');
+  list.setAttribute('dir', 'ltr');
   points.forEach(p => {
     if (!p) return;
     const li = document.createElement('li');
