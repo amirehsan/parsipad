@@ -92,7 +92,7 @@ const cacheCountExportEl = document.getElementById('cache-count-export');
 
 // Backup constants
 const BACKUP_VERSION = '1.0';
-const EXTENSION_VERSION = '2.11.1';
+const EXTENSION_VERSION = '2.11.2';
 
 // State
 let currentLang = 'en';

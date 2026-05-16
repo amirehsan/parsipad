@@ -5,6 +5,19 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.2] - 2026-05-15
+
+### Grammar lesson improvements
+- **Live progress indicator** on the grammar lesson loading screen: an indeterminate progress bar plus rotating status text ("Analyzing your sentence..." → "Identifying grammar patterns..." → "Building examples..." → "Creating quiz..." → "Polishing the lesson...") and an elapsed-time counter that appears after 3 seconds. `prefers-reduced-motion` swaps the animated bar for a static one. Persian + English strings added.
+- **Faster lesson generation** — tightened `GRAMMAR_LEARNING_PROMPT` to request 1 grammar point (only 2 if the sentence has two genuinely distinct teachable features), exactly 2 examples per point (was 3), and 2-3 sentence explanations (was 3-4). Smaller responses = less wall-clock time at the model.
+- **Significantly stronger quiz + examples**. The prompt now requires:
+  - examples to use realistic everyday contexts (people, places, work, food, travel), not generic placeholders
+  - examples to share the SAME structural pattern as the lesson, only varying vocabulary
+  - quiz questions to test the SPECIFIC grammar point from the lesson (not vocabulary or an unrelated feature)
+  - quiz options to be minimal near-misses of the correct answer, differing only by the grammar feature being taught — never random gibberish
+  - every option's explanation to reference the specific feature ("uses past 'رفت' instead of present 'می‌رود'"), with a consistent "Correct"/"صحیح" prefix on the right answer
+  - wrong options to be sentences a real learner might genuinely produce (L1 interference, conjugation slip, calque) rather than nonsense
+
 ## [2.11.1] - 2026-05-14
 
 Patch release with two fixes on top of the 2.11.0 submission that's currently in Chrome Web Store review.
