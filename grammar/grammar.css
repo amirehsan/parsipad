@@ -225,6 +225,53 @@ body.dark {
   color: var(--gray-400);
 }
 
+/* Loading status block: rotating phase text + indeterminate progress bar
+   + elapsed-time pill. Sits centered under the skeleton cards so users see
+   tangible motion during the 30-120s grammar request. */
+.loading-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.loading-progress {
+  width: 240px;
+  height: 6px;
+  background: var(--gray-100);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.dark .loading-progress {
+  background: var(--gray-700);
+}
+
+.loading-progress-bar {
+  width: 35%;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--primary-500), var(--primary-400));
+  animation: grammar-loading-slide 1.4s ease-in-out infinite;
+}
+
+@keyframes grammar-loading-slide {
+  0%   { margin-left: -35%; }
+  100% { margin-left: 100%; }
+}
+
+.loading-elapsed {
+  font-size: 0.75rem;
+  color: var(--gray-400);
+  min-height: 1em; /* reserve space so layout doesn't jump when the text appears at 3s */
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-progress-bar { animation: none; width: 100%; }
+}
+
 /* Error Section */
 #error-section {
   display: flex;

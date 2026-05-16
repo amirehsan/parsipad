@@ -265,6 +265,55 @@ function hashText(text) {
   return Math.abs(hash).toString(36);
 }
 
+// ============================================================================
+// Loading progress (status rotation + elapsed-time counter)
+// ============================================================================
+// The grammar request can take 30 s - 2 min. Instead of a static spinner we
+// rotate through phase-style status messages and tick an elapsed counter so
+// users see *something* moving. State is reset on every showLoading() call
+// and torn down on showError() / showContent().
+
+const LOADING_STATUS_KEYS = [
+  'grammarLoadingStatus0', // Analyzing your sentence
+  'grammarLoadingStatus1', // Identifying grammar patterns
+  'grammarLoadingStatus2', // Building examples
+  'grammarLoadingStatus3', // Creating quiz
+  'grammarLoadingStatus4'  // Polishing the lesson
+];
+const LOADING_STATUS_INTERVAL_MS = 5000;
+let loadingStatusTimer = null;
+let loadingElapsedTimer = null;
+let loadingStartedAt = 0;
+
+function startLoadingProgress() {
+  const statusEl = document.getElementById('loading-status-text');
+  const elapsedEl = document.getElementById('loading-elapsed');
+  if (!statusEl) return;
+
+  stopLoadingProgress();
+  loadingStartedAt = Date.now();
+  let i = 0;
+  const setStatus = () => {
+    statusEl.textContent = t(LOADING_STATUS_KEYS[i % LOADING_STATUS_KEYS.length], currentLang)
+      || 'Creating grammar lesson...';
+  };
+  setStatus();
+  loadingStatusTimer = setInterval(() => { i += 1; setStatus(); }, LOADING_STATUS_INTERVAL_MS);
+
+  if (elapsedEl) {
+    elapsedEl.textContent = '';
+    loadingElapsedTimer = setInterval(() => {
+      const s = Math.floor((Date.now() - loadingStartedAt) / 1000);
+      elapsedEl.textContent = s > 2 ? `${s}s` : '';
+    }, 1000);
+  }
+}
+
+function stopLoadingProgress() {
+  if (loadingStatusTimer) { clearInterval(loadingStatusTimer); loadingStatusTimer = null; }
+  if (loadingElapsedTimer) { clearInterval(loadingElapsedTimer); loadingElapsedTimer = null; }
+}
+
 /**
  * Show loading state
  */
@@ -273,12 +322,14 @@ function showLoading() {
   if (errorSection) errorSection.hidden = true;
   if (lessonContent) lessonContent.hidden = true;
   if (saveNotification) saveNotification.hidden = true;
+  startLoadingProgress();
 }
 
 /**
  * Show error state
  */
 function showError(message) {
+  stopLoadingProgress();
   if (loadingSection) loadingSection.hidden = true;
   if (errorSection) errorSection.hidden = false;
   if (lessonContent) lessonContent.hidden = true;
@@ -290,6 +341,7 @@ function showError(message) {
  * Show lesson content
  */
 function showContent() {
+  stopLoadingProgress();
   if (loadingSection) loadingSection.hidden = true;
   if (errorSection) errorSection.hidden = true;
   if (lessonContent) lessonContent.hidden = false;

@@ -89,7 +89,13 @@
           </div>
         </div>
       </div>
-      <p class="loading-text" data-i18n="loadingLesson">Creating grammar lesson...</p>
+      <div class="loading-status">
+        <div class="loading-progress" role="progressbar" aria-label="Generating grammar lesson">
+          <div class="loading-progress-bar"></div>
+        </div>
+        <p id="loading-status-text" class="loading-text" data-i18n="loadingLesson">Creating grammar lesson...</p>
+        <p id="loading-elapsed" class="loading-elapsed" aria-live="polite"></p>
+      </div>
     </div>
 
     <!-- Error State -->
