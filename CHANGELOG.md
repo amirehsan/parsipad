@@ -5,6 +5,17 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.4] - 2026-05-15
+
+### Changed
+- **Grammar content is now ALWAYS in English** regardless of translation direction. The feature's audience is Persian-native speakers studying English, so:
+  - Grammar lesson titles, explanations, examples (source field), commonMistakes, quiz questions, quiz options, and quiz explanations are all in English
+  - Examples use English source sentences with Persian translations in the "target" field for reference
+  - Quiz options are minimal near-miss ENGLISH sentences testing the lesson's English grammar feature
+  - Wrong options are framed as the kind of mistakes a Persian-native English learner actually makes (L1 interference: wrong word order, missing articles, wrong preposition, calque)
+- The lighter floating-box grammar prompt (`GRAMMAR_SYSTEM_PROMPT`) now also writes all grammar points/explanations in English; the popup's "Explain grammar" checkbox + the new inline grammar in the floating box both produce English content
+- Floating-box grammar list now always renders LTR (was inheriting RTL from the translation direction; same principle as the alternatives list since the content is English regardless of direction)
+
 ## [2.11.3] - 2026-05-15
 
 ### Added
