@@ -548,6 +548,119 @@ export function getStyles() {
       color: var(--pp-text);
       font-weight: 600;
     }
+    /* Inline grammar block: lazy-loaded after the user clicks "Explain grammar".
+       Sits between the translation/alternatives and the footer. Reads cleanly
+       in both light and dark themes via --pp-* tokens. */
+    .parsipad-grammar-section {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--pp-border);
+    }
+    .parsipad-explain-grammar {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: transparent;
+      color: #6366f1;
+      border: 1px solid var(--pp-border);
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      transition: background-color 0.15s, border-color 0.15s;
+    }
+    .parsipad-explain-grammar:hover:not(:disabled) {
+      background: rgba(99, 102, 241, 0.08);
+      border-color: #6366f1;
+    }
+    .parsipad-explain-grammar:focus-visible {
+      outline: 2px solid #6366f1;
+      outline-offset: 2px;
+    }
+    .parsipad-explain-grammar:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    :host([data-theme='dark']) .parsipad-explain-grammar {
+      color: #a5b4fc;
+    }
+    .parsipad-grammar-slot:empty {
+      display: none;
+    }
+    .parsipad-grammar-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--pp-text-muted);
+    }
+    .parsipad-grammar-list {
+      margin: 8px 0 12px;
+      padding-inline-start: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .parsipad-grammar-list[dir='rtl'] {
+      padding-inline-start: 0;
+      padding-inline-end: 22px;
+      font-family: 'Vazirmatn', 'Tahoma', sans-serif;
+    }
+    .parsipad-grammar-list li {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--pp-text);
+    }
+    .parsipad-grammar-point-title {
+      font-weight: 600;
+      color: var(--pp-text);
+      margin-bottom: 2px;
+    }
+    .parsipad-grammar-point-body {
+      color: var(--pp-text-secondary);
+    }
+    .parsipad-grammar-learn-more {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: #6366f1;
+      color: #ffffff;
+      border: 1px solid #6366f1;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      transition: background-color 0.15s;
+    }
+    .parsipad-grammar-learn-more:hover {
+      background: #4f46e5;
+      border-color: #4f46e5;
+    }
+    .parsipad-grammar-learn-more:focus-visible {
+      outline: 2px solid #6366f1;
+      outline-offset: 2px;
+    }
+    .parsipad-grammar-empty,
+    .parsipad-grammar-error {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--pp-text-secondary);
+    }
+    .parsipad-grammar-error {
+      color: #b91c1c;
+    }
+    :host([data-theme='dark']) .parsipad-grammar-error {
+      color: #fca5a5;
+    }
+
     .parsipad-rich-context {
       margin-top: 16px;
       padding-top: 12px;

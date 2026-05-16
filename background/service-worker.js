@@ -91,6 +91,21 @@ async function handleMessage(message, _sender) {
       await chrome.runtime.openOptionsPage();
       return { success: true };
 
+    case ACTIONS.OPEN_GRAMMAR_PAGE: {
+      // Content scripts can't open tabs directly. Forward the request so the
+      // floating box's "Learn More" button can launch the full lesson page
+      // pre-populated with the user's just-translated sentence.
+      const params = new URLSearchParams({
+        original: message.original || '',
+        translation: message.translation || '',
+        direction: message.direction || ''
+      });
+      await chrome.tabs.create({
+        url: chrome.runtime.getURL(`grammar/grammar.html?${params.toString()}`)
+      });
+      return { success: true };
+    }
+
     default:
       throw new Error(`Unknown action: ${message.action}`);
   }
