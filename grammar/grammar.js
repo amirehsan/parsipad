@@ -142,6 +142,13 @@ function initTTS() {
  * Speak text using SpeechSynthesis API
  */
 function speakText(text, lang, button) {
+  // Speech playback is intentionally English-only - browser Persian voices
+  // are inconsistent across platforms and the lesson page now teaches
+  // English to Persian speakers, so listening to Persian isn't a goal.
+  // This is a defensive guard; the buttons are also hidden at render time
+  // when the text is Persian (see renderLesson).
+  if (lang === 'fa') return;
+
   // If already speaking, stop
   if (isSpeaking) {
     speechSynthesis.cancel();
@@ -151,12 +158,12 @@ function speakText(text, lang, button) {
   }
 
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = lang === 'fa' ? 'fa-IR' : 'en-US';
+  utterance.lang = 'en-US';
 
   // Find a suitable voice
   const voices = speechSynthesis.getVoices();
-  const langCode = lang === 'fa' ? 'fa' : 'en';
-  const voice = voices.find(v => v.lang.startsWith(langCode));
+  // English-only after the fa guard above
+  const voice = voices.find(v => v.lang.startsWith('en'));
   if (voice) {
     utterance.voice = voice;
   }
@@ -361,23 +368,29 @@ function renderLesson() {
   const displayDirection = (direction === 'en-to-fa' || direction === 'en-fa') ? 'EN → FA' : 'FA → EN';
   directionBadge.textContent = displayDirection;
 
-  // Apply Persian font and RTL based on which text is actually in Persian
-  // EN→FA: Original is English (LTR), Translation is Persian (RTL + Persian font)
-  // FA→EN: Original is Persian (RTL + Persian font), Translation is English (LTR)
+  // Apply Persian font and RTL based on which text is actually in Persian.
+  // Also hide the TTS button next to the Persian text - Web Speech voices
+  // for Persian are unreliable across browsers / OSes, and listening to
+  // Persian was never the goal here (the feature is for Persian speakers
+  // studying English). Keep TTS only on the English text.
+  // EN→FA: Original is English (LTR + TTS), Translation is Persian (RTL, no TTS)
+  // FA→EN: Original is Persian (RTL, no TTS), Translation is English (LTR + TTS)
+  const originalTtsBtn = document.querySelector('.tts-btn[data-target="original"]');
+  const translationTtsBtn = document.querySelector('.tts-btn[data-target="translation"]');
   if (direction === 'en-to-fa' || direction === 'en-fa') {
-    // Original is English
     originalTextEl.classList.remove('persian-text');
     originalTextEl.removeAttribute('dir');
-    // Translation is Persian
     translationTextEl.classList.add('persian-text');
     translationTextEl.setAttribute('dir', 'rtl');
+    if (originalTtsBtn) originalTtsBtn.hidden = false;     // English source
+    if (translationTtsBtn) translationTtsBtn.hidden = true; // Persian target
   } else {
-    // Original is Persian
     originalTextEl.classList.add('persian-text');
     originalTextEl.setAttribute('dir', 'rtl');
-    // Translation is English
     translationTextEl.classList.remove('persian-text');
     translationTextEl.removeAttribute('dir');
+    if (originalTtsBtn) originalTtsBtn.hidden = true;       // Persian source
+    if (translationTtsBtn) translationTtsBtn.hidden = false; // English target
   }
 
   // Set RTL direction on main content for grammar explanations

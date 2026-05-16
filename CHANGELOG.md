@@ -5,6 +5,11 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.5] - 2026-05-15
+
+### Changed
+- **Removed Persian speech playback from the grammar lesson page.** Browser Persian voices are inconsistent across platforms (most desktop OSes don't ship one at all) and the lesson is designed for Persian-native speakers studying English, so listening to Persian wasn't the goal. The "Listen" button next to the Persian text is now hidden — only the English text shows the playback button. Applies to both directions (EN→FA hides translation TTS; FA→EN hides original TTS). A defensive guard inside `speakText()` rejects `lang === 'fa'` even if a future code path tries to invoke it.
+
 ## [2.11.4] - 2026-05-15
 
 ### Changed
