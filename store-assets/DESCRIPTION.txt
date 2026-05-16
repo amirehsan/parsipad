@@ -46,14 +46,15 @@ Version 2.9.0:
 - Screenshot button in Image tab for quick access
 - Save all API keys at once from Settings
 
-Grammar Learning
-Master grammar while you translate:
-- Dedicated grammar learning page with detailed explanations
-- Interactive quizzes with educational feedback for each answer
-- Text-to-Speech for correct pronunciation
-- Transliteration to read Persian script phonetically (Pinglish)
-- Register badges show formal vs informal usage
-- Compare and Contrast sections for English/Persian differences
+Grammar Learning (designed for Persian speakers studying English)
+Master English grammar while you translate:
+- Inline grammar notes right inside the floating translation popup on any webpage - click "Explain grammar" to see concise grammar points
+- Dedicated grammar learning page with detailed explanations, examples, and an interactive quiz
+- All grammar content (explanations, examples, quiz questions, quiz options) is in English so you study the language you're learning
+- Quiz wrong answers reflect mistakes Persian-native English learners actually make (L1 interference: wrong word order, missing articles, wrong preposition, calque)
+- Text-to-Speech for English pronunciation (the Listen button appears on the English side; Persian playback is not provided since browser Persian voices are inconsistent)
+- Register badges show formal vs informal English usage
+- Compare and Contrast sections explain how English and Persian handle the same grammar differently
 - Common mistakes section to avoid typical errors
 - Save grammar lessons to Favorites for review
 
