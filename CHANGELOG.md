@@ -5,6 +5,13 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.3] - 2026-05-15
+
+### Added
+- **Grammar in the floating translation box.** After any translation appears on a webpage, an "Explain grammar" button now shows up below the result. Clicking it lazy-fetches grammar points (using the same `withGrammar:true` API path the popup uses) and renders them inline with the target-language RTL/LTR direction. A "Learn More with Examples" button below the points launches the full lesson page (`grammar/grammar.html`) pre-filled with the original/translation/direction. Light + dark themes both supported via `--pp-*` tokens. Skips itself for single-word selections (no meaningful grammar to surface there).
+- New `OPEN_GRAMMAR_PAGE` action so content scripts can ask the service worker to open `grammar/grammar.html` in a new tab with URL params (content scripts can't call `chrome.tabs.create` directly).
+- i18n: new `noGrammarPoints` string in en + fa.
+
 ## [2.11.2] - 2026-05-15
 
 ### Grammar lesson improvements

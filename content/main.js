@@ -660,6 +660,11 @@ function showTranslation(result, originalText) {
     content.appendChild(extras);
   }
 
+  // Inline "Explain grammar" affordance + slot that holds the response when
+  // the user opts in. Lazy on purpose - costs extra tokens, so we only fire
+  // the request after an explicit click.
+  appendInlineGrammarAffordance(content, originalText, translation, direction);
+
   // Show footer
   const footer = shadowRoot.querySelector('.parsipad-footer');
   footer.style.display = 'flex';
@@ -670,6 +675,130 @@ function showTranslation(result, originalText) {
 
   // Check if already favorited
   checkTranslationFavoriteStatus();
+}
+
+/**
+ * Append the "Explain grammar" button (and a placeholder grammar slot) to the
+ * floating translation box. The button is hidden by default if the input is
+ * obviously too short (single word) to have a meaningful grammar lesson.
+ *
+ * On click:
+ *   1. Disable the button + show a small spinner
+ *   2. Re-issue the TRANSLATE message with withGrammar: true (the popup uses
+ *      the same path; it returns translation + grammar[] in one response)
+ *   3. Render the grammar points inline and reveal a "Learn More" CTA that
+ *      opens the full grammar.html via the OPEN_GRAMMAR_PAGE message.
+ */
+function appendInlineGrammarAffordance(content, originalText, translation, direction) {
+  if (!originalText || originalText.trim().split(/\s+/).length < 2) return; // skip single-word
+
+  const section = document.createElement('div');
+  section.className = 'parsipad-grammar-section';
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'parsipad-explain-grammar';
+  btn.textContent = t('explainGrammar', userLang) || 'Explain grammar';
+  section.appendChild(btn);
+
+  // Slot for the rendered grammar block once fetched.
+  const slot = document.createElement('div');
+  slot.className = 'parsipad-grammar-slot';
+  section.appendChild(slot);
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = t('loadingLesson', userLang) || 'Loading...';
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'TRANSLATE',
+        text: originalText,
+        sourceLang: 'auto',
+        withGrammar: true
+      });
+
+      if (response?.error) {
+        btn.disabled = false;
+        btn.textContent = t('explainGrammar', userLang) || 'Explain grammar';
+        const err = document.createElement('div');
+        err.className = 'parsipad-grammar-error';
+        err.textContent = response.error;
+        slot.replaceChildren(err);
+        return;
+      }
+
+      renderInlineGrammar(slot, response?.grammar || [], originalText, translation, direction);
+      btn.remove();
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = t('explainGrammar', userLang) || 'Explain grammar';
+      const errEl = document.createElement('div');
+      errEl.className = 'parsipad-grammar-error';
+      errEl.textContent = err?.message || 'Failed to load grammar.';
+      slot.replaceChildren(errEl);
+    }
+  });
+
+  content.appendChild(section);
+}
+
+/**
+ * Render the grammar points returned by withGrammar:true plus a "Learn More"
+ * button that launches the full lesson page (via OPEN_GRAMMAR_PAGE).
+ */
+function renderInlineGrammar(slot, points, originalText, translation, direction) {
+  slot.replaceChildren();
+
+  if (!Array.isArray(points) || points.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'parsipad-grammar-empty';
+    empty.textContent = t('noGrammarPoints', userLang) || 'No grammar points returned for this text.';
+    slot.appendChild(empty);
+    return;
+  }
+
+  const header = document.createElement('div');
+  header.className = 'parsipad-grammar-header';
+  header.textContent = t('grammarExplanation', userLang) || 'Grammar Notes';
+  slot.appendChild(header);
+
+  // Grammar explanations are produced in the target language - inherit dir
+  // from the translation direction so RTL content reads naturally.
+  const targetLang = (direction || '').split('-')[1] || (direction || '').split('-to-')[1] || 'fa';
+  const isRtl = ['fa', 'ar', 'he'].includes(targetLang);
+
+  const list = document.createElement('ol');
+  list.className = 'parsipad-grammar-list';
+  if (isRtl) list.setAttribute('dir', 'rtl');
+  points.forEach(p => {
+    if (!p) return;
+    const li = document.createElement('li');
+    const title = document.createElement('div');
+    title.className = 'parsipad-grammar-point-title';
+    title.textContent = p.point || p.title || '';
+    const body = document.createElement('div');
+    body.className = 'parsipad-grammar-point-body';
+    body.textContent = p.explanation || '';
+    li.append(title, body);
+    list.appendChild(li);
+  });
+  slot.appendChild(list);
+
+  // "Learn More with Examples" -> opens grammar.html via background.
+  const learnMore = document.createElement('button');
+  learnMore.type = 'button';
+  learnMore.className = 'parsipad-grammar-learn-more';
+  learnMore.textContent = t('learnMore', userLang) || 'Learn More with Examples';
+  learnMore.addEventListener('click', () => {
+    chrome.runtime.sendMessage({
+      action: 'OPEN_GRAMMAR_PAGE',
+      original: originalText,
+      translation,
+      direction
+    });
+  });
+  slot.appendChild(learnMore);
 }
 
 // Errors that warrant the alarming red tone vs. the friendly amber default.
