@@ -1,5 +1,8 @@
 ParsiPad is a powerful AI-powered translation extension that makes Persian-English translation seamless and intelligent.
 
+Version 2.11.6:
+- Fixed Gemini translations failing with a "model is no longer available" error after Google retired the older Gemini model; the extension now uses the current Gemini model
+
 Version 2.11.5:
 - Speech playback in the grammar lesson is now English-only; the "Listen" button next to Persian text is hidden since browser Persian voices are inconsistent and the feature is designed for Persian speakers studying English
 

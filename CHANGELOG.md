@@ -5,6 +5,12 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.6] - 2026-06-02
+
+### Fixed
+- **Gemini provider no longer fails with "model is no longer available".** Google retired `gemini-2.0-flash`, so selecting Gemini returned `This model models/gemini-2.0-flash is no longer available`. Updated the text and vision models to `gemini-2.5-flash`.
+- Disabled thinking (`thinkingConfig.thinkingBudget: 0`) on Gemini text and vision requests. Unlike 2.0, `gemini-2.5-flash` enables thinking by default, which can consume the entire `maxOutputTokens` budget on internal reasoning and return empty translations. Turning it off preserves the fast, non-reasoning behavior the extension relies on.
+
 ## [2.11.5] - 2026-05-15
 
 ### Changed
