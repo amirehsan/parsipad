@@ -178,7 +178,12 @@ Rules: `<glossary>` appears only when at least one glossary entry's source term 
 
 ### 5.2 `lib/translation/schemas.js`
 
-Schemas are plain JSON Schema objects written in the subset all three providers accept: `type`, `properties`, `required` (every property), `additionalProperties: false`, `enum`, `items`, `maxItems`. Providers that reject a keyword strip it in their own adapter (`toProviderSchema` in each provider). `translation` is always the first property so it streams first if a provider ever streams structured output.
+Schemas are plain JSON Schema objects written once in the subset every provider accepts: `type`, `properties`, `required` (listing every property), `enum`, `items`, `description`. They contain no `maxItems` (Claude rejects it) and no `additionalProperties` (Gemini's `responseSchema` rejects it). Each provider adapts the canonical schema in a pure `toProviderSchema(schema)`:
+
+- Claude and OpenAI: add `additionalProperties: false` to every object (both require it in strict mode).
+- Gemini: add `propertyOrdering` equal to the `properties` key order on every object, so `translation` is emitted first.
+
+Array caps (senses 5, synonyms 5, antonyms 3, alternatives 3, grammar 4) are stated in the prompt text and enforced in `coerceResult`. `translation` is always the first property so it streams first if a provider ever streams structured output.
 
 **WORD_SCHEMA** (word and phrase):
 
@@ -191,9 +196,9 @@ Schemas are plain JSON Schema objects written in the subset all three providers 
   pos: string,                 // primary part of speech, '' for phrases
   register: 'formal' | 'neutral' | 'informal' | 'slang' | 'technical',
   inContext: string,           // '' when no context
-  senses: [{ pos: string, meaning: string, example: { src: string, tgt: string } }],  // maxItems 5
-  synonyms: [string],          // maxItems 5, same language as headword
-  antonyms: [string],          // maxItems 3
+  senses: [{ pos: string, meaning: string, example: { src: string, tgt: string } }],  // capped at 5 in coerceResult
+  synonyms: [string],          // capped at 5, same language as headword
+  antonyms: [string],          // capped at 3
   correction: string           // corrected source, '' when none
 }
 ```
@@ -206,15 +211,15 @@ Schemas are plain JSON Schema objects written in the subset all three providers 
   detectedSource: 'en' | 'fa' | 'fa-latn' | 'other',
   normalized: string,
   register: 'formal' | 'neutral' | 'informal' | 'slang' | 'technical',
-  alternatives: [{ text: string, label: 'more formal' | 'colloquial' | 'literal' | 'other sense' }],  // maxItems 3
+  alternatives: [{ text: string, label: 'more formal' | 'colloquial' | 'literal' | 'other sense' }],  // capped at 3
   note: string,
   correction: string
 }
 ```
 
-**GRAMMAR_POINTS_SCHEMA**: `{ grammar: [{ point: string, explanation: string }] }` (maxItems 4).
+**GRAMMAR_POINTS_SCHEMA**: `{ grammar: [{ point: string, explanation: string }] }` (capped at 4).
 
-`coerceResult(mode, obj)` returns a normalized result object: missing strings become `''`, arrays are capped at their maxItems, unknown enum values fall back to `'neutral'` / `'other sense'`, `senses` entries without `meaning` are dropped, and `translation` is required (throws `PARSE_FAILED` when absent or empty).
+`coerceResult(mode, obj)` returns a normalized result object: missing strings become `''`, arrays are capped at the limits above, unknown enum values fall back to `'neutral'` / `'other sense'`, `senses` entries without `meaning` are dropped, and `translation` is required (throws `PARSE_FAILED` when absent or empty).
 
 ### 5.3 Result contract (what the UI receives)
 
@@ -265,7 +270,7 @@ stream({ systemPrompt, userPrompt, maxTokens, temperature, apiKey, signal, onDel
 | | Claude | Gemini | OpenAI |
 |---|---|---|---|
 | Temperature | `temperature` | `generationConfig.temperature` | `temperature` |
-| Structured output | `output_config.format = { type: 'json_schema', schema }` (shape confirmed against the claude-api reference during implementation) | `generationConfig.responseMimeType = 'application/json'`, `generationConfig.responseSchema` | `response_format = { type: 'json_schema', json_schema: { name, schema, strict: true } }` |
+| Structured output | `output_config: { format: { type: 'json_schema', schema } }`; no beta header; supported on `claude-haiku-4-5-20251001`; schema needs `additionalProperties: false` on every object and no `maxItems` | `generationConfig.responseMimeType: 'application/json'` plus `generationConfig.responseSchema` (OpenAPI subset: no `additionalProperties`; `propertyOrdering` controls key order) | `response_format: { type: 'json_schema', json_schema: { name, schema, strict: true } }`; strict mode needs every property in `required` and `additionalProperties: false`; supported on `gpt-4o-mini` |
 | Streaming | `stream: true`, SSE events `content_block_delta` (`delta.text`), `message_delta` (`delta.stop_reason`, `usage.output_tokens`), `message_start` (`usage.input_tokens`) | `POST {model}:streamGenerateContent?alt=sse`, each event a `GenerateContentResponse`; text in `candidates[0].content.parts[].text`, `finishReason`, `usageMetadata` | `stream: true`, `stream_options: { include_usage: true }`, `choices[0].delta.content`, `finish_reason`, final `usage` chunk, terminated by `[DONE]` |
 | Truncation | `stop_reason === 'max_tokens'` | `finishReason === 'MAX_TOKENS'` | `finish_reason === 'length'` |
 | Thinking | not used (Haiku 4.5) | `thinkingConfig.thinkingBudget: 0` kept | n/a |
@@ -340,7 +345,7 @@ All in `tests/`, Vitest, node environment, no network.
 | `mode.test.js` | word, phrase, sentence, text boundaries; abbreviations; Persian terminators; whitespace-only |
 | `normalize.test.js` | PDF line joins, paragraph preservation, list items kept, soft hyphen and ZW removal in Latin only, ZWNJ preserved in Persian, footnote tokens, Arabic Yeh/Kaf mapping, space before punctuation |
 | `prompts.test.js` | user message composition per mode, context tags only when provided, glossary filtering by word boundary, page tag, batch message |
-| `schemas.test.js` | coercion defaults, caps, enum fallbacks, missing translation throws `PARSE_FAILED`, schema objects contain no keywords outside the accepted subset |
+| `schemas.test.js` | coercion defaults, caps, enum fallbacks, missing translation throws `PARSE_FAILED`, canonical schemas contain no `maxItems` or `additionalProperties`, each `toProviderSchema` adds exactly its provider's keywords |
 | `budget.test.js` | max-token table, temperature table |
 | `sse.test.js` | event splitting across chunk boundaries, multi-line data, `[DONE]` |
 | `claude-provider.test.js`, `gemini-provider.test.js`, `openai-provider.test.js` | request body contains temperature, schema and stream flags in the right place; `truncated` detection; `parseSseEvent` on recorded events; error mapping to `TranslationError` codes |
