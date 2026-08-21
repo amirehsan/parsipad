@@ -5,6 +5,20 @@ All notable changes to ParsiPad will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Translation core rebuilt around modes and context.** Selections are classified as word, phrase, sentence or text. Words and phrases are translated using the sentence around them and return senses by part of speech, synonyms, antonyms, IPA and register; sentences return labelled alternatives in the target language; long text streams into the card progressively.
+- Providers use native structured output (Claude `output_config.format`, Gemini `responseSchema`, OpenAI strict `json_schema`), temperature 0.2 for translation, token budgets scaled to the input, and report truncation instead of showing cut-off JSON.
+- Grammar explanations no longer re-translate the text; "Explain grammar" explains the translation already on screen (`EXPLAIN_GRAMMAR`) and is cached per pair.
+- Persian output is normalized (Persian ی and ک, spacing before punctuation) before display, caching, history and copy.
+- History keeps the full translation (up to 4000 characters) and the structured result.
+- New setting: "Translate other languages into Persian" (default on). When off, non-Persian, non-English text is rejected as before.
+
+### Removed
+- `lib/page-translator.js` (unused).
+- Numbered-batch detection on user selections; page translation now passes the batch mode explicitly.
+
 ## [2.11.6] - 2026-06-02
 
 ### Fixed

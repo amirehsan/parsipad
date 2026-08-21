@@ -282,6 +282,7 @@ Each provider module exports a pure `parseSseEvent(eventText)` returning `{ delt
 - Temperature: translation 0.2, grammar points 0.3, polish 0.5 (passed by `polish()`; the polish prompt is unchanged).
 - `computeMaxTokens(mode, text)`: word and phrase 700; sentence 900; text `min(4096, 400 + 2 * text.length)`; batch `min(4096, 400 + 2 * text.length)`.
 - Non-stream timeout stays 30 s through `withRetry`. Streams use a 20 s idle timeout (reset on every chunk). Retries apply only before the first byte arrives.
+- Streamed modes (text, batch) return the partial text with `truncated: true` instead of throwing, because the user has already seen the text; the UI shows the TRUNCATED message beneath it. Structured modes throw `TRUNCATED`.
 
 ### 7.4 Models
 
