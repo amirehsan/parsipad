@@ -1,7 +1,10 @@
 /**
  * Surrounding-sentence capture for word, phrase and sentence selections.
- * sliceContext is pure (tested); captureSelectionContext reads the DOM.
+ * sliceContext and sentenceAround are pure (tested);
+ * captureSelectionContext reads the DOM.
  */
+
+import { findTerminatorEnds } from '../lib/translation/mode.js';
 
 const BLOCK_SELECTOR = 'p, li, td, th, dd, dt, blockquote, h1, h2, h3, h4, h5, h6, figcaption, pre, article, section, div';
 const MAX_CONTEXT_CHARS = 300;
@@ -68,4 +71,43 @@ export function captureSelectionContext(selection) {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * The single sentence containing the selection, recovered from the
+ * context window captured around it.
+ *
+ * The window is up to 300 characters either side, which is more than one
+ * sentence, so both edges are trimmed back to the nearest terminator:
+ * the last one before the selection and the first one after it. What is
+ * left is the sentence the user's word actually sits in, which is what
+ * makes a sentence request worth sending.
+ *
+ * Returns undefined when there is nothing around the selection to
+ * recover, so a caller can drop the affordance rather than offer one
+ * that would send the word back on its own.
+ *
+ * @param {{before?: string, selection?: string, after?: string}} params
+ * @returns {string|undefined}
+ */
+export function sentenceAround({ before = '', selection = '', after = '' } = {}) {
+  const core = String(selection || '').trim();
+  if (!core) return undefined;
+
+  const lead = String(before || '');
+  const tail = String(after || '');
+
+  // The last terminator before the selection ends the previous sentence,
+  // so this one starts just past it.
+  const leadEnds = findTerminatorEnds(lead);
+  const head = leadEnds.length > 0 ? lead.slice(leadEnds[leadEnds.length - 1]) : lead;
+
+  // The first terminator after the selection ends this sentence, and the
+  // terminator itself belongs to it.
+  const tailEnds = findTerminatorEnds(tail);
+  const rest = tailEnds.length > 0 ? tail.slice(0, tailEnds[0]) : tail;
+
+  const sentence = `${head}${selection}${rest}`.replace(/\s+/g, ' ').trim();
+  if (!sentence || sentence === core) return undefined;
+  return sentence;
 }

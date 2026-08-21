@@ -523,44 +523,18 @@ export function getStyles() {
       overflow-y: auto;
     }
 
+    /* The word a sentence card grew out of, marked in its source line so
+       the user can see what they originally selected. */
+    .parsipad-source-match {
+      background: rgba(245, 158, 11, 0.28);
+      color: inherit;
+      border-radius: 3px;
+      padding: 0 2px;
+    }
+
     /* Inline grammar block: lazy-loaded after the user clicks "Explain grammar".
-       Sits between the translation/alternatives and the footer. Reads cleanly
-       in both light and dark themes via --pp-* tokens. */
-    .parsipad-grammar-section {
-      margin-top: 16px;
-      padding-top: 12px;
-      border-top: 1px solid var(--pp-border);
-    }
-    .parsipad-explain-grammar {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      background: transparent;
-      color: #6366f1;
-      border: 1px solid var(--pp-border);
-      border-radius: 6px;
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 12px;
-      font-weight: 500;
-      transition: background-color 0.15s, border-color 0.15s;
-    }
-    .parsipad-explain-grammar:hover:not(:disabled) {
-      background: rgba(99, 102, 241, 0.08);
-      border-color: #6366f1;
-    }
-    .parsipad-explain-grammar:focus-visible {
-      outline: 2px solid #6366f1;
-      outline-offset: 2px;
-    }
-    .parsipad-explain-grammar:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    :host([data-theme='dark']) .parsipad-explain-grammar {
-      color: #a5b4fc;
-    }
+       Sits above the card's footer. Reads cleanly in both light and dark
+       themes via --pp-* tokens. */
     .parsipad-grammar-slot:empty {
       display: none;
     }
