@@ -89,4 +89,17 @@ describe('schema adapters', () => {
     expect(out.properties.senses.items.propertyOrdering).toEqual(['pos', 'meaning', 'example']);
     expect(out.additionalProperties).toBeUndefined();
   });
+  it('shares no mutable structure with the canonical schema', () => {
+    const a = withAdditionalPropertiesFalse(WORD_SCHEMA);
+    const b = withPropertyOrdering(WORD_SCHEMA);
+    expect(a.required).not.toBe(WORD_SCHEMA.required);
+    expect(a.required).toEqual(WORD_SCHEMA.required);
+    expect(a.required).not.toBe(b.required);
+    expect(a.properties.detectedSource.enum).not.toBe(WORD_SCHEMA.properties.detectedSource.enum);
+    expect(a.properties.detectedSource.enum).toEqual(WORD_SCHEMA.properties.detectedSource.enum);
+    a.required.push('injected');
+    a.properties.detectedSource.enum.push('injected');
+    expect(WORD_SCHEMA.required).not.toContain('injected');
+    expect(WORD_SCHEMA.properties.detectedSource.enum).not.toContain('injected');
+  });
 });
