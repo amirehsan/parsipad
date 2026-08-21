@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeInput, normalizePersian } from '../lib/translation/normalize.js';
+import { normalizeInput, normalizeForMode, normalizePersian } from '../lib/translation/normalize.js';
 
 describe('normalizeInput', () => {
   it('joins single line breaks inside a sentence', () => {
@@ -32,6 +32,36 @@ describe('normalizeInput', () => {
   it('returns empty string for empty input', () => {
     expect(normalizeInput('')).toBe('');
     expect(normalizeInput(null)).toBe('');
+  });
+});
+
+describe('normalizeForMode', () => {
+  it('preserves [n] markers and one-item-per-line structure for batch', () => {
+    const input = '[1] Library policies\n[2] They will charge you a fee.\n[3] Contact us';
+    expect(normalizeForMode(input, 'batch')).toBe(input);
+  });
+  it('still converts CRLF, strips invisible characters and collapses spaces for batch', () => {
+    const input = '[1]  a   b\r\n[2] hy\u00ADphen\u200Bated';
+    expect(normalizeForMode(input, 'batch')).toBe('[1] a b\n[2] hyphenated');
+  });
+  it('trims each batch line without joining them', () => {
+    expect(normalizeForMode('[1]  first  \n  [2] second  ', 'batch')).toBe('[1] first\n[2] second');
+  });
+  it('does not drop standalone bracketed numbers for batch', () => {
+    const input = '[1] see note [2] below\n[2] the note itself';
+    expect(normalizeForMode(input, 'batch')).toBe(input);
+  });
+  it('matches normalizeInput for a word', () => {
+    const text = 'hello';
+    expect(normalizeForMode(text, 'word')).toBe(normalizeInput(text));
+  });
+  it('matches normalizeInput for a sentence', () => {
+    const text = 'First sentence.\nSecond sentence.';
+    expect(normalizeForMode(text, 'sentence')).toBe(normalizeInput(text));
+  });
+  it('matches normalizeInput for a multi-paragraph text', () => {
+    const text = 'para one\n\npara two\nkeeps flowing on the same line';
+    expect(normalizeForMode(text, 'text')).toBe(normalizeInput(text));
   });
 });
 
