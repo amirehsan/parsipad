@@ -1,7 +1,11 @@
 // tests/card-styles.test.js
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach } from 'vitest';
+import fs from 'fs';
+import path from 'path';
 import { CARD_STYLES, injectCardStyles } from '../shared/card/styles.js';
+
+const partsSource = fs.readFileSync(path.resolve(__dirname, '../shared/card/parts.js'), 'utf8');
 
 describe('CARD_STYLES', () => {
   it('scopes every class selector under the pp-card prefix', () => {
@@ -21,6 +25,17 @@ describe('CARD_STYLES', () => {
 
   it('gives Persian more leading than Latin at the same size', () => {
     expect(CARD_STYLES).toMatch(/\[dir="rtl"\]/);
+  });
+
+  it('has a rule for every pp-card class shared/card/parts.js puts on an element', () => {
+    const emitted = new Set(
+      [...partsSource.matchAll(/\.className\s*=\s*'(pp-card-[\w-]+)'/g)].map(m => m[1])
+    );
+    const styled = new Set(
+      (CARD_STYLES.match(/\.[a-zA-Z][\w-]*/g) || []).map(c => c.slice(1))
+    );
+    const unstyled = [...emitted].filter(c => !styled.has(c)).sort();
+    expect(unstyled).toEqual([]);
   });
 });
 
