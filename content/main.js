@@ -53,6 +53,10 @@ let sensesExpandedForSession = false;
 // after the fact; the context is what a sentence request is built from.
 let currentCardEl = null;
 let currentSelectionContext = null;
+// Focus moves into the box when it opens and back out when it closes, so
+// keyboard users are not dropped back at the top of the page.
+let previouslyFocused = null;
+let boxNeedsFocus = false;
 
 // Screenshot selection state
 let screenshotOverlay = null;
@@ -429,6 +433,7 @@ function placeFloatingBox() {
     floatingBox.style.top = `${window.scrollY + UNANCHORED_BOX_OFFSET}px`;
     floatingBox.style.left = `${window.scrollX + UNANCHORED_BOX_OFFSET}px`;
     floatingBox.style.visibility = 'visible';
+    focusBoxOnce();
     return;
   }
 
@@ -445,6 +450,23 @@ function placeFloatingBox() {
   floatingBox.style.top = `${top}px`;
   floatingBox.style.left = `${left}px`;
   floatingBox.style.visibility = 'visible';
+  focusBoxOnce();
+}
+
+/**
+ * Move focus into the box the first time it becomes visible.
+ *
+ * Deferred to here rather than done at creation because a hidden element
+ * cannot take focus, and placement is the moment it stops being hidden.
+ * Scrolling is suppressed: the box was just positioned against the
+ * selection, so the viewport is already where it should be.
+ */
+function focusBoxOnce() {
+  if (!boxNeedsFocus || !shadowRoot) return;
+  const box = shadowRoot.querySelector('.parsipad-box');
+  if (!box) return;
+  boxNeedsFocus = false;
+  box.focus({ preventScroll: true });
 }
 
 /**
@@ -469,7 +491,11 @@ function keepFloatingBoxInViewport() {
  * @returns {HTMLElement} the host element, not yet in the document
  */
 function createBoxHost(selectionRect) {
+  // Ordered: closing the old box hands focus back to whatever it took it
+  // from, and only then is the element this box will return to captured.
   removeFloatingBox();
+  previouslyFocused = document.activeElement;
+  boxNeedsFocus = true;
   boxSelectionRect = selectionRect || null;
 
   const host = document.createElement('div');
@@ -509,6 +535,9 @@ function createFloatingBox(selectionRect) {
   box.className = 'parsipad-box';
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-label', 'ParsiPad translation');
+  // Focusable by script but not in the tab order: focus is moved here when
+  // the box opens and handed back when it closes.
+  box.setAttribute('tabindex', '-1');
   box.innerHTML = `
     <div class="parsipad-header">
       <div class="parsipad-logo">
@@ -1000,9 +1029,14 @@ function showError(errorOrResponse) {
 }
 
 /**
- * Floating toast used when no floating box is on-screen (e.g. during page translation).
+ * Floating toast used when no floating box is on-screen (e.g. during page
+ * translation).
+ *
+ * @param {Object} [options]
+ * @param {string} [options.message] - what to say
+ * @param {boolean} [options.withSettings] - offer the settings shortcut
  */
-function showMissingApiKeyToast() {
+function showToast({ message = 'API key not configured.', withSettings = true } = {}) {
   const existing = document.getElementById('parsipad-missing-key-toast');
   if (existing) existing.remove();
 
@@ -1042,19 +1076,32 @@ function showMissingApiKeyToast() {
       }
     </style>
     <div class="toast" role="alert">
-      <span>API key not configured.</span>
-      <button class="open" type="button">Open Settings</button>
+      <span class="message"></span>
+      <button class="open" type="button" hidden>Open Settings</button>
       <button class="close" type="button" aria-label="Dismiss">×</button>
     </div>
   `;
+  root.querySelector('.message').textContent = message;
   document.body.appendChild(host);
 
-  root.querySelector('.open').addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' });
-    host.remove();
-  });
+  const openBtn = root.querySelector('.open');
+  if (withSettings) {
+    openBtn.hidden = false;
+    openBtn.addEventListener('click', () => {
+      chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' });
+      host.remove();
+    });
+  }
   root.querySelector('.close').addEventListener('click', () => host.remove());
   setTimeout(() => host.remove(), 10000);
+}
+
+/**
+ * The missing-API-key case, which is the toast's original and most common
+ * caller. Kept as its own name so the call sites still read as intent.
+ */
+function showMissingApiKeyToast() {
+  showToast({ message: 'API key not configured.', withSettings: true });
 }
 
 /**
@@ -1213,7 +1260,14 @@ function removeFloatingBox() {
   boxSelectionRect = null;
   currentCardEl = null;
   currentSelectionContext = null;
+  boxNeedsFocus = false;
   cancelSpeech();
+
+  const returnTo = previouslyFocused;
+  previouslyFocused = null;
+  if (returnTo && typeof returnTo.focus === 'function' && document.contains(returnTo)) {
+    returnTo.focus({ preventScroll: true });
+  }
   if (floatingBox) {
     floatingBox.remove();
     floatingBox = null;
@@ -1242,6 +1296,9 @@ function createPolishBox(selectionRect) {
   // Create box structure for polish results
   const box = document.createElement('div');
   box.className = 'parsipad-box parsipad-polish-box';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', 'ParsiPad polish');
+  box.setAttribute('tabindex', '-1');
   box.innerHTML = `
     <div class="parsipad-header">
       <div class="parsipad-logo">
@@ -1252,7 +1309,7 @@ function createPolishBox(selectionRect) {
         <span class="parsipad-badge parsipad-badge-polish">Polish</span>
         <span class="parsipad-provider-badge"></span>
       </div>
-      <button class="parsipad-close" title="Close">×</button>
+      <button class="parsipad-close" type="button" title="Close" aria-label="Close polish">×</button>
     </div>
     <div class="parsipad-polish-content">
       <!-- Polish cards will be inserted here -->
@@ -1341,19 +1398,19 @@ function showPolishResults(result) {
       <div class="parsipad-polish-card-header">
         <span class="parsipad-polish-title">Professional</span>
         <div class="parsipad-polish-actions">
-          <button class="parsipad-polish-favorite" data-version="professional" title="Add to favorites">
+          <button class="parsipad-polish-favorite" data-version="professional" type="button" title="Add to favorites" aria-label="Add to favorites">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
           </button>
-          <button class="parsipad-polish-regenerate" data-version="professional" title="Regenerate">
+          <button class="parsipad-polish-regenerate" data-version="professional" type="button" title="Regenerate" aria-label="Regenerate">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M23 4v6h-6"/>
               <path d="M1 20v-6h6"/>
               <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
             </svg>
           </button>
-          <button class="parsipad-polish-copy" data-version="professional" title="Copy">
+          <button class="parsipad-polish-copy" data-version="professional" type="button" title="Copy" aria-label="Copy">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -1367,19 +1424,19 @@ function showPolishResults(result) {
       <div class="parsipad-polish-card-header">
         <span class="parsipad-polish-title">Conversational</span>
         <div class="parsipad-polish-actions">
-          <button class="parsipad-polish-favorite" data-version="conversational" title="Add to favorites">
+          <button class="parsipad-polish-favorite" data-version="conversational" type="button" title="Add to favorites" aria-label="Add to favorites">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
           </button>
-          <button class="parsipad-polish-regenerate" data-version="conversational" title="Regenerate">
+          <button class="parsipad-polish-regenerate" data-version="conversational" type="button" title="Regenerate" aria-label="Regenerate">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M23 4v6h-6"/>
               <path d="M1 20v-6h6"/>
               <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
             </svg>
           </button>
-          <button class="parsipad-polish-copy" data-version="conversational" title="Copy">
+          <button class="parsipad-polish-copy" data-version="conversational" type="button" title="Copy" aria-label="Copy">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -1393,19 +1450,19 @@ function showPolishResults(result) {
       <div class="parsipad-polish-card-header">
         <span class="parsipad-polish-title">Concise</span>
         <div class="parsipad-polish-actions">
-          <button class="parsipad-polish-favorite" data-version="concise" title="Add to favorites">
+          <button class="parsipad-polish-favorite" data-version="concise" type="button" title="Add to favorites" aria-label="Add to favorites">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
           </button>
-          <button class="parsipad-polish-regenerate" data-version="concise" title="Regenerate">
+          <button class="parsipad-polish-regenerate" data-version="concise" type="button" title="Regenerate" aria-label="Regenerate">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M23 4v6h-6"/>
               <path d="M1 20v-6h6"/>
               <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
             </svg>
           </button>
-          <button class="parsipad-polish-copy" data-version="concise" title="Copy">
+          <button class="parsipad-polish-copy" data-version="concise" type="button" title="Copy" aria-label="Copy">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -1733,6 +1790,9 @@ function createDictionaryBox(selectionRect) {
   // Create box structure for dictionary
   const box = document.createElement('div');
   box.className = 'parsipad-box parsipad-dictionary-box';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', 'ParsiPad dictionary');
+  box.setAttribute('tabindex', '-1');
   box.innerHTML = `
     <div class="parsipad-header">
       <div class="parsipad-logo">
@@ -1743,7 +1803,7 @@ function createDictionaryBox(selectionRect) {
         <span class="parsipad-badge parsipad-badge-dictionary">Dictionary</span>
         <span class="parsipad-provider-badge"></span>
       </div>
-      <button class="parsipad-close" title="Close">×</button>
+      <button class="parsipad-close" type="button" title="Close" aria-label="Close dictionary">×</button>
     </div>
     <div class="parsipad-dictionary-content">
       <!-- Dictionary result will be inserted here -->
@@ -1868,12 +1928,12 @@ function showDictionaryResult(result) {
         <div class="parsipad-dict-section-title">Translation</div>
         <div class="parsipad-dict-translation-text" ${isTargetRTL ? 'dir="rtl"' : ''}>${escapeHtml(translation)}</div>
         <div class="parsipad-dict-translation-actions">
-          <button class="parsipad-dict-favorite-translation" title="Add to favorites">
+          <button class="parsipad-dict-favorite-translation" type="button" title="Add to favorites" aria-label="Add to favorites">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
           </button>
-          <button class="parsipad-dict-copy-translation" title="Copy translation">
+          <button class="parsipad-dict-copy-translation" type="button" title="Copy translation" aria-label="Copy translation">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -2069,7 +2129,9 @@ async function handleTranslatePage() {
     if (pageTranslationState.textNodes.length === 0) {
       hidePageProgressOverlay();
       pageTranslationState.isTranslating = false;
-      alert('No translatable text found on this page.');
+      // Page translation runs without a floating box, so there is nothing to
+      // render an error into; the toast is the surface that does not need one.
+      showToast({ message: 'No translatable text found on this page.', withSettings: false });
       return;
     }
 
