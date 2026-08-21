@@ -17,11 +17,11 @@ describe('normalizeInput', () => {
     expect(normalizeInput('1. first\n2) second')).toBe('1. first\n2) second');
   });
   it('removes soft hyphens and zero-width characters between Latin letters', () => {
-    expect(normalizeInput('hy­phen​ated')).toBe('hyphenated');
-    expect(normalizeInput('ab‌cd')).toBe('abcd');
+    expect(normalizeInput('hy\u00ADphen\u200Bated')).toBe('hyphenated');
+    expect(normalizeInput('ab\u200Ccd')).toBe('abcd');
   });
   it('preserves the zero-width non-joiner in Persian', () => {
-    expect(normalizeInput('می‌روم')).toBe('می‌روم');
+    expect(normalizeInput('می\u200Cروم')).toBe('می\u200Cروم');
   });
   it('drops standalone footnote markers', () => {
     expect(normalizeInput('text [12] continues [3]')).toBe('text continues');
