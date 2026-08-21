@@ -7,7 +7,7 @@ import { detectLanguageCode, isSupportedLanguage, getTranslationInfo } from '../
 import { addToHistory, addToPolishHistory, addToDictionaryHistory, updatePolishVariant } from '../lib/history.js';
 import { ACTIONS, PROVIDER_CONFIGS, ACTION_TYPES, ERROR_MESSAGES } from '../lib/constants.js';
 import { classifyMode, MODES } from '../lib/translation/mode.js';
-import { normalizeInput, normalizePersian } from '../lib/translation/normalize.js';
+import { normalizeInput, normalizeForMode, normalizePersian } from '../lib/translation/normalize.js';
 import { buildCacheKeyParts, hashContext } from '../lib/translation/cache-key.js';
 import { TranslationError, ERROR_CODES, toTranslationError, errorI18nKey } from '../lib/translation/errors.js';
 import { t } from '../lib/i18n.js';
@@ -147,11 +147,17 @@ function sanitizeContext(context) {
  * Normalize, gate, classify and build the cache key for a request.
  */
 async function prepareTranslation(payload) {
-  const sourceText = normalizeInput(payload.text);
+  // An explicit mode (e.g. batch, sent by page translation) picks its own
+  // normalization before anything else runs, since normalizeInput would
+  // already have destroyed batch markers by the time classifyMode saw them.
+  // With no mode on the payload there is nothing to pick yet, so normalize
+  // the ordinary way first and classify from that normalized text.
+  const explicitMode = VALID_MODES.has(payload.mode) ? payload.mode : undefined;
+  const sourceText = explicitMode ? normalizeForMode(payload.text, explicitMode) : normalizeInput(payload.text);
   if (!sourceText) throw new TranslationError(ERROR_CODES.EMPTY_INPUT);
 
   const sourceLang = payload.sourceLang === 'en' || payload.sourceLang === 'fa' ? payload.sourceLang : 'auto';
-  const mode = VALID_MODES.has(payload.mode) ? payload.mode : classifyMode(sourceText);
+  const mode = explicitMode || classifyMode(sourceText);
 
   if (sourceLang === 'auto' && mode !== MODES.BATCH && !(await getTranslateOtherLanguages())) {
     const gate = isSupportedLanguage(sourceText);
