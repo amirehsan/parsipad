@@ -16,7 +16,7 @@ import { getTextDirection } from '../../lib/language-detect.js';
  * @param {HTMLElement} el
  * @param {string} text
  */
-function applyTextDirection(el, text) {
+export function applyTextDirection(el, text) {
   const dir = getTextDirection(text);
   el.setAttribute('dir', dir);
   if (dir === 'rtl') el.setAttribute('lang', 'fa');
