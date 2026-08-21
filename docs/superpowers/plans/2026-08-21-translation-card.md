@@ -1179,7 +1179,7 @@ describe('computeBoxPosition', () => {
 
   it('uses the real box height when flipping, not a guess', () => {
     const tall = computeBoxPosition({ ...base, box: { width: 450, height: 600 }, selection: { top: 700, bottom: 720, left: 200 } });
-    expect(tall.top).toBe(12);
+    expect(tall.top).toBe(700 - 600 - 8);
   });
 
   it('clamps to the top padding rather than going off the top edge', () => {
