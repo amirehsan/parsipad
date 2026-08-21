@@ -426,6 +426,9 @@ function createFloatingBox(position) {
   // Remove existing box if present
   removeFloatingBox();
 
+  // Persian type in the box relies on faces registered on the host document.
+  ensurePersianFontLoaded();
+
   // Create host element
   const host = document.createElement('div');
   host.id = 'parsipad-host';
@@ -647,10 +650,12 @@ function showTranslation(result, originalText) {
       if (i > 0) hint.appendChild(document.createTextNode(', '));
       const orig = document.createElement('span');
       orig.className = 'parsipad-correction-original';
+      orig.setAttribute('dir', getTextDirection(c.original || ''));
       orig.textContent = c.original || '';
       const arrow = document.createTextNode(' → ');
       const corr = document.createElement('strong');
       corr.className = 'parsipad-correction-corrected';
+      corr.setAttribute('dir', getTextDirection(c.corrected || ''));
       corr.textContent = c.corrected || '';
       hint.append(orig, arrow, corr);
     });
@@ -669,6 +674,7 @@ function showTranslation(result, originalText) {
     if (typeof nuance === 'string' && nuance.trim()) {
       const note = document.createElement('div');
       note.className = 'parsipad-rich-context-nuance';
+      note.setAttribute('dir', getTextDirection(nuance));
       note.textContent = nuance;
       extras.appendChild(note);
     }
@@ -692,9 +698,11 @@ function showTranslation(result, originalText) {
 
   if (truncated) {
     const notice = document.createElement('div');
+    const truncatedMessage = t('errorTruncated', userLang);
     notice.className = 'parsipad-truncated-note';
     notice.setAttribute('role', 'status');
-    notice.textContent = t('errorTruncated', userLang);
+    notice.setAttribute('dir', getTextDirection(truncatedMessage));
+    notice.textContent = truncatedMessage;
     content.appendChild(notice);
   }
 
@@ -1579,6 +1587,10 @@ function createDictionaryBox(position) {
   // Remove existing box if present
   removeFloatingBox();
 
+  // The definition card renders Persian translations, which need the
+  // bundled faces registered on the host document.
+  ensurePersianFontLoaded();
+
   // Create host element
   const host = document.createElement('div');
   host.id = 'parsipad-host';
@@ -2184,27 +2196,46 @@ function parseNumberedTranslations(translatedText, expectedCount) {
 }
 
 /**
- * Inject Vazirmatn font + utility class used to style translated Persian
- * content on the host page. Loads the woff2 from the extension's own bundle
- * via chrome.runtime.getURL so we don't make any third-party requests.
+ * Register the bundled Vazirmatn faces on the host document.
+ *
+ * Font faces resolve against the document's font set, so a @font-face
+ * declared only inside the floating box's shadow root is not a reliable
+ * way to load Persian type. Everything that renders Persian on a host
+ * page therefore depends on this running first: the floating box, the
+ * polish and dictionary boxes, and full-page translation.
+ *
+ * Idempotent, and loads the woff2 from the extension's own bundle via
+ * chrome.runtime.getURL so no third-party request is made.
  */
-function injectPageTranslationStyles() {
-  const styleId = 'parsipad-page-translation-styles';
+function ensurePersianFontLoaded() {
+  const styleId = 'parsipad-persian-font';
   if (document.getElementById(styleId)) return;
 
-  const url400 = chrome.runtime.getURL('fonts/vazirmatn-arabic-400-normal.woff2');
-  const url500 = chrome.runtime.getURL('fonts/vazirmatn-arabic-500-normal.woff2');
-  const url600 = chrome.runtime.getURL('fonts/vazirmatn-arabic-600-normal.woff2');
-  const url700 = chrome.runtime.getURL('fonts/vazirmatn-arabic-700-normal.woff2');
+  const face = (weight) => {
+    const url = chrome.runtime.getURL(`fonts/vazirmatn-arabic-${weight}-normal.woff2`);
+    return `@font-face { font-family: 'Vazirmatn'; font-weight: ${weight}; font-display: swap; src: url('${url}') format('woff2'); }`;
+  };
+
+  const style = document.createElement('style');
+  style.id = styleId;
+  style.textContent = [400, 500, 600, 700].map(face).join('\n');
+  document.head.appendChild(style);
+}
+
+/**
+ * Inject the utility class used to style translated Persian content on the
+ * host page during full-page translation. The font itself is registered by
+ * ensurePersianFontLoaded.
+ */
+function injectPageTranslationStyles() {
+  ensurePersianFontLoaded();
+
+  const styleId = 'parsipad-page-translation-styles';
+  if (document.getElementById(styleId)) return;
 
   const style = document.createElement('style');
   style.id = styleId;
   style.textContent = `
-    @font-face { font-family: 'Vazirmatn'; font-weight: 400; font-display: swap; src: url('${url400}') format('woff2'); }
-    @font-face { font-family: 'Vazirmatn'; font-weight: 500; font-display: swap; src: url('${url500}') format('woff2'); }
-    @font-face { font-family: 'Vazirmatn'; font-weight: 600; font-display: swap; src: url('${url600}') format('woff2'); }
-    @font-face { font-family: 'Vazirmatn'; font-weight: 700; font-display: swap; src: url('${url700}') format('woff2'); }
-
     [data-parsipad-translated="true"] {
       font-family: 'Vazirmatn', 'Tahoma', sans-serif !important;
     }
