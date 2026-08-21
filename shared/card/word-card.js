@@ -1,13 +1,14 @@
-import { sourceLine, note, disclosure, wordList, providerButton, actionsRow } from './parts.js';
+import { sourceLine, translationLine, note, disclosure, wordList, providerButton, actionsRow } from './parts.js';
 import { cardLabel } from './labels.js';
 import { getTextDirection } from '../../lib/language-detect.js';
 
 /**
  * Set dir and, for right to left text, lang="fa" on an element, both
  * derived from the same source text. Mirrors the private helper in
- * parts.js: this module builds a few pieces (the translation line, the
- * correction line, each sense) that have no matching part in parts.js, so
- * it needs the same rule for pairing dir="rtl" with lang="fa".
+ * parts.js: this module builds a few pieces (the correction line, each
+ * sense) that are specific to the word card and have no matching part in
+ * parts.js, so it needs the same rule for pairing dir="rtl" with
+ * lang="fa".
  * @param {HTMLElement} el
  * @param {string} text
  */
@@ -15,21 +16,6 @@ function applyTextDirection(el, text) {
   const dir = getTextDirection(text);
   el.setAttribute('dir', dir);
   if (dir === 'rtl') el.setAttribute('lang', 'fa');
-}
-
-/**
- * The translation line: the resolved answer for this context, the visual
- * anchor of the card.
- * @param {string} text
- * @param {Document} doc
- * @returns {HTMLElement}
- */
-function translationLine(text, doc) {
-  const el = doc.createElement('div');
-  el.className = 'pp-card-translation';
-  applyTextDirection(el, text);
-  el.textContent = text;
-  return el;
 }
 
 /**
@@ -235,7 +221,7 @@ export function renderWordCard(result, options) {
   }
 
   el.appendChild(sourceLine({ text: sourceText, pronunciation, pos, lang, doc }));
-  el.appendChild(translationLine(translation, doc));
+  el.appendChild(translationLine({ text: translation, doc }));
 
   if (inContext) {
     el.appendChild(note({ lead: cardLabel('cardHere', lang), text: inContext, lang, doc }));
