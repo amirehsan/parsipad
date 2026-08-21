@@ -17,6 +17,7 @@ import { requestTranslation } from '../lib/translation/client.js';
 import { captureSelectionContext } from './context.js';
 import { computeBoxPosition } from './placement.js';
 import { renderCard, injectCardStyles } from '../shared/card/index.js';
+import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils/batch.js';
 
 // Re-injection guard: skip if the script has already run in this isolated world.
@@ -644,6 +645,25 @@ function formatDirectionBadge(direction) {
 }
 
 /**
+ * The card's Listen handler, or null when there is nothing speakable.
+ *
+ * Returning null omits the control entirely, which is how a Persian
+ * result ends up with no Listen button without the card needing to know
+ * why. The card decides which side of the pair to speak and hands the
+ * text over, so the choice is made once, in the card.
+ *
+ * @param {Object} result
+ * @returns {Function|null}
+ */
+function buildListenHandler(result) {
+  const spoken = result.direction && result.direction.startsWith('en')
+    ? result.sourceText
+    : result.translation;
+  if (!canSpeak(spoken)) return null;
+  return (text) => speak(text || spoken);
+}
+
+/**
  * Show translation result.
  *
  * Everything inside the content area is the card's business now. What
@@ -677,6 +697,7 @@ function showTranslation(result, originalText) {
     provider,
     sensesExpanded: sensesExpandedForSession,
     onToggleSenses: (open) => { sensesExpandedForSession = open; },
+    onListen: buildListenHandler(result),
     onCopy: (text) => handleCardCopy(text),
     onSave: () => handleTranslationFavorite(),
     onOpenSettings: () => chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' })
@@ -1086,6 +1107,7 @@ async function handleTranslationFavorite() {
  */
 function removeFloatingBox() {
   boxSelectionRect = null;
+  cancelSpeech();
   if (floatingBox) {
     floatingBox.remove();
     floatingBox = null;

@@ -2,6 +2,7 @@ import { getLanguage, addFavorite, isFavorite, removeFavorite, getTheme, setThem
 import { ACTIONS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 import { setSafeInnerHTML } from '../lib/sanitize.js';
+import { speak, cancelSpeech } from '../shared/speech.js';
 
 // DOM Elements
 const themeToggle = document.getElementById('theme-toggle');
@@ -139,51 +140,31 @@ function initTTS() {
 }
 
 /**
- * Speak text using SpeechSynthesis API
+ * Speak text, or stop if this button is already playing.
+ *
+ * The English-only rule and the voice choice live in shared/speech.js,
+ * which the card uses too. What stays here is the page's own toggle: a
+ * second click on a playing button stops it. The lang argument is still
+ * honoured because the buttons are also hidden at render time when the
+ * text is Persian (see renderLesson), and rejecting here keeps the two
+ * guards agreeing.
  */
 function speakText(text, lang, button) {
-  // Speech playback is intentionally English-only - browser Persian voices
-  // are inconsistent across platforms and the lesson page now teaches
-  // English to Persian speakers, so listening to Persian isn't a goal.
-  // This is a defensive guard; the buttons are also hidden at render time
-  // when the text is Persian (see renderLesson).
   if (lang === 'fa') return;
 
-  // If already speaking, stop
   if (isSpeaking) {
-    speechSynthesis.cancel();
+    cancelSpeech();
     isSpeaking = false;
     updateTTSButtonState(button, false);
     return;
   }
 
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'en-US';
-
-  // Find a suitable voice
-  const voices = speechSynthesis.getVoices();
-  // English-only after the fa guard above
-  const voice = voices.find(v => v.lang.startsWith('en'));
-  if (voice) {
-    utterance.voice = voice;
-  }
-
-  utterance.onstart = () => {
-    isSpeaking = true;
-    updateTTSButtonState(button, true);
-  };
-
-  utterance.onend = () => {
-    isSpeaking = false;
-    updateTTSButtonState(button, false);
-  };
-
-  utterance.onerror = () => {
-    isSpeaking = false;
-    updateTTSButtonState(button, false);
-  };
-
-  speechSynthesis.speak(utterance);
+  speak(text, {
+    onStateChange: (speaking) => {
+      isSpeaking = speaking;
+      updateTTSButtonState(button, speaking);
+    }
+  });
 }
 
 /**
