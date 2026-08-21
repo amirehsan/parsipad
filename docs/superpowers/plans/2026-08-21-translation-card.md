@@ -1500,9 +1500,13 @@ git add content/main.js && git commit -m "feat(card): add sentence expansion and
 
 The popup keeps its tabs in this sub-project; only the result rendering changes. Removing the tab bar is sub-project 2b.
 
-- [ ] **Step 1: Inject the card styles once**
+- [ ] **Step 1: Satisfy the card's token contract, then inject the styles**
 
-At popup init, call `injectCardStyles(document.head, document)`. The popup's own panel styles stay.
+The card's stylesheet consumes four custom properties: `--pp-text`, `--pp-text-secondary`, `--pp-text-muted` and `--pp-border`. The floating box defines these already. The popup does not: its own tokens are named `--color-*`, a different namespace, and it does not load `lib/design-tokens.css`. Injecting the card styles without addressing that renders every colour in the card as unset.
+
+Add a small mapping block to `popup/popup.css`, scoped to the popup's root, translating its existing tokens onto the four names the card expects. Use the popup's own light and dark values so the card follows the popup's theme rather than defining a second one. Confirm the mapping by checking the computed colour of a rendered card element in the browser, not by reading the CSS.
+
+Then, at popup init, call `injectCardStyles(document.head, document)`. The popup's own panel styles stay.
 
 - [ ] **Step 2: Replace the output section's body**
 
