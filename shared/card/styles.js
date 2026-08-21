@@ -311,6 +311,10 @@ export const CARD_STYLES = `
     .pp-card-action:hover {
       color: var(--pp-text);
     }
+    .pp-card-action[aria-pressed="true"] {
+      color: var(--pp-text);
+      font-weight: 600;
+    }
 
     .pp-card-action:focus-visible,
     .pp-card-pill-swap:focus-visible,
