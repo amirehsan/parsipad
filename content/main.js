@@ -57,6 +57,12 @@ let currentSelectionContext = null;
 // keyboard users are not dropped back at the top of the page.
 let previouslyFocused = null;
 let boxNeedsFocus = false;
+// A source language the user picked by hand, after the detector guessed
+// wrong. Remembered for the life of the page so the correction is made once
+// rather than on every selection, and deliberately not persisted: a stale
+// override carried across sessions would be worse than the occasional
+// wrong guess.
+let manualSourceLang = null;
 
 // Screenshot selection state
 let screenshotOverlay = null;
@@ -297,10 +303,13 @@ function handleMessage(message, sender, sendResponse) {
 /**
  * Translate text and show floating box. Long selections stream into the box.
  */
-async function translateAndShow(text) {
+async function translateAndShow(text, { sourceLang } = {}) {
   if (!text || text.trim().length === 0) {
     return;
   }
+
+  if (sourceLang) manualSourceLang = sourceLang;
+  const requestedSourceLang = sourceLang || manualSourceLang || 'auto';
 
   const selection = window.getSelection();
   // Both reads happen before the box exists: taking focus clears the
@@ -315,7 +324,7 @@ async function translateAndShow(text) {
 
   let streamed = '';
   try {
-    const response = await requestTranslation({ text, sourceLang: 'auto', context }, {
+    const response = await requestTranslation({ text, sourceLang: requestedSourceLang, context }, {
       onDelta: (delta) => {
         streamed += delta;
         showStreamingText(streamed);
@@ -728,7 +737,7 @@ function buildSentenceHandler(result, originalText) {
     try {
       const response = await requestTranslation({
         text: sentence,
-        sourceLang: 'auto',
+        sourceLang: manualSourceLang || 'auto',
         mode: 'sentence',
         context
       });
@@ -882,9 +891,11 @@ function showTranslation(result, originalText) {
     provider: provider
   };
 
-  // The header badge is part of the box shell, not the card.
+  // The card's pill carries the direction now, so the shell badge would only
+  // repeat it two lines higher. The element stays because the screenshot
+  // result still renders through the shell and sets its own.
   const badge = shadowRoot.querySelector('.parsipad-badge');
-  badge.textContent = directionLabel;
+  badge.textContent = '';
 
   const content = shadowRoot.querySelector('.parsipad-content');
   currentCardEl = renderCard(result, {
@@ -898,6 +909,7 @@ function showTranslation(result, originalText) {
     onSave: () => handleTranslationFavorite(),
     onTranslateSentence: buildSentenceHandler(result, originalText),
     onExplainGrammar: buildGrammarHandler(result, originalText),
+    onSwapDirection: (nextSourceLang) => translateAndShow(originalText, { sourceLang: nextSourceLang }),
     onOpenSettings: () => chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' })
   });
   content.replaceChildren(currentCardEl);

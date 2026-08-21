@@ -84,6 +84,11 @@ const grammarCheckbox = document.getElementById('grammar-checkbox');
 let currentCardEl = null;
 // A user who opens the other meanings keeps them open until the popup closes.
 let sensesExpandedForSession = false;
+// A source language the user picked by hand, after the detector guessed
+// wrong. Remembered while the popup is open so the correction is made once,
+// and deliberately not persisted: a stale override carried across sessions
+// would be worse than the occasional wrong guess.
+let manualSourceLang = null;
 // Image elements
 const imageUploadSection = document.getElementById('image-upload-section');
 const imageUploadArea = document.getElementById('image-upload-area');
@@ -642,9 +647,11 @@ function updateInputDirection() {
 /**
  * Handle translate button click
  */
-async function handleTranslate() {
+async function handleTranslate({ sourceLang } = {}) {
   const text = inputText.value.trim();
   const withGrammar = grammarCheckbox.checked;
+
+  if (sourceLang) manualSourceLang = sourceLang;
 
   if (!text) {
     showError('Please enter text to translate');
@@ -661,7 +668,7 @@ async function handleTranslate() {
 
   try {
     let streamed = '';
-    const response = await requestTranslation({ text, sourceLang: 'auto' }, {
+    const response = await requestTranslation({ text, sourceLang: manualSourceLang || 'auto' }, {
       onDelta: (delta) => {
         streamed += delta;
         streamInto(streamed);
@@ -984,6 +991,7 @@ async function displayTranslation(result) {
     onCopy: (text) => handleCardCopy(text),
     onSave: () => handleTranslationFavorite(),
     onExplainGrammar: buildGrammarHandler(result),
+    onSwapDirection: (nextSourceLang) => handleTranslate({ sourceLang: nextSourceLang }),
     onOpenSettings: () => chrome.runtime.openOptionsPage()
   });
   // The popup has no page selection, so it never offers Sentence: omitting
