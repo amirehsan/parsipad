@@ -1,46 +1,6 @@
-import { sourceLine, translationLine, note, disclosure, wordList, providerButton, actionsRow, applyTextDirection } from './parts.js';
+import { sourceLine, translationLine, note, disclosure, wordList, correctionLine, footer, applyTextDirection } from './parts.js';
 import { cardLabel } from './labels.js';
 import { getTextDirection } from '../../lib/language-detect.js';
-
-/**
- * The auto-correction hint: what the user selected, and what the model
- * treated it as after fixing a real spelling error.
- * @param {Object} params
- * @param {string} params.original
- * @param {string} params.corrected
- * @param {string} params.lang
- * @param {Document} params.doc
- * @returns {HTMLElement}
- */
-function correctionLine({ original, corrected, lang, doc }) {
-  const el = doc.createElement('div');
-  el.className = 'pp-card-correction';
-  el.setAttribute('role', 'status');
-  // Keep the line itself LTR so "<original> -> <corrected>" reads in a
-  // stable order regardless of which side is Persian.
-  el.setAttribute('dir', 'ltr');
-
-  const label = doc.createElement('span');
-  label.className = 'pp-card-correction-label';
-  label.textContent = `${cardLabel('didYouMean', lang)} `;
-  el.appendChild(label);
-
-  const originalEl = doc.createElement('span');
-  originalEl.className = 'pp-card-correction-original';
-  applyTextDirection(originalEl, original);
-  originalEl.textContent = original;
-  el.appendChild(originalEl);
-
-  el.appendChild(doc.createTextNode(' → '));
-
-  const correctedEl = doc.createElement('strong');
-  correctedEl.className = 'pp-card-correction-corrected';
-  applyTextDirection(correctedEl, corrected);
-  correctedEl.textContent = corrected;
-  el.appendChild(correctedEl);
-
-  return el;
-}
 
 /**
  * One example pair, source then target, each carrying its own direction.
@@ -139,24 +99,6 @@ function disclosureContent({ senses, synonyms, antonyms, lang, doc }) {
   if (antonymsEl) content.appendChild(antonymsEl);
 
   return content;
-}
-
-/**
- * The footer: the actions row at one end, the provider button at the
- * other. Either side is omitted when empty, and so is the footer itself.
- * @param {Object} params
- * @returns {HTMLElement|null}
- */
-function footer({ actions, provider, onOpenSettings, lang, doc }) {
-  const actionsEl = actionsRow({ actions, lang, doc });
-  const providerEl = providerButton({ provider, onOpenSettings, lang, doc });
-  if (!actionsEl && !providerEl) return null;
-
-  const el = doc.createElement('div');
-  el.className = 'pp-card-footer';
-  if (actionsEl) el.appendChild(actionsEl);
-  if (providerEl) el.appendChild(providerEl);
-  return el;
 }
 
 /**
