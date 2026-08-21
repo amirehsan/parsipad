@@ -97,10 +97,11 @@ Omitting a callback omits its control. That is how the popup, which has no page 
 | > Other meanings (3)                     |
 +------------------------------------------+
 | [listen] Copy  Save  Sentence  Explain   |
+|                                   Gemini |
 +------------------------------------------+
 ```
 
-- **Header**: direction pill showing the resolved direction, a swap control, close. No brand mark, no provider badge, no cache badge. Provider selection lives in settings; it is not information a reader needs mid-sentence.
+- **Header**: direction pill showing the resolved direction, a swap control, close. No brand mark and no cache badge. The provider is not in the header, because it competes with the direction pill for the one place a reader looks first; it moves to the footer, see 7.1.
 - **Source line**: the selected text, then IPA when `pronunciation` is non-empty, then part of speech when `pos` is non-empty. Each separated by a thin middle dot. English source renders LTR; a Persian source renders RTL and the line reverses order accordingly.
 - **Translation**: `result.translation`, 17px, direction from its own content, the visual anchor of the card.
 - **Note**: `inContext` when present. Plain, not italic, because Vazirmatn has no italic and a synthesized oblique is wrong for Arabic script. Prefixed with a short lead word ("Here:") rather than a heading.
@@ -158,6 +159,7 @@ The current labels are jargon, and one is actively wrong. `lib/i18n.js` gains:
 | `cardSentence` | Translate the sentence | ترجمه جمله | new |
 | `cardExplain` | Explain grammar | توضیح گرامر | existing `explainGrammar`, reused |
 | `cardSwap` | Swap direction | تغییر جهت ترجمه | new |
+| `cardProviderHint` | Translated by {provider}. Open provider settings | ترجمه با {provider}. باز کردن تنظیمات ارائه‌دهنده | new |
 | `cardExpandSource` | Show full text | نمایش متن کامل | new |
 
 `moreContext`, `nuance` and `alternatives` are removed once no caller remains.
@@ -179,6 +181,14 @@ Swap re-issues the same request with an explicit `sourceLang`, the opposite of t
 | Explain | Mode is not word | Existing `EXPLAIN_GRAMMAR` path, rendered inside the card |
 
 Every icon control carries an `aria-label`, never `title` alone.
+
+### 7.1 Provider indicator
+
+The footer carries a quiet indicator of which provider produced the translation, so a user always knows what answered without it competing with the result. It sits at the opposite end of the footer from the actions, in the muted secondary text colour at 11px, with no pill or background: the provider's display name only.
+
+It is a button, not a label. Activating it opens the settings page at the provider section, which makes the common follow-up action ("this answer looks wrong, let me try another model") one click instead of four. It carries an `aria-label` naming both the current provider and what activating it does.
+
+The `From cache` badge does not return. Whether an answer came from cache is a property of the extension's plumbing, not of the translation, and a user who wants a fresh answer has the swap and re-request paths.
 
 ## 8. Positioning
 
