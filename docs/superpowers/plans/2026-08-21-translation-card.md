@@ -1256,7 +1256,17 @@ npm run lint && npm test && git add content/placement.js tests/placement.test.js
 
 This is the task where the user sees the change. Take it carefully.
 
-- [ ] **Step 1: Inject the card styles into the shadow root**
+- [ ] **Step 1: Extend web_accessible_resources for the new imports**
+
+This step comes first because skipping it breaks the extension completely rather than subtly.
+
+`content/content.js` imports `content/main.js` as a raw ES module, so every file in its transitive import graph must be listed in `web_accessible_resources` in manifest.json. This task adds imports of `shared/card/index.js` and `content/placement.js`, whose closure pulls in the rest of `shared/card/`. None of them are listed today.
+
+The packaged build bundles these away, so `npm run build` will pass regardless; only the unpacked extension, which is how this project is developed and run, breaks. That exact defect shipped once in the previous sub-project and is now guarded by `tests/web-accessible-resources.test.js`, which computes the real closure from disk and will fail until the manifest covers it.
+
+Add the needed patterns, keeping them tight: prefer `shared/card/*.js` and `content/placement.js` over anything broader, and do not add a bare `lib/*.js`. Run that test and let it tell you the exact set rather than guessing.
+
+- [ ] **Step 2: Inject the card styles into the shadow root**
 
 In `createFloatingBox`, after the existing `shadowRoot.appendChild(style)`, call `injectCardStyles(shadowRoot, document)`. The box's own shell styles stay where they are; the card's styles are additive.
 
