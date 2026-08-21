@@ -595,6 +595,28 @@ function formatDirectionBadge(direction) {
 }
 
 /**
+ * Keep the box inside the viewport once its real height is known.
+ *
+ * Placement is computed before the content exists, from an estimated height,
+ * so a tall result can run past the bottom edge. Once the content has
+ * rendered, nudge the box up by however much it overflows, never above the
+ * top padding. No-op when the box already fits, so it costs nothing in the
+ * common case.
+ */
+function clampBoxIntoViewport() {
+  if (!floatingBox) return;
+
+  const PADDING = 12;
+  const rect = floatingBox.getBoundingClientRect();
+  const overflowBelow = rect.bottom - (window.innerHeight - PADDING);
+  if (overflowBelow <= 0) return;
+
+  const currentTop = parseFloat(floatingBox.style.top) || 0;
+  const minTop = window.scrollY + PADDING;
+  floatingBox.style.top = `${Math.max(minTop, currentTop - overflowBelow)}px`;
+}
+
+/**
  * Show translation result
  */
 function showTranslation(result, originalText) {
@@ -721,6 +743,8 @@ function showTranslation(result, originalText) {
 
   // Check if already favorited
   checkTranslationFavoriteStatus();
+
+  clampBoxIntoViewport();
 }
 
 /**
