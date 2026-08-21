@@ -14,7 +14,7 @@ import {
 import { t } from '../lib/i18n.js';
 import { getTextDirection } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
-import { captureSelectionContext } from './context.js';
+import { captureSelectionContext, sentenceAround } from './context.js';
 import { computeBoxPosition } from './placement.js';
 import { renderCard, injectCardStyles } from '../shared/card/index.js';
 import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
@@ -48,6 +48,11 @@ let boxSelectionRect = null;
 // Once a user opens the other meanings, keep them open for the rest of the
 // page's life rather than making them reopen it on every lookup.
 let sensesExpandedForSession = false;
+// The card currently on screen, and the context the selection came from.
+// The card is where grammar points and the sentence highlight are appended
+// after the fact; the context is what a sentence request is built from.
+let currentCardEl = null;
+let currentSelectionContext = null;
 
 // Screenshot selection state
 let screenshotOverlay = null;
@@ -298,6 +303,7 @@ async function translateAndShow(text) {
   // selection, and neither the rectangle nor the context survives that.
   const selectionRect = captureSelectionRect(selection);
   const context = captureSelectionContext(selection);
+  currentSelectionContext = context;
 
   createFloatingBox(selectionRect);
   showLoading();
@@ -664,6 +670,167 @@ function buildListenHandler(result) {
 }
 
 /**
+ * The card's Sentence handler, or null when there is no sentence to grow into.
+ *
+ * Only a word or a phrase has anywhere to expand to, and only if the
+ * captured context actually holds a sentence around it. Returning null
+ * omits the control, so the affordance never appears where activating it
+ * would just resend the same words.
+ *
+ * @param {Object} result
+ * @param {string} originalText
+ * @returns {Function|null}
+ */
+function buildSentenceHandler(result, originalText) {
+  if (result.mode !== 'word' && result.mode !== 'phrase') return null;
+
+  const context = currentSelectionContext;
+  const sentence = sentenceAround({
+    before: context && context.before,
+    selection: originalText,
+    after: context && context.after
+  });
+  if (!sentence) return null;
+
+  return async () => {
+    showLoading();
+    placeFloatingBox();
+
+    try {
+      const response = await requestTranslation({
+        text: sentence,
+        sourceLang: 'auto',
+        mode: 'sentence',
+        context
+      });
+
+      if (response.errorCode === 'ABORTED') return;
+
+      if (response.error) {
+        showError(response);
+        return;
+      }
+
+      showTranslation(response, sentence);
+      highlightInSource(originalText);
+    } catch (error) {
+      showError(error.message || 'Translation failed');
+    }
+  };
+}
+
+/**
+ * Mark the originating word inside the sentence card's source line.
+ *
+ * Only the source side is highlighted. Where the word landed in the
+ * Persian cannot be derived reliably from the English, and a highlight on
+ * the wrong word is worse than none at all.
+ *
+ * @param {string} word
+ */
+function highlightInSource(word) {
+  const needle = (word || '').trim();
+  if (!currentCardEl || !needle) return;
+
+  const textEl = currentCardEl.querySelector('.pp-card-source-text');
+  if (!textEl) return;
+
+  const source = textEl.textContent || '';
+  const at = source.toLowerCase().indexOf(needle.toLowerCase());
+  if (at === -1) return;
+
+  const mark = document.createElement('mark');
+  mark.className = 'parsipad-source-match';
+  mark.textContent = source.slice(at, at + needle.length);
+
+  textEl.replaceChildren(
+    document.createTextNode(source.slice(0, at)),
+    mark,
+    document.createTextNode(source.slice(at + needle.length))
+  );
+}
+
+/**
+ * The slot the grammar block renders into, created on first use and
+ * placed above the card's footer so the actions stay at the bottom.
+ * @returns {HTMLElement|null}
+ */
+function grammarSlot() {
+  if (!currentCardEl) return null;
+
+  const existing = currentCardEl.querySelector('.parsipad-grammar-slot');
+  if (existing) return existing;
+
+  const slot = document.createElement('div');
+  slot.className = 'parsipad-grammar-slot';
+  const footerEl = currentCardEl.querySelector('.pp-card-footer');
+  if (footerEl) currentCardEl.insertBefore(slot, footerEl);
+  else currentCardEl.appendChild(slot);
+  return slot;
+}
+
+/**
+ * Put a grammar failure in the grammar slot and nowhere else.
+ * @param {HTMLElement} slot
+ * @param {string} message
+ */
+function showGrammarError(slot, message) {
+  const err = document.createElement('div');
+  err.className = 'parsipad-grammar-error';
+  err.textContent = message;
+  slot.replaceChildren(err);
+  keepFloatingBoxInViewport();
+}
+
+/**
+ * The card's Explain handler, or null for a single word.
+ *
+ * The lesson costs extra tokens, so the request only fires on an explicit
+ * click. Whatever comes back, and whatever goes wrong, lands in the
+ * grammar slot: the translation the user is already reading is never
+ * touched.
+ *
+ * @param {Object} result
+ * @param {string} originalText
+ * @returns {Function|null}
+ */
+function buildGrammarHandler(result, originalText) {
+  const source = originalText || result.sourceText || '';
+  if (!source || source.trim().split(/\s+/).length < 2) return null;
+
+  return async () => {
+    const slot = grammarSlot();
+    if (!slot) return;
+
+    const loading = document.createElement('div');
+    loading.className = 'parsipad-grammar-empty';
+    loading.setAttribute('role', 'status');
+    loading.textContent = t('loadingLesson', userLang) || 'Loading...';
+    slot.replaceChildren(loading);
+    keepFloatingBoxInViewport();
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'EXPLAIN_GRAMMAR',
+        source,
+        translation: result.translation,
+        direction: result.direction
+      });
+
+      if (response && response.error) {
+        showGrammarError(slot, response.error);
+        return;
+      }
+
+      renderInlineGrammar(slot, (response && response.grammar) || [], source, result.translation, result.direction);
+      keepFloatingBoxInViewport();
+    } catch (error) {
+      showGrammarError(slot, (error && error.message) || 'Failed to load grammar.');
+    }
+  };
+}
+
+/**
  * Show translation result.
  *
  * Everything inside the content area is the card's business now. What
@@ -691,7 +858,7 @@ function showTranslation(result, originalText) {
   badge.textContent = directionLabel;
 
   const content = shadowRoot.querySelector('.parsipad-content');
-  content.replaceChildren(renderCard(result, {
+  currentCardEl = renderCard(result, {
     lang: userLang,
     doc: document,
     provider,
@@ -700,8 +867,11 @@ function showTranslation(result, originalText) {
     onListen: buildListenHandler(result),
     onCopy: (text) => handleCardCopy(text),
     onSave: () => handleTranslationFavorite(),
+    onTranslateSentence: buildSentenceHandler(result, originalText),
+    onExplainGrammar: buildGrammarHandler(result, originalText),
     onOpenSettings: () => chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' })
-  }));
+  });
+  content.replaceChildren(currentCardEl);
 
   // The card carries its own actions and provider indicator, so the box's
   // footer would only repeat them. The element stays in the shell because
@@ -713,72 +883,6 @@ function showTranslation(result, originalText) {
 
   // Check if already favorited
   checkTranslationFavoriteStatus();
-}
-
-/**
- * Append the "Explain grammar" button (and a placeholder grammar slot) to the
- * floating translation box. The button is hidden by default if the input is
- * obviously too short (single word) to have a meaningful grammar lesson.
- *
- * On click:
- *   1. Disable the button + show a small spinner
- *   2. Send the EXPLAIN_GRAMMAR action with the translation already on screen,
- *      so the translation the user is reading never changes underneath them.
- *   3. Render the grammar points inline and reveal a "Learn More" CTA that
- *      opens the full grammar.html via the OPEN_GRAMMAR_PAGE message.
- */
-function appendInlineGrammarAffordance(content, originalText, translation, direction) {
-  if (!originalText || originalText.trim().split(/\s+/).length < 2) return; // skip single-word
-
-  const section = document.createElement('div');
-  section.className = 'parsipad-grammar-section';
-
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'parsipad-explain-grammar';
-  btn.textContent = t('explainGrammar', userLang) || 'Explain grammar';
-  section.appendChild(btn);
-
-  // Slot for the rendered grammar block once fetched.
-  const slot = document.createElement('div');
-  slot.className = 'parsipad-grammar-slot';
-  section.appendChild(slot);
-
-  btn.addEventListener('click', async () => {
-    btn.disabled = true;
-    btn.textContent = t('loadingLesson', userLang) || 'Loading...';
-
-    try {
-      const response = await chrome.runtime.sendMessage({
-        action: 'EXPLAIN_GRAMMAR',
-        source: originalText,
-        translation,
-        direction
-      });
-
-      if (response?.error) {
-        btn.disabled = false;
-        btn.textContent = t('explainGrammar', userLang) || 'Explain grammar';
-        const err = document.createElement('div');
-        err.className = 'parsipad-grammar-error';
-        err.textContent = response.error;
-        slot.replaceChildren(err);
-        return;
-      }
-
-      renderInlineGrammar(slot, response?.grammar || [], originalText, translation, direction);
-      btn.remove();
-    } catch (err) {
-      btn.disabled = false;
-      btn.textContent = t('explainGrammar', userLang) || 'Explain grammar';
-      const errEl = document.createElement('div');
-      errEl.className = 'parsipad-grammar-error';
-      errEl.textContent = err?.message || 'Failed to load grammar.';
-      slot.replaceChildren(errEl);
-    }
-  });
-
-  content.appendChild(section);
 }
 
 /**
@@ -1107,6 +1211,8 @@ async function handleTranslationFavorite() {
  */
 function removeFloatingBox() {
   boxSelectionRect = null;
+  currentCardEl = null;
+  currentSelectionContext = null;
   cancelSpeech();
   if (floatingBox) {
     floatingBox.remove();
