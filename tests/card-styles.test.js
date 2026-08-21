@@ -83,6 +83,59 @@ describe('CARD_STYLES', () => {
   });
 });
 
+describe('CARD_STYLES against the shared component library', () => {
+  // lib/components.css is imported by eight page stylesheets and defines its
+  // own generic components, among them a .pp-card. The translation card once
+  // used that exact name for its root, so in the popup both rules applied to
+  // the same element and the card rendered with a border, a radius and a
+  // shadow that belonged to the other component. Nothing caught it: the
+  // floating box is a shadow root that components.css never reaches, so only
+  // the popup was wrong, and only visibly.
+  const componentsCss = fs.readFileSync(path.resolve(__dirname, '../lib/components.css'), 'utf8');
+
+  // Deliberately broader than quotedClassTokens, which is scoped to
+  // pp-card-* and so cannot see the root class at all. Every pp-* token in
+  // a string literal counts here, which is what makes reverting the root to
+  // 'pp-card' fail this test rather than slip through it.
+  function quotedPpTokens(source) {
+    const tokens = new Set();
+    const stringLiteral = /(['"])((?:\\.|(?!\1)[^\\])*)\1/g;
+    const withoutComments = stripComments(source);
+    let match = stringLiteral.exec(withoutComments);
+    while (match !== null) {
+      (match[2].match(/pp-[\w-]+/g) || []).forEach(token => tokens.add(token));
+      match = stringLiteral.exec(withoutComments);
+    }
+    return tokens;
+  }
+
+  it('shares no class name with lib/components.css', () => {
+    const componentClasses = new Set(
+      (componentsCss.match(/\.[a-zA-Z][\w-]*/g) || []).map(c => c.slice(1))
+    );
+
+    const emitted = new Set();
+    cardSources.forEach(source => {
+      quotedPpTokens(source).forEach(token => emitted.add(token));
+    });
+
+    const collisions = [...emitted].filter(c => componentClasses.has(c)).sort();
+    expect(collisions).toEqual([]);
+  });
+
+  it('sees the root class, so the check covers the element that actually collided', () => {
+    const emitted = new Set();
+    cardSources.forEach(source => {
+      quotedPpTokens(source).forEach(token => emitted.add(token));
+    });
+    expect(emitted).toContain('pp-card-root');
+  });
+
+  it('is checking a file that really does define components, so this cannot pass vacuously', () => {
+    expect(componentsCss).toMatch(/\.pp-card\s*\{/);
+  });
+});
+
 describe('injectCardStyles', () => {
   beforeEach(() => {
     document.head.innerHTML = '';

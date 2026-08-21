@@ -109,7 +109,7 @@ export function renderSentenceCard(result, options) {
   } = options || {};
 
   const el = doc.createElement('div');
-  el.className = 'pp-card';
+  el.className = 'pp-card-root';
 
   if (correction) {
     el.appendChild(correctionLine({ original: sourceText, corrected: correction, lang, doc }));
