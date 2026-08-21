@@ -701,6 +701,9 @@ export function getStyles() {
       line-height: 1.5;
       color: #b45309;
     }
+    :host([data-theme='dark']) .parsipad-truncated-note {
+      color: #fbbf24;
+    }
 
     .parsipad-text {
       font-size: 14px;
