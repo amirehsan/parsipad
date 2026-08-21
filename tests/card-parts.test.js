@@ -1,7 +1,7 @@
 // tests/card-parts.test.js
 // @vitest-environment happy-dom
 import { describe, it, expect, vi } from 'vitest';
-import { directionPill, sourceLine, translationLine, note, disclosure, wordList, truncationNotice, providerButton, actionsRow, correctionLine, footer } from '../shared/card/parts.js';
+import { directionPill, detectionNote, sourceLine, translationLine, note, disclosure, wordList, truncationNotice, providerButton, actionsRow, correctionLine, footer } from '../shared/card/parts.js';
 
 const doc = () => document;
 
@@ -215,5 +215,49 @@ describe('actionsRow', () => {
 
   it('returns null when nothing is actionable', () => {
     expect(actionsRow({ actions: [{ key: 'cardCopy', onActivate: null }], lang: 'en', doc: doc() })).toBeNull();
+  });
+});
+
+describe('detectionNote', () => {
+  it('says so when the model read the source as the other language', () => {
+    // The user forced a Persian source with the swap control; the model
+    // looked at the text and reported English. The direction stays as the
+    // user set it, but saying nothing would leave the card asserting
+    // something the model had explicitly contradicted.
+    const el = detectionNote({ detectedSource: 'en', direction: 'fa-en', lang: 'en', doc: doc() });
+    expect(el).not.toBeNull();
+    expect(el.textContent).toMatch(/English/i);
+  });
+
+  it('names Persian the same way in the other direction', () => {
+    const el = detectionNote({ detectedSource: 'fa', direction: 'en-fa', lang: 'en', doc: doc() });
+    expect(el.textContent).toMatch(/Persian/i);
+  });
+
+  it('stays silent when the model agrees with the direction', () => {
+    expect(detectionNote({ detectedSource: 'en', direction: 'en-fa', lang: 'en', doc: doc() })).toBeNull();
+    expect(detectionNote({ detectedSource: 'fa', direction: 'fa-en', lang: 'en', doc: doc() })).toBeNull();
+  });
+
+  it('treats Finglish as Persian, so an auto-corrected result says nothing', () => {
+    expect(detectionNote({ detectedSource: 'fa-latn', direction: 'fa-en', lang: 'en', doc: doc() })).toBeNull();
+  });
+
+  it('stays silent for a language the swap control cannot express', () => {
+    // Swap only moves between English and Persian. Announcing that a stray
+    // Russian selection was read as Russian would be noise the user cannot
+    // act on.
+    expect(detectionNote({ detectedSource: 'ru', direction: 'ru-fa', lang: 'en', doc: doc() })).toBeNull();
+    expect(detectionNote({ detectedSource: 'de', direction: 'en-fa', lang: 'en', doc: doc() })).toBeNull();
+  });
+
+  it('stays silent when there is nothing to compare', () => {
+    expect(detectionNote({ detectedSource: '', direction: 'en-fa', lang: 'en', doc: doc() })).toBeNull();
+    expect(detectionNote({ detectedSource: 'en', direction: '', lang: 'en', doc: doc() })).toBeNull();
+  });
+
+  it('is announced, since it appears without the user having moved focus', () => {
+    const el = detectionNote({ detectedSource: 'en', direction: 'fa-en', lang: 'en', doc: doc() });
+    expect(el.getAttribute('role')).toBe('status');
   });
 });

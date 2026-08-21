@@ -1,4 +1,4 @@
-import { directionPill, sourceLine, translationLine, note, disclosure, correctionLine, footer, applyTextDirection } from './parts.js';
+import { directionPill, detectionNote, sourceLine, translationLine, note, disclosure, correctionLine, footer, applyTextDirection } from './parts.js';
 import { cardLabel } from './labels.js';
 import { getTextDirection } from '../../lib/language-detect.js';
 
@@ -93,7 +93,8 @@ export function renderSentenceCard(result, options) {
     sourceText = '',
     alternatives = [],
     note: noteText = '',
-    correction = ''
+    correction = '',
+    detectedSource = ''
   } = result || {};
   const {
     lang,
@@ -114,6 +115,9 @@ export function renderSentenceCard(result, options) {
 
   const pill = directionPill({ direction, onSwap: onSwapDirection, lang, doc });
   if (pill) el.appendChild(pill);
+
+  const detected = detectionNote({ detectedSource, direction, lang, doc });
+  if (detected) el.appendChild(detected);
 
   if (correction) {
     el.appendChild(correctionLine({ original: sourceText, corrected: correction, lang, doc }));

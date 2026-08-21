@@ -71,6 +71,20 @@ describe('renderCard', () => {
     expect(streaming.querySelector('.pp-card-translation')).not.toBeNull();
   });
 
+  it('reports a contradicted source on every mode', () => {
+    for (const mode of ['word', 'phrase', 'sentence', 'text', 'batch']) {
+      const el = renderCard(of(mode, { direction: 'fa-en', detectedSource: 'en' }), opts());
+      expect(el.querySelector('.pp-card-detected'), mode).not.toBeNull();
+    }
+  });
+
+  it('says nothing about detection on an ordinary result', () => {
+    for (const mode of ['word', 'phrase', 'sentence', 'text', 'batch']) {
+      const el = renderCard(of(mode, { detectedSource: 'en' }), opts());
+      expect(el.querySelector('.pp-card-detected'), mode).toBeNull();
+    }
+  });
+
   it('never throws on a minimal result', () => {
     expect(() => renderCard({ translation: 'x', mode: 'word' }, opts())).not.toThrow();
     expect(() => renderCard({ translation: 'x' }, opts())).not.toThrow();
