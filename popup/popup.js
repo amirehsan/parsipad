@@ -680,6 +680,12 @@ async function handleTranslate() {
       }
     });
 
+    if (response.errorCode === 'ABORTED') {
+      // User-initiated cancel or a dropped port; not an error the user
+      // needs to be told about. Stop quietly, same as page translation.
+      return;
+    }
+
     if (response.error) {
       showError(response.error);
       return;
