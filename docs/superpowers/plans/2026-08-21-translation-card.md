@@ -170,24 +170,24 @@ In `lib/i18n.js`, add to the `en` block immediately after the existing `explainG
 and to the `fa` block immediately after its `explainGrammar` entry:
 
 ```js
-    cardOtherMeanings: 'معنی‌های دیگر',
+    cardOtherMeanings: 'معنی\u200cهای دیگر',
     cardAlso: 'همچنین',
     cardHere: 'در این جمله',
     cardNote: 'نکته',
     cardListen: 'خواندن',
     cardCopy: 'کپی',
-    cardSave: 'افزودن به علاقه‌مندی‌ها',
+    cardSave: 'افزودن به علاقه\u200cمندی\u200cها',
     cardSentence: 'ترجمه جمله',
     cardExplain: 'توضیح گرامر',
     cardSwap: 'تغییر جهت ترجمه',
     cardClose: 'بستن',
     cardExpandSource: 'نمایش متن کامل',
-    cardProviderHint: 'ترجمه با {provider}. باز کردن تنظیمات ارائه‌دهنده',
+    cardProviderHint: 'ترجمه با {provider}. باز کردن تنظیمات ارائه\u200cدهنده',
     cardSynonyms: 'مشابه',
     cardAntonyms: 'متضاد',
 ```
 
-Write every zero-width non-joiner in those Persian strings as `‌`. The affected strings are `cardOtherMeanings` (معنی‌های), `cardSave` (علاقه‌مندی‌ها) and `cardProviderHint` (ارائه‌دهنده).
+Write every zero-width non-joiner in those Persian strings as `\u200c`. The affected strings are `cardOtherMeanings` (معنی\u200cهای), `cardSave` (علاقه\u200cمندی\u200cها) and `cardProviderHint` (ارائه\u200cدهنده).
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -232,7 +232,7 @@ describe('CARD_STYLES', () => {
 
   it('contains no em dashes and no literal invisible characters', () => {
     expect(CARD_STYLES).not.toMatch(/—/);
-    expect(CARD_STYLES).not.toMatch(/[­​‌‍﻿ ]/);
+    expect(CARD_STYLES).not.toMatch(/[\u00ad\u200b\u200c\u200d\ufeff ]/);
   });
 
   it('gives Persian more leading than Latin at the same size', () => {
@@ -905,14 +905,14 @@ import { describe, it, expect, vi } from 'vitest';
 import { renderSentenceCard } from '../shared/card/sentence-card.js';
 
 const base = {
-  translation: 'جریمه می‌شوید',
+  translation: 'جریمه می\u200cشوید',
   mode: 'sentence',
   direction: 'en-fa',
   sourceText: 'They will charge you a fee for late returns.',
   register: 'neutral',
   alternatives: [
-    { text: 'مبلغی از شما دریافت می‌شود', label: 'more formal' },
-    { text: 'ازت پول می‌گیرن', label: 'colloquial' }
+    { text: 'مبلغی از شما دریافت می\u200cشود', label: 'more formal' },
+    { text: 'ازت پول می\u200cگیرن', label: 'colloquial' }
   ],
   note: 'Persian prefers the passive here.',
   correction: '',
@@ -924,7 +924,7 @@ describe('renderSentenceCard', () => {
   it('shows the source sentence and the translation', () => {
     const el = renderSentenceCard(base, opts());
     expect(el.querySelector('.pp-card-source-text').textContent).toContain('charge you a fee');
-    expect(el.querySelector('.pp-card-translation').textContent).toBe('جریمه می‌شوید');
+    expect(el.querySelector('.pp-card-translation').textContent).toBe('جریمه می\u200cشوید');
   });
 
   it('labels alternatives under Also with a count', () => {
