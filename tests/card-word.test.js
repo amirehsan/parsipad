@@ -98,6 +98,18 @@ describe('renderWordCard', () => {
     expect(onListen).toHaveBeenCalledWith('book');
   });
 
+  it('omits Explain for a single word even when a handler is supplied, and keeps it for a phrase', () => {
+    const onExplainGrammar = vi.fn();
+    const word = renderWordCard(base, { ...opts(), onExplainGrammar });
+    expect([...word.querySelectorAll('button')].some(b => b.getAttribute('aria-label') === 'Explain grammar')).toBe(false);
+
+    const phrase = renderWordCard({ ...base, mode: 'phrase' }, { ...opts(), onExplainGrammar });
+    const explain = [...phrase.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Explain grammar');
+    expect(explain).toBeDefined();
+    explain.click();
+    expect(onExplainGrammar).toHaveBeenCalled();
+  });
+
   it('shows a correction when the source was wrong', () => {
     const el = renderWordCard({ ...base, correction: 'charge' }, opts());
     expect(el.querySelector('.pp-card-correction')).not.toBeNull();
