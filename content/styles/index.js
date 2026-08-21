@@ -519,7 +519,7 @@ export function getStyles() {
 
     .parsipad-content {
       padding: 16px;
-      max-height: 280px;
+      max-height: 340px;
       overflow-y: auto;
     }
 
@@ -670,6 +670,7 @@ export function getStyles() {
     }
     .parsipad-rich-context-nuance {
       font-style: italic;
+      font-size: 13px;
       line-height: 1.6;
       color: var(--pp-text-secondary);
       margin-bottom: 12px;
@@ -678,7 +679,7 @@ export function getStyles() {
        synthesized oblique. Keep Persian upright. */
     .parsipad-rich-context-nuance[dir="rtl"] {
       font-style: normal;
-      line-height: 1.85;
+      line-height: 1.8;
     }
     .parsipad-rich-context-title {
       font-size: 10px;
@@ -693,13 +694,13 @@ export function getStyles() {
       padding-inline-start: 18px;
       line-height: 1.7;
       color: var(--pp-text);
-      font-size: 13px;
+      font-size: 14px;
     }
     .parsipad-rich-context-list li {
       margin-bottom: 4px;
     }
     .parsipad-rich-context-list li[dir="rtl"] {
-      line-height: 1.85;
+      line-height: 1.8;
       margin-bottom: 8px;
     }
     .parsipad-rich-context-list li:last-child {
@@ -727,8 +728,8 @@ export function getStyles() {
     }
 
     .parsipad-text {
-      font-size: 14px;
-      line-height: 1.6;
+      font-size: 17px;
+      line-height: 1.55;
       color: var(--pp-text);
       word-wrap: break-word;
       white-space: pre-wrap;
@@ -738,7 +739,7 @@ export function getStyles() {
        carries dots below the baseline and ascenders that collide at 1.6. */
     .parsipad-text[dir="rtl"] {
       text-align: right;
-      line-height: 1.9;
+      line-height: 1.75;
     }
 
     .parsipad-footer {
