@@ -1,4 +1,5 @@
 import { getTextDirection } from '../lib/language-detect.js';
+import { requestTranslation } from '../lib/translation/client.js';
 import { getHistory, clearHistory, getPolishHistory, clearPolishHistory, getDictionaryHistory, clearDictionaryHistory } from '../lib/history.js';
 import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider, getFavorites, isFavorite, shouldShowReviewPrompt, dismissReviewPrompt, markReviewClicked } from '../lib/storage.js';
 import { PROVIDER_CONFIGS, ACTIONS } from '../lib/constants.js';
@@ -669,11 +670,14 @@ async function handleTranslate() {
   hideAllOutputs();
 
   try {
-    const response = await chrome.runtime.sendMessage({
-      action: 'TRANSLATE',
-      text: text,
-      sourceLang: 'auto',
-      withGrammar: withGrammar
+    let streamed = '';
+    const response = await requestTranslation({ text, sourceLang: 'auto' }, {
+      onDelta: (delta) => {
+        streamed += delta;
+        outputText.dir = getTextDirection(streamed);
+        outputText.textContent = streamed;
+        outputSection.hidden = false;
+      }
     });
 
     if (response.error) {
@@ -681,7 +685,21 @@ async function handleTranslate() {
       return;
     }
 
-    displayTranslation(response);
+    await displayTranslation(response);
+
+    if (withGrammar && response.translation) {
+      const grammarResponse = await chrome.runtime.sendMessage({
+        action: 'EXPLAIN_GRAMMAR',
+        source: text,
+        translation: response.translation,
+        direction: response.direction
+      });
+      if (!grammarResponse?.error && Array.isArray(grammarResponse?.grammar) && grammarResponse.grammar.length) {
+        displayGrammarExplanation(grammarResponse.grammar);
+        if (grammarLearnMoreBtn) grammarLearnMoreBtn.hidden = false;
+      }
+    }
+
     await loadHistory();
 
     // Update usage stats (analytics event logged in service worker)
@@ -750,7 +768,15 @@ async function handlePolish() {
  * @param {Object} result - Translation result
  */
 async function displayTranslation(result) {
-  const { translation, direction, displayDirection, fromCache, grammar, corrections, alternatives, examples, nuance } = result;
+  const { translation, direction, displayDirection, fromCache, correction, alternatives, senses, note, inContext, truncated } = result;
+  const corrections = correction ? [{ original: inputText.value.trim(), corrected: correction }] : [];
+  const alternativeItems = Array.isArray(alternatives) && alternatives.length
+    ? alternatives.map(a => a.text)
+    : (Array.isArray(senses) ? senses.map(s => s.meaning).filter(Boolean) : []);
+  const examples = Array.isArray(senses)
+    ? senses.filter(s => s.example && (s.example.src || s.example.tgt)).map(s => ({ source: s.example.src, target: s.example.tgt }))
+    : [];
+  const nuance = truncated ? `${t('errorTruncated', currentLang)}${note || inContext ? ' ' : ''}${note || inContext || ''}` : (note || inContext || '');
 
   directionBadge.textContent = displayDirection || formatDirectionBadge(direction);
 
@@ -769,7 +795,7 @@ async function displayTranslation(result) {
   // examples, nuance). Cached results don't carry these fields so they read as
   // a clean basic translation.
   renderTranslationCorrections(corrections);
-  renderTranslationRichContext({ alternatives, examples, nuance, direction });
+  renderTranslationRichContext({ alternatives: alternativeItems, examples, nuance, direction });
 
   // Store translation data for grammar page
   currentTranslationData = {
@@ -778,19 +804,9 @@ async function displayTranslation(result) {
     direction: direction
   };
 
-  // Display grammar explanations if available
-  if (grammar && grammar.length > 0) {
-    displayGrammarExplanation(grammar, direction);
-    // Show Learn More button
-    if (grammarLearnMoreBtn) {
-      grammarLearnMoreBtn.hidden = false;
-    }
-  } else {
-    grammarSection.hidden = true;
-    // Hide Learn More button
-    if (grammarLearnMoreBtn) {
-      grammarLearnMoreBtn.hidden = true;
-    }
+  grammarSection.hidden = true;
+  if (grammarLearnMoreBtn) {
+    grammarLearnMoreBtn.hidden = true;
   }
 
   // Update favorite button state
@@ -866,9 +882,6 @@ function renderTranslationRichContext({ alternatives, examples, nuance, directio
   }
   section.replaceChildren();
 
-  const targetLang = direction.split('-')[1] || 'fa';
-  const targetIsRtl = ['fa', 'ar', 'he'].includes(targetLang);
-
   const summary = document.createElement('summary');
   summary.className = 'rich-context-summary';
   summary.textContent = t('moreContext', currentLang) || 'Linguistic context';
@@ -895,9 +908,9 @@ function renderTranslationRichContext({ alternatives, examples, nuance, directio
     title.textContent = t('alternatives', currentLang) || 'Alternative translations';
     const list = document.createElement('ul');
     list.className = 'rich-context-list';
-    if (targetIsRtl) list.dir = 'rtl';
     alternatives.forEach(alt => {
       const li = document.createElement('li');
+      li.dir = getTextDirection(alt);
       li.textContent = alt;
       list.appendChild(li);
     });
@@ -919,10 +932,11 @@ function renderTranslationRichContext({ alternatives, examples, nuance, directio
       row.className = 'rich-context-example';
       const src = document.createElement('div');
       src.className = 'rich-context-example-source';
+      src.dir = getTextDirection(ex.source || '');
       src.textContent = ex.source || '';
       const tgt = document.createElement('div');
       tgt.className = 'rich-context-example-target';
-      if (targetIsRtl) tgt.dir = 'rtl';
+      tgt.dir = getTextDirection(ex.target || '');
       tgt.textContent = ex.target || '';
       row.append(src, tgt);
       list.appendChild(row);
@@ -954,22 +968,14 @@ async function updateProviderBadge(badgeElement) {
 }
 
 /**
- * Display grammar explanation
- * @param {Array} grammarPointsList - Array of grammar points with point and explanation
- * @param {string} direction - Translation direction ('en-to-fa' or 'fa-to-en')
+ * Display grammar explanation (always English, always LTR)
+ * @param {Array<{point: string, explanation: string}>} grammarPointsList
  */
-function displayGrammarExplanation(grammarPointsList, direction) {
-  // Grammar explanations are in the target language:
-  // EN→FA means explanations are in Persian (RTL with Persian font)
-  // FA→EN means explanations are in English (LTR)
-  const isRtl = direction === 'en-to-fa' || direction === 'en-fa';
-  const persianClass = isRtl ? ' persian-text' : '';
-  const dirAttr = isRtl ? ' dir="rtl"' : '';
-
+function displayGrammarExplanation(grammarPointsList) {
   grammarPoints.innerHTML = grammarPointsList.map(item => `
-    <div class="grammar-point${persianClass}"${dirAttr}>
-      <div class="grammar-point-title${persianClass}">${escapeHtml(item.point)}</div>
-      <div class="grammar-point-explanation${persianClass}">${escapeHtml(item.explanation)}</div>
+    <div class="grammar-point" dir="ltr">
+      <div class="grammar-point-title">${escapeHtml(item.point)}</div>
+      <div class="grammar-point-explanation">${escapeHtml(item.explanation)}</div>
     </div>
   `).join('');
 
