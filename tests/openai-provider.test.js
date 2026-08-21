@@ -37,6 +37,11 @@ describe('OpenAIProvider', () => {
     await expect(provider.complete({ systemPrompt: 's', userPrompt: 'u', apiKey: 'k' })).rejects.toMatchObject({ code: 'UNKNOWN', message: 'I cannot help with that' });
   });
 
+  it('surfaces a refusal in vision() as an error instead of empty text', async () => {
+    globalThis.fetch = vi.fn(async () => jsonResponse({ choices: [{ message: { refusal: 'I cannot help with that' }, finish_reason: 'stop' }], usage: {} }));
+    await expect(provider.vision({ systemPrompt: 's', userPrompt: 'u', imageBase64: 'x', mimeType: 'image/png', apiKey: 'k' })).rejects.toMatchObject({ code: 'UNKNOWN', message: 'I cannot help with that' });
+  });
+
   it('maps 401 to INVALID_API_KEY', async () => {
     globalThis.fetch = vi.fn(async () => jsonResponse({ error: { message: 'bad' } }, 401));
     await expect(provider.complete({ systemPrompt: 's', userPrompt: 'u', apiKey: 'k' })).rejects.toMatchObject({ code: 'INVALID_API_KEY' });
