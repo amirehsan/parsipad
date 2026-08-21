@@ -117,6 +117,23 @@ export function sourceLine({ text, pronunciation, pos, onExpand, lang, doc }) {
 }
 
 /**
+ * The translation line: the resolved answer, the visual anchor of the
+ * card. Every card mode (word, sentence, text) renders one, so it lives
+ * here rather than being rebuilt per mode.
+ * @param {Object} params
+ * @param {string} params.text
+ * @param {Document} params.doc
+ * @returns {HTMLElement}
+ */
+export function translationLine({ text, doc }) {
+  const el = doc.createElement('div');
+  el.className = 'pp-card-translation';
+  applyTextDirection(el, text);
+  el.textContent = text;
+  return el;
+}
+
+/**
  * A short note, a lead word followed by a colon and the note text.
  * @param {Object} params
  * @param {string} params.lead
@@ -140,6 +157,13 @@ export function note({ lead, text, lang: _lang, doc }) {
   return el;
 }
 
+// Incremented on every disclosure() call so the content id is unique even
+// when two disclosures render into the same document (a live result next
+// to a restored history entry, for instance) and neither caller happens
+// to pass a distinct idSuffix. Uniqueness lives here, in the one place
+// that owns the id, rather than being a rule every caller must remember.
+let disclosureCount = 0;
+
 /**
  * A disclosure: a button wired to aria-expanded/aria-controls, and the
  * content container it reveals. The caret span lets the stylesheet rotate
@@ -151,11 +175,14 @@ export function note({ lead, text, lang: _lang, doc }) {
  * @param {HTMLElement} params.content
  * @param {string} params.lang - interface language
  * @param {Document} params.doc
- * @param {string} params.idSuffix - makes the content id unique on the page
+ * @param {string} [params.idSuffix] - optional, for a readable id; never
+ *   the sole source of uniqueness, since a caller can omit or repeat it
  * @returns {HTMLElement}
  */
 export function disclosure({ label, expanded, onToggle, content, lang: _lang, doc, idSuffix }) {
-  const contentId = `pp-card-disclosure-${idSuffix}`;
+  disclosureCount += 1;
+  const suffix = idSuffix ? `${idSuffix}-${disclosureCount}` : String(disclosureCount);
+  const contentId = `pp-card-disclosure-${suffix}`;
 
   const el = doc.createElement('div');
   el.className = 'pp-card-disclosure-wrap';

@@ -1,7 +1,7 @@
 // tests/card-parts.test.js
 // @vitest-environment happy-dom
 import { describe, it, expect, vi } from 'vitest';
-import { directionPill, sourceLine, note, disclosure, wordList, truncationNotice, providerButton, actionsRow } from '../shared/card/parts.js';
+import { directionPill, sourceLine, translationLine, note, disclosure, wordList, truncationNotice, providerButton, actionsRow } from '../shared/card/parts.js';
 
 const doc = () => document;
 
@@ -60,6 +60,20 @@ describe('sourceLine', () => {
   });
 });
 
+describe('translationLine', () => {
+  it('renders the text with no lead, direction taken from the text itself', () => {
+    const fa = translationLine({ text: 'جریمه کردن', doc: doc() });
+    expect(fa.className).toBe('pp-card-translation');
+    expect(fa.textContent).toBe('جریمه کردن');
+    expect(fa.getAttribute('dir')).toBe('rtl');
+    expect(fa.getAttribute('lang')).toBe('fa');
+
+    const en = translationLine({ text: 'charge', doc: doc() });
+    expect(en.getAttribute('dir')).toBe('ltr');
+    expect(en.getAttribute('lang')).toBeNull();
+  });
+});
+
 describe('note', () => {
   it('renders a lead word and the text, with direction from the text', () => {
     const el = note({ lead: 'Here', text: 'a fee for late returns', lang: 'en', doc: doc() });
@@ -94,6 +108,25 @@ describe('disclosure', () => {
     expect(btn.getAttribute('aria-expanded')).toBe('true');
     btn.click();
     expect(onToggle).toHaveBeenCalledWith(false);
+  });
+
+  it('gives two disclosures rendered together distinct ids, so aria-controls resolves to the right content, even without an idSuffix', () => {
+    const contentA = document.createElement('div');
+    contentA.textContent = 'first';
+    const contentB = document.createElement('div');
+    contentB.textContent = 'second';
+    const a = disclosure({ label: 'A', expanded: false, content: contentA, lang: 'en', doc: doc() });
+    const b = disclosure({ label: 'B', expanded: false, content: contentB, lang: 'en', doc: doc() });
+    document.body.append(a, b);
+
+    const idA = a.querySelector('button').getAttribute('aria-controls');
+    const idB = b.querySelector('button').getAttribute('aria-controls');
+    expect(idA).not.toBe(idB);
+    expect(document.getElementById(idA).textContent).toBe('first');
+    expect(document.getElementById(idB).textContent).toBe('second');
+
+    document.body.removeChild(a);
+    document.body.removeChild(b);
   });
 });
 
