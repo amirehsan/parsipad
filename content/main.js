@@ -3,7 +3,7 @@
  * Handles text selection detection and floating translation box
  */
 
-import { escapeHtml, isMissingApiKeyError } from './utils/text.js';
+import { escapeHtml, isMissingApiKeyResponse } from './utils/text.js';
 import {
   getPageProgressStyles,
   getPageToggleStyles,
@@ -298,8 +298,14 @@ async function translateAndShow(text) {
       }
     });
 
+    if (response.errorCode === 'ABORTED') {
+      // User-initiated cancel or a dropped port; not an error the user
+      // needs to be told about. Stop quietly, same as page translation.
+      return;
+    }
+
     if (response.error) {
-      showError(response.error);
+      showError(response);
     } else {
       showTranslation(response, text);
     }
@@ -352,7 +358,7 @@ async function polishAndShow(text) {
     });
 
     if (response.error) {
-      showPolishError(response.error);
+      showPolishError(response);
     } else {
       showPolishResults(response);
     }
@@ -839,14 +845,20 @@ const PP_DESTRUCTIVE_ERROR_PATTERN = /(network|invalid api key|api key|server|ra
  * Show error state inside the floating box. Default tone is informational
  * (amber); real failures (network/invalid key/etc) upgrade to destructive
  * (red). Missing-API-key shows an extra "Open Settings" CTA.
+ * @param {string|{error?: string, errorCode?: string}} errorOrResponse - A
+ *   plain message string (thrown JS errors) or a service worker response
+ *   object, which carries errorCode for reliable missing-key detection
+ *   even when the message itself is localized.
  */
-function showError(message) {
+function showError(errorOrResponse) {
   if (!shadowRoot) return;
+  const response = typeof errorOrResponse === 'string' ? { error: errorOrResponse } : (errorOrResponse || {});
+  const message = response.error || '';
   const content = shadowRoot.querySelector('.parsipad-content');
   const destructive = PP_DESTRUCTIVE_ERROR_PATTERN.test(String(message || ''));
   const errorClass = destructive ? 'parsipad-error is-destructive' : 'parsipad-error';
 
-  if (isMissingApiKeyError(message)) {
+  if (isMissingApiKeyResponse(response)) {
     content.innerHTML = `
       <div class="${errorClass}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1474,12 +1486,18 @@ async function handlePolishFavorite(btn, polishData) {
 
 /**
  * Show error in polish box. Missing-API-key errors get the same CTA as showError().
+ * @param {string|{error?: string, errorCode?: string}} errorOrResponse - A
+ *   plain message string (thrown JS errors) or a service worker response
+ *   object, which carries errorCode for reliable missing-key detection
+ *   even when the message itself is localized.
  */
-function showPolishError(message) {
+function showPolishError(errorOrResponse) {
   if (!shadowRoot) return;
 
+  const response = typeof errorOrResponse === 'string' ? { error: errorOrResponse } : (errorOrResponse || {});
+  const message = response.error || '';
   const content = shadowRoot.querySelector('.parsipad-polish-content');
-  if (isMissingApiKeyError(message)) {
+  if (isMissingApiKeyResponse(response)) {
     content.innerHTML = `
       <div class="parsipad-error">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1957,7 +1975,7 @@ async function handleTranslatePage() {
         }
 
         if (response.error) {
-          if (isMissingApiKeyError(response.error)) {
+          if (isMissingApiKeyResponse(response)) {
             showMissingApiKeyToast();
             pageTranslationCancelled = true;
             break;
