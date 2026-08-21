@@ -7,6 +7,21 @@
  * file that only one of the two can load. Colours come from the custom
  * properties the box already defines, so the card follows whatever theme
  * its host is in without knowing which host that is.
+ *
+ * Token contract: this stylesheet consumes exactly four custom properties
+ * and defines none of them itself:
+ *   --pp-text
+ *   --pp-text-secondary
+ *   --pp-text-muted
+ *   --pp-border
+ * Each host is responsible for defining all four, in whatever scope these
+ * rules end up in, before calling injectCardStyles. The floating box
+ * already defines them (see content/styles/index.js). Any other host,
+ * including one that names its own tokens differently, such as the
+ * popup's --color-* namespace, must map its own tokens onto these four
+ * names; there are no fallback values in the var() calls below, so a host
+ * that skips the mapping will render with missing colours rather than
+ * silently falling back to a default.
  */
 export const CARD_STYLES = `
     .pp-card {
@@ -39,9 +54,12 @@ export const CARD_STYLES = `
       border: none;
       padding: 0;
       font: inherit;
-      color: var(--pp-primary);
+      color: var(--pp-text-secondary);
       cursor: pointer;
       text-decoration: underline;
+    }
+    .pp-card-source-expand:hover {
+      color: var(--pp-text);
     }
 
     .pp-card-translation {
