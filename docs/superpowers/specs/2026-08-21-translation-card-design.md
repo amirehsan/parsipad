@@ -155,7 +155,7 @@ The current labels are jargon, and one is actively wrong. `lib/i18n.js` gains:
 | `cardAlso` | Also | همچنین | `alternatives` for real alternatives |
 | `cardHere` | Here | در این جمله | `nuance` heading |
 | `cardNote` | Note | نکته | `moreContext` |
-| `cardListen` | Listen | خواندن | new |
+| `cardListen` | Listen | شنیدن | new |
 | `cardSentence` | Translate the sentence | ترجمه جمله | new |
 | `cardExplain` | Explain grammar | توضیح گرامر | existing `explainGrammar`, reused |
 | `cardSwap` | Swap direction | تغییر جهت ترجمه | new |
