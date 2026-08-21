@@ -1,22 +1,37 @@
-import { translate, polish, translateImage, regeneratePolishVariant, getGrammarLesson } from '../lib/api.js';
+import { translate, explainGrammar, polish, translateImage, regeneratePolishVariant, getGrammarLesson } from '../lib/api.js';
 import { lookupWord } from '../lib/dictionary.js';
 import { translateDocument } from '../lib/document-translator.js';
 import { translationCache } from '../lib/cache.js';
-import { hasApiKey, getDictionaryTranslationSettings, isTranslationCancelled, setTranslationCancelled, getSelectedProvider, getFavorites, addFavorite, removeFavorite, isFavorite, hasCompletedOnboarding, logUsageEvent, runCacheMigrations } from '../lib/storage.js';
-import { detectLanguageCode, isSupportedLanguage } from '../lib/language-detect.js';
+import { hasApiKey, getDictionaryTranslationSettings, isTranslationCancelled, setTranslationCancelled, getSelectedProvider, getFavorites, addFavorite, removeFavorite, isFavorite, hasCompletedOnboarding, logUsageEvent, runCacheMigrations, getTranslateOtherLanguages, getLanguage } from '../lib/storage.js';
+import { detectLanguageCode, isSupportedLanguage, getTranslationInfo } from '../lib/language-detect.js';
 import { addToHistory, addToPolishHistory, addToDictionaryHistory, updatePolishVariant } from '../lib/history.js';
 import { ACTIONS, PROVIDER_CONFIGS, ACTION_TYPES, ERROR_MESSAGES } from '../lib/constants.js';
+import { classifyMode, MODES } from '../lib/translation/mode.js';
+import { normalizeInput, normalizeForMode, normalizePersian } from '../lib/translation/normalize.js';
+import { buildCacheKeyParts, hashContext } from '../lib/translation/cache-key.js';
+import { TranslationError, ERROR_CODES, toTranslationError, errorI18nKey } from '../lib/translation/errors.js';
+import { t } from '../lib/i18n.js';
+
+/**
+ * Localized error payload for UI consumers.
+ * @param {unknown} error
+ * @returns {Promise<{error: string, errorCode: string}>}
+ */
+async function localizeError(error) {
+  const err = toTranslationError(error);
+  let lang = 'en';
+  try { lang = await getLanguage(); } catch { /* default */ }
+  const message = err.code === ERROR_CODES.UNKNOWN ? err.message : t(errorI18nKey(err.code), lang);
+  return { error: message, errorCode: err.code };
+}
 
 /**
  * Handle incoming messages from popup or content scripts
  */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Handle async responses
   handleMessage(message, sender)
     .then(sendResponse)
-    .catch(error => sendResponse({ error: error.message }));
-
-  // Return true to indicate async response
+    .catch(async (error) => sendResponse(await localizeError(error)));
   return true;
 });
 
@@ -29,7 +44,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleMessage(message, _sender) {
   switch (message.action) {
     case ACTIONS.TRANSLATE:
-      return handleTranslate(message.text, message.sourceLang, message.withGrammar);
+      return handleTranslate(message);
 
     case ACTIONS.POLISH:
       return handlePolish(message.text);
@@ -71,6 +86,9 @@ async function handleMessage(message, _sender) {
     case ACTIONS.GET_GRAMMAR_LESSON:
       return handleGrammarLesson(message.originalText, message.translation, message.direction);
 
+    case ACTIONS.EXPLAIN_GRAMMAR:
+      return handleExplainGrammar(message);
+
     case ACTIONS.TRANSLATE_PAGE:
       // Forward to content script - handled there
       return { action: 'forward_to_content' };
@@ -111,93 +129,165 @@ async function handleMessage(message, _sender) {
   }
 }
 
+const VALID_MODES = new Set(Object.values(MODES));
+const CONTEXT_MODES = new Set([MODES.WORD, MODES.PHRASE, MODES.SENTENCE]);
+const CONTEXT_HASH_MODES = new Set([MODES.WORD, MODES.PHRASE]);
+
+function sanitizeContext(context) {
+  if (!context || typeof context !== 'object') return undefined;
+  const before = String(context.before || '').slice(-300);
+  const after = String(context.after || '').slice(0, 300);
+  const pageLang = String(context.pageLang || '').slice(0, 12);
+  const title = String(context.title || '').slice(0, 120);
+  if (!before && !after && !pageLang && !title) return undefined;
+  return { before, after, pageLang, title };
+}
+
 /**
- * Handle translation request with caching
- * @param {string} text - Text to translate
- * @param {'auto' | 'fa' | 'en'} sourceLang - Source language
- * @param {boolean} withGrammar - Whether to include grammar explanations
- * @returns {Promise<Object>}
+ * Normalize, gate, classify and build the cache key for a request.
  */
-async function handleTranslate(text, sourceLang = 'auto', withGrammar = false) {
-  if (!text || text.trim().length === 0) {
-    throw new Error('No text provided for translation');
+async function prepareTranslation(payload) {
+  // An explicit mode (e.g. batch, sent by page translation) picks its own
+  // normalization before anything else runs, since normalizeInput would
+  // already have destroyed batch markers by the time classifyMode saw them.
+  // With no mode on the payload there is nothing to pick yet, so normalize
+  // the ordinary way first and classify from that normalized text.
+  const explicitMode = VALID_MODES.has(payload.mode) ? payload.mode : undefined;
+  const sourceText = explicitMode ? normalizeForMode(payload.text, explicitMode) : normalizeInput(payload.text);
+  if (!sourceText) throw new TranslationError(ERROR_CODES.EMPTY_INPUT);
+
+  const sourceLang = payload.sourceLang === 'en' || payload.sourceLang === 'fa' ? payload.sourceLang : 'auto';
+  const mode = explicitMode || classifyMode(sourceText);
+
+  if (sourceLang === 'auto' && mode !== MODES.BATCH && !(await getTranslateOtherLanguages())) {
+    const gate = isSupportedLanguage(sourceText);
+    if (!gate.supported) throw new TranslationError(ERROR_CODES.UNSUPPORTED);
   }
 
-  // Persian/English only - reject other scripts before burning tokens.
-  // Page-translation sends numbered batches we can't reliably gate, so skip
-  // the check for those (detected by the [1] prefix used by api.js).
-  const isNumberedBatch = /^\[1\]\s/.test(text);
-  if (!isNumberedBatch) {
-    const gate = isSupportedLanguage(text);
-    if (!gate.supported) {
-      throw new Error(ERROR_MESSAGES.UNSUPPORTED_LANGUAGE);
-    }
-  }
-
-  // Get current provider info
+  const info = getTranslationInfo(sourceText, sourceLang);
+  const context = CONTEXT_MODES.has(mode) ? sanitizeContext(payload.context) : undefined;
   const providerId = await getSelectedProvider();
-  const providerConfig = PROVIDER_CONFIGS[providerId];
+  const contextHash = CONTEXT_HASH_MODES.has(mode) ? await hashContext(context) : '';
+  const keyParts = buildCacheKeyParts({ provider: providerId, mode, direction: info.direction, text: sourceText, contextHash });
 
-  // Don't use cache when grammar mode is enabled (explanations should be fresh)
-  if (!withGrammar) {
-    // Cache key is scoped to provider + sourceLang so switching providers does
-    // not return another provider's cached output.
-    const cached = await translationCache.get(text, providerId, sourceLang);
-    if (cached) {
-      // Surface the rich-context fields from the cached entry so the UI
-      // shows "Did you mean", alternatives, etc. on cache hits too.
-      return {
-        translation: cached.translation,
-        direction: cached.direction,
-        corrections: cached.corrections,
-        alternatives: cached.alternatives,
-        examples: cached.examples,
-        nuance: cached.nuance,
-        fromCache: true,
-        provider: providerConfig?.name || 'AI'
-      };
-    }
+  return { sourceText, sourceLang, mode, info, context, providerId, keyParts };
+}
+
+/**
+ * Apply detected-source corrections and Persian normalization to a raw
+ * translate() result, producing the result contract.
+ */
+function finalizeResult(raw, { mode, info, sourceText }) {
+  let finalInfo = info;
+  if (raw.detectedSource === 'fa-latn' || (raw.detectedSource === 'fa' && info.from !== 'fa')) {
+    finalInfo = getTranslationInfo(sourceText, 'fa');
+  } else if (raw.detectedSource === 'en' && info.from === 'fa') {
+    finalInfo = getTranslationInfo(sourceText, 'en');
   }
+  const toPersian = finalInfo.to === 'fa';
+  const fixTarget = (s) => (toPersian && s ? normalizePersian(s) : (s || ''));
+  const fixSource = (s) => (!toPersian && s ? normalizePersian(s) : (s || ''));
 
-  // Call API
-  const result = await translate(text, sourceLang, withGrammar);
+  const result = {
+    translation: fixTarget(raw.translation),
+    mode,
+    direction: finalInfo.direction,
+    displayDirection: finalInfo.displayDirection,
+    detectedSource: raw.detectedSource || info.from,
+    sourceText,
+    normalized: raw.normalized ? normalizePersian(raw.normalized) : '',
+    correction: fixSource(raw.correction),
+    truncated: Boolean(raw.truncated)
+  };
 
-  // Store in cache (only for non-grammar translations). Persist the rich
-  // context so the same input on second access renders the same UI.
-  if (!withGrammar) {
-    await translationCache.set(text, result.translation, result.direction, providerId, sourceLang, {
-      corrections: result.corrections,
-      alternatives: result.alternatives,
-      examples: result.examples,
-      nuance: result.nuance
+  if (mode === MODES.WORD || mode === MODES.PHRASE) {
+    Object.assign(result, {
+      pronunciation: raw.pronunciation || '',
+      pos: raw.pos || '',
+      register: raw.register || 'neutral',
+      inContext: raw.inContext || '',
+      senses: (raw.senses || []).map(s => ({
+        pos: s.pos,
+        meaning: fixTarget(s.meaning),
+        example: { src: fixSource(s.example?.src), tgt: fixTarget(s.example?.tgt) }
+      })),
+      synonyms: (raw.synonyms || []).map(fixSource),
+      antonyms: (raw.antonyms || []).map(fixSource)
+    });
+  } else if (mode === MODES.SENTENCE) {
+    Object.assign(result, {
+      register: raw.register || 'neutral',
+      alternatives: (raw.alternatives || []).map(a => ({ text: fixTarget(a.text), label: a.label })),
+      note: raw.note || ''
     });
   }
+  return result;
+}
 
-  // Add to history
-  await addToHistory(text, result.translation, result.direction);
+/**
+ * Handle a translation request (one-shot or streamed).
+ * @param {object} payload - { text, sourceLang, context, mode }
+ * @param {{signal?: AbortSignal, onDelta?: (text: string) => void}} [options]
+ * @returns {Promise<object>} Result contract plus cached/fromCache/provider/token fields
+ */
+async function handleTranslate(payload, { signal, onDelta } = {}) {
+  const prep = await prepareTranslation(payload);
+  const providerName = PROVIDER_CONFIGS[prep.providerId]?.name || 'AI';
 
-  // Log analytics event
+  const cached = await translationCache.get(prep.keyParts);
+  if (cached) {
+    return { ...cached, cached: true, fromCache: true, provider: providerName, inputTokens: 0, outputTokens: 0 };
+  }
+
+  const raw = await translate({
+    text: prep.sourceText,
+    mode: prep.mode,
+    fromName: prep.info.detectedName,
+    toName: prep.info.targetName,
+    direction: prep.info.direction,
+    detectedByScript: prep.sourceLang === 'auto',
+    context: prep.context,
+    glossary: [],
+    signal,
+    onDelta
+  });
+
+  const result = finalizeResult(raw, prep);
+
+  if (!result.truncated) {
+    await translationCache.set(prep.keyParts, result);
+  }
+  await addToHistory({ original: prep.sourceText, translation: result.translation, direction: result.direction, mode: prep.mode, result });
   await logUsageEvent({
-    action: ACTION_TYPES.TRANSLATE, provider: providerId,
+    action: ACTION_TYPES.TRANSLATE, provider: prep.providerId,
+    inputTokens: raw.inputTokens || 0,
+    outputTokens: raw.outputTokens || 0
+  });
+
+  return { ...result, cached: false, fromCache: false, provider: providerName, inputTokens: raw.inputTokens || 0, outputTokens: raw.outputTokens || 0 };
+}
+
+/**
+ * Explain the grammar of an existing translation pair (cached per pair).
+ * @param {{source: string, translation: string, direction: string}} payload
+ */
+async function handleExplainGrammar({ source, translation, direction }) {
+  if (!source || !translation) throw new TranslationError(ERROR_CODES.EMPTY_INPUT);
+  const providerId = await getSelectedProvider();
+  const keyParts = [providerId, 'grammar', direction || '', '', `${source}\n${translation}`];
+
+  const cached = await translationCache.get(keyParts);
+  if (cached) return { ...cached, cached: true };
+
+  const result = await explainGrammar(source, translation, direction);
+  const payload = { grammar: result.grammar };
+  await translationCache.set(keyParts, payload);
+  await logUsageEvent({
+    action: ACTION_TYPES.GRAMMAR, provider: providerId,
     inputTokens: result.inputTokens || 0,
     outputTokens: result.outputTokens || 0
   });
-
-  return {
-    translation: result.translation,
-    direction: result.direction,
-    displayDirection: result.displayDirection,
-    grammar: result.grammar || null,
-    // Rich linguistic context (short queries only - LLM omits these for long inputs)
-    corrections: result.corrections,
-    alternatives: result.alternatives,
-    examples: result.examples,
-    nuance: result.nuance,
-    fromCache: false,
-    inputTokens: result.inputTokens,
-    outputTokens: result.outputTokens,
-    provider: providerConfig?.name || 'AI'
-  };
+  return { ...payload, cached: false };
 }
 
 /**
@@ -389,6 +479,35 @@ chrome.runtime.onConnect.addListener((port) => {
       try { port.postMessage({ type: 'done', ...result }); } catch { /* port closed */ }
     } catch (err) {
       try { port.postMessage({ type: 'error', error: err.message || 'Translation failed' }); } catch { /* port closed */ }
+    }
+  });
+});
+
+/**
+ * Streaming translation port. Client sends { type: 'start', ...payload }; the
+ * worker replies with delta messages, then done (or error). Disconnecting the
+ * port aborts the provider request.
+ */
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== 'translate-stream') return;
+
+  const controller = new AbortController();
+  port.onDisconnect.addListener(() => controller.abort());
+  const post = (msg) => {
+    try { port.postMessage(msg); } catch { /* port closed */ }
+  };
+
+  port.onMessage.addListener(async (msg) => {
+    if (msg?.type !== 'start') return;
+    try {
+      const result = await handleTranslate(msg, {
+        signal: controller.signal,
+        onDelta: (text) => post({ type: 'delta', text })
+      });
+      post({ type: 'done', result });
+    } catch (error) {
+      const { error: message, errorCode } = await localizeError(error);
+      post({ type: 'error', code: errorCode, message });
     }
   });
 });

@@ -11,6 +11,8 @@ import {
   setDictionaryTranslationSettings,
   getSelectionPopupEnabled,
   setSelectionPopupEnabled,
+  getTranslateOtherLanguages,
+  setTranslateOtherLanguages,
   getNewTabEnabled,
   setNewTabEnabled,
   getNewTabPhraseCount,
@@ -38,6 +40,7 @@ const dictFaToEnCheckbox = document.getElementById('dict-fa-to-en');
 
 // DOM Elements - Selection Popup
 const selectionPopupToggle = document.getElementById('selection-popup-toggle');
+const translateOtherLanguagesToggle = document.getElementById('translate-other-languages-toggle');
 
 // DOM Elements - New Tab
 const newtabToggle = document.getElementById('newtab-toggle');
@@ -106,6 +109,7 @@ async function init() {
   await loadLanguage();
   await loadDictionarySettings();
   await loadSelectionPopupSetting();
+  await loadTranslateOtherLanguagesSetting();
   await loadNewTabSetting();
   await loadProviderSettings();
   await loadAllApiKeyStatuses();
@@ -165,6 +169,13 @@ async function loadDictionarySettings() {
 async function loadSelectionPopupSetting() {
   const enabled = await getSelectionPopupEnabled();
   selectionPopupToggle.checked = enabled;
+}
+
+/**
+ * Load the "translate other languages" setting
+ */
+async function loadTranslateOtherLanguagesSetting() {
+  translateOtherLanguagesToggle.checked = await getTranslateOtherLanguages();
 }
 
 /**
@@ -355,6 +366,7 @@ function setupEventListeners() {
 
   // Selection popup setting
   selectionPopupToggle.addEventListener('change', handleSelectionPopupChange);
+  translateOtherLanguagesToggle.addEventListener('change', handleTranslateOtherLanguagesChange);
 
   // New tab setting
   newtabToggle.addEventListener('change', handleNewTabChange);
@@ -470,6 +482,13 @@ async function handleDictionarySettingChange() {
 async function handleSelectionPopupChange() {
   const enabled = selectionPopupToggle.checked;
   await setSelectionPopupEnabled(enabled);
+}
+
+/**
+ * Handle "translate other languages" setting change
+ */
+async function handleTranslateOtherLanguagesChange() {
+  await setTranslateOtherLanguages(translateOtherLanguagesToggle.checked);
 }
 
 /**
