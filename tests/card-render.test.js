@@ -25,7 +25,7 @@ describe('renderCard', () => {
 
   it('always produces a container carrying the card class', () => {
     for (const mode of ['word', 'phrase', 'sentence', 'text', 'batch']) {
-      expect(renderCard(of(mode), opts()).classList.contains('pp-card')).toBe(true);
+      expect(renderCard(of(mode), opts()).classList.contains('pp-card-root')).toBe(true);
     }
   });
 

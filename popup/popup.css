@@ -354,6 +354,19 @@ body {
   font-family: var(--font-persian);
 }
 
+/*
+ * The card's type is sized for the floating box, where it is the entire
+ * contents of a panel that exists only to show it. In the popup it sits
+ * inside an already-padded section among controls set at 13 and 14px, so
+ * the same 17px translation reads as oversized. Scale is a density
+ * decision and density belongs to the host, so the popup sets its own
+ * here. Line heights in the card are unitless and scale with it.
+ */
+#card-slot .pp-card-translation {
+  font-size: 15px;
+}
+
+
 /* Persian text utility class - use for any Persian content */
 .persian-text,
 [lang="fa"],

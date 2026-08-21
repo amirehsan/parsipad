@@ -8,6 +8,14 @@
  * properties the box already defines, so the card follows whatever theme
  * its host is in without knowing which host that is.
  *
+ * The root class is `pp-card-root`, not `pp-card`: lib/components.css
+ * already defines a `.pp-card` component, and eight page stylesheets import
+ * it. The floating box never saw the clash because components.css does not
+ * reach inside its shadow root, but in the popup the two rules landed on the
+ * same element and the card picked up a border, a radius and a shadow that
+ * were never meant for it. A test pins that no card class collides with the
+ * shared component library.
+ *
  * Token contract: this stylesheet consumes exactly four custom properties
  * and defines none of them itself:
  *   --pp-text
@@ -24,7 +32,7 @@
  * silently falling back to a default.
  */
 export const CARD_STYLES = `
-    .pp-card {
+    .pp-card-root {
       display: flex;
       flex-direction: column;
       gap: 12px;

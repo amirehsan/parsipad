@@ -30,7 +30,7 @@ export function renderTextCard(result, options) {
   } = options || {};
 
   const el = doc.createElement('div');
-  el.className = 'pp-card';
+  el.className = 'pp-card-root';
 
   el.appendChild(translationLine({ text: translation, doc }));
 
