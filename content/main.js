@@ -12,12 +12,13 @@ import {
   getStyles
 } from './styles/index.js';
 import { t } from '../lib/i18n.js';
-import { getTextDirection } from '../lib/language-detect.js';
+import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
 import { captureSelectionContext, sentenceAround } from './context.js';
 import { computeBoxPosition } from './placement.js';
 import { renderCard, injectCardStyles } from '../shared/card/index.js';
 import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
+import { applySourceOverride } from '../shared/source-override.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils/batch.js';
 
 // Re-injection guard: skip if the script has already run in this isolated world.
@@ -57,12 +58,10 @@ let currentSelectionContext = null;
 // keyboard users are not dropped back at the top of the page.
 let previouslyFocused = null;
 let boxNeedsFocus = false;
-// A source language the user picked by hand, after the detector guessed
-// wrong. Remembered for the life of the page so the correction is made once
-// rather than on every selection, and deliberately not persisted: a stale
-// override carried across sessions would be worse than the occasional
-// wrong guess.
-let manualSourceLang = null;
+// The correction the user last made with the swap control, as the pair it
+// was made against. See shared/source-override.js for why it is a pair and
+// not just a language.
+let manualSourceOverride = null;
 
 // Screenshot selection state
 let screenshotOverlay = null;
@@ -308,8 +307,13 @@ async function translateAndShow(text, { sourceLang } = {}) {
     return;
   }
 
-  if (sourceLang) manualSourceLang = sourceLang;
-  const requestedSourceLang = sourceLang || manualSourceLang || 'auto';
+  const resolved = applySourceOverride({
+    detected: detectLanguage(text),
+    chosen: sourceLang,
+    override: manualSourceOverride
+  });
+  manualSourceOverride = resolved.override;
+  const requestedSourceLang = resolved.sourceLang;
 
   const selection = window.getSelection();
   // Both reads happen before the box exists: taking focus clears the
@@ -737,7 +741,10 @@ function buildSentenceHandler(result, originalText) {
     try {
       const response = await requestTranslation({
         text: sentence,
-        sourceLang: manualSourceLang || 'auto',
+        sourceLang: applySourceOverride({
+          detected: detectLanguage(sentence),
+          override: manualSourceOverride
+        }).sourceLang,
         mode: 'sentence',
         context
       });

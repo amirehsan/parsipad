@@ -100,6 +100,7 @@
         "content/styles/*.js",
         "shared/card/*.js",
         "shared/speech.js",
+        "shared/source-override.js",
         "lib/i18n.js",
         "lib/language-detect.js",
         "lib/translation/*.js"

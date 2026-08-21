@@ -1,4 +1,4 @@
-import { getTextDirection } from '../lib/language-detect.js';
+import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
 import { getHistory, clearHistory, getPolishHistory, clearPolishHistory, getDictionaryHistory, clearDictionaryHistory } from '../lib/history.js';
 import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider, getFavorites, isFavorite, shouldShowReviewPrompt, dismissReviewPrompt, markReviewClicked } from '../lib/storage.js';
@@ -7,6 +7,7 @@ import { t, applyTranslations } from '../lib/i18n.js';
 import { setSafeInnerHTML } from '../lib/sanitize.js';
 import { renderCard, injectCardStyles } from '../shared/card/index.js';
 import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
+import { applySourceOverride } from '../shared/source-override.js';
 
 // DOM Elements
 const settingsBtn = document.getElementById('settings-btn');
@@ -84,11 +85,10 @@ const grammarCheckbox = document.getElementById('grammar-checkbox');
 let currentCardEl = null;
 // A user who opens the other meanings keeps them open until the popup closes.
 let sensesExpandedForSession = false;
-// A source language the user picked by hand, after the detector guessed
-// wrong. Remembered while the popup is open so the correction is made once,
-// and deliberately not persisted: a stale override carried across sessions
-// would be worse than the occasional wrong guess.
-let manualSourceLang = null;
+// The correction the user last made with the swap control, as the pair it
+// was made against. See shared/source-override.js for why it is a pair and
+// not just a language.
+let manualSourceOverride = null;
 // Image elements
 const imageUploadSection = document.getElementById('image-upload-section');
 const imageUploadArea = document.getElementById('image-upload-area');
@@ -651,7 +651,6 @@ async function handleTranslate({ sourceLang } = {}) {
   const text = inputText.value.trim();
   const withGrammar = grammarCheckbox.checked;
 
-  if (sourceLang) manualSourceLang = sourceLang;
 
   if (!text) {
     showError('Please enter text to translate');
@@ -668,7 +667,14 @@ async function handleTranslate({ sourceLang } = {}) {
 
   try {
     let streamed = '';
-    const response = await requestTranslation({ text, sourceLang: manualSourceLang || 'auto' }, {
+    const resolved = applySourceOverride({
+      detected: detectLanguage(text),
+      chosen: sourceLang,
+      override: manualSourceOverride
+    });
+    manualSourceOverride = resolved.override;
+
+    const response = await requestTranslation({ text, sourceLang: resolved.sourceLang }, {
       onDelta: (delta) => {
         streamed += delta;
         streamInto(streamed);
