@@ -59,7 +59,7 @@ describe('buildUserMessage', () => {
     expect(msg).toContain('<context before>they will </context before>');
     expect(msg).toContain('<context after> you a fee</context after>');
     expect(msg).toContain('<page lang="en" title="Library policies"/>');
-    expect(msg.indexOf('<context before>')).toBeLessThan(msg.indexOf('<selection>'));
+    expect(msg.indexOf('<context before>')).toBeLessThan(msg.indexOf('<selection>charge</selection>'));
   });
   it('includes only matching glossary entries', () => {
     const msg = buildUserMessage({ ...base, text: 'commit now', mode: 'phrase', glossary: [{ source: 'commit', target: 'کامیت', direction: '' }, { source: 'push', target: 'پوش', direction: '' }] });
