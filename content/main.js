@@ -15,6 +15,8 @@ import { t } from '../lib/i18n.js';
 import { getTextDirection } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
 import { captureSelectionContext } from './context.js';
+import { computeBoxPosition } from './placement.js';
+import { renderCard, injectCardStyles } from '../shared/card/index.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils/batch.js';
 
 // Re-injection guard: skip if the script has already run in this isolated world.
@@ -38,6 +40,13 @@ let selectionDebounceTimer = null;
 let currentPolishOriginalText = null; // Store original text for regeneration
 let currentTranslationData = null; // Store current translation for favorites
 let currentDictionaryData = null; // Store current dictionary result for favorites
+// The selection the current box is anchored to, in viewport coordinates.
+// Kept so the box can be placed again once its real size is known, and
+// again if streamed content grows it past the bottom edge.
+let boxSelectionRect = null;
+// Once a user opens the other meanings, keep them open for the rest of the
+// page's life rather than making them reopen it on every lookup.
+let sensesExpandedForSession = false;
 
 // Screenshot selection state
 let screenshotOverlay = null;
@@ -284,11 +293,14 @@ async function translateAndShow(text) {
   }
 
   const selection = window.getSelection();
-  const position = getBoxPosition(selection);
+  // Both reads happen before the box exists: taking focus clears the
+  // selection, and neither the rectangle nor the context survives that.
+  const selectionRect = captureSelectionRect(selection);
   const context = captureSelectionContext(selection);
 
-  createFloatingBox(position);
+  createFloatingBox(selectionRect);
   showLoading();
+  placeFloatingBox();
 
   let streamed = '';
   try {
@@ -330,6 +342,8 @@ function showStreamingText(text) {
   }
   textEl.setAttribute('dir', getTextDirection(text));
   textEl.textContent = text;
+
+  keepFloatingBoxInViewport();
 }
 
 /**
@@ -343,13 +357,13 @@ async function polishAndShow(text) {
   // Store original text for regeneration
   currentPolishOriginalText = text;
 
-  // Get selection position for box placement
-  const selection = window.getSelection();
-  const position = getBoxPosition(selection);
+  // Capture the selection rectangle before the box takes focus and clears it.
+  const selectionRect = captureSelectionRect(window.getSelection());
 
   // Create or update the polish floating box
-  createPolishBox(position);
+  createPolishBox(selectionRect);
   showPolishLoading();
+  placeFloatingBox();
 
   try {
     // Send polish request to background script
@@ -368,77 +382,109 @@ async function polishAndShow(text) {
   }
 }
 
+const BOX_GAP = 8;
+const BOX_VIEWPORT_PADDING = 12;
+// Where an unanchored box goes: the keyboard and context-menu paths can
+// reach a box with no live selection to sit under.
+const UNANCHORED_BOX_OFFSET = 100;
+
 /**
- * Calculate position for floating box based on selection
- * Uses smart flip to position above or below based on available space
+ * The selection's rectangle in viewport coordinates, in the shape
+ * computeBoxPosition expects. Null when nothing is selected.
+ *
+ * Captured before the box is created, because taking focus clears the
+ * selection and the rectangle is unrecoverable after that.
+ *
+ * @param {Selection|null} selection
+ * @returns {{top: number, bottom: number, left: number}|null}
  */
-function getBoxPosition(selection) {
-  // Constants for floating box dimensions
-  const BOX_WIDTH = 450;
-  const BOX_HEIGHT_ESTIMATE = 200; // Approximate height for flip calculation
-  const GAP = 8;
-  const VIEWPORT_PADDING = 12;
+function captureSelectionRect(selection) {
+  if (!selection || selection.rangeCount === 0) return null;
+  const rect = selection.getRangeAt(0).getBoundingClientRect();
+  return { top: rect.top, bottom: rect.bottom, left: rect.left };
+}
 
-  let top = 100;
-  let left = 100;
+/**
+ * Place the box now that it has been rendered and can be measured.
+ *
+ * The box is created hidden precisely so this can happen: measuring real
+ * content beats the height estimate the old placement guessed with, which
+ * is what used to leave a tall result hanging off the bottom of the
+ * viewport until a separate clamping pass nudged it back.
+ *
+ * Safe to call more than once. Every renderer calls it after its content
+ * lands, since the content is what determines the size.
+ */
+function placeFloatingBox() {
+  if (!floatingBox) return;
 
-  if (selection && selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-
-    // Calculate space above and below selection
-    const spaceAbove = rect.top;
-    const spaceBelow = window.innerHeight - rect.bottom;
-
-    // Prefer below, but flip to above if not enough space below AND more space above
-    if (spaceBelow < BOX_HEIGHT_ESTIMATE + GAP && spaceAbove > spaceBelow) {
-      // Position above the selection (subtract estimated height)
-      top = rect.top + window.scrollY - BOX_HEIGHT_ESTIMATE - GAP;
-      // Ensure it doesn't go above the viewport
-      if (top < window.scrollY + VIEWPORT_PADDING) {
-        top = window.scrollY + VIEWPORT_PADDING;
-      }
-    } else {
-      // Position below the selection
-      top = rect.bottom + window.scrollY + GAP;
-    }
-
-    left = rect.left + window.scrollX;
-
-    // Ensure box doesn't go off-screen to the right
-    const maxLeft = window.innerWidth - BOX_WIDTH - VIEWPORT_PADDING;
-    if (left > maxLeft) {
-      left = maxLeft > 0 ? maxLeft : VIEWPORT_PADDING;
-    }
-
-    // Ensure box doesn't go off-screen to the left
-    if (left < VIEWPORT_PADDING) {
-      left = VIEWPORT_PADDING;
-    }
+  if (!boxSelectionRect) {
+    floatingBox.style.top = `${window.scrollY + UNANCHORED_BOX_OFFSET}px`;
+    floatingBox.style.left = `${window.scrollX + UNANCHORED_BOX_OFFSET}px`;
+    floatingBox.style.visibility = 'visible';
+    return;
   }
 
-  return { top, left };
+  const rect = floatingBox.getBoundingClientRect();
+  const { top, left } = computeBoxPosition({
+    selection: boxSelectionRect,
+    box: { width: rect.width, height: rect.height },
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    scroll: { x: window.scrollX, y: window.scrollY },
+    gap: BOX_GAP,
+    padding: BOX_VIEWPORT_PADDING
+  });
+
+  floatingBox.style.top = `${top}px`;
+  floatingBox.style.left = `${left}px`;
+  floatingBox.style.visibility = 'visible';
+}
+
+/**
+ * Re-place the box only if growing content has pushed it off the bottom.
+ *
+ * Streaming calls this on every delta, so re-placing unconditionally would
+ * slide the text upward while the user is reading it.
+ */
+function keepFloatingBoxInViewport() {
+  if (!floatingBox) return;
+  const rect = floatingBox.getBoundingClientRect();
+  if (rect.bottom <= window.innerHeight - BOX_VIEWPORT_PADDING) return;
+  placeFloatingBox();
+}
+
+/**
+ * The shared opening moves for every floating box: drop whatever box is
+ * on screen, remember what this one is anchored to, and build a host that
+ * is laid out but not yet painted.
+ *
+ * @param {{top: number, bottom: number, left: number}|null} selectionRect
+ * @returns {HTMLElement} the host element, not yet in the document
+ */
+function createBoxHost(selectionRect) {
+  removeFloatingBox();
+  boxSelectionRect = selectionRect || null;
+
+  const host = document.createElement('div');
+  host.id = 'parsipad-host';
+  host.style.cssText = `
+    position: absolute;
+    top: 0;
+    left: 0;
+    visibility: hidden;
+    z-index: 2147483647;
+  `;
+  return host;
 }
 
 /**
  * Create the floating translation box with Shadow DOM
  */
-function createFloatingBox(position) {
-  // Remove existing box if present
-  removeFloatingBox();
-
+function createFloatingBox(selectionRect) {
   // Persian type in the box relies on faces registered on the host document.
   ensurePersianFontLoaded();
 
-  // Create host element
-  const host = document.createElement('div');
-  host.id = 'parsipad-host';
-  host.style.cssText = `
-    position: absolute;
-    top: ${position.top}px;
-    left: ${position.left}px;
-    z-index: 2147483647;
-  `;
+  const host = createBoxHost(selectionRect);
 
   // Create shadow root for style isolation
   shadowRoot = host.attachShadow({ mode: 'closed' });
@@ -448,6 +494,8 @@ function createFloatingBox(position) {
   const style = document.createElement('style');
   style.textContent = getStyles();
   shadowRoot.appendChild(style);
+  // The card brings its own rules; the box's shell styles above stay as they are.
+  injectCardStyles(shadowRoot, document);
 
   // Create box structure
   const box = document.createElement('div');
@@ -596,156 +644,54 @@ function formatDirectionBadge(direction) {
 }
 
 /**
- * Keep the box inside the viewport once its real height is known.
+ * Show translation result.
  *
- * Placement is computed before the content exists, from an estimated height,
- * so a tall result can run past the bottom edge. Once the content has
- * rendered, nudge the box up by however much it overflows, never above the
- * top padding. No-op when the box already fits, so it costs nothing in the
- * common case.
- */
-function clampBoxIntoViewport() {
-  if (!floatingBox) return;
-
-  const PADDING = 12;
-  const rect = floatingBox.getBoundingClientRect();
-  const overflowBelow = rect.bottom - (window.innerHeight - PADDING);
-  if (overflowBelow <= 0) return;
-
-  const currentTop = parseFloat(floatingBox.style.top) || 0;
-  const minTop = window.scrollY + PADDING;
-  floatingBox.style.top = `${Math.max(minTop, currentTop - overflowBelow)}px`;
-}
-
-/**
- * Show translation result
+ * Everything inside the content area is the card's business now. What
+ * stays here is what belongs to the host rather than to the card: the
+ * favourites record, the box's own header badge, placement, and the
+ * callbacks that reach Chrome.
  */
 function showTranslation(result, originalText) {
   if (!shadowRoot) return;
 
-  const { translation, direction, displayDirection, fromCache, provider, correction, alternatives, senses, note, inContext, truncated } = result;
-  const corrections = correction ? [{ original: (originalText || '').trim(), corrected: correction }] : [];
-  const alternativeItems = Array.isArray(alternatives) && alternatives.length
-    ? alternatives.map(a => a.text)
-    : (Array.isArray(senses) ? senses.map(s => s.meaning).filter(Boolean) : []);
-  const nuance = note || inContext || '';
+  const { translation, direction, displayDirection, provider } = result;
+  const directionLabel = displayDirection || formatDirectionBadge(direction);
 
   // Store translation data for favorites
   currentTranslationData = {
     type: 'translation',
     originalText: originalText,
     savedText: translation,
-    direction: displayDirection || formatDirectionBadge(direction),
+    direction: directionLabel,
     provider: provider
   };
 
-  // Update direction badge - use displayDirection if available, otherwise format from direction
+  // The header badge is part of the box shell, not the card.
   const badge = shadowRoot.querySelector('.parsipad-badge');
-  badge.textContent = displayDirection || formatDirectionBadge(direction);
+  badge.textContent = directionLabel;
 
-  // Update provider badge
-  const providerBadge = shadowRoot.querySelector('.parsipad-provider-badge');
-  if (providerBadge && provider) {
-    providerBadge.textContent = provider;
-    providerBadge.className = `parsipad-provider-badge parsipad-provider-${provider.toLowerCase()}`;
-  }
-
-  // Update content via DOM API (no innerHTML interpolation of model output).
-  // Renders, in order: optional auto-correction hint -> translation -> optional
-  // alternatives / nuance summary as a compact bullet list.
   const content = shadowRoot.querySelector('.parsipad-content');
-  const targetLang = direction.split('-')[1] || 'fa';
-  const textDir = ['fa', 'ar', 'he'].includes(targetLang) ? 'rtl' : 'ltr';
-  content.replaceChildren();
+  content.replaceChildren(renderCard(result, {
+    lang: userLang,
+    doc: document,
+    provider,
+    sensesExpanded: sensesExpandedForSession,
+    onToggleSenses: (open) => { sensesExpandedForSession = open; },
+    onCopy: (text) => handleCardCopy(text),
+    onSave: () => handleTranslationFavorite(),
+    onOpenSettings: () => chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' })
+  }));
 
-  if (Array.isArray(corrections) && corrections.length) {
-    const hint = document.createElement('div');
-    hint.className = 'parsipad-correction-hint';
-    hint.setAttribute('role', 'status');
-    // Keep the correction line itself LTR so the "<original> → <corrected>" reads
-    // left-to-right even when the surrounding box inherits RTL from a Persian page.
-    hint.setAttribute('dir', 'ltr');
-    const label = document.createElement('span');
-    label.className = 'parsipad-correction-label';
-    label.textContent = t('didYouMean', userLang) || 'Did you mean:';
-    hint.append(label, document.createTextNode(' '));
-    corrections.forEach((c, i) => {
-      if (i > 0) hint.appendChild(document.createTextNode(', '));
-      const orig = document.createElement('span');
-      orig.className = 'parsipad-correction-original';
-      orig.setAttribute('dir', getTextDirection(c.original || ''));
-      orig.textContent = c.original || '';
-      const arrow = document.createTextNode(' → ');
-      const corr = document.createElement('strong');
-      corr.className = 'parsipad-correction-corrected';
-      corr.setAttribute('dir', getTextDirection(c.corrected || ''));
-      corr.textContent = c.corrected || '';
-      hint.append(orig, arrow, corr);
-    });
-    content.appendChild(hint);
-  }
-
-  const textEl = document.createElement('div');
-  textEl.className = 'parsipad-text';
-  textEl.setAttribute('dir', textDir);
-  textEl.textContent = translation;
-  content.appendChild(textEl);
-
-  if ((Array.isArray(alternativeItems) && alternativeItems.length) || (typeof nuance === 'string' && nuance.trim())) {
-    const extras = document.createElement('div');
-    extras.className = 'parsipad-rich-context';
-    if (typeof nuance === 'string' && nuance.trim()) {
-      const note = document.createElement('div');
-      note.className = 'parsipad-rich-context-nuance';
-      note.setAttribute('dir', getTextDirection(nuance));
-      note.textContent = nuance;
-      extras.appendChild(note);
-    }
-    if (Array.isArray(alternativeItems) && alternativeItems.length) {
-      const title = document.createElement('div');
-      title.className = 'parsipad-rich-context-title';
-      title.textContent = t('alternatives', userLang) || 'Alternatives';
-      extras.appendChild(title);
-      const list = document.createElement('ul');
-      list.className = 'parsipad-rich-context-list';
-      alternativeItems.forEach(alt => {
-        const li = document.createElement('li');
-        li.textContent = alt;
-        li.setAttribute('dir', getTextDirection(alt));
-        list.appendChild(li);
-      });
-      extras.appendChild(list);
-    }
-    content.appendChild(extras);
-  }
-
-  if (truncated) {
-    const notice = document.createElement('div');
-    const truncatedMessage = t('errorTruncated', userLang);
-    notice.className = 'parsipad-truncated-note';
-    notice.setAttribute('role', 'status');
-    notice.setAttribute('dir', getTextDirection(truncatedMessage));
-    notice.textContent = truncatedMessage;
-    content.appendChild(notice);
-  }
-
-  // Inline "Explain grammar" affordance + slot that holds the response when
-  // the user opts in. Lazy on purpose - costs extra tokens, so we only fire
-  // the request after an explicit click.
-  appendInlineGrammarAffordance(content, originalText, translation, direction);
-
-  // Show footer
+  // The card carries its own actions and provider indicator, so the box's
+  // footer would only repeat them. The element stays in the shell because
+  // the screenshot result still renders through it.
   const footer = shadowRoot.querySelector('.parsipad-footer');
-  footer.style.display = 'flex';
+  footer.style.display = 'none';
 
-  // Update cache badge
-  const cacheBadge = shadowRoot.querySelector('.parsipad-cache-badge');
-  cacheBadge.textContent = fromCache ? 'From cache' : '';
+  placeFloatingBox();
 
   // Check if already favorited
   checkTranslationFavoriteStatus();
-
-  clampBoxIntoViewport();
 }
 
 /**
@@ -924,6 +870,8 @@ function showError(errorOrResponse) {
   // Hide footer on error
   const footer = shadowRoot.querySelector('.parsipad-footer');
   footer.style.display = 'none';
+
+  placeFloatingBox();
 }
 
 /**
@@ -1024,6 +972,63 @@ async function handleCopy() {
 }
 
 /**
+ * Copy from the card's own Copy control, which hands over the text it
+ * rendered rather than making the host dig it back out of the DOM.
+ * @param {string} text
+ */
+async function handleCardCopy(text) {
+  if (!text) return;
+
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (error) {
+    // Silently handle copy errors, same as the box footer's Copy control.
+    return;
+  }
+
+  const btn = shadowRoot && shadowRoot.querySelector('[data-action="cardCopy"]');
+  if (!btn) return;
+
+  const label = btn.textContent;
+  btn.textContent = t('copied', userLang);
+  setTimeout(() => { btn.textContent = label; }, 1500);
+}
+
+/**
+ * The control that toggles the current result in and out of favourites:
+ * the card's Save action, or the box footer's star when what is on screen
+ * is not a card (the screenshot result still is not).
+ * @returns {HTMLElement|null}
+ */
+function favoriteControl() {
+  if (!shadowRoot) return null;
+  return shadowRoot.querySelector('[data-action="cardSave"]')
+    || shadowRoot.querySelector('.parsipad-favorite');
+}
+
+/**
+ * Reflect the favourite state on whichever control is showing. The star in
+ * the box footer also swaps its fill; the card's Save is a plain text
+ * button, so aria-pressed is the whole of its state.
+ * @param {HTMLElement} btn
+ * @param {boolean} favorited
+ */
+function setFavoriteState(btn, favorited) {
+  if (!btn) return;
+
+  btn.setAttribute('aria-pressed', favorited ? 'true' : 'false');
+
+  if (!btn.classList.contains('parsipad-favorite')) return;
+
+  btn.classList.toggle('favorited', favorited);
+  btn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="${favorited ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </svg>
+  `;
+}
+
+/**
  * Check if current translation is already favorited
  */
 async function checkTranslationFavoriteStatus() {
@@ -1037,15 +1042,7 @@ async function checkTranslationFavoriteStatus() {
     });
 
     if (response.isFavorite) {
-      const favBtn = shadowRoot.querySelector('.parsipad-favorite');
-      if (favBtn) {
-        favBtn.classList.add('favorited');
-        favBtn.innerHTML = `
-          <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
-        `;
-      }
+      setFavoriteState(favoriteControl(), true);
     }
   } catch (error) {
     // Silently handle errors
@@ -1058,49 +1055,37 @@ async function checkTranslationFavoriteStatus() {
 async function handleTranslationFavorite() {
   if (!shadowRoot || !currentTranslationData) return;
 
-  const favBtn = shadowRoot.querySelector('.parsipad-favorite');
+  const favBtn = favoriteControl();
   if (!favBtn) return;
 
-  const isFavorited = favBtn.classList.contains('favorited');
+  const isFavorited = favBtn.getAttribute('aria-pressed') === 'true';
 
   try {
     if (isFavorited) {
-      // Remove from favorites
       await chrome.runtime.sendMessage({
         action: 'REMOVE_FAVORITE',
         originalText: currentTranslationData.originalText,
         savedText: currentTranslationData.savedText
       });
-
-      favBtn.classList.remove('favorited');
-      favBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-        </svg>
-      `;
     } else {
-      // Add to favorites
       await chrome.runtime.sendMessage({
         action: 'ADD_FAVORITE',
         item: currentTranslationData
       });
-
-      favBtn.classList.add('favorited');
-      favBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-        </svg>
-      `;
     }
   } catch (error) {
     // Silently handle errors
+    return;
   }
+
+  setFavoriteState(favBtn, !isFavorited);
 }
 
 /**
  * Remove the floating box
  */
 function removeFloatingBox() {
+  boxSelectionRect = null;
   if (floatingBox) {
     floatingBox.remove();
     floatingBox = null;
@@ -1114,19 +1099,8 @@ function removeFloatingBox() {
 /**
  * Create the floating polish box with Shadow DOM
  */
-function createPolishBox(position) {
-  // Remove existing box if present
-  removeFloatingBox();
-
-  // Create host element
-  const host = document.createElement('div');
-  host.id = 'parsipad-host';
-  host.style.cssText = `
-    position: absolute;
-    top: ${position.top}px;
-    left: ${position.left}px;
-    z-index: 2147483647;
-  `;
+function createPolishBox(selectionRect) {
+  const host = createBoxHost(selectionRect);
 
   // Create shadow root for style isolation
   shadowRoot = host.attachShadow({ mode: 'closed' });
@@ -1332,6 +1306,8 @@ function showPolishResults(result) {
 
   // Check favorite status for each variant
   checkPolishFavoriteStatus(polishData);
+
+  placeFloatingBox();
 }
 
 /**
@@ -1559,6 +1535,8 @@ function showPolishError(errorOrResponse) {
       </div>
     `;
   }
+
+  placeFloatingBox();
 }
 
 // ============================================
@@ -1579,13 +1557,13 @@ async function dictionaryAndShow(word) {
     return;
   }
 
-  // Get selection position for box placement
-  const selection = window.getSelection();
-  const position = getBoxPosition(selection);
+  // Capture the selection rectangle before the box takes focus and clears it.
+  const selectionRect = captureSelectionRect(window.getSelection());
 
   // Create dictionary floating box
-  createDictionaryBox(position);
+  createDictionaryBox(selectionRect);
   showDictionaryLoading();
+  placeFloatingBox();
 
   try {
     // Send dictionary lookup request to background script
@@ -1608,23 +1586,12 @@ async function dictionaryAndShow(word) {
 /**
  * Create the floating dictionary box with Shadow DOM
  */
-function createDictionaryBox(position) {
-  // Remove existing box if present
-  removeFloatingBox();
-
+function createDictionaryBox(selectionRect) {
   // The definition card renders Persian translations, which need the
   // bundled faces registered on the host document.
   ensurePersianFontLoaded();
 
-  // Create host element
-  const host = document.createElement('div');
-  host.id = 'parsipad-host';
-  host.style.cssText = `
-    position: absolute;
-    top: ${position.top}px;
-    left: ${position.left}px;
-    z-index: 2147483647;
-  `;
+  const host = createBoxHost(selectionRect);
 
   // Create shadow root for style isolation
   shadowRoot = host.attachShadow({ mode: 'closed' });
@@ -1802,6 +1769,8 @@ function showDictionaryResult(result) {
     // Check if already favorited
     checkDictionaryFavoriteStatus();
   }
+
+  placeFloatingBox();
 }
 
 /**
@@ -1920,6 +1889,8 @@ function showDictionaryError(message) {
       ${escapeHtml(message)}
     </div>
   `;
+
+  placeFloatingBox();
 }
 
 // ============================================
@@ -2589,16 +2560,14 @@ function startScreenshotSelection(screenshotDataUrl) {
 async function cropAndTranslate(rect, screenshotDataUrl) {
   const { x, y, w, h } = rect;
 
-  // Calculate position for floating box (center of selection)
-  const boxTop = y + h + 8 + window.scrollY;
-  const boxLeft = Math.max(12, Math.min(x + window.scrollX, window.innerWidth - 450 - 12));
-
   // Remove screenshot overlay
   cancelScreenshotMode();
 
-  // Create floating box at selection position
-  createFloatingBox({ top: boxTop, left: boxLeft });
+  // The crop rectangle is in viewport coordinates, which is exactly what
+  // the placer anchors to, so the cropped region stands in for a selection.
+  createFloatingBox({ top: y, bottom: y + h, left: x });
   showLoading();
+  placeFloatingBox();
 
   try {
     // Load screenshot image
@@ -2703,6 +2672,8 @@ function showImageTranslationResult(response) {
     };
     checkTranslationFavoriteStatus();
   }
+
+  placeFloatingBox();
 }
 
 /**
