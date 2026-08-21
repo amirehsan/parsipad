@@ -13,6 +13,8 @@ export const CARD_LABEL_KEYS = Object.freeze([
   'cardListen',
   'cardCopy',
   'cardSave',
+  'cardReadAsEnglish',
+  'cardReadAsPersian',
   'cardSentence',
   'cardExplain',
   'cardSwap',

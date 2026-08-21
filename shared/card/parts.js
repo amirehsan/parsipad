@@ -71,6 +71,47 @@ export function directionPill({ direction, onSwap, lang, doc }) {
 }
 
 /**
+ * The line admitting that the model read the source as the other language.
+ *
+ * Only reachable after the user has overruled detection with the swap
+ * control, because in automatic mode the service worker reconciles the two
+ * before the result ever leaves it. Once a source is chosen by hand that
+ * reconciliation is suppressed, so the direction on the card is the user's
+ * and the model's disagreement has nowhere else to go. Saying nothing
+ * would leave the card stating a direction the model had contradicted,
+ * with the user's text handed back unchanged and no explanation for it.
+ *
+ * The direction is not corrected here. The user's choice stands; this only
+ * reports what the model saw.
+ *
+ * @param {Object} params
+ * @param {string} params.detectedSource - the source the model reported
+ * @param {string} params.direction - the direction the card is showing
+ * @param {string} params.lang - interface language
+ * @param {Document} params.doc
+ * @returns {HTMLElement|null} null whenever the two agree, or whenever the
+ *   disagreement is not one the swap control could have caused
+ */
+export function detectionNote({ detectedSource, direction, lang, doc }) {
+  const [from] = String(direction || '').split('-');
+  // Finglish is Persian that happens to be typed in Latin letters, so a
+  // Persian direction is agreement, not a contradiction.
+  const detected = detectedSource === 'fa-latn' ? 'fa' : detectedSource;
+
+  if (!from || !detected) return null;
+  // Swap only moves between English and Persian, so a stray third language
+  // is not something this note could help the user act on.
+  if (detected !== 'en' && detected !== 'fa') return null;
+  if (detected === from) return null;
+
+  const el = doc.createElement('div');
+  el.className = 'pp-card-detected';
+  el.setAttribute('role', 'status');
+  el.textContent = cardLabel(detected === 'fa' ? 'cardReadAsPersian' : 'cardReadAsEnglish', lang);
+  return el;
+}
+
+/**
  * The source text line: the text itself, plus optional pronunciation and
  * part of speech, plus an optional expand control for long text.
  * @param {Object} params

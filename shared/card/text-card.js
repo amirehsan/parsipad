@@ -1,4 +1,4 @@
-import { directionPill, translationLine, truncationNotice, footer } from './parts.js';
+import { directionPill, detectionNote, translationLine, truncationNotice, footer } from './parts.js';
 import { cardLabel } from './labels.js';
 
 /**
@@ -19,6 +19,7 @@ export function renderTextCard(result, options) {
   const {
     translation = '',
     direction = '',
+    detectedSource = '',
     truncated = false
   } = result || {};
   const {
@@ -36,6 +37,9 @@ export function renderTextCard(result, options) {
 
   const pill = directionPill({ direction, onSwap: onSwapDirection, lang, doc });
   if (pill) el.appendChild(pill);
+
+  const detected = detectionNote({ detectedSource, direction, lang, doc });
+  if (detected) el.appendChild(detected);
   el.appendChild(translationLine({ text: translation, doc }));
 
   if (truncated) {

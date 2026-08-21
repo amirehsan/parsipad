@@ -64,6 +64,12 @@ export const CARD_STYLES = `
       color: var(--pp-text);
     }
 
+    .pp-card-detected {
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--pp-text-muted);
+    }
+
     .pp-card-source {
       display: flex;
       flex-wrap: wrap;
