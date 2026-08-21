@@ -1,39 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { normalizeForMode } from '../lib/translation/normalize.js';
+import { parseNumberedTranslations } from '../content/utils/batch.js';
 
 /**
- * Local copy of content/main.js's parseNumberedTranslations, same shape.
- * content/main.js touches the DOM at module scope (chrome APIs, window
- * globals) and cannot be imported into a node test environment, so this
- * mirrors its marker-parsing logic to prove the contract page translation
- * actually relies on: [n] markers and one-item-per-line structure must
- * survive normalizeForMode(text, 'batch') so the parser can recover every
- * item in order.
+ * Proves the contract page translation actually relies on: [n] markers and
+ * one-item-per-line structure must survive normalizeForMode(text, 'batch')
+ * so parseNumberedTranslations can recover every item in order.
+ *
+ * parseNumberedTranslations is imported from content/utils/batch.js, the
+ * same module content/main.js imports, so this test exercises the real
+ * parser instead of a hand-copied duplicate that could drift from it.
  */
-function parseNumberedTranslations(translatedText, expectedCount) {
-  const results = new Array(expectedCount).fill('');
-  const lines = translatedText.split(/\n/);
-  let currentIndex = -1;
-  let currentText = '';
-
-  for (const line of lines) {
-    const markerMatch = line.match(/^\[(\d+)\]\s*(.*)/);
-    if (markerMatch) {
-      if (currentIndex >= 0 && currentIndex < expectedCount) {
-        results[currentIndex] = currentText.trim();
-      }
-      currentIndex = parseInt(markerMatch[1], 10) - 1;
-      currentText = markerMatch[2];
-    } else if (currentIndex >= 0) {
-      currentText += '\n' + line;
-    }
-  }
-  if (currentIndex >= 0 && currentIndex < expectedCount) {
-    results[currentIndex] = currentText.trim();
-  }
-  return results;
-}
-
 describe('batch round trip', () => {
   it('preserves the exact three-item example from the page translation regression', () => {
     const batchText = '[1] Library policies\n[2] They will charge you a fee.\n[3] Contact us';
