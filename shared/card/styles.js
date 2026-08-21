@@ -233,6 +233,45 @@ export const CARD_STYLES = `
       line-height: 1.8;
     }
 
+    .pp-card-footer {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border-top: 1px solid var(--pp-border);
+      padding-top: 10px;
+    }
+
+    .pp-card-correction {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--pp-text);
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    :host([data-theme='dark']) .pp-card-correction {
+      background: rgba(251, 191, 36, 0.12);
+      border-color: rgba(251, 191, 36, 0.3);
+    }
+    .pp-card-correction-label {
+      color: var(--pp-text-secondary);
+      font-weight: 500;
+    }
+    .pp-card-correction-original {
+      color: var(--pp-text-secondary);
+      text-decoration: line-through;
+    }
+    .pp-card-correction-corrected {
+      color: var(--pp-text);
+      font-weight: 600;
+    }
+
     .pp-card-provider {
       background: none;
       border: none;
