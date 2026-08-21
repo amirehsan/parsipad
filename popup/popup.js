@@ -5,6 +5,8 @@ import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, g
 import { PROVIDER_CONFIGS, ACTIONS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 import { setSafeInnerHTML } from '../lib/sanitize.js';
+import { renderCard, injectCardStyles } from '../shared/card/index.js';
+import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 
 // DOM Elements
 const settingsBtn = document.getElementById('settings-btn');
@@ -26,10 +28,7 @@ const actionBtn = document.getElementById('action-btn');
 const btnText = actionBtn.querySelector('.btn-text');
 const btnLoading = actionBtn.querySelector('.btn-loading');
 const outputSection = document.getElementById('output-section');
-const directionBadge = document.getElementById('direction-badge');
-const copyBtn = document.getElementById('copy-btn');
-const outputText = document.getElementById('output-text');
-const cacheBadge = document.getElementById('cache-badge');
+const cardSlot = document.getElementById('card-slot');
 const polishSection = document.getElementById('polish-section');
 const polishProfessional = document.getElementById('polish-professional');
 const polishConversational = document.getElementById('polish-conversational');
@@ -80,9 +79,11 @@ const translateDocBtn = document.getElementById('translate-doc-btn');
 // Grammar elements
 const grammarToggleSection = document.getElementById('grammar-toggle-section');
 const grammarCheckbox = document.getElementById('grammar-checkbox');
-const grammarSection = document.getElementById('grammar-section');
-const grammarPoints = document.getElementById('grammar-points');
-const grammarLearnMoreBtn = document.getElementById('grammar-learn-more');
+// The card currently rendered in the slot. Grammar points are appended to
+// it after the fact, so the host needs to be able to find it again.
+let currentCardEl = null;
+// A user who opens the other meanings keeps them open until the popup closes.
+let sensesExpandedForSession = false;
 // Image elements
 const imageUploadSection = document.getElementById('image-upload-section');
 const imageUploadArea = document.getElementById('image-upload-area');
@@ -100,7 +101,6 @@ const imageTranslation = document.getElementById('image-translation');
 const imageCopyBtn = document.getElementById('image-copy-btn');
 const imageProviderBadge = document.getElementById('image-provider-badge');
 // Provider badges
-const providerBadge = document.getElementById('provider-badge');
 const polishProviderBadge = document.getElementById('polish-provider-badge');
 const dictProviderBadge = document.getElementById('dict-provider-badge');
 const themeBtn = document.getElementById('theme-btn');
@@ -113,7 +113,6 @@ const statOutputTokens = document.getElementById('stat-output-tokens');
 const resetStatsBtn = document.getElementById('reset-stats-btn');
 const analyticsBtn = document.getElementById('analytics-btn');
 // Favorites elements
-const favoriteTranslationBtn = document.getElementById('favorite-translation-btn');
 const viewFavoritesBtn = document.getElementById('view-favorites-btn');
 const favoritesCount = document.getElementById('favorites-count');
 // Review prompt elements
@@ -149,6 +148,10 @@ function getCurrentMode() {
 async function init() {
   await initLanguage();
   await initTheme();
+  // The card's rules live in a JS string so the floating box can put them
+  // inside a closed shadow root; the popup takes the same string into its
+  // own document. popup.css maps the four tokens they consume.
+  injectCardStyles(document.head, document);
   await checkApiKey();
   await loadHistory();
   await loadStats();
@@ -381,9 +384,6 @@ function setupEventListeners() {
     }
   });
 
-  // Copy button for translation output
-  copyBtn.addEventListener('click', handleCopy);
-
   // Copy buttons for polish outputs
   document.querySelectorAll('.polish-copy-btn').forEach(btn => {
     btn.addEventListener('click', () => handlePolishCopy(btn));
@@ -399,19 +399,9 @@ function setupEventListeners() {
     btn.addEventListener('click', () => handlePolishFavorite(btn));
   });
 
-  // Favorite button for translation output
-  if (favoriteTranslationBtn) {
-    favoriteTranslationBtn.addEventListener('click', handleTranslationFavorite);
-  }
-
   // View favorites button
   if (viewFavoritesBtn) {
     viewFavoritesBtn.addEventListener('click', openFavoritesPage);
-  }
-
-  // Grammar Learn More button
-  if (grammarLearnMoreBtn) {
-    grammarLearnMoreBtn.addEventListener('click', openGrammarPage);
   }
 
   // Review prompt buttons
@@ -674,9 +664,7 @@ async function handleTranslate() {
     const response = await requestTranslation({ text, sourceLang: 'auto' }, {
       onDelta: (delta) => {
         streamed += delta;
-        outputText.dir = getTextDirection(streamed);
-        outputText.textContent = streamed;
-        outputSection.hidden = false;
+        streamInto(streamed);
       }
     });
 
@@ -707,7 +695,6 @@ async function handleTranslate() {
         });
         if (!grammarResponse?.error && Array.isArray(grammarResponse?.grammar) && grammarResponse.grammar.length) {
           displayGrammarExplanation(grammarResponse.grammar);
-          if (grammarLearnMoreBtn) grammarLearnMoreBtn.hidden = false;
         }
       } catch {
         // No-op: keep the translation on screen, just skip the grammar block.
@@ -778,189 +765,6 @@ async function handlePolish() {
 }
 
 /**
- * Display translation result
- * @param {Object} result - Translation result
- */
-async function displayTranslation(result) {
-  const { translation, direction, displayDirection, fromCache, correction, alternatives, senses, note, inContext, truncated } = result;
-  const corrections = correction ? [{ original: inputText.value.trim(), corrected: correction }] : [];
-  const alternativeItems = Array.isArray(alternatives) && alternatives.length
-    ? alternatives.map(a => a.text)
-    : (Array.isArray(senses) ? senses.map(s => s.meaning).filter(Boolean) : []);
-  const examples = Array.isArray(senses)
-    ? senses.filter(s => s.example && (s.example.src || s.example.tgt)).map(s => ({ source: s.example.src, target: s.example.tgt }))
-    : [];
-  const nuance = truncated ? `${t('errorTruncated', currentLang)}${note || inContext ? ' ' : ''}${note || inContext || ''}` : (note || inContext || '');
-
-  directionBadge.textContent = displayDirection || formatDirectionBadge(direction);
-
-  // Show provider badge
-  await updateProviderBadge(providerBadge);
-
-  const targetLang = direction.split('-')[1] || 'fa';
-  const outputDir = ['fa', 'ar', 'he'].includes(targetLang) ? 'rtl' : 'ltr';
-  outputText.dir = outputDir;
-  outputText.textContent = translation;
-
-  cacheBadge.hidden = !fromCache;
-  outputSection.hidden = false;
-
-  // Render the "Did you mean: X" hint + rich linguistic context (alternatives,
-  // examples, nuance). Cached results don't carry these fields so they read as
-  // a clean basic translation.
-  renderTranslationCorrections(corrections);
-  renderTranslationRichContext({ alternatives: alternativeItems, examples, nuance });
-
-  // Store translation data for grammar page
-  currentTranslationData = {
-    original: inputText.value.trim(),
-    translation: translation,
-    direction: direction
-  };
-
-  grammarSection.hidden = true;
-  if (grammarLearnMoreBtn) {
-    grammarLearnMoreBtn.hidden = true;
-  }
-
-  // Update favorite button state
-  await updateTranslationFavoriteState();
-}
-
-/**
- * Render a small "Did you mean: X" hint above the output when the model
- * auto-corrected the user's input. Idempotent: rebuilds the node on every
- * call, removes it when there are no corrections.
- *
- * @param {Array<{original: string, corrected: string}>|undefined} corrections
- */
-function renderTranslationCorrections(corrections) {
-  let hint = document.getElementById('translation-correction-hint');
-  if (!corrections || corrections.length === 0) {
-    if (hint) hint.remove();
-    return;
-  }
-  if (!hint) {
-    hint = document.createElement('div');
-    hint.id = 'translation-correction-hint';
-    hint.className = 'correction-hint';
-    hint.setAttribute('role', 'status');
-    outputText.parentElement.insertBefore(hint, outputText);
-  }
-  // Build content via DOM API to avoid innerHTML interpolation of model output.
-  hint.replaceChildren();
-  const icon = document.createElement('span');
-  icon.className = 'correction-hint-icon';
-  icon.setAttribute('aria-hidden', 'true');
-  icon.textContent = '✎';
-  const label = document.createElement('span');
-  label.className = 'correction-hint-label';
-  label.textContent = t('didYouMean', currentLang) || 'Did you mean:';
-  hint.append(icon, label, document.createTextNode(' '));
-  corrections.forEach((c, i) => {
-    if (i > 0) hint.appendChild(document.createTextNode(', '));
-    const orig = document.createElement('span');
-    orig.className = 'correction-original';
-    orig.textContent = c.original;
-    const arrow = document.createElement('span');
-    arrow.className = 'correction-arrow';
-    arrow.textContent = ' → ';
-    const corr = document.createElement('strong');
-    corr.className = 'correction-corrected';
-    corr.textContent = c.corrected;
-    hint.append(orig, arrow, corr);
-  });
-}
-
-/**
- * Render the rich linguistic context (alternatives, examples, nuance) below
- * the translation. Collapsible to keep the popup compact.
- *
- * @param {{alternatives?: string[], examples?: Array<{source: string, target: string}>, nuance?: string}} ctx
- */
-function renderTranslationRichContext({ alternatives, examples, nuance }) {
-  let section = document.getElementById('translation-rich-context');
-  const hasAny = (alternatives && alternatives.length) ||
-                 (examples && examples.length) ||
-                 (typeof nuance === 'string' && nuance.trim().length);
-  if (!hasAny) {
-    if (section) section.remove();
-    return;
-  }
-  if (!section) {
-    section = document.createElement('details');
-    section.id = 'translation-rich-context';
-    section.className = 'rich-context';
-    section.open = false;
-    outputText.parentElement.appendChild(section);
-  }
-  section.replaceChildren();
-
-  const summary = document.createElement('summary');
-  summary.className = 'rich-context-summary';
-  summary.textContent = t('moreContext', currentLang) || 'Linguistic context';
-  section.appendChild(summary);
-
-  if (typeof nuance === 'string' && nuance.trim()) {
-    const block = document.createElement('div');
-    block.className = 'rich-context-block';
-    const title = document.createElement('div');
-    title.className = 'rich-context-title';
-    title.textContent = t('nuance', currentLang) || 'Nuance';
-    const body = document.createElement('p');
-    body.className = 'rich-context-text';
-    body.textContent = nuance;
-    block.append(title, body);
-    section.appendChild(block);
-  }
-
-  if (alternatives && alternatives.length) {
-    const block = document.createElement('div');
-    block.className = 'rich-context-block';
-    const title = document.createElement('div');
-    title.className = 'rich-context-title';
-    title.textContent = t('alternatives', currentLang) || 'Alternative translations';
-    const list = document.createElement('ul');
-    list.className = 'rich-context-list';
-    alternatives.forEach(alt => {
-      const li = document.createElement('li');
-      li.dir = getTextDirection(alt);
-      li.textContent = alt;
-      list.appendChild(li);
-    });
-    block.append(title, list);
-    section.appendChild(block);
-  }
-
-  if (examples && examples.length) {
-    const block = document.createElement('div');
-    block.className = 'rich-context-block';
-    const title = document.createElement('div');
-    title.className = 'rich-context-title';
-    title.textContent = t('examples', currentLang) || 'Examples';
-    const list = document.createElement('div');
-    list.className = 'rich-context-examples';
-    examples.forEach(ex => {
-      if (!ex || (!ex.source && !ex.target)) return;
-      const row = document.createElement('div');
-      row.className = 'rich-context-example';
-      const src = document.createElement('div');
-      src.className = 'rich-context-example-source';
-      src.dir = getTextDirection(ex.source || '');
-      src.textContent = ex.source || '';
-      const tgt = document.createElement('div');
-      tgt.className = 'rich-context-example-target';
-      tgt.dir = getTextDirection(ex.target || '');
-      tgt.textContent = ex.target || '';
-      row.append(src, tgt);
-      list.appendChild(row);
-    });
-    block.append(title, list);
-    section.appendChild(block);
-  }
-}
-
-/**
  * Update provider badge with current provider info
  * @param {HTMLElement} badgeElement - The badge element to update
  */
@@ -982,18 +786,214 @@ async function updateProviderBadge(badgeElement) {
 }
 
 /**
- * Display grammar explanation (always English, always LTR)
- * @param {Array<{point: string, explanation: string}>} grammarPointsList
+ * Write streamed text into the card's translation line.
+ *
+ * A text card is rendered once, on the first delta, and every delta after
+ * that writes into the same element the finished result will use. That is
+ * what keeps the panel from visibly rebuilding when the stream ends.
+ *
+ * @param {string} text - the text streamed so far
  */
-function displayGrammarExplanation(grammarPointsList) {
-  grammarPoints.innerHTML = grammarPointsList.map(item => `
-    <div class="grammar-point" dir="ltr">
-      <div class="grammar-point-title">${escapeHtml(item.point)}</div>
-      <div class="grammar-point-explanation">${escapeHtml(item.explanation)}</div>
-    </div>
-  `).join('');
+function streamInto(text) {
+  let line = currentCardEl && currentCardEl.querySelector('.pp-card-translation');
 
-  grammarSection.hidden = false;
+  if (!line) {
+    currentCardEl = renderCard({ mode: 'text', translation: '' }, { lang: currentLang, doc: document });
+    cardSlot.replaceChildren(currentCardEl);
+    line = currentCardEl.querySelector('.pp-card-translation');
+  }
+
+  line.setAttribute('dir', getTextDirection(text));
+  line.textContent = text;
+  outputSection.hidden = false;
+}
+
+/**
+ * The provider's display name, for the card's footer.
+ * @returns {Promise<string>}
+ */
+async function currentProviderName() {
+  try {
+    const providerId = await getSelectedProvider();
+    return (PROVIDER_CONFIGS[providerId] || {}).name || '';
+  } catch (error) {
+    return '';
+  }
+}
+
+/**
+ * The card's Listen handler, or null when there is nothing speakable.
+ * @param {Object} result
+ * @returns {Function|null}
+ */
+function buildListenHandler(result) {
+  const spoken = result.direction && result.direction.startsWith('en')
+    ? result.sourceText
+    : result.translation;
+  if (!canSpeak(spoken)) return null;
+  return (text) => speak(text || spoken);
+}
+
+/**
+ * The slot the grammar block renders into, created on first use and
+ * placed above the card's footer so the actions stay at the bottom.
+ *
+ * Built here rather than sitting in popup.html because it belongs inside
+ * the card, which only exists once a result has been rendered. The class
+ * names are the popup's own, so the existing grammar styling applies.
+ *
+ * @returns {HTMLElement|null}
+ */
+function grammarSlot() {
+  if (!currentCardEl) return null;
+
+  const existing = currentCardEl.querySelector('.grammar-section');
+  if (existing) return existing;
+
+  const slot = document.createElement('div');
+  slot.className = 'grammar-section';
+  const footerEl = currentCardEl.querySelector('.pp-card-footer');
+  if (footerEl) currentCardEl.insertBefore(slot, footerEl);
+  else currentCardEl.appendChild(slot);
+  return slot;
+}
+
+/**
+ * Render grammar points into the card, with the header and the control
+ * that opens the full lesson.
+ * @param {Array<{point: string, explanation: string}>} points
+ */
+function displayGrammarExplanation(points) {
+  const slot = grammarSlot();
+  if (!slot) return;
+
+  slot.replaceChildren();
+
+  const header = document.createElement('div');
+  header.className = 'grammar-header';
+  const headerText = document.createElement('span');
+  headerText.textContent = t('grammarExplanation', currentLang) || 'Grammar Notes';
+  header.appendChild(headerText);
+  slot.appendChild(header);
+
+  const list = document.createElement('div');
+  list.className = 'grammar-points';
+  // Grammar content is always English (the audience is Persian speakers
+  // studying English), so it renders LTR whatever the direction.
+  points.forEach(item => {
+    if (!item) return;
+    const point = document.createElement('div');
+    point.className = 'grammar-point';
+    point.setAttribute('dir', 'ltr');
+
+    const title = document.createElement('div');
+    title.className = 'grammar-point-title';
+    title.textContent = item.point || '';
+
+    const explanation = document.createElement('div');
+    explanation.className = 'grammar-point-explanation';
+    explanation.textContent = item.explanation || '';
+
+    point.append(title, explanation);
+    list.appendChild(point);
+  });
+  slot.appendChild(list);
+
+  const learnMore = document.createElement('button');
+  learnMore.type = 'button';
+  learnMore.className = 'grammar-learn-more-btn';
+  learnMore.textContent = t('learnMore', currentLang) || 'Learn More with Examples';
+  learnMore.addEventListener('click', openGrammarPage);
+  slot.appendChild(learnMore);
+}
+
+/**
+ * Put a grammar failure in the grammar slot and nowhere else, so the
+ * translation already on screen is never disturbed.
+ * @param {string} message
+ */
+function showGrammarError(message) {
+  const slot = grammarSlot();
+  if (!slot) return;
+  const err = document.createElement('div');
+  err.className = 'grammar-point-explanation';
+  err.textContent = message;
+  slot.replaceChildren(err);
+}
+
+/**
+ * Fetch and render the grammar lesson for a result. Shared by the card's
+ * Explain action and the "Explain grammar" checkbox, so both paths behave
+ * the same and both fail the same way: quietly, into the slot.
+ * @param {Object} result
+ * @returns {Promise<void>}
+ */
+async function loadGrammarFor(result) {
+  try {
+    const response = await chrome.runtime.sendMessage({
+      action: 'EXPLAIN_GRAMMAR',
+      source: inputText.value.trim(),
+      translation: result.translation,
+      direction: result.direction
+    });
+
+    if (response && response.error) {
+      showGrammarError(response.error);
+      return;
+    }
+    if (Array.isArray(response && response.grammar) && response.grammar.length) {
+      displayGrammarExplanation(response.grammar);
+    }
+  } catch (error) {
+    // Keep the translation on screen; skip the grammar block.
+  }
+}
+
+/**
+ * The card's Explain handler, or null for a single word.
+ * @param {Object} result
+ * @returns {Function|null}
+ */
+function buildGrammarHandler(result) {
+  const source = inputText.value.trim();
+  if (!source || source.split(/\s+/).length < 2) return null;
+  return () => loadGrammarFor(result);
+}
+
+/**
+ * Display translation result through the shared card.
+ * @param {Object} result - Translation result
+ */
+async function displayTranslation(result) {
+  const provider = await currentProviderName();
+
+  // Store translation data for grammar page
+  currentTranslationData = {
+    original: inputText.value.trim(),
+    translation: result.translation,
+    direction: result.direction
+  };
+
+  currentCardEl = renderCard(result, {
+    lang: currentLang,
+    doc: document,
+    provider,
+    sensesExpanded: sensesExpandedForSession,
+    onToggleSenses: (open) => { sensesExpandedForSession = open; },
+    onListen: buildListenHandler(result),
+    onCopy: (text) => handleCardCopy(text),
+    onSave: () => handleTranslationFavorite(),
+    onExplainGrammar: buildGrammarHandler(result),
+    onOpenSettings: () => chrome.runtime.openOptionsPage()
+  });
+  // The popup has no page selection, so it never offers Sentence: omitting
+  // onTranslateSentence omits the control.
+
+  cardSlot.replaceChildren(currentCardEl);
+  outputSection.hidden = false;
+
+  // Update favorite button state
+  await updateTranslationFavoriteState();
 }
 
 /**
@@ -1020,20 +1020,26 @@ async function displayPolishResults(result, originalText = null, historyId = nul
 }
 
 /**
- * Handle copy button click for translation
+ * Copy from the card's own Copy control, which hands over the text it
+ * rendered rather than making the host read it back out of the DOM.
+ * @param {string} text
  */
-async function handleCopy() {
-  const text = outputText.textContent;
+async function handleCardCopy(text) {
+  if (!text) return;
 
   try {
     await navigator.clipboard.writeText(text);
-    copyBtn.classList.add('copied');
-    setTimeout(() => {
-      copyBtn.classList.remove('copied');
-    }, 1500);
   } catch (error) {
     showError('Failed to copy to clipboard');
+    return;
   }
+
+  const btn = currentCardEl && currentCardEl.querySelector('[data-action="cardCopy"]');
+  if (!btn) return;
+
+  const label = btn.textContent;
+  btn.textContent = t('copied', currentLang);
+  setTimeout(() => { btn.textContent = label; }, 1500);
 }
 
 /**
@@ -1251,11 +1257,10 @@ function hideAllOutputs() {
   outputSection.hidden = true;
   polishSection.hidden = true;
   dictionarySection.hidden = true;
-  grammarSection.hidden = true;
-  if (grammarLearnMoreBtn) {
-    grammarLearnMoreBtn.hidden = true;
-  }
+  cardSlot.replaceChildren();
+  currentCardEl = null;
   currentTranslationData = null;
+  cancelSpeech();
 }
 
 /**
@@ -1981,9 +1986,9 @@ function openGrammarPage() {
  * Handle adding/removing translation from favorites
  */
 async function handleTranslationFavorite() {
-  const original = inputText.value.trim();
-  const saved = outputText.textContent;
-  const direction = directionBadge.textContent;
+  const original = currentTranslationData && currentTranslationData.original;
+  const saved = currentTranslationData && currentTranslationData.translation;
+  const direction = currentTranslationData && currentTranslationData.direction;
 
   if (!original || !saved) return;
 
@@ -1999,7 +2004,7 @@ async function handleTranslationFavorite() {
       });
 
       if (response.success) {
-        favoriteTranslationBtn.classList.remove('favorited');
+        setTranslationFavoriteState(false);
       }
     } else {
       // Add to favorites
@@ -2016,7 +2021,7 @@ async function handleTranslationFavorite() {
       });
 
       if (response.success) {
-        favoriteTranslationBtn.classList.add('favorited');
+        setTranslationFavoriteState(true);
         // Check if we should show review prompt after adding favorite
         await checkReviewPrompt();
       }
@@ -2111,16 +2116,26 @@ async function updatePolishFavoriteStates() {
 }
 
 /**
+ * Reflect the favourite state on the card's Save action. The card renders
+ * a plain text button, so aria-pressed is the whole of its state.
+ * @param {boolean} favorited
+ */
+function setTranslationFavoriteState(favorited) {
+  const btn = currentCardEl && currentCardEl.querySelector('[data-action="cardSave"]');
+  if (btn) btn.setAttribute('aria-pressed', favorited ? 'true' : 'false');
+}
+
+/**
  * Update favorite button state for translation
  */
 async function updateTranslationFavoriteState() {
-  const original = inputText.value.trim();
-  const saved = outputText.textContent;
+  const original = currentTranslationData && currentTranslationData.original;
+  const saved = currentTranslationData && currentTranslationData.translation;
 
-  if (!original || !saved || !favoriteTranslationBtn) return;
+  if (!original || !saved) return;
 
   const existingFav = await isFavorite(original, saved);
-  favoriteTranslationBtn.classList.toggle('favorited', !!existingFav);
+  setTranslationFavoriteState(!!existingFav);
 }
 
 // ============================================

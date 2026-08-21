@@ -25,6 +25,18 @@
   --color-text-tertiary: var(--color-gray-400);
 
   --color-border: var(--color-gray-200);
+
+  /* The shared card's stylesheet consumes exactly these four names and
+     defines none of them. Mapping them onto the popup's own tokens here,
+     rather than giving the card its own values, is what makes the card
+     follow the popup's theme: --color-* is redefined under
+     [data-theme='dark'] on the same element, so these resolve to the dark
+     values without a second block. */
+  --pp-text: var(--color-text);
+  --pp-text-secondary: var(--color-text-secondary);
+  --pp-text-muted: var(--color-text-tertiary);
+  --pp-border: var(--color-border);
+
   --color-success: var(--color-success-500);
   --color-error: var(--color-error-500);
   --color-warning: var(--color-warning-500);
@@ -324,11 +336,22 @@ body {
 
 /* RTL support for Persian text */
 .textarea[dir="rtl"],
-.output-text[dir="rtl"],
 #extracted-text[dir="rtl"],
 #image-translation[dir="rtl"] {
   font-family: var(--font-persian);
   text-align: right;
+}
+
+/*
+ * The card marks direction on each element it renders, and its own
+ * stylesheet sets leading and alignment for RTL but deliberately no
+ * font-family, since the face belongs to the host. The floating box
+ * covers this with one [dir="rtl"] rule across its shadow root; the popup
+ * names elements individually, so the card gets the same treatment here,
+ * scoped to the slot so it reaches nothing else.
+ */
+#card-slot [dir="rtl"] {
+  font-family: var(--font-persian);
 }
 
 /* Persian text utility class - use for any Persian content */
@@ -458,13 +481,6 @@ body {
   }
 }
 
-.output-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-sm);
-}
-
 .badge {
   font-size: 11px;
   font-weight: 500;
@@ -472,12 +488,6 @@ body {
   background-color: var(--color-primary);
   color: white;
   border-radius: var(--radius-sm);
-}
-
-.output-badges {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
 }
 
 .provider-badge {
@@ -508,191 +518,6 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
-}
-
-.output-text {
-  font-size: 14px;
-  /* 1.7 reads markedly more spacious at narrow 400px width */
-  line-height: 1.7;
-  color: var(--color-text);
-  word-wrap: break-word;
-  white-space: pre-wrap;
-}
-
-/*
- * Auto-correction hint: small chip above the output translation that surfaces
- * the typo the model fixed silently. Read-only, status role.
- */
-/*
- * Light mode: cream amber background with dark text.
- * Dark mode (overridden below): translucent dark-amber tint with light text.
- * The cream #fef3c7 background from --color-warning-100 was killing
- * contrast in dark mode (light text on light cream).
- */
-.correction-hint {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: var(--space-3);
-  padding: 8px 12px;
-  background: rgba(245, 158, 11, 0.14);
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  border-radius: var(--radius-md);
-  font-size: 12px;
-  color: var(--color-text);
-}
-
-[data-theme="dark"] .correction-hint {
-  background: rgba(245, 158, 11, 0.16);
-  border-color: rgba(245, 158, 11, 0.40);
-}
-
-.correction-hint-icon {
-  font-size: 13px;
-  color: var(--color-warning);
-}
-
-.correction-hint-label {
-  color: var(--color-text-secondary);
-  font-weight: 500;
-}
-
-.correction-original {
-  color: var(--color-text-secondary);
-  text-decoration: line-through;
-}
-
-.correction-arrow {
-  color: var(--color-text-secondary);
-}
-
-.correction-corrected {
-  color: var(--color-text);
-  font-weight: 600;
-}
-
-/*
- * Rich linguistic context: collapsible <details> block under the translation
- * with alternatives, examples, and nuance for short queries.
- */
-.rich-context {
-  margin-top: var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.rich-context[open] {
-  background: var(--color-bg);
-}
-
-.rich-context-summary {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-primary);
-  cursor: pointer;
-  user-select: none;
-  list-style: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.rich-context-summary::-webkit-details-marker {
-  display: none;
-}
-
-.rich-context-summary::before {
-  content: '›';
-  font-size: 16px;
-  line-height: 1;
-  transition: transform var(--motion-fast) var(--ease-out);
-  display: inline-block;
-}
-
-.rich-context[open] .rich-context-summary::before {
-  transform: rotate(90deg);
-}
-
-.rich-context-block {
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--color-divider, var(--color-border));
-}
-
-.rich-context-block:first-of-type {
-  border-top: 0;
-  padding-top: var(--space-2);
-}
-
-.rich-context-title {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--color-text-secondary);
-  margin-bottom: var(--space-2);
-}
-
-.rich-context-text {
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--color-text);
-}
-
-.rich-context-list {
-  margin: 0;
-  padding-left: 1.25em;
-  font-size: 13px;
-  line-height: 1.65;
-  color: var(--color-text);
-}
-
-.rich-context-list[dir="rtl"] {
-  padding-left: 0;
-  padding-right: 1.25em;
-  font-family: var(--font-persian);
-}
-
-.rich-context-examples {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.rich-context-example {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px;
-  background: var(--color-bg-secondary);
-  border-radius: var(--radius-sm);
-}
-
-.rich-context-example-source {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  line-height: 1.5;
-}
-
-.rich-context-example-target {
-  font-size: 13px;
-  color: var(--color-text);
-  line-height: 1.55;
-}
-
-.rich-context-example-target[dir="rtl"] {
-  font-family: var(--font-persian);
-  text-align: right;
-}
-
-.cache-badge {
-  font-size: 11px;
-  color: var(--color-text-secondary);
-  margin-top: var(--space-sm);
-  text-align: right;
 }
 
 /*
@@ -1068,14 +893,6 @@ body {
 
 [dir="rtl"] .input-footer {
   flex-direction: row-reverse;
-}
-
-[dir="rtl"] .output-header {
-  flex-direction: row-reverse;
-}
-
-[dir="rtl"] .cache-badge {
-  text-align: left;
 }
 
 [dir="rtl"] .history-header {
@@ -1795,22 +1612,6 @@ body {
 }
 
 /* ============================================
-   Output Actions (Favorite + Copy)
-   ============================================ */
-
-.output-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-#favorite-translation-btn .star-filled,
-#favorite-translation-btn .star-outline {
-  width: 18px;
-  height: 18px;
-}
-
-/* ============================================
    Favorites Link Section
    ============================================ */
 
@@ -1873,10 +1674,6 @@ body {
 
 /* RTL Support for new elements */
 [dir="rtl"] .polish-card-actions {
-  flex-direction: row-reverse;
-}
-
-[dir="rtl"] .output-actions {
   flex-direction: row-reverse;
 }
 
