@@ -1,22 +1,6 @@
-import { sourceLine, translationLine, note, disclosure, wordList, providerButton, actionsRow } from './parts.js';
+import { sourceLine, translationLine, note, disclosure, wordList, providerButton, actionsRow, applyTextDirection } from './parts.js';
 import { cardLabel } from './labels.js';
 import { getTextDirection } from '../../lib/language-detect.js';
-
-/**
- * Set dir and, for right to left text, lang="fa" on an element, both
- * derived from the same source text. Mirrors the private helper in
- * parts.js: this module builds a few pieces (the correction line, each
- * sense) that are specific to the word card and have no matching part in
- * parts.js, so it needs the same rule for pairing dir="rtl" with
- * lang="fa".
- * @param {HTMLElement} el
- * @param {string} text
- */
-function applyTextDirection(el, text) {
-  const dir = getTextDirection(text);
-  el.setAttribute('dir', dir);
-  if (dir === 'rtl') el.setAttribute('lang', 'fa');
-}
 
 /**
  * The auto-correction hint: what the user selected, and what the model
