@@ -27,6 +27,7 @@ export function themeVars() {
       --pp-shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
       --pp-skeleton-from: #e5e7eb;
       --pp-skeleton-to: #f3f4f6;
+      --pp-motion-skeleton: parsipad-shimmer 1.5s infinite;
     }
     :host([data-theme='dark']) {
       --pp-bg: #1f2937;
@@ -693,7 +694,7 @@ export function getStyles() {
       align-items: center;
       justify-content: center;
       border-radius: 6px;
-      transition: all 0.15s;
+      transition: background-color 0.15s, border-color 0.15s, color 0.15s;
     }
 
     .parsipad-favorite:hover {
@@ -724,7 +725,7 @@ export function getStyles() {
       height: 14px;
       background: linear-gradient(90deg, var(--pp-border) 25%, var(--pp-bg-hover) 50%, var(--pp-border) 75%);
       background-size: 200% 100%;
-      animation: parsipad-shimmer 1.5s infinite;
+      animation: var(--pp-motion-skeleton);
       border-radius: 4px;
     }
 
