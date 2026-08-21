@@ -695,6 +695,12 @@ export function getStyles() {
     .parsipad-rich-context-list li:last-child {
       margin-bottom: 0;
     }
+    .parsipad-truncated-note {
+      margin-top: 8px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #b45309;
+    }
 
     .parsipad-text {
       font-size: 14px;
