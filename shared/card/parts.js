@@ -350,6 +350,10 @@ export function actionsRow({ actions, lang, doc }) {
     const btn = doc.createElement('button');
     btn.type = 'button';
     btn.className = 'pp-card-action';
+    // The action key, not the label, is how a host finds one control again
+    // after rendering (to mark Save as pressed, say). Matching on the label
+    // would break the moment the interface language changes.
+    btn.dataset.action = key;
     btn.setAttribute('aria-label', label);
     btn.textContent = label;
     btn.addEventListener('click', () => onActivate());

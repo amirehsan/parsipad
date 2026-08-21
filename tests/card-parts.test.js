@@ -204,6 +204,15 @@ describe('actionsRow', () => {
     expect(onCopy).toHaveBeenCalled();
   });
 
+  it('tags each control with its action key so a host can find it again', () => {
+    const el = actionsRow({ actions: [
+      { key: 'cardCopy', onActivate: vi.fn() },
+      { key: 'cardSave', onActivate: vi.fn() }
+    ], lang: 'fa', doc: doc() });
+    expect(el.querySelector('[data-action="cardSave"]')).not.toBeNull();
+    expect(el.querySelector('[data-action="cardCopy"]')).not.toBeNull();
+  });
+
   it('returns null when nothing is actionable', () => {
     expect(actionsRow({ actions: [{ key: 'cardCopy', onActivate: null }], lang: 'en', doc: doc() })).toBeNull();
   });
