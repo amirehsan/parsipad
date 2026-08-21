@@ -87,6 +87,12 @@ export const CARD_STYLES = `
     .pp-card-source-expand:hover {
       color: var(--pp-text);
     }
+    .pp-card-source-clamped .pp-card-source-text {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
 
     .pp-card-translation {
       font-size: 17px;
