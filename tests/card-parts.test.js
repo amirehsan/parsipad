@@ -1,7 +1,7 @@
 // tests/card-parts.test.js
 // @vitest-environment happy-dom
 import { describe, it, expect, vi } from 'vitest';
-import { directionPill, sourceLine, translationLine, note, disclosure, wordList, truncationNotice, providerButton, actionsRow } from '../shared/card/parts.js';
+import { directionPill, sourceLine, translationLine, note, disclosure, wordList, truncationNotice, providerButton, actionsRow, correctionLine, footer } from '../shared/card/parts.js';
 
 const doc = () => document;
 
@@ -158,6 +158,35 @@ describe('providerButton', () => {
 
   it('renders nothing without a provider', () => {
     expect(providerButton({ provider: '', lang: 'en', doc: doc() })).toBeNull();
+  });
+});
+
+describe('correctionLine', () => {
+  it('shows what was selected and what it was corrected to, each with its own direction', () => {
+    const el = correctionLine({ original: 'charge', corrected: 'change', lang: 'en', doc: doc() });
+    expect(el.getAttribute('dir')).toBe('ltr');
+    expect(el.querySelector('.pp-card-correction-original').textContent).toBe('charge');
+    expect(el.querySelector('.pp-card-correction-corrected').textContent).toBe('change');
+  });
+});
+
+describe('footer', () => {
+  it('composes the actions row and the provider button, omitting either side when empty', () => {
+    const onCopy = vi.fn();
+    const onOpenSettings = vi.fn();
+    const el = footer({
+      actions: [{ key: 'cardCopy', onActivate: onCopy }],
+      provider: 'Gemini',
+      onOpenSettings,
+      lang: 'en',
+      doc: doc()
+    });
+    expect(el.querySelector('.pp-card-actions')).not.toBeNull();
+    expect(el.querySelector('.pp-card-provider').textContent).toBe('Gemini');
+  });
+
+  it('is omitted entirely when both sides are empty', () => {
+    expect(footer({ actions: [{ key: 'cardCopy', onActivate: null }], lang: 'en', doc: doc() })).toBeNull();
   });
 });
 

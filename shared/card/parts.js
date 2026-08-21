@@ -134,6 +134,48 @@ export function translationLine({ text, doc }) {
 }
 
 /**
+ * The auto-correction hint: what the user selected, and what the model
+ * treated it as after fixing a real spelling error. Every mode that can
+ * receive a correction (word, sentence) renders the same line, so it
+ * lives here rather than being rebuilt per mode.
+ * @param {Object} params
+ * @param {string} params.original
+ * @param {string} params.corrected
+ * @param {string} params.lang - interface language
+ * @param {Document} params.doc
+ * @returns {HTMLElement}
+ */
+export function correctionLine({ original, corrected, lang, doc }) {
+  const el = doc.createElement('div');
+  el.className = 'pp-card-correction';
+  el.setAttribute('role', 'status');
+  // Keep the line itself LTR so "<original> -> <corrected>" reads in a
+  // stable order regardless of which side is Persian.
+  el.setAttribute('dir', 'ltr');
+
+  const label = doc.createElement('span');
+  label.className = 'pp-card-correction-label';
+  label.textContent = `${cardLabel('didYouMean', lang)} `;
+  el.appendChild(label);
+
+  const originalEl = doc.createElement('span');
+  originalEl.className = 'pp-card-correction-original';
+  applyTextDirection(originalEl, original);
+  originalEl.textContent = original;
+  el.appendChild(originalEl);
+
+  el.appendChild(doc.createTextNode(' → '));
+
+  const correctedEl = doc.createElement('strong');
+  correctedEl.className = 'pp-card-correction-corrected';
+  applyTextDirection(correctedEl, corrected);
+  correctedEl.textContent = corrected;
+  el.appendChild(correctedEl);
+
+  return el;
+}
+
+/**
  * A short note, a lead word followed by a colon and the note text.
  * @param {Object} params
  * @param {string} params.lead
@@ -314,5 +356,30 @@ export function actionsRow({ actions, lang, doc }) {
     el.appendChild(btn);
   });
 
+  return el;
+}
+
+/**
+ * The footer: the actions row at one end, the provider button at the
+ * other. Either side is omitted when empty, and so is the footer itself.
+ * Every card mode composes its footer the same way, so it lives here
+ * rather than being rebuilt per mode.
+ * @param {Object} params
+ * @param {Array<{key: string, onActivate: Function|null}>} params.actions
+ * @param {string} [params.provider]
+ * @param {Function} [params.onOpenSettings]
+ * @param {string} params.lang - interface language
+ * @param {Document} params.doc
+ * @returns {HTMLElement|null}
+ */
+export function footer({ actions, provider, onOpenSettings, lang, doc }) {
+  const actionsEl = actionsRow({ actions, lang, doc });
+  const providerEl = providerButton({ provider, onOpenSettings, lang, doc });
+  if (!actionsEl && !providerEl) return null;
+
+  const el = doc.createElement('div');
+  el.className = 'pp-card-footer';
+  if (actionsEl) el.appendChild(actionsEl);
+  if (providerEl) el.appendChild(providerEl);
   return el;
 }
