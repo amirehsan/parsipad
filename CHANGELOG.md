@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Persian output is normalized (Persian ی and ک, spacing before punctuation) before display, caching, history and copy.
 - History keeps the full translation (up to 4000 characters) and the structured result.
 - New setting: "Translate other languages into Persian" (default on). When off, non-Persian, non-English text is rejected as before.
+- **One translation card, shared by the floating box and the popup.** The same result now looks the same wherever it appears. A word shows the source with its IPA and part of speech, the meaning that fits the sentence it came from, a short note explaining why that sense fits, and the remaining senses collapsed behind "Other meanings (N)"; opening it shows each sense with its part of speech and an example in both languages, plus synonyms and antonyms. A sentence shows its alternatives under "Also (N)", each labelled with its register.
+- **Listen reads English aloud** from the card, on both surfaces. It appears only when there is English to read, so a Persian result simply does not offer it. The grammar lesson page and the card now share one implementation instead of two.
+- **Translate the sentence** turns a word lookup into the sentence it came from, recovered from the text around the selection, and marks the original word in the result.
+- Explain grammar is a card action now, and renders inside the card. As before, it never disturbs the translation already on screen, including when it fails.
+- The provider name moved from a badge in the header to the card footer, where it stays a shortcut into settings.
+- The floating box is measured before it is placed, so a tall result decides correctly whether to sit above or below the selection instead of being positioned from an estimate and nudged afterwards.
+- Keyboard and screen-reader fixes: focus moves into the floating box when it opens and returns where it came from when it closes, the polish and dictionary boxes are proper dialogs, every icon-only control has a name, Persian text is marked as Persian, and the loading shimmer respects "reduce motion". Page translation reports "no translatable text" without a blocking alert.
 
 ### Removed
 - `lib/page-translator.js` (unused).
