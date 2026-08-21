@@ -168,6 +168,7 @@ export function disclosure({ label, expanded, onToggle, content, lang: _lang, do
 
   const caret = doc.createElement('span');
   caret.className = 'pp-card-disclosure-caret';
+  caret.setAttribute('aria-hidden', 'true');
   caret.textContent = '▸';
   btn.appendChild(caret);
 
