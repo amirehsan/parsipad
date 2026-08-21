@@ -674,6 +674,12 @@ export function getStyles() {
       color: var(--pp-text-secondary);
       margin-bottom: 12px;
     }
+    /* Vazirmatn ships no italic, so an italic Persian run renders as a
+       synthesized oblique. Keep Persian upright. */
+    .parsipad-rich-context-nuance[dir="rtl"] {
+      font-style: normal;
+      line-height: 1.85;
+    }
     .parsipad-rich-context-title {
       font-size: 10px;
       font-weight: 600;
@@ -692,6 +698,10 @@ export function getStyles() {
     .parsipad-rich-context-list li {
       margin-bottom: 4px;
     }
+    .parsipad-rich-context-list li[dir="rtl"] {
+      line-height: 1.85;
+      margin-bottom: 8px;
+    }
     .parsipad-rich-context-list li:last-child {
       margin-bottom: 0;
     }
@@ -701,22 +711,34 @@ export function getStyles() {
       line-height: 1.5;
       color: #b45309;
     }
+    .parsipad-truncated-note[dir="rtl"] {
+      line-height: 1.8;
+    }
     :host([data-theme='dark']) .parsipad-truncated-note {
       color: #fbbf24;
     }
 
+    /* One rule covers every Persian node in the box. Elements carry dir
+       set from their own content, so this reaches the translation, the
+       senses and alternatives, the correction hint and the notes without
+       each selector having to name the family. */
+    [dir="rtl"] {
+      font-family: 'Vazirmatn', 'Tahoma', sans-serif;
+    }
+
     .parsipad-text {
       font-size: 14px;
-      line-height: 1.65;
       line-height: 1.6;
       color: var(--pp-text);
       word-wrap: break-word;
       white-space: pre-wrap;
     }
 
+    /* Persian needs more leading than Latin at the same size: the script
+       carries dots below the baseline and ascenders that collide at 1.6. */
     .parsipad-text[dir="rtl"] {
-      font-family: 'Vazirmatn', 'Tahoma', sans-serif;
       text-align: right;
+      line-height: 1.9;
     }
 
     .parsipad-footer {
