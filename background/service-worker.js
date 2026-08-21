@@ -190,7 +190,7 @@ function finalizeResult(raw, { mode, info, sourceText }) {
     detectedSource: raw.detectedSource || info.from,
     sourceText,
     normalized: raw.normalized ? normalizePersian(raw.normalized) : '',
-    correction: raw.correction || '',
+    correction: fixSource(raw.correction),
     truncated: Boolean(raw.truncated)
   };
 
