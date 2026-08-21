@@ -1270,7 +1270,7 @@ Add the needed patterns, keeping them tight: prefer `shared/card/*.js` and `cont
 
 In `createFloatingBox`, after the existing `shadowRoot.appendChild(style)`, call `injectCardStyles(shadowRoot, document)`. The box's own shell styles stay where they are; the card's styles are additive.
 
-- [ ] **Step 2: Measure before placing**
+- [ ] **Step 3: Measure before placing**
 
 `createFloatingBox(position)` currently receives a position computed from `BOX_HEIGHT_ESTIMATE` before any content exists. Change the flow:
 
@@ -1282,7 +1282,7 @@ In `createFloatingBox`, after the existing `shadowRoot.appendChild(style)`, call
 
 Update the other creators that used `getBoxPosition`: the polish box, the dictionary box and the screenshot result flow all call it today. They keep their current behavior by calling `placeFloatingBox` in the same way; do not redesign them here.
 
-- [ ] **Step 3: Replace the body of showTranslation**
+- [ ] **Step 4: Replace the body of showTranslation**
 
 `showTranslation` currently builds the correction hint, the translation, the rich-context block, the truncation notice and the grammar affordance by hand, and adapts the new result shape onto the old element names. Replace all of that with a single `renderCard` call, keeping the surrounding responsibilities that belong to the host:
 
@@ -1326,11 +1326,11 @@ The box's own footer is hidden because the card now carries its own actions and 
 
 `buildListenHandler`, `buildSentenceHandler` and `buildGrammarHandler` are added in Tasks 9 and 10; for this task, pass `null` for the two that do not exist yet so their controls are simply absent, and wire them in those tasks.
 
-- [ ] **Step 4: Delete what the card replaced**
+- [ ] **Step 5: Delete what the card replaced**
 
 Remove from `content/main.js`: `appendInlineGrammarAffordance` and `renderInlineGrammar` are kept for now and rewired in Task 10, but the hand-built correction hint, translation element, rich-context block and truncation notice inside `showTranslation` all go. Remove from `content/styles/index.js` the rules that nothing references any more: `.parsipad-rich-context*`, `.parsipad-truncated-note`, `.parsipad-text`, `.parsipad-correction-*`, and the provider and cache badge rules in the header. Verify with a grep for each class name before deleting it.
 
-- [ ] **Step 5: Verify**
+- [ ] **Step 6: Verify**
 
 Run `npm run lint`, `npm test` and `npm run build`. Then reload the extension and check in the browser, on the probe page at `http://localhost:8731/index.html` if it is still served or any page with text:
 
@@ -1343,7 +1343,7 @@ Run `npm run lint`, `npm test` and `npm run build`. Then reload the extension an
 
 Report what you saw for each.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add content/main.js content/styles/index.js && git commit -m "feat(content): render the floating box through the shared card"
