@@ -688,15 +688,23 @@ async function handleTranslate() {
     await displayTranslation(response);
 
     if (withGrammar && response.translation) {
-      const grammarResponse = await chrome.runtime.sendMessage({
-        action: 'EXPLAIN_GRAMMAR',
-        source: text,
-        translation: response.translation,
-        direction: response.direction
-      });
-      if (!grammarResponse?.error && Array.isArray(grammarResponse?.grammar) && grammarResponse.grammar.length) {
-        displayGrammarExplanation(grammarResponse.grammar);
-        if (grammarLearnMoreBtn) grammarLearnMoreBtn.hidden = false;
+      // Isolated from the outer try/catch on purpose: a rejected sendMessage
+      // (closed port, invalidated extension context) must not fall through to
+      // the outer catch, which would call showError -> hideAllOutputs and wipe
+      // the translation just rendered above. Degrade silently instead.
+      try {
+        const grammarResponse = await chrome.runtime.sendMessage({
+          action: 'EXPLAIN_GRAMMAR',
+          source: text,
+          translation: response.translation,
+          direction: response.direction
+        });
+        if (!grammarResponse?.error && Array.isArray(grammarResponse?.grammar) && grammarResponse.grammar.length) {
+          displayGrammarExplanation(grammarResponse.grammar);
+          if (grammarLearnMoreBtn) grammarLearnMoreBtn.hidden = false;
+        }
+      } catch {
+        // No-op: keep the translation on screen, just skip the grammar block.
       }
     }
 
@@ -795,7 +803,7 @@ async function displayTranslation(result) {
   // examples, nuance). Cached results don't carry these fields so they read as
   // a clean basic translation.
   renderTranslationCorrections(corrections);
-  renderTranslationRichContext({ alternatives: alternativeItems, examples, nuance, direction });
+  renderTranslationRichContext({ alternatives: alternativeItems, examples, nuance });
 
   // Store translation data for grammar page
   currentTranslationData = {
@@ -862,9 +870,9 @@ function renderTranslationCorrections(corrections) {
  * Render the rich linguistic context (alternatives, examples, nuance) below
  * the translation. Collapsible to keep the popup compact.
  *
- * @param {{alternatives?: string[], examples?: Array<{source: string, target: string}>, nuance?: string, direction: string}} ctx
+ * @param {{alternatives?: string[], examples?: Array<{source: string, target: string}>, nuance?: string}} ctx
  */
-function renderTranslationRichContext({ alternatives, examples, nuance, direction }) {
+function renderTranslationRichContext({ alternatives, examples, nuance }) {
   let section = document.getElementById('translation-rich-context');
   const hasAny = (alternatives && alternatives.length) ||
                  (examples && examples.length) ||
