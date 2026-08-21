@@ -12,6 +12,9 @@ import {
   getStyles
 } from './styles/index.js';
 import { t } from '../lib/i18n.js';
+import { getTextDirection } from '../lib/language-detect.js';
+import { requestTranslation } from '../lib/translation/client.js';
+import { captureSelectionContext } from './context.js';
 
 // Re-injection guard: skip if the script has already run in this isolated world.
 // Without this, chrome.scripting.executeScript on an already-injected tab throws
@@ -272,27 +275,27 @@ function handleMessage(message, sender, sendResponse) {
 }
 
 /**
- * Translate text and show floating box
+ * Translate text and show floating box. Long selections stream into the box.
  */
 async function translateAndShow(text) {
   if (!text || text.trim().length === 0) {
     return;
   }
 
-  // Get selection position for box placement
   const selection = window.getSelection();
   const position = getBoxPosition(selection);
+  const context = captureSelectionContext(selection);
 
-  // Create or update the floating box
   createFloatingBox(position);
   showLoading();
 
+  let streamed = '';
   try {
-    // Send translation request to background script
-    const response = await chrome.runtime.sendMessage({
-      action: 'TRANSLATE',
-      text: text,
-      sourceLang: 'auto'
+    const response = await requestTranslation({ text, sourceLang: 'auto', context }, {
+      onDelta: (delta) => {
+        streamed += delta;
+        showStreamingText(streamed);
+      }
     });
 
     if (response.error) {
@@ -303,6 +306,23 @@ async function translateAndShow(text) {
   } catch (error) {
     showError(error.message || 'Translation failed');
   }
+}
+
+/**
+ * Render partial streamed text in place of the loading skeleton.
+ */
+function showStreamingText(text) {
+  if (!shadowRoot) return;
+  const content = shadowRoot.querySelector('.parsipad-content');
+  let textEl = content.querySelector('.parsipad-text');
+  if (!textEl) {
+    content.replaceChildren();
+    textEl = document.createElement('div');
+    textEl.className = 'parsipad-text';
+    content.appendChild(textEl);
+  }
+  textEl.setAttribute('dir', getTextDirection(text));
+  textEl.textContent = text;
 }
 
 /**
@@ -571,7 +591,12 @@ function formatDirectionBadge(direction) {
 function showTranslation(result, originalText) {
   if (!shadowRoot) return;
 
-  const { translation, direction, displayDirection, fromCache, provider, corrections, alternatives, nuance } = result;
+  const { translation, direction, displayDirection, fromCache, provider, correction, alternatives, senses, note, inContext, truncated } = result;
+  const corrections = correction ? [{ original: (originalText || '').trim(), corrected: correction }] : [];
+  const alternativeItems = Array.isArray(alternatives) && alternatives.length
+    ? alternatives.map(a => a.text)
+    : (Array.isArray(senses) ? senses.map(s => s.meaning).filter(Boolean) : []);
+  const nuance = note || inContext || '';
 
   // Store translation data for favorites
   currentTranslationData = {
@@ -632,7 +657,7 @@ function showTranslation(result, originalText) {
   textEl.textContent = translation;
   content.appendChild(textEl);
 
-  if ((Array.isArray(alternatives) && alternatives.length) || (typeof nuance === 'string' && nuance.trim())) {
+  if ((Array.isArray(alternativeItems) && alternativeItems.length) || (typeof nuance === 'string' && nuance.trim())) {
     const extras = document.createElement('div');
     extras.className = 'parsipad-rich-context';
     if (typeof nuance === 'string' && nuance.trim()) {
@@ -641,23 +666,30 @@ function showTranslation(result, originalText) {
       note.textContent = nuance;
       extras.appendChild(note);
     }
-    if (Array.isArray(alternatives) && alternatives.length) {
+    if (Array.isArray(alternativeItems) && alternativeItems.length) {
       const title = document.createElement('div');
       title.className = 'parsipad-rich-context-title';
       title.textContent = t('alternatives', userLang) || 'Alternatives';
       extras.appendChild(title);
       const list = document.createElement('ul');
       list.className = 'parsipad-rich-context-list';
-      // Alternatives are always English (regardless of translation direction)
-      // so the list always renders LTR. No dir="rtl" override here.
-      alternatives.forEach(alt => {
+      alternativeItems.forEach(alt => {
         const li = document.createElement('li');
         li.textContent = alt;
+        li.setAttribute('dir', getTextDirection(alt));
         list.appendChild(li);
       });
       extras.appendChild(list);
     }
     content.appendChild(extras);
+  }
+
+  if (truncated) {
+    const notice = document.createElement('div');
+    notice.className = 'parsipad-truncated-note';
+    notice.setAttribute('role', 'status');
+    notice.textContent = t('errorTruncated', userLang);
+    content.appendChild(notice);
   }
 
   // Inline "Explain grammar" affordance + slot that holds the response when
@@ -684,8 +716,8 @@ function showTranslation(result, originalText) {
  *
  * On click:
  *   1. Disable the button + show a small spinner
- *   2. Re-issue the TRANSLATE message with withGrammar: true (the popup uses
- *      the same path; it returns translation + grammar[] in one response)
+ *   2. Send the EXPLAIN_GRAMMAR action with the translation already on screen,
+ *      so the translation the user is reading never changes underneath them.
  *   3. Render the grammar points inline and reveal a "Learn More" CTA that
  *      opens the full grammar.html via the OPEN_GRAMMAR_PAGE message.
  */
@@ -712,10 +744,10 @@ function appendInlineGrammarAffordance(content, originalText, translation, direc
 
     try {
       const response = await chrome.runtime.sendMessage({
-        action: 'TRANSLATE',
-        text: originalText,
-        sourceLang: 'auto',
-        withGrammar: true
+        action: 'EXPLAIN_GRAMMAR',
+        source: originalText,
+        translation,
+        direction
       });
 
       if (response?.error) {
@@ -744,7 +776,7 @@ function appendInlineGrammarAffordance(content, originalText, translation, direc
 }
 
 /**
- * Render the grammar points returned by withGrammar:true plus a "Learn More"
+ * Render the grammar points returned by EXPLAIN_GRAMMAR plus a "Learn More"
  * button that launches the full lesson page (via OPEN_GRAMMAR_PAGE).
  */
 function renderInlineGrammar(slot, points, originalText, translation, direction) {
@@ -1914,18 +1946,15 @@ async function handleTranslatePage() {
         // Build the batch text with numbered markers
         const batchText = batch.map((item, idx) => `[${idx + 1}] ${item.text}`).join('\n');
 
-        // Race the background message against the abort signal so the cancel
-        // button doesn't have to wait for the current batch's network round-trip.
-        const response = await Promise.race([
-          chrome.runtime.sendMessage({
-            action: 'TRANSLATE',
-            text: batchText,
-            sourceLang: pageTranslationState.sourceLanguage
-          }),
-          new Promise((_, reject) => {
-            abortSignal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
-          })
-        ]);
+        const response = await requestTranslation({
+          text: batchText,
+          sourceLang: pageTranslationState.sourceLanguage,
+          mode: 'batch'
+        }, { signal: abortSignal });
+
+        if (response.errorCode === 'ABORTED') {
+          break;
+        }
 
         if (response.error) {
           if (isMissingApiKeyError(response.error)) {
