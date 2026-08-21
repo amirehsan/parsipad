@@ -42,9 +42,13 @@ export function directionText(direction) {
  *   should become the new source, when the swap control is activated
  * @param {string} params.lang - interface language
  * @param {Document} params.doc
- * @returns {HTMLElement}
+ * @returns {HTMLElement|null} null when there is no resolved direction to
+ *   show, which is the case while a result is still streaming in
  */
 export function directionPill({ direction, onSwap, lang, doc }) {
+  const [from, to] = String(direction || '').split('-');
+  if (!from || !to) return null;
+
   const el = doc.createElement('div');
   el.className = 'pp-card-pill';
 
@@ -54,7 +58,6 @@ export function directionPill({ direction, onSwap, lang, doc }) {
   el.appendChild(text);
 
   if (onSwap) {
-    const [, to] = String(direction).split('-');
     const swap = doc.createElement('button');
     swap.type = 'button';
     swap.className = 'pp-card-pill-swap';

@@ -1,4 +1,4 @@
-import { sourceLine, translationLine, note, disclosure, correctionLine, footer, applyTextDirection } from './parts.js';
+import { directionPill, sourceLine, translationLine, note, disclosure, correctionLine, footer, applyTextDirection } from './parts.js';
 import { cardLabel } from './labels.js';
 import { getTextDirection } from '../../lib/language-detect.js';
 
@@ -104,12 +104,16 @@ export function renderSentenceCard(result, options) {
     onCopy,
     onSave,
     onExplainGrammar,
+    onSwapDirection,
     provider,
     onOpenSettings
   } = options || {};
 
   const el = doc.createElement('div');
   el.className = 'pp-card-root';
+
+  const pill = directionPill({ direction, onSwap: onSwapDirection, lang, doc });
+  if (pill) el.appendChild(pill);
 
   if (correction) {
     el.appendChild(correctionLine({ original: sourceText, corrected: correction, lang, doc }));

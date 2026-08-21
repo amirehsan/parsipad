@@ -1,4 +1,4 @@
-import { translationLine, truncationNotice, footer } from './parts.js';
+import { directionPill, translationLine, truncationNotice, footer } from './parts.js';
 import { cardLabel } from './labels.js';
 
 /**
@@ -18,6 +18,7 @@ import { cardLabel } from './labels.js';
 export function renderTextCard(result, options) {
   const {
     translation = '',
+    direction = '',
     truncated = false
   } = result || {};
   const {
@@ -25,6 +26,7 @@ export function renderTextCard(result, options) {
     doc,
     onCopy,
     onSave,
+    onSwapDirection,
     provider,
     onOpenSettings
   } = options || {};
@@ -32,6 +34,8 @@ export function renderTextCard(result, options) {
   const el = doc.createElement('div');
   el.className = 'pp-card-root';
 
+  const pill = directionPill({ direction, onSwap: onSwapDirection, lang, doc });
+  if (pill) el.appendChild(pill);
   el.appendChild(translationLine({ text: translation, doc }));
 
   if (truncated) {
