@@ -1,4 +1,5 @@
-import { getRandomFavorites, getNewTabEnabled, getTheme, setTheme, getNewTabPhraseCount, getLanguage } from '../lib/storage.js';
+import { getRandomFavorites, getNewTabEnabled, getTheme, setTheme, getNewTabPhraseCount, getLanguage, getNewTabPanels, setNewTabPanels, NEWTAB_PANELS } from '../lib/storage.js';
+import { getTopSites, faviconUrl, hasTopSitesPermission, requestTopSitesPermission } from '../lib/top-sites.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 
 // DOM Elements - Bookmarks
@@ -29,6 +30,12 @@ const openSettingsBtn = document.getElementById('open-settings-btn');
 const viewAllLink = document.getElementById('view-all-link');
 const openSettingsLink = document.getElementById('open-settings-link');
 const keyboardHints = document.getElementById('keyboard-hints');
+const columnsEl = document.querySelector('.newtab-columns');
+const recentsPanel = document.getElementById('recents-panel');
+const tileGrid = document.getElementById('tile-grid');
+const recentsPermission = document.getElementById('recents-permission');
+const recentsEmpty = document.getElementById('recents-empty');
+const recentsGrantBtn = document.getElementById('recents-grant-btn');
 
 // State
 let favorites = [];
@@ -36,6 +43,7 @@ let currentIndex = 0;
 let isFlipped = false;
 let currentLang = 'en';
 let bookmarkData = [];
+let panels = { flashcard: true, bookmarks: true, recents: false };
 
 /**
  * Initialize the new tab page
@@ -49,6 +57,10 @@ async function init() {
 
   // Setup common event listeners first (theme, settings links, etc.)
   setupCommonEventListeners();
+
+  // Panels first: it decides what is on screen, so doing it before the data
+  // loads avoids a frame where a hidden panel is briefly visible.
+  await initPanels();
 
   // Load bookmarks (always, independent of flashcard setting)
   await loadBookmarks();
@@ -676,3 +688,174 @@ function escapeHtml(str) {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', init);
+
+/* ------------------------------------------------------------------
+   Panel switches and the most-visited tiles
+   ------------------------------------------------------------------ */
+
+/**
+ * Read the stored panel switches, reflect them, and wire the chips.
+ */
+async function initPanels() {
+  panels = await getNewTabPanels();
+
+  // A panel can be stored as on from a previous session while the optional
+  // permission behind it has since been revoked from Chrome's own settings,
+  // which this page does not get told about. Reconcile before rendering so
+  // the chip never claims to show something it cannot.
+  if (panels.recents && !await hasTopSitesPermission()) {
+    panels.recents = false;
+    await setNewTabPanels({ recents: false });
+  }
+
+  applyPanels();
+
+  document.querySelectorAll('.view-chip').forEach(chip => {
+    chip.addEventListener('click', () => togglePanel(chip.dataset.panel));
+  });
+  recentsGrantBtn?.addEventListener('click', enableRecents);
+}
+
+/**
+ * @param {string} name
+ */
+async function togglePanel(name) {
+  if (!NEWTAB_PANELS.includes(name)) return;
+
+  if (name === 'recents' && !panels.recents) {
+    await enableRecents();
+    return;
+  }
+
+  panels = await setNewTabPanels({ [name]: !panels[name] });
+  applyPanels();
+  if (panels.recents) await loadTopSites();
+}
+
+/**
+ * Turn on Most visited, asking for the optional permission if it is not
+ * granted yet. This runs from a click because chrome.permissions.request
+ * requires a user gesture; requesting it on page load would be rejected.
+ */
+async function enableRecents() {
+  const granted = await hasTopSitesPermission() || await requestTopSitesPermission();
+
+  if (!granted) {
+    // Show the panel with its explanation rather than silently doing nothing,
+    // so a declined prompt does not look like a broken button.
+    panels = await setNewTabPanels({ recents: true });
+    applyPanels();
+    setRecentsState('permission');
+    return;
+  }
+
+  panels = await setNewTabPanels({ recents: true });
+  applyPanels();
+  await loadTopSites();
+}
+
+/**
+ * Reflect the current switches in the chips and the layout.
+ */
+function applyPanels() {
+  document.querySelectorAll('.view-chip').forEach(chip => {
+    chip.setAttribute('aria-pressed', String(Boolean(panels[chip.dataset.panel])));
+  });
+
+  if (flashcardContainer) flashcardContainer.closest('.column-left').hidden = !panels.flashcard;
+  if (bookmarksPanel) bookmarksPanel.hidden = !panels.bookmarks;
+  if (recentsPanel) recentsPanel.hidden = !panels.recents;
+
+  // The two-column grid needs to know how many tracks are actually occupied,
+  // or a lone panel sits in half the page with an empty half beside it.
+  const shown = Number(panels.flashcard) + Number(panels.bookmarks);
+  columnsEl?.setAttribute('data-columns', String(shown));
+
+  // The hints name flashcard and bookmark keys, so they are noise when
+  // neither panel is on screen.
+  if (keyboardHints) keyboardHints.hidden = !panels.flashcard && !panels.bookmarks;
+}
+
+/**
+ * @param {'tiles'|'permission'|'empty'} state
+ */
+function setRecentsState(state) {
+  if (tileGrid) tileGrid.hidden = state !== 'tiles';
+  if (recentsPermission) recentsPermission.hidden = state !== 'permission';
+  if (recentsEmpty) recentsEmpty.hidden = state !== 'empty';
+}
+
+/**
+ * Fetch and render the most visited tiles.
+ */
+async function loadTopSites() {
+  if (!tileGrid) return;
+
+  if (!await hasTopSitesPermission()) {
+    setRecentsState('permission');
+    return;
+  }
+
+  const tiles = await getTopSites();
+  if (!tiles.length) {
+    setRecentsState('empty');
+    return;
+  }
+
+  tileGrid.replaceChildren(...tiles.map(renderTile));
+  setRecentsState('tiles');
+}
+
+/**
+ * One tile. Built with DOM calls rather than an HTML string because the title
+ * and host come from pages the user has visited, and this page has no business
+ * parsing markup from them.
+ *
+ * @param {{url: string, title: string, host: string, initial: string}} tile
+ * @returns {HTMLAnchorElement}
+ */
+function renderTile(tile) {
+  const link = document.createElement('a');
+  link.className = 'tile';
+  link.href = tile.url;
+  link.title = `${tile.title}\n${tile.host}`;
+
+  const icon = document.createElement('div');
+  icon.className = 'tile-icon';
+
+  const initial = document.createElement('span');
+  initial.className = 'tile-initial';
+  initial.textContent = tile.initial;
+  initial.hidden = true;
+
+  const img = document.createElement('img');
+  img.src = faviconUrl(tile.url);
+  img.alt = '';
+  img.loading = 'lazy';
+  // The favicon service answers from the browser's own cache, so a host it has
+  // never seen yields nothing. Fall back to the initial instead of the broken
+  // image glyph.
+  img.addEventListener('error', () => {
+    img.remove();
+    initial.hidden = false;
+  });
+
+  icon.append(img, initial);
+
+  const text = document.createElement('span');
+  text.className = 'tile-text';
+
+  const label = document.createElement('span');
+  label.className = 'tile-label';
+  label.textContent = tile.title;
+
+  // Page titles repeat constantly ("Home", "New chat", "Dashboard"), so the
+  // host is what actually tells two tiles apart.
+  const host = document.createElement('span');
+  host.className = 'tile-host';
+  host.textContent = tile.host;
+
+  text.append(label, host);
+  link.append(icon, text);
+  return link;
+}

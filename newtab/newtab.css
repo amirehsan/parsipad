@@ -11,7 +11,9 @@
   --color-bg: var(--color-gray-100);
   --color-bg-secondary: var(--color-bg-elevated);
   --color-text: var(--color-gray-900);
-  --color-text-secondary: var(--color-gray-500);
+  /* gray-500 is the ladder's decoration step and measures 3.06 here, so it
+     cannot carry text. 600 is the lightest step that reaches AA. */
+  --color-text-secondary: var(--color-gray-600);
   --color-border: var(--color-gray-200);
   --color-success: var(--color-success-500);
 
@@ -92,7 +94,7 @@ body {
 
 /* Main Container */
 .newtab-container {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   padding: var(--space-lg);
@@ -207,7 +209,7 @@ body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
-  max-height: calc(100vh - 160px);
+  min-height: 0;
   overflow: hidden;
   animation: slideUp 0.4s ease-out;
 }
@@ -232,7 +234,7 @@ body {
 /* Flashcard */
 .flashcard {
   width: 100%;
-  min-height: 320px;
+  min-height: 260px;
   perspective: 1000px;
   cursor: pointer;
 }
@@ -240,7 +242,7 @@ body {
 .flashcard-inner {
   position: relative;
   width: 100%;
-  min-height: 320px;
+  min-height: 260px;
   transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   transform-style: preserve-3d;
 }
@@ -322,9 +324,9 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  font-size: 28px;
+  font-size: var(--text-3xl);
   font-weight: 500;
-  line-height: 1.6;
+  line-height: 1.5;
   color: var(--color-text);
   padding: var(--space-lg);
 }
@@ -368,13 +370,12 @@ body {
   margin-top: auto;
   padding-top: var(--space-md);
   color: var(--color-text-secondary);
-  font-size: 12px;
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
+  font-size: var(--text-xs);
+  transition: color 0.2s ease;
 }
 
 .flashcard:hover .flashcard-hint {
-  opacity: 1;
+  color: var(--color-text);
 }
 
 .flashcard-hint svg {
@@ -509,9 +510,10 @@ html[dir="rtl"] .card-navigation {
 
 /* Keyboard Hints */
 .keyboard-hints {
-  position: fixed;
-  bottom: var(--space-md);
-  right: var(--space-lg);
+  /* In the footer rather than floating. As a fixed overlay it sat on top of
+     whatever reached the bottom of the viewport, which used to be nothing and
+     is now the tile grid. The pill keeps its appearance; it just stops
+     covering content. */
   display: flex;
   gap: var(--space-md);
   padding: var(--space-xs) var(--space-md);
@@ -520,13 +522,17 @@ html[dir="rtl"] .card-navigation {
   border-radius: var(--radius-md);
   font-size: 11px;
   color: var(--color-text-secondary);
-  opacity: 0.5;
-  transition: opacity 0.2s ease;
-  z-index: 10;
+  /* The fade used to be opacity on the whole strip, which made its own
+     background translucent: anything passing underneath showed straight
+     through it, and the tiles now reach that corner. Keeping the element
+     opaque lets the background occlude, and it also rescues the label, which
+     at 0.5 opacity measured about 2.5:1 against the page. */
+  box-shadow: var(--shadow-sm);
+  transition: color 0.2s ease;
 }
 
 .keyboard-hints:hover {
-  opacity: 1;
+  color: var(--color-text);
 }
 
 .hint-item {
@@ -637,11 +643,12 @@ kbd {
 /* Footer */
 .newtab-footer {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   align-items: center;
   gap: var(--space-md);
-  padding-top: var(--space-md);
-  padding-bottom: var(--space-3xl);
+  padding-top: var(--space-lg);
+  padding-bottom: var(--space-lg);
   color: var(--color-text-secondary);
 }
 
@@ -659,7 +666,7 @@ kbd {
 
 .footer-link:hover {
   color: var(--color-primary);
-  background: rgba(99, 102, 241, 0.1);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
 .footer-link svg {
@@ -667,8 +674,13 @@ kbd {
   height: 16px;
 }
 
-.footer-divider {
-  color: var(--color-border);
+/* Replaces a literal "|" text node that sat between the footer links. As
+   text it was announced by screen readers and measured 1.1:1; as a border it
+   is what it always was, a rule. */
+.newtab-footer .footer-link + .footer-link {
+  border-left: 1px solid var(--color-border);
+  padding-left: var(--space-md);
+  margin-left: var(--space-sm);
 }
 
 /* Animations */
@@ -733,9 +745,15 @@ kbd {
   padding: var(--space-md) var(--space-lg);
   border-bottom: 1px solid var(--color-border);
   font-weight: 600;
-  font-size: 15px;
+  font-size: var(--text-sm);
   color: var(--color-text);
   flex-shrink: 0;
+}
+
+.bookmark-panel-header svg {
+  width: 16px;
+  height: 16px;
+  color: var(--color-primary);
 }
 
 .bookmark-panel-header svg {
@@ -769,7 +787,7 @@ kbd {
 
 .bookmark-search:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 15%, transparent);
 }
 
 .bookmark-tree {
@@ -814,11 +832,9 @@ kbd {
 }
 
 .bookmark-folder-header:hover {
-  background: rgba(99, 102, 241, 0.08);
-}
-
-[data-theme="dark"] .bookmark-folder-header:hover {
-  background: rgba(129, 140, 248, 0.1);
+  /* --color-primary is already the 600 step in light and the 400 step in
+     dark, so one tint serves both and the dark override is unnecessary. */
+  background: color-mix(in srgb, var(--color-primary) 9%, transparent);
 }
 
 .folder-chevron {
@@ -872,12 +888,8 @@ kbd {
 }
 
 .bookmark-item:hover {
-  background: rgba(99, 102, 241, 0.08);
+  background: color-mix(in srgb, var(--color-primary) 9%, transparent);
   color: var(--color-primary);
-}
-
-[data-theme="dark"] .bookmark-item:hover {
-  background: rgba(129, 140, 248, 0.1);
 }
 
 .bookmark-item-icon {
@@ -912,12 +924,8 @@ kbd {
 }
 
 .bookmark-search-result:hover {
-  background: rgba(99, 102, 241, 0.08);
+  background: color-mix(in srgb, var(--color-primary) 9%, transparent);
   color: var(--color-primary);
-}
-
-[data-theme="dark"] .bookmark-search-result:hover {
-  background: rgba(129, 140, 248, 0.1);
 }
 
 .bookmark-search-result .bookmark-item-icon {
@@ -1003,7 +1011,7 @@ kbd {
   }
 
   .column-right {
-    max-height: 50vh;
+    min-height: 0;
   }
 
   .newtab-container {
@@ -1090,5 +1098,459 @@ kbd {
   .keyboard-hints,
   .newtab-footer {
     display: none;
+  }
+}
+
+/* ============================================================
+   Panel switches
+   ============================================================
+   Three independent toggles, not a tab strip: more than one can be on at
+   once, so these are buttons carrying aria-pressed rather than tabs carrying
+   aria-selected. A screen reader announces "pressed", which is the honest
+   description of a switch that composes with its neighbours.
+*/
+.view-chips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.view-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  /* 32px tall with the 14px icon; the row sits in a header, where the 44px
+     target does not apply, but it clears the 24px minimum comfortably. */
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.view-chip svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.view-chip:hover {
+  background: color-mix(in srgb, var(--color-primary) 9%, transparent);
+  color: var(--color-text);
+}
+
+.view-chip:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* On is a filled chip. The white label on the primary fill is the same
+   pairing the buttons use, so it carries its own contrast. */
+/* The button tokens, not --color-primary. --color-primary is the 400 step in
+   dark, which is a light indigo, and the near-white label on it measured
+   2.92:1. --button-primary-bg deliberately holds the 600 step in both themes
+   precisely so its white label keeps working. */
+.view-chip[aria-pressed='true'] {
+  background: var(--button-primary-bg);
+  border-color: var(--button-primary-bg);
+  color: var(--button-primary-text);
+}
+
+.view-chip[aria-pressed='true']:hover {
+  background: var(--button-primary-bg-hover);
+  border-color: var(--button-primary-bg-hover);
+}
+
+/* ============================================================
+   Most visited tiles
+   ============================================================ */
+.recents-panel {
+  width: 100%;
+  margin-top: var(--space-6);
+  padding: var(--space-5);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  animation: slideUp 0.4s ease-out;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.panel-heading svg {
+  width: 16px;
+  height: 16px;
+  color: var(--color-primary);
+}
+
+.tile-grid {
+  display: grid;
+  /* auto-fill rather than a fixed column count, so the row reflows with the
+     window instead of needing a breakpoint per width. */
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: var(--space-3);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-3);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+  text-decoration: none;
+  transition: background 0.18s ease, border-color 0.18s ease,
+              transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.tile:hover {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-primary);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+.tile:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* A favicon is 32px at best, so the plate does the visual work: it gives every
+   tile the same silhouette regardless of how ragged the source icons are. */
+.tile-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+
+.tile:hover .tile-icon {
+  border-color: var(--color-primary);
+  transform: scale(1.04);
+}
+
+.tile-icon img {
+  width: 32px;
+  height: 32px;
+}
+
+/* Shown when the favicon cache has nothing for this host. The initial sits on
+   the page surface rather than a generated per-host colour: a random hue per
+   tile would put an uncontrolled colour next to the accent on every new tab. */
+.tile-initial {
+  color: var(--color-primary);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.tile-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  min-width: 0;
+}
+
+.tile-label {
+  width: 100%;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-align: center;
+  /* One line, clipped: a two-line title makes the tiles different heights and
+     the grid ragged. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The host disambiguates two tabs that share a title, which page titles do
+   constantly ("Home", "Dashboard", "New chat"). */
+.tile-host {
+  width: 100%;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recents-permission,
+.recents-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-4);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+/* ============================================================
+   Panel visibility
+   ============================================================
+   With one column showing, the two-column grid would leave the survivor
+   stranded in half the width, so the grid collapses to a single track.
+*/
+.newtab-columns[data-columns='1'] {
+  grid-template-columns: minmax(0, 640px);
+  justify-content: center;
+}
+
+.newtab-columns[data-columns='0'] {
+  display: none;
+}
+
+/* ============================================================
+   Single-screen shell
+   ============================================================
+   The page never scrolls, at any size. Everything that can overflow does so
+   inside its own panel: the bookmark tree scrolls vertically, the tile row
+   scrolls horizontally, and the shell clips whatever is left.
+
+   The min-height: 0 declarations below are the load-bearing part. A flex or
+   grid child defaults to min-height: auto, which refuses to shrink below its
+   content, so without them the panels push the shell taller than the viewport
+   and the page scrolls no matter what overflow says.
+*/
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+.newtab-container {
+  /* dvh so a mobile browser's collapsing toolbar does not leave the last row
+     cut off; vh above is the fallback for anything without dvh. */
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.newtab-main {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.newtab-columns {
+  flex: 1;
+  min-height: 0;
+}
+
+.column-left,
+.column-right {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.column-left {
+  justify-content: center;
+  padding-top: 0;
+}
+
+.flashcard-container {
+  min-height: 0;
+}
+
+/* The tile row keeps to one line and scrolls sideways when the tiles outnumber
+   the columns, rather than wrapping and pushing the footer off screen. */
+.recents-panel {
+  flex-shrink: 0;
+  margin-top: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+}
+
+.tile-grid {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: var(--space-1);
+  scrollbar-width: thin;
+}
+
+.tile {
+  flex: 0 0 132px;
+}
+
+.tile-grid::-webkit-scrollbar {
+  height: 6px;
+}
+
+.tile-grid::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full, 9999px);
+}
+
+.newtab-footer {
+  flex-shrink: 0;
+}
+
+/* Stacked on a narrow screen, the two panels share the remaining height
+   instead of one of them deciding it. */
+@media (max-width: 768px) {
+  .newtab-columns {
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .column-left {
+    min-height: 0;
+  }
+
+  .flashcard,
+  .flashcard-inner,
+  .flashcard-front,
+  .flashcard-back {
+    min-height: 0;
+  }
+}
+
+/* Short viewports: shrink the tiles rather than hiding the row. A panel the
+   user switched on should not disappear because the window is short; it
+   should get smaller, like everything else on the page. */
+@media (max-height: 660px) {
+  .tile {
+    flex-basis: 108px;
+  }
+
+  .tile-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .tile-icon img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .tile-host {
+    display: none;
+  }
+
+  .recents-panel {
+    padding: var(--space-3) var(--space-4);
+    margin-top: var(--space-3);
+  }
+}
+
+/* The header is the one row that cannot shrink its way out of trouble: three
+   labelled chips plus a wordmark plus two icon buttons do not fit a phone. */
+.newtab-header {
+  flex-shrink: 0;
+  gap: var(--space-2);
+}
+
+.view-chips {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  /* Icons only. All three switches stay reachable, which matters more than
+     their labels: the pressed state already says which panels are on. */
+  .view-chip span {
+    display: none;
+  }
+
+  .view-chip {
+    padding: var(--space-2);
+  }
+
+  .view-chip svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .logo-text {
+    display: none;
+  }
+}
+
+/* align-items: start above lets each column size to its own content, which is
+   right for a page that scrolls and wrong for one that does not: the bookmark
+   panel measured 940px inside a 164px row and ran off the screen. Stretching
+   pins every panel to its track, and the overflow then happens inside the
+   tree, which is built to scroll. */
+.newtab-columns {
+  align-items: stretch;
+}
+
+.bookmark-tree {
+  min-height: 0;
+}
+
+/* The card's two faces are absolutely positioned, so it has no intrinsic
+   height: min-height alone was holding it open, and setting that to 0
+   collapsed it to nothing. It has to take its height from the column instead,
+   with a floor so it never shrinks to something unreadable. */
+.flashcard {
+  flex: 1 1 auto;
+  min-height: 140px;
+}
+
+.flashcard-inner {
+  height: 100%;
+  min-height: 0;
+}
+
+.flashcard-container {
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Room for a comfortable card when the screen has it. */
+@media (min-height: 700px) {
+  .flashcard {
+    min-height: 240px;
+  }
+}
+
+/* Short screens: reclaim the padding and gaps so the height goes to the card
+   rather than to the space around it. */
+@media (max-height: 660px) {
+  .newtab-container {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .newtab-main {
+    padding: var(--space-2) 0;
+  }
+
+  .flashcard-container {
+    gap: var(--space-2);
+  }
+
+  .newtab-footer {
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
   }
 }
