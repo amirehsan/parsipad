@@ -306,7 +306,7 @@ body {
 }
 
 .favorite-badge.variant {
-  background: rgba(109, 74, 168, 0.2);
+  background: rgba(107, 98, 52, 0.2);
   color: var(--color-polish);
   font-size: 9px;
 }

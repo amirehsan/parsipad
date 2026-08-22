@@ -320,7 +320,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 }
 
 .dark .dark\:bg-primary-900\/30 {
-  background: rgba(49, 46, 129, 0.3);
+  background: rgba(255, 79, 0, 0.16);
 }
 
 .text-primary-500 {
@@ -1065,31 +1065,30 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 }
 
 .about-link:hover {
-  background: var(--gray-200);
-  color: var(--primary-500);
+  background: var(--gray-100);
+  color: var(--color-primary-800);   /* 6.33 on that fill */
 }
 
 .dark .about-link:hover {
-  background: var(--gray-600);
-  color: var(--primary-400);
+  background: var(--color-bg-hover);
+  color: var(--color-primary-300);   /* 6.84 on that fill */
 }
 
 /* Highlighted about link (Rate Extension)
-   A tinted badge rather than a saturated gradient: the semantic tokens are
-   tuned as TEXT on the warm grounds, so warning-500 is a deep amber. Used as
-   a fill under the old brown label it measured 1.53:1. As text on its own
-   tint it measures 4.90 in light and 6.94 in dark, and both themes are
-   carried by the tokens with no second rule. */
+   Same control as its siblings, so it keeps their shape and hover; the
+   accent marks it as the emphasised one. It used to be branded with the
+   amber STATUS tokens, which meant a warning colour was doing brand work,
+   and its hover swapped fill and text rather than following the base rule. */
 .about-link-highlight {
-  background: var(--color-warning-100);
-  color: var(--color-warning-500) !important;
-  border: 1px solid var(--color-warning-500);
+  color: var(--color-primary-700);
+  box-shadow: inset 0 0 0 1px var(--color-primary-700);
 }
 
-.about-link-highlight:hover {
-  background: var(--color-warning-500);
-  color: var(--color-warning-100) !important;
+.dark .about-link-highlight {
+  color: var(--color-primary-400);
+  box-shadow: inset 0 0 0 1px var(--color-primary-400);
 }
+
 
 /* Secondary icon-only links */
 .about-links-secondary {
