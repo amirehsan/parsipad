@@ -213,6 +213,21 @@ describe('actionsRow', () => {
     expect(el.querySelector('[data-action="cardCopy"]')).not.toBeNull();
   });
 
+  it('exposes toggle state on an action that has one, and leaves plain actions alone', () => {
+    const el = actionsRow({ actions: [
+      { key: 'cardSave', onActivate: vi.fn(), pressed: true },
+      { key: 'cardCopy', onActivate: vi.fn() }
+    ], lang: 'en', doc: doc() });
+    expect(el.querySelector('[data-action="cardSave"]').getAttribute('aria-pressed')).toBe('true');
+    // Copy is not a toggle; claiming a pressed state for it would be a lie.
+    expect(el.querySelector('[data-action="cardCopy"]').hasAttribute('aria-pressed')).toBe(false);
+  });
+
+  it('says a toggle is off rather than saying nothing, so its state is never unknown', () => {
+    const el = actionsRow({ actions: [{ key: 'cardSave', onActivate: vi.fn(), pressed: false }], lang: 'en', doc: doc() });
+    expect(el.querySelector('[data-action="cardSave"]').getAttribute('aria-pressed')).toBe('false');
+  });
+
   it('returns null when nothing is actionable', () => {
     expect(actionsRow({ actions: [{ key: 'cardCopy', onActivate: null }], lang: 'en', doc: doc() })).toBeNull();
   });

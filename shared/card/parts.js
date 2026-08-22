@@ -377,7 +377,12 @@ export function providerButton({ provider, onOpenSettings, lang, doc }) {
  * without a handler is skipped, so a host can omit a control simply by
  * passing a null callback. Returns null when nothing is actionable.
  * @param {Object} params
- * @param {Array<{key: string, onActivate: Function|null}>} params.actions
+ * An action may carry `pressed`, which makes it a toggle: the state is
+ * always exposed, off included, so assistive technology never has to guess.
+ * Actions without it stay plain buttons rather than claiming a state they
+ * do not have.
+ *
+ * @param {Array<{key: string, onActivate: Function|null, pressed?: boolean}>} params.actions
  * @param {string} params.lang - interface language
  * @param {Document} params.doc
  * @returns {HTMLElement|null}
@@ -389,7 +394,7 @@ export function actionsRow({ actions, lang, doc }) {
   const el = doc.createElement('div');
   el.className = 'pp-card-actions';
 
-  active.forEach(({ key, onActivate }) => {
+  active.forEach(({ key, onActivate, pressed }) => {
     const label = cardLabel(key, lang);
     const btn = doc.createElement('button');
     btn.type = 'button';
@@ -399,6 +404,7 @@ export function actionsRow({ actions, lang, doc }) {
     // would break the moment the interface language changes.
     btn.dataset.action = key;
     btn.setAttribute('aria-label', label);
+    if (pressed !== undefined) btn.setAttribute('aria-pressed', pressed ? 'true' : 'false');
     btn.textContent = label;
     btn.addEventListener('click', () => onActivate());
     el.appendChild(btn);

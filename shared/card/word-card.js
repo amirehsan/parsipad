@@ -134,6 +134,7 @@ export function renderWordCard(result, options) {
     onListen,
     onCopy,
     onSave,
+    isSaved = false,
     onTranslateSentence,
     onExplainGrammar,
     onSwapDirection,
@@ -183,7 +184,7 @@ export function renderWordCard(result, options) {
     actions: [
       { key: 'cardListen', onActivate: canListen ? () => onListen(textToSpeak) : null },
       { key: 'cardCopy', onActivate: onCopy ? () => onCopy(translation) : null },
-      { key: 'cardSave', onActivate: onSave ? () => onSave(result) : null },
+      { key: 'cardSave', onActivate: onSave ? () => onSave(result) : null, pressed: Boolean(isSaved) },
       { key: 'cardSentence', onActivate: onTranslateSentence ? () => onTranslateSentence() : null },
       { key: 'cardExplain', onActivate: canExplain ? () => onExplainGrammar() : null }
     ],

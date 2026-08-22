@@ -89,6 +89,9 @@ let sensesExpandedForSession = false;
 // was made against. See shared/source-override.js for why it is a pair and
 // not just a language.
 let manualSourceOverride = null;
+// Whether what is on screen is already in favourites, so the save control is
+// drawn in a known state rather than left stateless until the check returns.
+let translationIsSaved = false;
 // Image elements
 const imageUploadSection = document.getElementById('image-upload-section');
 const imageUploadArea = document.getElementById('image-upload-area');
@@ -980,6 +983,10 @@ function buildGrammarHandler(result) {
 async function displayTranslation(result) {
   const provider = await currentProviderName();
 
+  // Not known to be saved until updateTranslationFavoriteState says so, and
+  // it must not inherit the previous result's state.
+  translationIsSaved = false;
+
   // Store translation data for grammar page
   currentTranslationData = {
     original: inputText.value.trim(),
@@ -996,6 +1003,7 @@ async function displayTranslation(result) {
     onListen: buildListenHandler(result),
     onCopy: (text) => handleCardCopy(text),
     onSave: () => handleTranslationFavorite(),
+    isSaved: translationIsSaved,
     onExplainGrammar: buildGrammarHandler(result),
     onSwapDirection: (nextSourceLang) => handleTranslate({ sourceLang: nextSourceLang }),
     onOpenSettings: () => chrome.runtime.openOptionsPage()
@@ -2135,6 +2143,7 @@ async function updatePolishFavoriteStates() {
  * @param {boolean} favorited
  */
 function setTranslationFavoriteState(favorited) {
+  translationIsSaved = favorited;
   const btn = currentCardEl && currentCardEl.querySelector('[data-action="cardSave"]');
   if (btn) btn.setAttribute('aria-pressed', favorited ? 'true' : 'false');
 }

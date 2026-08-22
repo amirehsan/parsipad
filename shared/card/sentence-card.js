@@ -104,6 +104,7 @@ export function renderSentenceCard(result, options) {
     onListen,
     onCopy,
     onSave,
+    isSaved = false,
     onExplainGrammar,
     onSwapDirection,
     provider,
@@ -150,7 +151,7 @@ export function renderSentenceCard(result, options) {
     actions: [
       { key: 'cardListen', onActivate: canListen ? () => onListen(textToSpeak) : null },
       { key: 'cardCopy', onActivate: onCopy ? () => onCopy(translation) : null },
-      { key: 'cardSave', onActivate: onSave ? () => onSave(result) : null },
+      { key: 'cardSave', onActivate: onSave ? () => onSave(result) : null, pressed: Boolean(isSaved) },
       { key: 'cardExplain', onActivate: onExplainGrammar ? () => onExplainGrammar() : null }
     ],
     provider,
