@@ -233,6 +233,34 @@ describe('actionsRow', () => {
   });
 });
 
+describe('sourceLine separators', () => {
+  it('separates each part it shows with a middle dot', () => {
+    const el = sourceLine({ text: 'charge', pronunciation: '/x/', pos: 'noun', lang: 'en', doc: doc() });
+    expect(el.querySelectorAll('.pp-card-source-sep')).toHaveLength(2);
+  });
+
+  it('uses one fewer separator than parts, whichever parts are present', () => {
+    const noIpa = sourceLine({ text: 'charge', pos: 'noun', lang: 'en', doc: doc() });
+    expect(noIpa.querySelectorAll('.pp-card-source-sep')).toHaveLength(1);
+
+    const alone = sourceLine({ text: 'charge', lang: 'en', doc: doc() });
+    expect(alone.querySelectorAll('.pp-card-source-sep')).toHaveLength(0);
+  });
+
+  it('does not separate the expand control, which is a control and not a part', () => {
+    const el = sourceLine({ text: 'a long sentence', onExpand: vi.fn(), lang: 'en', doc: doc() });
+    expect(el.querySelectorAll('.pp-card-source-sep')).toHaveLength(0);
+    expect(el.querySelector('.pp-card-source-expand')).not.toBeNull();
+  });
+
+  it('hides the dots from assistive technology, which should not read punctuation as content', () => {
+    const el = sourceLine({ text: 'charge', pronunciation: '/x/', pos: 'noun', lang: 'en', doc: doc() });
+    el.querySelectorAll('.pp-card-source-sep').forEach(sep => {
+      expect(sep.getAttribute('aria-hidden')).toBe('true');
+    });
+  });
+});
+
 describe('detectionNote', () => {
   it('says so when the model read the source as the other language', () => {
     // The user forced a Persian source with the swap control; the model

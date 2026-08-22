@@ -74,9 +74,12 @@ export const CARD_STYLES = `
       display: flex;
       flex-wrap: wrap;
       align-items: baseline;
-      gap: 8px;
+      gap: 5px;
       font-size: 13px;
       color: var(--pp-text-secondary);
+    }
+    .pp-card-source-sep {
+      color: var(--pp-text-muted);
     }
     .pp-card-source-text {
       font-weight: 600;

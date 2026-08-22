@@ -131,21 +131,37 @@ export function sourceLine({ text, pronunciation, pos, onExpand, lang, doc }) {
   const textEl = doc.createElement('span');
   textEl.className = 'pp-card-source-text';
   textEl.textContent = text;
-  el.appendChild(textEl);
+
+  // Collected first so the separators can go between them, rather than
+  // each part having to know whether anything came before it.
+  const parts = [textEl];
 
   if (pronunciation) {
     const ipa = doc.createElement('span');
     ipa.className = 'pp-card-source-ipa';
     ipa.textContent = pronunciation;
-    el.appendChild(ipa);
+    parts.push(ipa);
   }
 
   if (pos) {
     const posEl = doc.createElement('span');
     posEl.className = 'pp-card-source-pos';
     posEl.textContent = pos;
-    el.appendChild(posEl);
+    parts.push(posEl);
   }
+
+  parts.forEach((part, index) => {
+    if (index > 0) {
+      const separator = doc.createElement('span');
+      separator.className = 'pp-card-source-sep';
+      // Decoration, not content: a screen reader reading "middle dot"
+      // between a word and its pronunciation helps nobody.
+      separator.setAttribute('aria-hidden', 'true');
+      separator.textContent = '\u00b7';
+      el.appendChild(separator);
+    }
+    el.appendChild(part);
+  });
 
   if (onExpand) {
     const expand = doc.createElement('button');

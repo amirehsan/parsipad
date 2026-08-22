@@ -103,10 +103,15 @@ control), 4.3, 5 (all ten keys in both languages, all three replaced keys
 gone), 6, 7, 7.1, 8 (both `BOX_HEIGHT_ESTIMATE` and `clampBoxIntoViewport`
 absent), 10, 11.
 
-One gap found and closed: section 3.3's callback contract lists `isSaved`,
+Two gaps found and closed. Section 3.3's callback contract lists `isSaved`,
 which nothing implemented. Saved state was applied by the host reaching into
 the card's DOM after rendering, leaving the control with no `aria-pressed`
 until an async favourites check returned.
+
+Section 4.1 asks for the source parts to be separated by a thin middle dot;
+they were separated by a flex gap and nothing else. Found on a second pass
+over the fine-grained bullets, having been missed on the first, which had
+checked that each part rendered without checking what went between them.
 
 Three deliberate departures, left as they are:
 
