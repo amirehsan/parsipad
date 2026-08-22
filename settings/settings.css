@@ -1203,14 +1203,6 @@ footer div {
   margin-right: 0.25rem;
 }
 
-[dir="rtl"] .button-group {
-  flex-direction: row-reverse;
-}
-
-[dir="rtl"] .about-links {
-  flex-direction: row-reverse;
-}
-
 /* Responsive */
 @media (max-width: 640px) {
   .language-options {
@@ -1600,17 +1592,14 @@ html {
 }
 
 /* RTL Support for backup section */
-[dir="rtl"] .checkbox-row {
-  flex-direction: row-reverse;
-}
-
+/* No flex-direction override for RTL rows.
+   A flex row already lays its children out right-to-left when dir="rtl", so
+   adding row-reverse flipped them a second time and pushed the radio and
+   checkbox inputs back to the left edge, on the wrong side of their labels. */
 [dir="rtl"] .checkbox-row .checkbox-label {
   text-align: right;
 }
 
-[dir="rtl"] .radio-row {
-  flex-direction: row-reverse;
-}
 
 [dir="rtl"] .radio-info {
   text-align: right;

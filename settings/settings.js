@@ -357,9 +357,9 @@ async function loadCacheStats() {
   const stats = await translationCache.getStats();
 
   if (stats.size === 0) {
-    cacheCountEl.textContent = '0 items';
+    cacheCountEl.textContent = t('itemsCount', currentLang).replace('{n}', '0');
   } else {
-    cacheCountEl.textContent = `${stats.size} items`;
+    cacheCountEl.textContent = t('itemsCount', currentLang).replace('{n}', String(stats.size));
   }
 }
 

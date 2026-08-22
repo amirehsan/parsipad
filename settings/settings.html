@@ -66,7 +66,7 @@
         </div>
         <div>
           <h2 class="card-title" data-i18n="languageSettings">Language Settings</h2>
-          <p class="card-subtitle">Choose your preferred interface language</p>
+          <p class="card-subtitle" data-i18n="languageSubtitle">Choose your preferred interface language</p>
         </div>
       </div>
       <div class="card-content">
@@ -99,14 +99,14 @@
         </div>
         <div>
           <h2 class="card-title" data-i18n="dictionarySettings">Dictionary Settings</h2>
-          <p class="card-subtitle">Control translation directions for dictionary lookups</p>
+          <p class="card-subtitle" data-i18n="dictionarySubtitle">Control translation directions for dictionary lookups</p>
         </div>
       </div>
       <div class="card-content">
         <label class="toggle-row">
           <div class="toggle-info">
             <span class="toggle-label-text" data-i18n="translateEnToFa">English → Persian translation</span>
-            <span class="toggle-hint">Show Persian translation for English words</span>
+            <span class="toggle-hint" data-i18n="translateEnToFa">Show Persian translation for English words</span>
           </div>
           <div class="toggle-switch">
             <input type="checkbox" id="dict-en-to-fa" checked>
@@ -116,7 +116,7 @@
         <label class="toggle-row">
           <div class="toggle-info">
             <span class="toggle-label-text" data-i18n="translateFaToEn">Persian → English translation</span>
-            <span class="toggle-hint">Show English translation for Persian words</span>
+            <span class="toggle-hint" data-i18n="translateFaToEn">Show English translation for Persian words</span>
           </div>
           <div class="toggle-switch">
             <input type="checkbox" id="dict-fa-to-en" checked>
@@ -136,14 +136,14 @@
         </div>
         <div>
           <h2 class="card-title" data-i18n="selectionPopup">Selection Popup</h2>
-          <p class="card-subtitle">Show quick action icons when selecting text</p>
+          <p class="card-subtitle" data-i18n="selectionPopupSubtitle">Show quick action icons when selecting text</p>
         </div>
       </div>
       <div class="card-content">
         <label class="toggle-row">
           <div class="toggle-info">
             <span class="toggle-label-text" data-i18n="enableSelectionPopup">Enable selection popup</span>
-            <span class="toggle-hint">Show translate, polish, and dictionary icons when you select text on any webpage</span>
+            <span class="toggle-hint" data-i18n="selectionPopupHint">Show translate, polish, and dictionary icons when you select text on any webpage</span>
           </div>
           <div class="toggle-switch">
             <input type="checkbox" id="selection-popup-toggle">
@@ -189,14 +189,14 @@
         </div>
         <div>
           <h2 class="card-title" data-i18n="newTabPage">New Tab Page</h2>
-          <p class="card-subtitle">Display favorites when opening a new browser tab</p>
+          <p class="card-subtitle" data-i18n="newTabSubtitle">Display favorites when opening a new browser tab</p>
         </div>
       </div>
       <div class="card-content">
         <label class="toggle-row">
           <div class="toggle-info">
             <span class="toggle-label-text" data-i18n="enableNewTab">Show favorites on new tab</span>
-            <span class="toggle-hint">Replace Chrome's default new tab page with your favorite translations and polished texts</span>
+            <span class="toggle-hint" data-i18n="newTabHint">Replace Chrome's default new tab page with your favorite translations and polished texts</span>
           </div>
           <div class="toggle-switch">
             <input type="checkbox" id="newtab-toggle">
@@ -208,7 +208,7 @@
         <div class="slider-row" id="phrase-count-section">
           <div class="slider-info">
             <span class="slider-label-text" data-i18n="phraseCount">Number of phrases</span>
-            <span class="slider-hint">How many favorite items to show on each new tab (1-10)</span>
+            <span class="slider-hint" data-i18n="phraseCountHint">How many favorite items to show on each new tab (1-10)</span>
           </div>
           <div class="slider-control">
             <input type="range" id="phrase-count-slider" min="1" max="10" value="3" class="slider-input">
@@ -322,7 +322,7 @@
         <!-- Claude API Key Panel -->
         <div class="api-key-panel active" id="claude-panel">
           <div class="form-group">
-            <label for="claude-api-key" class="input-label">Anthropic API Key</label>
+            <label for="claude-api-key" class="input-label" data-i18n="anthropicApiKey">Anthropic API Key</label>
             <div class="input-wrapper">
               <input type="password" id="claude-api-key" class="text-input" placeholder="sk-ant-api03-..." autocomplete="off">
               <button type="button" class="input-icon-btn toggle-visibility" data-target="claude-api-key">
@@ -347,13 +347,13 @@
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
               </svg>
-              <span>Save API Key</span>
+              <span data-i18n="saveApiKey">Save API Key</span>
             </button>
             <button type="button" class="btn btn-secondary clear-key-btn" data-provider="claude">
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
               </svg>
-              <span>Clear</span>
+              <span data-i18n="clear">Clear</span>
             </button>
           </div>
         </div>
@@ -361,7 +361,7 @@
         <!-- Gemini API Key Panel -->
         <div class="api-key-panel" id="gemini-panel">
           <div class="form-group">
-            <label for="gemini-api-key" class="input-label">Google AI API Key</label>
+            <label for="gemini-api-key" class="input-label" data-i18n="googleApiKey">Google AI API Key</label>
             <div class="input-wrapper">
               <input type="password" id="gemini-api-key" class="text-input" placeholder="AIza..." autocomplete="off">
               <button type="button" class="input-icon-btn toggle-visibility" data-target="gemini-api-key">
@@ -386,13 +386,13 @@
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
               </svg>
-              <span>Save API Key</span>
+              <span data-i18n="saveApiKey">Save API Key</span>
             </button>
             <button type="button" class="btn btn-secondary clear-key-btn" data-provider="gemini">
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
               </svg>
-              <span>Clear</span>
+              <span data-i18n="clear">Clear</span>
             </button>
           </div>
         </div>
@@ -400,7 +400,7 @@
         <!-- OpenAI API Key Panel -->
         <div class="api-key-panel" id="openai-panel">
           <div class="form-group">
-            <label for="openai-api-key" class="input-label">OpenAI API Key</label>
+            <label for="openai-api-key" class="input-label" data-i18n="openaiApiKey">OpenAI API Key</label>
             <div class="input-wrapper">
               <input type="password" id="openai-api-key" class="text-input" placeholder="sk-..." autocomplete="off">
               <button type="button" class="input-icon-btn toggle-visibility" data-target="openai-api-key">
@@ -425,13 +425,13 @@
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
               </svg>
-              <span>Save API Key</span>
+              <span data-i18n="saveApiKey">Save API Key</span>
             </button>
             <button type="button" class="btn btn-secondary clear-key-btn" data-provider="openai">
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
               </svg>
-              <span>Clear</span>
+              <span data-i18n="clear">Clear</span>
             </button>
           </div>
         </div>
@@ -450,14 +450,14 @@
         </div>
         <div>
           <h2 class="card-title" data-i18n="cache">Cache</h2>
-          <p class="card-subtitle">Manage cached translations for faster loading</p>
+          <p class="card-subtitle" data-i18n="cacheSubtitle">Manage cached translations for faster loading</p>
         </div>
       </div>
       <div class="card-content">
         <div class="cache-stats" id="cache-stats">
           <div class="stat-item">
-            <span class="stat-label">Cached items</span>
-            <span class="stat-value" id="cache-count">Loading...</span>
+            <span class="stat-label" data-i18n="cachedItems">Cached items</span>
+            <span class="stat-value" id="cache-count" data-i18n="loadingLabel">Loading...</span>
           </div>
         </div>
         <button type="button" id="clear-cache-btn" class="btn btn-secondary btn-full">
@@ -633,21 +633,21 @@
         </div>
         <div>
           <h2 class="card-title" data-i18n="about">About</h2>
-          <p class="card-subtitle">ParsiPad extension information</p>
+          <p class="card-subtitle" data-i18n="aboutSubtitle">ParsiPad extension information</p>
         </div>
       </div>
       <div class="card-content">
         <div class="about-info">
           <div class="about-row">
-            <span class="about-label">Version</span>
+            <span class="about-label" data-i18n="versionLabel">Version</span>
             <span class="about-value" id="about-version"></span>
           </div>
           <div class="about-row">
-            <span class="about-label">Powered by</span>
+            <span class="about-label" data-i18n="poweredBy">Powered by</span>
             <span class="about-value">Claude, Gemini, ChatGPT</span>
           </div>
           <div class="about-row">
-            <span class="about-label">License</span>
+            <span class="about-label" data-i18n="licenseLabel">License</span>
             <span class="about-value">MIT</span>
           </div>
         </div>
@@ -692,7 +692,7 @@
   <!-- Footer -->
   <footer class="border-t border-gray-200 dark:border-gray-800 py-6 mt-8">
     <div class="max-w-3xl mx-auto px-6 text-center text-sm text-gray-500 dark:text-gray-400">
-      ParsiPad - AI-powered Persian ↔ English translation
+      ParsiPad &ndash; <span data-i18n="footerTagline">AI-powered Persian and English translation</span>
     </div>
   </footer>
 
