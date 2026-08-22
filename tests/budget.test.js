@@ -3,7 +3,7 @@ import { TEMPERATURES, STREAM_IDLE_TIMEOUT_MS, computeMaxTokens, isStreamingMode
 
 describe('budget', () => {
   it('exposes the agreed temperatures and idle timeout', () => {
-    expect(TEMPERATURES).toEqual({ translate: 0.2, grammar: 0.3, polish: 0.5 });
+    expect(TEMPERATURES).toEqual({ translate: 0.2, grammar: 0.3, polish: 0.5, image: 0.2 });
     expect(STREAM_IDLE_TIMEOUT_MS).toBe(20000);
   });
   it('uses fixed budgets for short modes', () => {
