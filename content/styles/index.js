@@ -28,6 +28,14 @@ export function themeVars() {
       --pp-skeleton-from: #e5e7eb;
       --pp-skeleton-to: #f3f4f6;
       --pp-motion-skeleton: parsipad-shimmer 1.5s infinite;
+      /* Brand accent. Previously scattered as var(--pp-accent) literals through this
+         file, which is why the box kept the old colour when the palette
+         changed. --pp-accent was also referenced in two rules without ever
+         being defined, so those silently used their fallback. */
+      --pp-accent: #ff4f00;
+      --pp-accent-strong: #d44200;
+      --pp-accent-soft: rgba(255, 79, 0, 0.10);
+      --pp-on-accent: #fffefb;
     }
     :host([data-theme='dark']) {
       --pp-bg: #1f2937;
@@ -42,6 +50,10 @@ export function themeVars() {
       --pp-shadow-card: 0 10px 25px -5px rgba(29, 27, 23, 0.6), 0 8px 10px -6px rgba(29, 27, 23, 0.4);
       --pp-skeleton-from: #374151;
       --pp-skeleton-to: #4b5563;
+      --pp-accent: #ff6a2a;
+      --pp-accent-strong: #ff4f00;
+      --pp-accent-soft: rgba(255, 106, 42, 0.16);
+      --pp-on-accent: #201515;
     }
     @media (prefers-reduced-motion: reduce) {
       :host {
@@ -58,7 +70,7 @@ export function getPageProgressStyles() {
       background: var(--pp-bg);
       backdrop-filter: blur(10px);
       border-radius: 16px;
-      box-shadow: 0 25px 50px -12px rgba(90, 94, 240, 0.25);
+      box-shadow: 0 25px 50px -12px rgba(255, 79, 0, 0.25);
       padding: 16px 24px;
       min-width: 300px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -94,7 +106,7 @@ export function getPageProgressStyles() {
 
     .parsipad-progress-bar {
       height: 100%;
-      background: linear-gradient(90deg, #6366f1, #8b5cf6);
+      background: linear-gradient(90deg, var(--pp-accent), var(--pp-accent-strong));
       border-radius: 3px;
       transition: width 0.3s ease;
     }
@@ -148,14 +160,14 @@ export function getPageToggleStyles() {
     }
 
     .parsipad-toggle-btn.showing-translated {
-      background: #6366f1;
+      background: var(--pp-accent);
       color: white;
     }
 
     .parsipad-toggle-btn.showing-translated:hover {
-      background: #4f46e5;
+      background: var(--pp-accent-strong);
       transform: scale(1.08);
-      box-shadow: 0 6px 20px rgba(90, 94, 240, 0.4),
+      box-shadow: 0 6px 20px rgba(255, 79, 0, 0.4),
                   0 3px 8px rgba(29, 27, 23, 0.12);
     }
 
@@ -213,8 +225,8 @@ export function getScreenshotStyles() {
 
     .screenshot-selection {
       position: absolute;
-      border: 2px solid #6366f1;
-      box-shadow: 0 0 0 1px rgba(90, 94, 240, 0.3), 0 4px 12px rgba(29, 27, 23, 0.15);
+      border: 2px solid var(--pp-accent);
+      box-shadow: 0 0 0 1px rgba(255, 79, 0, 0.3), 0 4px 12px rgba(29, 27, 23, 0.15);
       pointer-events: none;
       display: none;
     }
@@ -306,17 +318,17 @@ export function getSelectionPopupStyles(showBelow = false) {
 
     .selection-btn:hover {
       /* Brand-tint background; brighter brand color in dark mode for legibility */
-      background: rgba(90, 94, 240, 0.18);
-      color: var(--pp-accent, #4f46e5);
+      background: rgba(255, 79, 0, 0.18);
+      color: var(--pp-accent);
       transform: scale(1.05);
     }
 
     :host([data-theme='dark']) .selection-btn:hover {
-      color: #a5b4fc; /* indigo-300, AA on dark popup bg */
+      color: var(--pp-accent); /* indigo-300, AA on dark popup bg */
     }
 
     .selection-btn:focus-visible {
-      outline: 2px solid var(--pp-accent, #6366f1);
+      outline: 2px solid var(--pp-accent);
       outline-offset: 2px;
     }
 
@@ -444,7 +456,7 @@ export function getStyles() {
     .parsipad-logo-icon {
       width: 20px;
       height: 20px;
-      background: #6366f1;
+      background: var(--pp-accent);
       color: white;
       border-radius: 5px;
       display: flex;
@@ -471,7 +483,7 @@ export function getStyles() {
       font-size: 10px;
       font-weight: 500;
       padding: 2px 6px;
-      background: #6366f1;
+      background: var(--pp-accent);
       color: white;
       border-radius: 4px;
     }
@@ -594,9 +606,9 @@ export function getStyles() {
       align-items: center;
       gap: 6px;
       padding: 6px 12px;
-      background: #6366f1;
+      background: var(--pp-accent);
       color: #ffffff;
-      border: 1px solid #6366f1;
+      border: 1px solid var(--pp-accent);
       border-radius: 6px;
       cursor: pointer;
       font-family: inherit;
@@ -605,11 +617,11 @@ export function getStyles() {
       transition: background-color 0.15s;
     }
     .parsipad-grammar-learn-more:hover {
-      background: #4f46e5;
-      border-color: #4f46e5;
+      background: var(--pp-accent-strong);
+      border-color: var(--pp-accent-strong);
     }
     .parsipad-grammar-learn-more:focus-visible {
-      outline: 2px solid #6366f1;
+      outline: 2px solid var(--pp-accent);
       outline-offset: 2px;
     }
     .parsipad-grammar-empty,
@@ -668,7 +680,7 @@ export function getStyles() {
       align-items: center;
       gap: 4px;
       padding: 6px 10px;
-      background: #6366f1;
+      background: var(--pp-accent);
       color: white;
       border: none;
       border-radius: 6px;
@@ -679,7 +691,7 @@ export function getStyles() {
     }
 
     .parsipad-copy:hover {
-      background: #4f46e5;
+      background: var(--pp-accent-strong);
     }
 
     .parsipad-copy svg {
@@ -787,7 +799,7 @@ export function getStyles() {
     .parsipad-open-settings {
       margin-top: 8px;
       padding: 6px 12px;
-      background: #6366f1;
+      background: var(--pp-accent);
       color: #fff;
       border: 0;
       border-radius: 6px;
@@ -797,7 +809,7 @@ export function getStyles() {
     }
 
     .parsipad-open-settings:hover {
-      background: #4f46e5;
+      background: var(--pp-accent-strong);
     }
 
     .parsipad-content::-webkit-scrollbar {
@@ -823,7 +835,7 @@ export function getStyles() {
     }
 
     .parsipad-badge-polish {
-      background: #8b5cf6;
+      background: var(--pp-accent-strong);
     }
 
     .parsipad-polish-content {
@@ -858,7 +870,7 @@ export function getStyles() {
     .parsipad-polish-title {
       font-size: 11px;
       font-weight: 600;
-      color: #6366f1;
+      color: var(--pp-accent);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
@@ -913,7 +925,7 @@ export function getStyles() {
     }
 
     .parsipad-polish-regenerate.loading {
-      color: #6366f1;
+      color: var(--pp-accent);
     }
 
     .parsipad-polish-regenerate.loading svg {
@@ -990,7 +1002,7 @@ export function getStyles() {
       display: inline-block;
       font-size: 11px;
       font-weight: 500;
-      color: #8b5cf6;
+      color: var(--pp-accent-strong);
       background: #f3e8ff;
       padding: 2px 8px;
       border-radius: 4px;
@@ -1004,7 +1016,7 @@ export function getStyles() {
     .parsipad-dict-section-title {
       font-size: 11px;
       font-weight: 600;
-      color: #6366f1;
+      color: var(--pp-accent);
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-bottom: 6px;

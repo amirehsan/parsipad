@@ -396,7 +396,7 @@ body.dark {
 }
 
 .dark .direction-badge {
-  background: rgba(90, 94, 240, 0.2);
+  background: rgba(255, 79, 0, 0.2);
   color: var(--primary-300);
 }
 
@@ -435,7 +435,7 @@ body.dark {
 }
 
 .dark .grammar-point-header {
-  background: rgba(90, 94, 240, 0.1);
+  background: rgba(255, 79, 0, 0.1);
   border-color: var(--gray-700);
 }
 
@@ -642,8 +642,8 @@ body.dark {
 }
 
 .dark .quiz-section {
-  background: rgba(90, 94, 240, 0.1);
-  border-color: rgba(90, 94, 240, 0.2);
+  background: rgba(255, 79, 0, 0.1);
+  border-color: rgba(255, 79, 0, 0.2);
 }
 
 .quiz-question {
@@ -690,7 +690,7 @@ body.dark {
 }
 
 .dark .quiz-option.selected {
-  background: rgba(90, 94, 240, 0.15);
+  background: rgba(255, 79, 0, 0.15);
 }
 
 .quiz-option.correct {
@@ -1342,7 +1342,7 @@ body.dark {
 }
 
 .dark .register-formal {
-  background: rgba(90, 94, 240, 0.2);
+  background: rgba(255, 79, 0, 0.2);
   color: var(--primary-300);
 }
 

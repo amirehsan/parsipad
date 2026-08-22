@@ -1089,7 +1089,7 @@ function showToast({ message = 'API key not configured.', withSettings = true } 
         max-width: 360px;
       }
       .toast button {
-        background: #6366f1;
+        background: var(--pp-accent, #ff4f00);
         color: #fff;
         border: 0;
         padding: 6px 10px;
