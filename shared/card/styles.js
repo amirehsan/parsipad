@@ -247,10 +247,10 @@ export const CARD_STYLES = `
     .pp-card-truncated {
       font-size: 12px;
       line-height: 1.5;
-      color: #b45309;
+      color: #8a5a04;
     }
     :host([data-theme='dark']) .pp-card-truncated {
-      color: #fbbf24;
+      color: #8a5a04;
     }
     .pp-card-truncated[dir="rtl"] {
       line-height: 1.8;
