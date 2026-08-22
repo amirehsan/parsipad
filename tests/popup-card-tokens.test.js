@@ -24,7 +24,16 @@ import { CARD_STYLES } from '../shared/card/styles.js';
  */
 
 const rootDir = path.resolve(__dirname, '..');
-const popupCss = fs.readFileSync(path.join(rootDir, 'popup/popup.css'), 'utf8');
+
+// popup.css @imports the token file, so the browser resolves --pp-* against
+// both. It used to redefine the whole semantic layer itself, which is why an
+// earlier version of this test only had to read popup.css; that block has been
+// retired, so the definitions now legitimately live one file up. Reading both
+// is what the cascade actually does.
+const popupCss = [
+  fs.readFileSync(path.join(rootDir, 'lib/design-tokens.css'), 'utf8'),
+  fs.readFileSync(path.join(rootDir, 'popup/popup.css'), 'utf8')
+].join('\n');
 
 /** Every --pp-* property CARD_STYLES reads and never defines. */
 function tokensTheCardConsumes() {
@@ -41,12 +50,39 @@ function mappedValue(token) {
   return match ? match[1].trim() : undefined;
 }
 
-/** Whether popup.css defines a --color-* name inside the given block. */
-function definesIn(blockSelector, name) {
-  const start = popupCss.indexOf(blockSelector + ' {');
-  if (start === -1) return false;
-  const end = popupCss.indexOf('}', start);
-  return new RegExp(`^\\s*${name}\\s*:`, 'm').test(popupCss.slice(start, end));
+/** Every block body whose selector line contains `selector`. */
+function blocksFor(selector) {
+  const out = [];
+  let from = 0;
+  for (;;) {
+    const at = popupCss.indexOf(selector, from);
+    if (at === -1) break;
+    const open = popupCss.indexOf('{', at);
+    const close = popupCss.indexOf('\n}', open);
+    if (open === -1 || close === -1) break;
+    out.push(popupCss.slice(open, close));
+    from = close + 1;
+  }
+  return out;
+}
+
+/** Whether any block matching `selector` declares `name`. */
+function declaredIn(selector, name) {
+  const decl = new RegExp(`^\\s*${name}\\s*:`, 'm');
+  return blocksFor(selector).some(body => decl.test(body));
+}
+
+/**
+ * Whether the name resolves in the dark theme.
+ *
+ * Either a dark block redefines it, or it is unchanged between themes and
+ * inherits its light value. Both are correct: most of the ladder does not
+ * move, and requiring a redundant dark redeclaration would be noise.
+ */
+function resolvesInDark(name) {
+  return declaredIn('.dark,', name)
+    || declaredIn("[data-theme='dark']", name)
+    || declaredIn(':root', name);
 }
 
 describe('the popup satisfies the card token contract', () => {
@@ -67,8 +103,8 @@ describe('the popup satisfies the card token contract', () => {
 
       // A literal value needs no backing token; only a var() reference does.
       referenced.forEach(name => {
-        if (!definesIn(':root', name)) broken.push(`${token} -> ${name} missing from :root`);
-        if (!definesIn("[data-theme='dark']", name)) broken.push(`${token} -> ${name} missing from the dark theme`);
+        if (!declaredIn(':root', name)) broken.push(`${token} -> ${name} missing from :root`);
+        if (!resolvesInDark(name)) broken.push(`${token} -> ${name} unresolvable in the dark theme`);
       });
     });
 
