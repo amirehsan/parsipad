@@ -10,6 +10,7 @@ import {
 } from '../lib/storage.js';
 import { PROVIDER_CONFIGS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
+import { applyThemeToRoot } from '../lib/theme.js';
 
 // DOM Elements
 const themeToggle = document.getElementById('theme-toggle');
@@ -40,20 +41,20 @@ async function init() {
  * or system preference if unset.
  */
 async function initTheme() {
-  const html = document.documentElement;
-  const theme = await getTheme();
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const useDark = theme === 'dark' || (theme === 'system' && prefersDark);
-  html.classList.toggle('dark', useDark);
+  // Both conventions, always. This page styles dark with the class, but
+  // lib/design-tokens.css also answers to [data-theme], and theme-boot sets
+  // both. Clearing only the class leaves data-theme="dark" behind and the
+  // tokens stay dark while the page's own rules go light.
+  applyThemeToRoot(await getTheme());
 }
 
 /**
  * Toggle dark/light theme; persisted to chrome.storage so popup/newtab/settings stay in sync.
  */
 async function toggleTheme() {
-  const html = document.documentElement;
-  html.classList.toggle('dark');
-  await setTheme(html.classList.contains('dark') ? 'dark' : 'light');
+  const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+  applyThemeToRoot(next);
+  await setTheme(next);
 }
 
 /**
