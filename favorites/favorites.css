@@ -8,15 +8,15 @@
   --color-primary: var(--color-primary-600);
   --color-primary-hover: var(--color-primary-700);
   --color-polish: var(--accent-polish);
-  --color-favorite: #FBBF24;
-  --color-bg: #FFFFFF;
-  --color-bg-secondary: #F9FAFB;
-  --color-text: #111827;
-  --color-text-secondary: #6B7280;
-  --color-border: #E5E7EB;
-  --color-success: #10B981;
-  --color-error: #EF4444;
-  --color-warning: #F59E0B;
+  --color-favorite: var(--color-warning-500);
+  --color-bg: var(--color-bg-elevated);
+  --color-bg-secondary: var(--color-gray-50);
+  --color-text: var(--color-gray-900);
+  --color-text-secondary: var(--color-gray-500);
+  --color-border: var(--color-gray-200);
+  --color-success: var(--color-success-500);
+  --color-error: var(--color-error-500);
+  --color-warning: var(--color-warning-500);
 
   --font-persian: 'Vazirmatn', 'Tahoma', sans-serif;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -37,18 +37,18 @@
 
 /* Dark Mode */
 [data-theme="dark"] {
-  --color-primary: #818CF8;
-  --color-primary-hover: #6366F1;
-  --color-polish: #a78bfa;
+  --color-primary: var(--color-primary-400);
+  --color-primary-hover: var(--color-primary-500);
+  --color-polish: var(--accent-polish);
   --color-favorite: #FCD34D;
-  --color-bg: #111827;
-  --color-bg-secondary: #1F2937;
-  --color-text: #F9FAFB;
-  --color-text-secondary: #9CA3AF;
-  --color-border: #374151;
-  --color-success: #34D399;
-  --color-error: #F87171;
-  --color-warning: #FBBF24;
+  --color-bg: var(--color-gray-900);
+  --color-bg-secondary: var(--color-gray-800);
+  --color-text: var(--color-gray-50);
+  --color-text-secondary: var(--color-gray-400);
+  --color-border: var(--color-gray-800);
+  --color-success: var(--color-success-500);
+  --color-error: var(--color-error-500);
+  --color-warning: var(--color-warning-500);
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
@@ -312,13 +312,13 @@ body {
 }
 
 .favorite-badge.grammar {
-  background: #10b981;
+  background: var(--color-success-500);
   color: white;
 }
 
 .favorite-badge.direction {
   background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
+  color: var(--color-success-500);
   font-size: 9px;
 }
 
@@ -406,7 +406,7 @@ body {
 
 /* Grammar Card Styles */
 .grammar-card::before {
-  background: #10b981;
+  background: var(--color-success-500);
 }
 
 .grammar-lesson-title {
@@ -438,12 +438,12 @@ body {
 }
 
 .grammar-card .favorite-card-saved {
-  border-left-color: #10b981;
+  border-left-color: var(--color-success-500);
 }
 
 .grammar-card .favorite-card-saved[dir="rtl"] {
   border-left: none;
-  border-right: 3px solid #10b981;
+  border-right: 3px solid var(--color-success-500);
 }
 
 /* Empty State */
