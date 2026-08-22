@@ -84,7 +84,11 @@ const UI_BOUNDARY = 3.0;
  * clear 3:1, and it fails if it drifts below the value recorded here.
  */
 const ACCEPTED_BELOW_AA = {
-  'light:button-primary': 3.26
+  'light:button-primary': 3.26,
+  // Dark carries the same cream label so the CTA is identical in both
+  // themes. An ink label measured 5.40 and would have passed, so this is a
+  // deliberate trade of contrast for consistency, made by the owner.
+  'dark:button-primary': 3.26
 };
 // Every tone that carries text, and so has to be legible on both grounds.
 const TEXT_TOKENS = [
