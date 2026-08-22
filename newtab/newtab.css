@@ -306,13 +306,13 @@ body {
 }
 
 .flashcard-badge.translation {
-  background: var(--color-primary);
-  color: white;
+  background: var(--cat-translate);
+  color: var(--cat-on);
 }
 
 .flashcard-badge.polish {
-  background: var(--color-polish);
-  color: white;
+  background: var(--cat-polish);
+  color: var(--cat-on);
 }
 
 /* Saved Text (Front - Main Focus) */
@@ -468,7 +468,7 @@ html[dir="rtl"] .card-navigation {
 .nav-btn:hover:not(:disabled) {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: white;
+  color: var(--button-primary-text);
   transform: scale(1.1);
 }
 
@@ -612,8 +612,8 @@ kbd {
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-md) var(--space-lg);
-  background: var(--color-primary);
-  color: white;
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
   border: none;
   border-radius: var(--radius-md);
   font-family: var(--font-persian);
