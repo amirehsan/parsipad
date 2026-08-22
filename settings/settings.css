@@ -9,32 +9,32 @@
 /* CSS Variables - Matching Landing Page */
 :root {
   /* Primary Colors - Indigo palette from landing */
-  --primary-50: #eef2ff;
-  --primary-100: #e0e7ff;
-  --primary-200: #c7d2fe;
-  --primary-300: #a5b4fc;
-  --primary-400: #818cf8;
-  --primary-500: #6366f1;
-  --primary-600: #4f46e5;
-  --primary-700: #4338ca;
-  --primary-800: #3730a3;
-  --primary-900: #312e81;
+  --primary-50: var(--color-primary-50);
+  --primary-100: var(--color-primary-100);
+  --primary-200: var(--color-primary-200);
+  --primary-300: var(--color-primary-300);
+  --primary-400: var(--color-primary-400);
+  --primary-500: var(--color-primary-500);
+  --primary-600: var(--color-primary-600);
+  --primary-700: var(--color-primary-700);
+  --primary-800: var(--color-primary-800);
+  --primary-900: var(--color-primary-900);
 
   /* Gray palette */
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
-  --gray-400: #9ca3af;
-  --gray-500: #6b7280;
-  --gray-600: #4b5563;
-  --gray-700: #374151;
-  --gray-800: #1f2937;
-  --gray-900: #111827;
+  --gray-50: var(--color-gray-50);
+  --gray-100: var(--color-gray-100);
+  --gray-200: var(--color-gray-200);
+  --gray-300: var(--color-gray-300);
+  --gray-400: var(--color-gray-400);
+  --gray-500: var(--color-gray-500);
+  --gray-600: var(--color-gray-700);
+  --gray-700: var(--color-gray-800);
+  --gray-800: var(--color-gray-800);
+  --gray-900: var(--color-gray-900);
 
   /* Status colors */
-  --success: #10b981;
-  --error: #ef4444;
+  --success: var(--color-success-500);
+  --error: var(--color-error-500);
 
   /* Fonts - Matching landing page */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -60,14 +60,14 @@ body {
 
 /* Utility Classes - Matching Tailwind from landing */
 .bg-gray-50 { background-color: var(--gray-50); }
-.bg-white { background-color: #ffffff; }
-.dark .dark\:bg-gray-900 { background-color: var(--gray-900); }
-.dark .dark\:bg-gray-800 { background-color: var(--gray-800); }
+.bg-white { background-color: var(--color-bg-elevated); }
+.dark .dark\:bg-gray-900 { background-color: var(--color-bg); }
+.dark .dark\:bg-gray-800 { background-color: var(--color-bg-elevated); }
 
 .text-gray-900 { color: var(--gray-900); }
 .text-gray-500 { color: var(--gray-500); }
 .text-gray-400 { color: var(--gray-400); }
-.dark .dark\:text-white { color: #ffffff; }
+.dark .dark\:text-white { color: var(--color-gray-50); }
 .dark .dark\:text-gray-400 { color: var(--gray-400); }
 
 .border-gray-200 { border-color: var(--gray-200); }
@@ -86,7 +86,7 @@ nav {
 }
 
 .dark nav {
-  background: rgba(17, 24, 39, 0.8);
+  background: rgba(19, 17, 32, 0.8);
   border-color: var(--gray-800);
 }
 
@@ -125,7 +125,7 @@ nav h1 {
 }
 
 .dark nav h1 {
-  color: #ffffff;
+  color: var(--color-gray-50);
 }
 
 nav p {
@@ -210,7 +210,7 @@ main {
 }
 
 .dark .settings-tabs {
-  background: rgba(31, 41, 55, 0.85);
+  background: rgba(28, 25, 48, 0.85);
   border-color: var(--gray-700);
 }
 
@@ -239,7 +239,7 @@ main {
 }
 
 .dark .settings-tab:hover {
-  color: #ffffff;
+  color: var(--color-gray-50);
   background: var(--gray-700);
 }
 
@@ -271,7 +271,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 
 /* Settings Cards - Matching landing feature cards */
 .settings-card {
-  background: #ffffff;
+  background: var(--color-bg-elevated);
   border-radius: 1rem;
   border: 1px solid var(--gray-200);
   margin-bottom: 1.5rem;
@@ -285,11 +285,11 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 }
 
 .settings-card:hover {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 15px -3px rgba(27, 24, 38, 0.1), 0 4px 6px -4px rgba(27, 24, 38, 0.1);
 }
 
 .dark .settings-card:hover {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 15px -3px rgba(27, 24, 38, 0.3);
 }
 
 /* Card Header */
@@ -320,7 +320,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 }
 
 .dark .dark\:bg-primary-900\/30 {
-  background: rgba(49, 46, 129, 0.3);
+  background: rgba(99, 102, 241, 0.16);
 }
 
 .text-primary-500 {
@@ -340,7 +340,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 }
 
 .dark .card-title {
-  color: #ffffff;
+  color: var(--color-gray-50);
 }
 
 .card-subtitle {
@@ -405,11 +405,14 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 }
 
 .option-flag {
-  /* Doubled from 32x21 -> 64x42 so the language flags read as a hero choice */
-  width: 64px;
-  height: 42px;
+  /* 32x21 -> 64x42 -> 80x52. The language choice is the first thing on the
+     page and the flag is what people actually aim at, so it carries the
+     click target rather than the label beside it. Ratio kept at 3:2 so
+     neither flag is distorted. */
+  width: 80px;
+  height: 52px;
   object-fit: cover;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
 }
 
 .option-label {
@@ -509,10 +512,10 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   width: 18px;
   left: 3px;
   bottom: 3px;
-  background-color: white;
+  background-color: var(--color-gray-50);
   transition: 0.3s;
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px rgba(27, 24, 38, 0.2);
 }
 
 .toggle-switch input:checked + .toggle-slider {
@@ -597,13 +600,13 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   background: var(--primary-500);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 4px rgba(27, 24, 38, 0.2);
   transition: transform 0.15s, box-shadow 0.15s;
 }
 
 .slider-input::-webkit-slider-thumb:hover {
   transform: scale(1.1);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 6px rgba(27, 24, 38, 0.25);
 }
 
 .slider-input::-moz-range-thumb {
@@ -613,7 +616,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   border: none;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 4px rgba(27, 24, 38, 0.2);
 }
 
 .slider-value {
@@ -654,7 +657,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   font-family: inherit;
   border: 1px solid var(--gray-300);
   border-radius: 0.75rem;
-  background: #ffffff;
+  background: var(--color-bg-elevated);
   color: var(--gray-900);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -662,7 +665,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 .dark .text-input {
   background: var(--gray-700);
   border-color: var(--gray-600);
-  color: #ffffff;
+  color: var(--color-gray-50);
 }
 
 .text-input:focus {
@@ -682,7 +685,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   font-family: inherit;
   border: 1px solid var(--gray-300);
   border-radius: 0.75rem;
-  background: #ffffff;
+  background: var(--color-bg-elevated);
   color: var(--gray-900);
   cursor: pointer;
   appearance: none;
@@ -697,7 +700,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 .dark .select-input {
   background-color: var(--gray-700);
   border-color: var(--gray-600);
-  color: #ffffff;
+  color: var(--color-gray-50);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
 }
 
@@ -708,13 +711,13 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 }
 
 .select-input option {
-  background: #ffffff;
+  background: var(--color-bg-elevated);
   color: var(--gray-900);
 }
 
 .dark .select-input option {
   background: var(--gray-700);
-  color: #ffffff;
+  color: var(--color-gray-50);
 }
 
 .mt-4 {
@@ -804,7 +807,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 
 .btn-primary {
   background: var(--primary-500);
-  color: #ffffff;
+  color: var(--color-gray-50);
 }
 
 .btn-primary:hover {
@@ -847,15 +850,15 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 }
 
 .status-message.success {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(15, 107, 82, 0.1);
   color: var(--success);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(15, 107, 82, 0.2);
 }
 
 .status-message.error {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(192, 38, 58, 0.1);
   color: var(--error);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(192, 38, 58, 0.2);
 }
 
 /* Cache Stats */
@@ -890,7 +893,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 }
 
 .dark .stat-value {
-  color: #ffffff;
+  color: var(--color-gray-50);
 }
 
 /* Keyboard Shortcuts Section */
@@ -958,10 +961,10 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--gray-700);
-  background: #ffffff;
+  background: var(--color-bg-elevated);
   border: 1px solid var(--gray-300);
   border-radius: 0.25rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 2px rgba(27, 24, 38, 0.05);
 }
 
 .dark .shortcut-keys kbd {
@@ -1032,7 +1035,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 }
 
 .dark .about-value {
-  color: #ffffff;
+  color: var(--color-gray-50);
 }
 
 .about-links {
@@ -1065,36 +1068,30 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 }
 
 .about-link:hover {
-  background: var(--gray-200);
-  color: var(--primary-500);
+  background: var(--gray-100);
+  color: var(--color-primary-800);   /* 6.33 on that fill */
 }
 
 .dark .about-link:hover {
-  background: var(--gray-600);
-  color: var(--primary-400);
+  background: var(--color-bg-hover);
+  color: var(--color-primary-300);   /* 6.84 on that fill */
 }
 
-/* Highlighted about link (Rate Extension) */
+/* Highlighted about link (Rate Extension)
+   Same control as its siblings, so it keeps their shape and hover; the
+   accent marks it as the emphasised one. It used to be branded with the
+   amber STATUS tokens, which meant a warning colour was doing brand work,
+   and its hover swapped fill and text rather than following the base rule. */
 .about-link-highlight {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  color: #78350f !important;
-}
-
-.about-link-highlight:hover {
-  background: linear-gradient(135deg, #fcd34d 0%, #fbbf24 100%);
-  color: #78350f !important;
-  transform: translateY(-1px);
+  color: var(--color-primary-700);
+  box-shadow: inset 0 0 0 1px var(--color-primary-700);
 }
 
 .dark .about-link-highlight {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  color: #78350f !important;
+  color: var(--color-primary-400);
+  box-shadow: inset 0 0 0 1px var(--color-primary-400);
 }
 
-.dark .about-link-highlight:hover {
-  background: linear-gradient(135deg, #fcd34d 0%, #fbbf24 100%);
-  color: #78350f !important;
-}
 
 /* Secondary icon-only links */
 .about-links-secondary {
@@ -1357,7 +1354,7 @@ html {
 }
 
 .dark .provider-name {
-  color: #ffffff;
+  color: var(--color-gray-50);
 }
 
 .provider-company {

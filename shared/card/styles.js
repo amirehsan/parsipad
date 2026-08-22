@@ -247,10 +247,10 @@ export const CARD_STYLES = `
     .pp-card-truncated {
       font-size: 12px;
       line-height: 1.5;
-      color: #b45309;
+      color: #8a5a04;
     }
     :host([data-theme='dark']) .pp-card-truncated {
-      color: #fbbf24;
+      color: #8a5a04;
     }
     .pp-card-truncated[dir="rtl"] {
       line-height: 1.8;
@@ -275,12 +275,12 @@ export const CARD_STYLES = `
       border-radius: 6px;
       font-size: 12px;
       color: var(--pp-text);
-      background: rgba(245, 158, 11, 0.12);
-      border: 1px solid rgba(245, 158, 11, 0.3);
+      background: rgba(138, 90, 4, 0.12);
+      border: 1px solid rgba(138, 90, 4, 0.3);
     }
     :host([data-theme='dark']) .pp-card-correction {
-      background: rgba(251, 191, 36, 0.12);
-      border-color: rgba(251, 191, 36, 0.3);
+      background: rgba(232, 180, 92, 0.12);
+      border-color: rgba(232, 180, 92, 0.3);
     }
     .pp-card-correction-label {
       color: var(--pp-text-secondary);

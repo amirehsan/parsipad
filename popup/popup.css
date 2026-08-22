@@ -6,25 +6,27 @@
 @import url('../lib/components.css');
 
 /*
- * Legacy alias map. Existing popup styles reference --color-primary, --space-md,
- * etc. We keep those names alive by aliasing them to the canonical tokens, so
- * the rest of this file can be migrated incrementally without breaking visual
- * regressions. New code should reference the canonical names directly.
+ * Popup-local aliases.
+ *
+ * This used to redefine the whole semantic layer -- background, all three text
+ * tones, borders -- which meant lib/design-tokens.css was the source of truth
+ * in name only. It also shadowed the corrected text tones with the failing
+ * ones: --color-text-secondary resolved to neutral-500, which measures 2.92:1
+ * on a card, and --color-text-tertiary to neutral-400 at 1.66:1. Both fed
+ * straight into the translation card through the --pp-* mapping below.
+ *
+ * What is left here are names the popup genuinely owns: a shorter alias for
+ * the primary, its four-tier spacing scale, and its rhythm tokens. Everything
+ * chromatic now comes from the token file, in both themes.
  */
 :root {
-  --color-primary: var(--color-primary-600);
-  --color-primary-hover: var(--color-primary-700);
+  --color-primary: var(--color-primary-700);
+  --color-primary-hover: var(--color-primary-800);
   --color-primary-light: var(--color-primary-400);
-  /* --color-primary-50 / -100 come straight from design-tokens.css */
 
-  --color-bg: #ffffff;
-  --color-bg-secondary: var(--color-gray-50);
-
-  --color-text: var(--color-gray-900);
-  --color-text-secondary: var(--color-gray-500);
-  --color-text-tertiary: var(--color-gray-400);
-
-  --color-border: var(--color-gray-200);
+  /* The popup's third text tone maps onto the token file's muted tone, which
+     is the lowest one measured to stay legible on a card. */
+  --color-text-tertiary: var(--color-text-muted);
 
   /* The shared card's stylesheet consumes exactly these four names and
      defines none of them. Mapping them onto the popup's own tokens here,
@@ -64,22 +66,11 @@
 
 [data-theme='dark'] {
   --color-primary: var(--color-primary-400);
-  --color-primary-hover: var(--color-primary-500);
+  --color-primary-hover: var(--color-primary-300);
   --color-primary-light: var(--color-primary-300);
-  --color-primary-50: rgba(99, 102, 241, 0.1);
-  --color-primary-100: rgba(99, 102, 241, 0.2);
-
-  --color-bg: var(--color-gray-900);
-  --color-bg-secondary: var(--color-gray-800);
-
-  --color-text: #f9fafb;
-  --color-text-secondary: var(--color-gray-400);
-  --color-text-tertiary: var(--color-gray-500);
-
-  --color-border: var(--color-gray-700);
-  --color-success: #34d399;
-  --color-error: #f87171;
-  --color-warning: #fbbf24;
+  /* Tinted fills, indigo-400 based to match the dark primary. */
+  --color-primary-50: rgba(129, 140, 248, 0.12);
+  --color-primary-100: rgba(129, 140, 248, 0.20);
 }
 
 /* Reset */
@@ -201,8 +192,8 @@ body {
 
 /* Warning */
 .warning {
-  background-color: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  background-color: rgba(138, 90, 4, 0.1);
+  border: 1px solid rgba(138, 90, 4, 0.3);
   border-radius: var(--radius-md);
   padding: var(--space-sm) var(--space-md);
   margin-bottom: var(--space-md);
@@ -251,7 +242,7 @@ body {
 }
 
 .tab.active {
-  color: var(--color-primary);
+  color: var(--color-text);
   border-bottom-color: var(--color-primary);
 }
 
@@ -266,13 +257,15 @@ body {
   gap: 2px;
   padding: 2px;
   margin-bottom: var(--space-3);
-  background: var(--color-bg-secondary);
+  background: var(--color-bg-hover);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
   font-size: var(--text-xs);
 }
 
 .mode-switcher-btn {
+  /* Was 23px tall, under even the 24px WCAG 2.5.8 floor. */
+  min-height: 28px;
   padding: var(--space-1) var(--space-3);
   background: transparent;
   border: none;
@@ -291,8 +284,9 @@ body {
 
 .mode-switcher-btn[aria-selected='true'] {
   background: var(--color-bg);
-  color: var(--color-primary);
-  box-shadow: var(--shadow-sm);
+  color: var(--color-text);
+  /* Ring rather than a border so selecting a mode does not reflow the row. */
+  box-shadow: 0 0 0 1px var(--color-border-strong), var(--shadow-sm);
 }
 
 .mode-switcher-btn:focus-visible {
@@ -397,7 +391,7 @@ body {
 .link-btn {
   background: none;
   border: none;
-  color: var(--color-primary);
+  color: var(--color-text-secondary);
   font-size: 12px;
   cursor: pointer;
   padding: 0;
@@ -424,13 +418,14 @@ body {
 /* Action Button (Translate/Polish) */
 .action-btn {
   width: 100%;
-  /* min-height 40px = Apple HIG / Material touch target */
-  min-height: 40px;
+  /* 44px is the Apple HIG and WCAG 2.5.5 target; the design system's own
+     buttons are ~48. 40 was under all three. */
+  min-height: 44px;
   padding: var(--space-3) var(--space-4);
   font-size: 14px;
   font-weight: 500;
-  background-color: var(--color-primary);
-  color: white;
+  background-color: var(--button-primary-bg);
+  color: var(--button-primary-text);
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -498,19 +493,19 @@ body {
   font-size: 11px;
   font-weight: 500;
   padding: var(--space-xs) var(--space-sm);
-  background-color: var(--color-primary);
-  color: white;
+  background-color: var(--button-primary-bg);
+  color: var(--button-primary-text);
   border-radius: var(--radius-sm);
 }
 
 .provider-badge {
-  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  background: linear-gradient(135deg, var(--color-success-500) 0%, var(--color-success-500) 100%);
   font-size: 10px;
   padding: 2px 6px;
 }
 
 .provider-badge.claude {
-  background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+  background: linear-gradient(135deg, var(--color-warning-500) 0%, var(--color-warning-500) 100%);
 }
 
 .provider-badge.gemini {
@@ -518,7 +513,7 @@ body {
 }
 
 .provider-badge.openai {
-  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  background: linear-gradient(135deg, var(--color-success-500) 0%, var(--color-success-500) 100%);
 }
 
 .polish-provider-badge {
@@ -544,8 +539,8 @@ body {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
-  background-color: rgba(245, 158, 11, 0.10);
-  border: 1px solid rgba(245, 158, 11, 0.28);
+  background-color: rgba(138, 90, 4, 0.10);
+  border: 1px solid rgba(138, 90, 4, 0.28);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
 }
@@ -566,8 +561,8 @@ body {
 }
 
 .error-section.is-destructive {
-  background-color: rgba(239, 68, 68, 0.10);
-  border-color: rgba(239, 68, 68, 0.28);
+  background-color: rgba(192, 38, 58, 0.10);
+  border-color: rgba(192, 38, 58, 0.28);
 }
 
 .error-section.is-destructive::before {
@@ -667,14 +662,14 @@ body {
   font-size: 9px;
   font-weight: 500;
   padding: 2px 4px;
-  background: var(--color-primary);
-  color: white;
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
   border-radius: 3px;
   flex-shrink: 0;
 }
 
 .history-item-badge.polish-badge {
-  background: #8b5cf6;
+  background: var(--accent-polish);
 }
 
 .history-actions {
@@ -740,7 +735,7 @@ body {
 .polish-card-title {
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-primary);
+  color: var(--color-text);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -855,7 +850,7 @@ body {
   display: block;
   font-size: 18px;
   font-weight: 600;
-  color: var(--color-primary);
+  color: var(--color-text);
 }
 
 .stat-label {
@@ -878,7 +873,7 @@ body {
 
 .stats-analytics {
   font-size: 11px;
-  color: var(--color-primary);
+  color: var(--color-text-secondary);
 }
 
 /* RTL Support for Farsi UI */
@@ -968,24 +963,26 @@ body {
   display: inline-block;
   font-size: 11px;
   font-weight: 500;
-  /* Was #8b5cf6 on rgba(139,92,246,0.1) — ~3:1, failed WCAG AA. */
-  /* Darken text + raise background opacity to ~5:1. */
-  color: #6d28d9;
-  background: rgba(139, 92, 246, 0.18);
+  /* A tinted chip: the polish accent as text on its own tint. An earlier
+     version put a light violet on a 10% violet ground at roughly 3:1 and
+     failed AA; raising the ground opacity and darkening the text fixed it,
+     and the move from violet to olive kept the same relationship. */
+  color: var(--accent-polish);
+  background: rgba(139, 63, 168, 0.10);   /* 4.90 with the accent as text */
   padding: 2px 8px;
   border-radius: var(--radius-sm);
   text-transform: lowercase;
 }
 
 [data-theme="dark"] .dict-pos {
-  background: rgba(139, 92, 246, 0.28);
-  color: #c4b5fd;
+  background: rgba(139, 63, 168, 0.28);
+  color: var(--accent-polish);
 }
 
 .dict-label {
   font-size: 11px;
   font-weight: 600;
-  color: var(--color-primary);
+  color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   display: block;
@@ -1028,8 +1025,8 @@ body {
 }
 
 .dict-tag-antonym {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(192, 38, 58, 0.1);
+  border-color: rgba(192, 38, 58, 0.3);
   color: var(--color-error);
 }
 
@@ -1067,11 +1064,7 @@ body {
 }
 
 .dict-badge {
-  background: #059669 !important;
-}
-
-[data-theme="dark"] .dict-badge {
-  background: #10b981 !important;
+  background: var(--cat-dictionary) !important;
 }
 
 /* ============================================
@@ -1126,14 +1119,17 @@ body {
   text-align: center;
 }
 
+/* Same tertiary treatment as Translate Page, so every non-primary button in
+   the popup looks like the same kind of thing. It was an accent-outlined
+   button, which made it read as a second call to action beside the real one. */
 .action-btn.secondary {
-  background: transparent;
-  color: var(--color-primary);
-  border: 1px solid var(--color-primary);
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-text);
 }
 
 .action-btn.secondary:hover {
-  background: rgba(99, 102, 241, 0.1);
+  background: var(--color-bg-hover);
 }
 
 .document-info {
@@ -1213,8 +1209,8 @@ body {
 }
 
 .cancel-btn:hover {
-  background: #dc2626;
-  border-color: #dc2626;
+  background: var(--color-error-500);
+  border-color: var(--color-error-500);
 }
 
 .cancel-btn:disabled {
@@ -1314,7 +1310,7 @@ body {
   margin-bottom: var(--space-sm);
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-primary);
+  color: var(--color-text);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -1322,7 +1318,7 @@ body {
 .grammar-icon {
   width: 16px;
   height: 16px;
-  color: var(--color-primary);
+  color: var(--color-text-secondary);
 }
 
 .grammar-points {
@@ -1381,7 +1377,7 @@ body {
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(99, 102, 241, 0.05) 100%);
   border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: var(--radius-md);
-  color: var(--color-primary);
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -1498,7 +1494,7 @@ body {
 .result-label {
   font-size: 11px;
   font-weight: 600;
-  color: var(--color-primary);
+  color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -1611,7 +1607,7 @@ body {
 .polish-favorite-btn.favorited .star-filled,
 .icon-btn.favorited .star-filled {
   display: block;
-  color: #FBBF24;
+  color: var(--color-warning-500);
 }
 
 .polish-favorite-btn.favorited .star-outline,
@@ -1621,7 +1617,7 @@ body {
 
 .polish-favorite-btn:hover .star-outline,
 .icon-btn:hover .star-outline {
-  color: #FBBF24;
+  color: var(--color-warning-500);
 }
 
 /* ============================================
@@ -1639,10 +1635,10 @@ body {
   justify-content: center;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%);
-  border: 1px solid rgba(251, 191, 36, 0.3);
+  background: linear-gradient(135deg, rgba(232, 180, 92, 0.1) 0%, rgba(232, 180, 92, 0.05) 100%);
+  border: 1px solid rgba(232, 180, 92, 0.3);
   border-radius: var(--radius-md);
-  color: #D97706;
+  color: var(--color-warning-500);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -1650,8 +1646,8 @@ body {
 }
 
 .favorites-link-btn:hover {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 191, 36, 0.1) 100%);
-  border-color: rgba(251, 191, 36, 0.5);
+  background: linear-gradient(135deg, rgba(232, 180, 92, 0.15) 0%, rgba(232, 180, 92, 0.1) 100%);
+  border-color: rgba(232, 180, 92, 0.5);
 }
 
 .favorites-link-btn:active {
@@ -1661,13 +1657,13 @@ body {
 .favorites-link-btn svg {
   width: 16px;
   height: 16px;
-  fill: #FBBF24;
-  stroke: #FBBF24;
+  fill: var(--color-warning-500);
+  stroke: var(--color-warning-500);
 }
 
 .favorites-count {
-  background: #FBBF24;
-  color: #78350F;
+  background: var(--color-warning-500);
+  color: var(--color-warning-500);
   font-size: 11px;
   font-weight: 600;
   padding: 1px 6px;
@@ -1677,12 +1673,12 @@ body {
 }
 
 [data-theme="dark"] .favorites-link-btn {
-  color: #FBBF24;
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 191, 36, 0.08) 100%);
+  color: var(--color-warning-500);
+  background: linear-gradient(135deg, rgba(232, 180, 92, 0.15) 0%, rgba(232, 180, 92, 0.08) 100%);
 }
 
 [data-theme="dark"] .favorites-link-btn:hover {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(251, 191, 36, 0.12) 100%);
+  background: linear-gradient(135deg, rgba(232, 180, 92, 0.2) 0%, rgba(232, 180, 92, 0.12) 100%);
 }
 
 /* RTL Support for new elements */
@@ -1699,8 +1695,8 @@ body {
    ============================================ */
 
 .review-prompt-banner {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border-top: 1px solid #f59e0b;
+  background: var(--color-warning-100);
+  border-top: 1px solid var(--color-warning-500);
   padding: 12px 16px;
   display: flex;
   flex-direction: column;
@@ -1708,21 +1704,16 @@ body {
   margin-top: var(--space-md);
 }
 
-[data-theme="dark"] .review-prompt-banner {
-  background: linear-gradient(135deg, #78350f 0%, #92400e 100%);
-  border-color: #f59e0b;
-}
-
 .review-prompt-content {
   display: flex;
   align-items: center;
   gap: 8px;
   font-weight: 500;
-  color: #78350f;
+  color: var(--color-warning-500);
 }
 
 [data-theme="dark"] .review-prompt-content {
-  color: #fef3c7;
+  color: var(--color-warning-100);
 }
 
 .review-prompt-icon {
@@ -1747,29 +1738,29 @@ body {
 }
 
 .review-btn-primary {
-  background: #f59e0b;
-  color: #78350f;
+  background: var(--color-warning-500);
+  color: var(--color-warning-500);
 }
 
 .review-btn-primary:hover {
-  background: #d97706;
+  background: var(--color-warning-500);
 }
 
 .review-btn-secondary {
   background: transparent;
-  color: #92400e;
+  color: var(--color-warning-500);
 }
 
 .review-btn-secondary:hover {
-  color: #78350f;
+  color: var(--color-warning-500);
 }
 
 [data-theme="dark"] .review-btn-secondary {
-  color: #fcd34d;
+  color: var(--color-warning-500);
 }
 
 [data-theme="dark"] .review-btn-secondary:hover {
-  color: #fef3c7;
+  color: var(--color-warning-100);
 }
 
 .review-btn-icon {
@@ -1779,7 +1770,7 @@ body {
   cursor: pointer;
   opacity: 0.6;
   font-size: 14px;
-  color: #78350f;
+  color: var(--color-warning-500);
   padding: 4px;
 }
 
@@ -1788,7 +1779,7 @@ body {
 }
 
 [data-theme="dark"] .review-btn-icon {
-  color: #fcd34d;
+  color: var(--color-warning-500);
 }
 
 /* RTL support for review prompt */
@@ -1822,20 +1813,23 @@ body {
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
   margin-bottom: var(--section-gap);
-  min-height: 36px;
-  background: transparent;
-  border: 1px solid var(--color-border);
+  /* The document's button-tertiary: canvas fill, ink text, 1px ink border.
+     It was previously a transparent box with a hairline border and accent
+     text, which reads as a container rather than a control. */
+  min-height: 44px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-text);
   border-radius: var(--radius-md);
-  color: var(--color-primary);
-  font-size: 13px;
+  color: var(--color-text);
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: background-color var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out);
 }
 
 .translate-page-btn:hover:not(:disabled) {
-  background: rgba(99, 102, 241, 0.08);
-  border-color: var(--color-primary-200);
+  background: var(--color-bg-hover);
+  border-color: var(--color-text);
 }
 
 .translate-page-btn:focus-visible {
@@ -1882,23 +1876,23 @@ body {
 }
 
 .favorites-header-btn svg {
-  fill: #FBBF24;
-  stroke: #FBBF24;
+  fill: var(--color-warning-500);
+  stroke: var(--color-warning-500);
   width: 18px;
   height: 18px;
 }
 
 .favorites-header-btn:hover svg {
-  fill: #F59E0B;
-  stroke: #F59E0B;
+  fill: var(--color-warning-500);
+  stroke: var(--color-warning-500);
 }
 
 .favorites-header-count {
   position: absolute;
   top: -2px;
   right: -2px;
-  background: var(--color-primary);
-  color: white;
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
   font-size: 9px;
   font-weight: 600;
   min-width: 14px;

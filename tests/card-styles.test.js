@@ -132,7 +132,13 @@ describe('CARD_STYLES against the shared component library', () => {
   });
 
   it('is checking a file that really does define components, so this cannot pass vacuously', () => {
-    expect(componentsCss).toMatch(/\.pp-card\s*\{/);
+    // This used to assert the presence of `.pp-card` specifically, which was
+    // the class that collided. That component has since been deleted from the
+    // shared library -- it was referenced by no markup anywhere -- so the
+    // check is now that the file still defines a real set of classes for the
+    // comparison to mean anything.
+    const classes = new Set((componentsCss.match(/\.[a-zA-Z][\w-]*/g) || []));
+    expect(classes.size).toBeGreaterThan(10);
   });
 });
 

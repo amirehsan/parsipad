@@ -1,20 +1,33 @@
+/* ============================================================
+   ParsiPad New Tab
+   ============================================================
+   One word per tab. The saved favourite is the page: it sits directly on the
+   background in display type with no card around it, and everything else
+   (controls, tiles, links) is quiet furniture at the edges.
+
+   This file was rewritten in one pass. The version before it had three
+   generations of layout layered on top of each other, with .newtab-columns
+   declared three separate times, which is how a rule that looked correct kept
+   losing to one further down.
+   ============================================================ */
+
 /* Local fonts (see fonts/fonts.css) */
 @import url('../fonts/fonts.css');
 @import url('../lib/design-tokens.css');
 @import url('../lib/components.css');
 
-/* Design Tokens */
 :root {
   --color-primary: var(--color-primary-600);
   --color-primary-hover: var(--color-primary-700);
   --color-polish: var(--accent-polish);
-  --color-favorite: #FBBF24;
-  --color-bg: #F3F4F6;
-  --color-bg-secondary: #FFFFFF;
-  --color-text: #111827;
-  --color-text-secondary: #6B7280;
-  --color-border: #E5E7EB;
-  --color-success: #10B981;
+  --color-bg: var(--color-gray-100);
+  --color-bg-secondary: var(--color-bg-elevated);
+  --color-text: var(--color-gray-900);
+  /* gray-500 is the ladder's decoration step and measures 3.06 here, so it
+     cannot carry text. 600 is the lightest step that reaches AA. */
+  --color-text-secondary: var(--color-gray-600);
+  --color-border: var(--color-gray-200);
+  --color-success: var(--color-success-500);
 
   --font-persian: 'Vazirmatn', 'Tahoma', sans-serif;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -27,38 +40,60 @@
   --space-2xl: 48px;
   --space-3xl: 64px;
 
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
   --radius-2xl: 24px;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px rgba(27, 24, 38, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(27, 24, 38, 0.1), 0 2px 4px -1px rgba(27, 24, 38, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(27, 24, 38, 0.1), 0 4px 6px -2px rgba(27, 24, 38, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(27, 24, 38, 0.1), 0 10px 10px -5px rgba(27, 24, 38, 0.04);
+
+  /* Hero display sizes. Page-local rather than global tokens: the extension's
+     type scale tops out at 30px because every other surface is dense, and
+     this is the one place that wants to be enormous.
+
+     The min(..., dvh) term is doing real work. clamp() alone tracks width, so
+     on a short wide window a single word would grow past the viewport height
+     and take the dock off screen with it. */
+  --display-xl: min(clamp(2.75rem, 7vw, 5.25rem), 15dvh);
+  --display-lg: min(clamp(2.25rem, 5.5vw, 4rem), 12dvh);
+  --display-md: min(clamp(1.5rem, 3.6vw, 2.5rem), 9dvh);
+  --display-sm: clamp(1.05rem, 2.2vw, 1.5rem);
+
+  /* One glass recipe, mixed from the surface token so it stays on-palette in
+     both themes rather than being a hand-picked white overlay. */
+  --glass-bg: color-mix(in srgb, var(--color-bg-elevated) 68%, transparent);
+  --glass-border: color-mix(in srgb, var(--color-border) 65%, transparent);
+
+  --drawer-w: min(380px, 92vw);
 }
 
-/* Dark Mode */
 [data-theme="dark"] {
-  --color-primary: #818CF8;
-  --color-primary-hover: #6366F1;
-  --color-polish: #a78bfa;
-  --color-favorite: #FCD34D;
-  --color-bg: #0F172A;
-  --color-bg-secondary: #1E293B;
-  --color-text: #F9FAFB;
-  --color-text-secondary: #9CA3AF;
-  --color-border: #334155;
-  --color-success: #34D399;
+  /* Careful: this is the 400 step, which is a *light* indigo. It is fine as
+     coloured text on the canvas, and wrong as a fill under a white label
+     (2.92:1). Filled controls use --button-primary-bg, which holds the 600
+     step in both themes for exactly that reason. */
+  --color-primary: var(--color-primary-400);
+  --color-primary-hover: var(--color-primary-500);
+  --color-polish: var(--accent-polish);
+  --color-bg: var(--color-gray-900);
+  --color-bg-secondary: var(--color-gray-800);
+  --color-text: var(--color-gray-50);
+  --color-text-secondary: var(--color-gray-400);
+  --color-border: var(--color-gray-700);
+  --color-success: var(--color-success-500);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(27, 24, 38, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(27, 24, 38, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(27, 24, 38, 0.4);
+  --shadow-xl: 0 20px 25px -5px rgba(27, 24, 38, 0.5);
+
+  --glass-bg: color-mix(in srgb, var(--color-bg-elevated) 72%, transparent);
 }
 
-/* Reset */
+/* ============================================================
+   Reset and canvas
+   ============================================================ */
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -69,9 +104,11 @@
   display: none !important;
 }
 
-/* Base */
+/* The page never scrolls. Everything that can overflow does so inside its own
+   panel: the bookmark tree vertically, the tile row horizontally. */
 html, body {
   height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -82,86 +119,145 @@ body {
   background: var(--color-bg);
   background-image:
     radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.1) 0, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.1) 0, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(251, 191, 36, 0.05) 0, transparent 50%);
-  min-height: 100vh;
+    radial-gradient(at 100% 0%, rgba(139, 63, 168, 0.1) 0, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(232, 180, 92, 0.05) 0, transparent 50%);
 }
 
 [data-theme="dark"] body {
   background-image:
     radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.15) 0, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(251, 191, 36, 0.08) 0, transparent 50%);
+    radial-gradient(at 100% 0%, rgba(139, 63, 168, 0.15) 0, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(232, 180, 92, 0.08) 0, transparent 50%);
 }
 
-/* Main Container */
-.newtab-container {
-  min-height: 100vh;
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  backdrop-filter: blur(14px) saturate(1.15);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  /* Without the blur the translucency reads as washed-out rather than
+     glassy, so raise the surface until it is effectively opaque. */
+  .glass {
+    background: color-mix(in srgb, var(--color-bg-elevated) 95%, transparent);
+  }
+}
+
+/* ============================================================
+   Shell
+   ============================================================
+   min-height: 0 on every flex child is the load-bearing part. The default is
+   min-height: auto, which refuses to shrink below content, so without it a
+   long bookmark list or a big word pushes the shell past the viewport and the
+   page scrolls no matter what overflow says.
+   ============================================================ */
+
+.shell {
+  height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: var(--space-lg);
-  max-width: 1400px;
-  margin: 0 auto;
+  padding: clamp(12px, 2.4vh, 28px) clamp(16px, 4vw, 48px);
+  overflow: hidden;
 }
 
-/* Header */
-.newtab-header {
+.top-bar,
+.dock,
+.foot {
+  flex-shrink: 0;
+}
+
+.stage {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: var(--space-md);
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-.logo-img {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-md);
-}
-
-.logo-text {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text);
-  opacity: 0.8;
-}
-
-.header-actions {
-  display: flex;
-  gap: var(--space-sm);
-}
-
-.icon-btn {
-  width: 36px;
-  height: 36px;
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  color: var(--color-text-secondary);
-  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  gap: clamp(12px, 2.5vh, 28px);
+  overflow: hidden;
 }
 
-.icon-btn:hover {
-  background-color: var(--color-border);
+/* ============================================================
+   Top bar
+   ============================================================ */
+
+.top-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.chip-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs);
+  border-radius: var(--radius-md);
+  min-width: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 30px;
+  padding: var(--space-xs) var(--space-md);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--motion-fast, 150ms) ease,
+              color var(--motion-fast, 150ms) ease;
+}
+
+.chip svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.chip:hover {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
   color: var(--color-text);
-  transform: scale(1.05);
 }
 
-.icon-btn svg {
-  width: 18px;
-  height: 18px;
+.chip:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
-/* Theme Toggle Icons */
+/* On is a filled chip. --button-primary-bg, never --color-primary: see the
+   warning in the dark block above. */
+.chip[aria-pressed='true'],
+.chip[aria-expanded='true'] {
+  background: var(--button-primary-bg);
+  border-color: var(--button-primary-bg);
+  color: var(--button-primary-text);
+}
+
+.chip[aria-pressed='true']:hover,
+.chip[aria-expanded='true']:hover {
+  background: var(--button-primary-bg-hover);
+  border-color: var(--button-primary-bg-hover);
+}
+
+/* The button shows the theme you would switch TO, so exactly one icon is
+   visible at a time. These rules were lost in the rewrite, which left both
+   the sun and the moon drawn on top of each other and made the button look
+   like it was doing nothing. */
 #theme-icon-dark {
   display: none;
 }
@@ -170,82 +266,86 @@ body {
   display: block;
 }
 
-[data-theme="dark"] #theme-icon-light {
+[data-theme="dark"] #theme-icon-light,
+.dark #theme-icon-light {
   display: none;
 }
 
-[data-theme="dark"] #theme-icon-dark {
+[data-theme="dark"] #theme-icon-dark,
+.dark #theme-icon-dark {
   display: block;
 }
 
-/* Main Content */
-.newtab-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-lg) 0;
-}
+/* ============================================================
+   Glance
+   ============================================================ */
 
-/* Two-Column Layout */
-.newtab-columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-xl);
-  flex: 1;
-  align-items: start;
-  width: 100%;
-}
-
-.column-left {
+.glance {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  padding-top: var(--space-xl);
+  gap: var(--space-xs);
+  text-align: center;
 }
 
-.column-right {
-  display: flex;
-  flex-direction: column;
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
-  max-height: calc(100vh - 160px);
-  overflow: hidden;
-  animation: slideUp 0.4s ease-out;
-}
-
-/* Flashcard Container */
-.flashcard-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-lg);
-  width: 100%;
-}
-
-/* Progress Indicator */
-.progress-indicator {
-  font-size: 14px;
-  color: var(--color-text-secondary);
+.glance-clock {
+  font-size: var(--text-2xl);
   font-weight: 500;
-  margin-top: var(--space-sm);
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
 }
 
-/* Flashcard */
-.flashcard {
+.glance-greeting {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.glance-greeting :lang(fa) {
+  font-family: var(--font-persian);
+}
+
+.glance-sep {
+  opacity: 0.55;
+}
+
+/* ============================================================
+   Hero
+   ============================================================
+   The card's two faces are absolutely positioned, so the card has no
+   intrinsic height at all. It takes its height from the stage, with a floor
+   so it can never collapse to nothing on a short window.
+   ============================================================ */
+
+.hero {
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
-  min-height: 320px;
-  perspective: 1000px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+}
+
+.flashcard {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 44rem;
+  height: 100%;
+  min-height: 8rem;
+  perspective: 1200px;
   cursor: pointer;
 }
 
 .flashcard-inner {
   position: relative;
   width: 100%;
-  min-height: 320px;
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100%;
+  transition: transform var(--motion-slower, 600ms) var(--ease-in-out);
   transform-style: preserve-3d;
 }
 
@@ -253,32 +353,26 @@ body {
   transform: rotateY(180deg);
 }
 
+/* No surface, no border, no shadow: the word is on the page. */
 .flashcard-front,
 .flashcard-back {
   position: absolute;
-  width: 100%;
-  min-height: 320px;
+  inset: 0;
   backface-visibility: hidden;
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
-  padding: var(--space-2xl);
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-lg);
-  transition: box-shadow 0.2s ease;
-}
-
-.flashcard:hover .flashcard-front,
-.flashcard:hover .flashcard-back {
-  box-shadow: var(--shadow-xl);
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  text-align: center;
+  overflow: hidden;
 }
 
 .flashcard-back {
   transform: rotateY(180deg);
 }
 
-/* For non-3D fallback */
+/* Non-3D fallback */
 .flashcard:not(.has-3d) .flashcard-back {
   display: none;
 }
@@ -290,470 +384,614 @@ body {
 .flashcard:not(.has-3d).flipped .flashcard-back {
   display: flex;
   transform: none;
-  position: relative;
 }
 
-/* Badge Container */
-.flashcard-badge-container {
-  display: flex;
-  justify-content: center;
-  margin-bottom: var(--space-lg);
-}
-
-.flashcard-badge {
-  font-size: 11px;
+.hero-eyebrow {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
   font-weight: 600;
-  padding: var(--space-xs) var(--space-md);
-  border-radius: var(--radius-sm);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  /* Coloured text on the canvas, which is what --color-primary is for. */
+  color: var(--color-primary);
 }
 
-.flashcard-badge.translation {
-  background: var(--color-primary);
-  color: white;
+.hero-eyebrow.polish {
+  color: var(--color-polish);
 }
 
-.flashcard-badge.polish {
-  background: var(--color-polish);
-  color: white;
-}
-
-/* Saved Text (Front - Main Focus) */
-.flashcard-saved {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: 28px;
-  font-weight: 500;
-  line-height: 1.6;
+.hero-text {
+  min-width: 0;
+  max-width: 100%;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   color: var(--color-text);
-  padding: var(--space-lg);
+  overflow-wrap: anywhere;
 }
 
-/* Original Text (Back) */
-.flashcard-original {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: 22px;
-  font-weight: 500;
-  line-height: 1.6;
-  color: var(--color-text);
-  padding: var(--space-md);
+/* Persian needs more leading and no negative tracking: the letterforms join,
+   and tightening them damages the join. */
+.hero-text[dir='rtl'],
+.hero-sub[dir='rtl'] {
+  font-family: var(--font-persian);
+  line-height: 1.55;
+  letter-spacing: 0;
 }
 
-/* Divider on back */
-.flashcard-divider {
-  height: 1px;
-  background: var(--color-border);
-  margin: var(--space-md) var(--space-xl);
-}
+.hero-text[data-size='xl'] { font-size: var(--display-xl); }
+.hero-text[data-size='lg'] { font-size: var(--display-lg); }
+.hero-text[data-size='md'] { font-size: var(--display-md); line-height: 1.3; }
 
-/* Small saved text on back */
-.flashcard-saved-small {
-  text-align: center;
-  font-size: 16px;
-  color: var(--color-text-secondary);
+.hero-text[data-size='sm'] {
+  font-size: var(--display-sm);
+  font-weight: 600;
   line-height: 1.5;
-  padding: var(--space-sm);
+  letter-spacing: 0;
+  /* A pathological favourite must not be able to force the page to scroll. */
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-/* Hint at bottom of card */
-.flashcard-hint {
-  display: flex;
+.hero-sub {
+  max-width: 40rem;
+  font-size: var(--text-lg);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.hero-hint {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  opacity: 0;
+  transition: opacity var(--motion-fast, 150ms) ease;
+}
+
+/* Arrows, the copy button and the hint are all revealed together: they are
+   controls for the word, not decoration around it. */
+.hero-nav,
+.hero-tool {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-xs);
-  margin-top: auto;
-  padding-top: var(--space-md);
+  gap: var(--space-sm);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
   color: var(--color-text-secondary);
-  font-size: 12px;
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
+  font-family: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--motion-fast, 150ms) ease,
+              background var(--motion-fast, 150ms) ease,
+              color var(--motion-fast, 150ms) ease;
 }
 
-.flashcard:hover .flashcard-hint {
+.hero-nav {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+}
+
+.hero-tool {
+  padding: var(--space-xs) var(--space-md);
+  min-height: 30px;
+}
+
+.hero-nav svg { width: 20px; height: 20px; }
+.hero-tool svg { width: 14px; height: 14px; }
+
+.stage:hover .hero-nav,
+.stage:hover .hero-tool,
+.stage:hover .hero-hint,
+.stage:focus-within .hero-nav,
+.stage:focus-within .hero-tool,
+.stage:focus-within .hero-hint {
   opacity: 1;
 }
 
-.flashcard-hint svg {
-  width: 16px;
-  height: 16px;
-}
-
-.hint-text {
-  font-weight: 500;
-}
-
-/* Persian/RTL text support */
-html[dir="rtl"] {
-  font-family: var(--font-persian);
-}
-
-html[dir="rtl"] body {
-  font-family: var(--font-persian);
-}
-
-html[dir="rtl"] .card-navigation {
-  flex-direction: row-reverse;
-}
-
-.flashcard-saved[dir="rtl"],
-.flashcard-original[dir="rtl"],
-.flashcard-saved-small[dir="rtl"] {
-  font-family: var(--font-persian);
-  text-align: right;
-}
-
-/* Card Actions */
-.card-actions {
-  display: flex;
-  justify-content: center;
-  gap: var(--space-sm);
-}
-
-.action-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-sm);
-    padding: var(--space-sm) var(--space-lg);
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    color: var(--color-text-secondary);
-    font-size: 13px;
-    font-weight: 500;
-    font-family: var(--font-persian);
-    transition: all 0.15s ease;
-}
-
-.action-btn:hover {
-  background-color: var(--color-border);
+.hero-nav:hover,
+.hero-tool:hover {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
   color: var(--color-text);
 }
 
-.action-btn.copied {
+.hero-nav:focus-visible,
+.hero-tool:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.hero-nav:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.stage:hover .hero-nav:disabled,
+.stage:focus-within .hero-nav:disabled {
+  opacity: 0.25;
+}
+
+.hero-tool.copied {
   color: var(--color-success);
-  border-color: var(--color-success);
 }
 
-.action-btn svg {
-  width: 16px;
-  height: 16px;
+/* A touch device has no hover, so nothing would ever appear. */
+@media (hover: none) {
+  .hero-nav,
+  .hero-tool,
+  .hero-hint {
+    opacity: 1;
+  }
 }
 
-/* Navigation */
-.card-navigation {
+.hero-footer {
+  flex-shrink: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-lg);
-}
-
-.nav-btn {
-  width: 48px;
-  height: 48px;
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: 50%;
-  cursor: pointer;
-  color: var(--color-text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-}
-
-.nav-btn:hover:not(:disabled) {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: white;
-  transform: scale(1.1);
-}
-
-.nav-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.nav-btn svg {
-  width: 24px;
-  height: 24px;
-}
-
-/* Progress Dots */
-.progress-dots {
-  display: flex;
   gap: var(--space-sm);
 }
 
-.progress-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--color-border);
-  cursor: pointer;
-  transition: all 0.2s ease;
+.progress-dots {
+  display: flex;
+  /* No gap: the dots carry their own padding, which both spaces them and
+     gives them a real click target. */
+  gap: 0;
 }
 
+.progress-dot {
+  /* The dot is 7px of paint inside a 25px target. Two reasons: a 7px click
+     target is nowhere near the 24px minimum, and the active dot is scaled up,
+     which put its bottom edge past the stage's overflow clip and sheared it
+     off. The padding fixes both, and background-clip keeps the visible dot
+     small. */
+  box-sizing: content-box;
+  width: 7px;
+  height: 7px;
+  padding: 9px;
+  background: var(--color-border);
+  background-clip: content-box;
+  border-radius: var(--radius-full, 9999px);
+  cursor: pointer;
+  transition: background var(--motion-fast, 150ms) ease,
+              transform var(--motion-fast, 150ms) ease;
+}
+
+/* background-color, not the background shorthand: the shorthand resets
+   background-clip to border-box, which paints the whole 25px target instead
+   of the 7px dot inside it. */
 .progress-dot:hover {
-  background: var(--color-text-secondary);
-  transform: scale(1.2);
+  background-color: var(--color-text-secondary);
 }
 
 .progress-dot.active {
-  background: var(--color-primary);
-  transform: scale(1.2);
+  background-color: var(--color-primary);
+  transform: scale(1.25);
 }
 
-/* Keyboard Hints */
-.keyboard-hints {
-  position: fixed;
-  bottom: var(--space-md);
-  right: var(--space-lg);
+/* ============================================================
+   Empty and disabled states
+   ============================================================
+   Borderless, in the hero's slot, so the page silhouette does not jump
+   between having favourites and not.
+   ============================================================ */
+
+.stage-state {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  max-width: 32rem;
+  text-align: center;
+}
+
+.stage-state-icon {
+  width: 40px;
+  height: 40px;
+  color: var(--color-primary);
+  opacity: 0.55;
+}
+
+.stage-state-title {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.stage-state-body {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* ============================================================
+   Dock (most visited)
+   ============================================================ */
+
+.dock {
+  display: flex;
+  justify-content: center;
+  padding-bottom: var(--space-sm);
+}
+
+.tile-grid {
+  display: flex;
+  gap: var(--space-md);
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: var(--space-xs);
+  scrollbar-width: thin;
+}
+
+.tile-grid::-webkit-scrollbar { height: 6px; }
+.tile-grid::-webkit-scrollbar-track { background: transparent; }
+.tile-grid::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full, 9999px);
+}
+
+.tile {
+  flex: 0 0 auto;
+  width: 86px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+/* The plate is what makes a row of ragged favicons read as one set. */
+.tile-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  backdrop-filter: blur(14px) saturate(1.15);
+  overflow: hidden;
+  transition: transform var(--motion-normal, 200ms) var(--ease-out),
+              border-color var(--motion-normal, 200ms) ease,
+              box-shadow var(--motion-normal, 200ms) ease;
+}
+
+.tile:hover .tile-icon {
+  transform: translateY(-4px);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-lg);
+}
+
+.tile:focus-visible {
+  outline: none;
+}
+
+.tile:focus-visible .tile-icon {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.tile-icon img {
+  width: 30px;
+  height: 30px;
+}
+
+.tile-initial {
+  color: var(--color-primary);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.tile-label {
+  width: 100%;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tile:hover .tile-label {
+  color: var(--color-text);
+}
+
+.dock-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+/* ============================================================
+   Footer
+   ============================================================ */
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding-top: var(--space-sm);
+}
+
+.foot-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  text-decoration: none;
+  transition: background var(--motion-fast, 150ms) ease,
+              color var(--motion-fast, 150ms) ease;
+}
+
+.footer-link svg { width: 14px; height: 14px; }
+
+.footer-link:hover {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+}
+
+.footer-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* The hints pill keeps the look it had. It is in the footer rather than
+   floating: as a fixed overlay it sat on top of whatever reached the bottom
+   of the viewport, which is now the tile row. */
+.keyboard-hints {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-md);
   padding: var(--space-xs) var(--space-md);
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   font-size: 11px;
   color: var(--color-text-secondary);
-  opacity: 0.5;
-  transition: opacity 0.2s ease;
-  z-index: 10;
+  transition: color var(--motion-normal, 200ms) ease;
 }
 
 .keyboard-hints:hover {
-  opacity: 1;
+  color: var(--color-text);
 }
 
 .hint-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-}
-
-kbd {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: var(--space-xs);
+  white-space: nowrap;
+}
+
+.keyboard-hints kbd {
+  display: inline-block;
   min-width: 18px;
-  height: 18px;
-  padding: 0 var(--space-xs);
+  padding: 1px 5px;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-family: inherit;
   font-size: 10px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-}
-
-/* Empty State */
-.empty-state,
-.disabled-state {
   text-align: center;
-  padding: var(--space-2xl);
-  max-width: 400px;
 }
 
-.empty-icon,
-.disabled-icon {
-  margin-bottom: var(--space-lg);
+/* ============================================================
+   Bookmarks drawer
+   ============================================================
+   Closed is an off-canvas transform plus `inert`, never the hidden
+   attribute: the shared [hidden] rule is display:none !important and would
+   remove the element outright, taking the slide with it.
+   ============================================================ */
+
+.drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: color-mix(in srgb, var(--color-gray-900) 28%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-slow, 400ms) var(--ease-out);
 }
 
-.empty-icon svg,
-.disabled-icon svg {
-  width: 80px;
-  height: 80px;
-  color: var(--color-favorite);
-  opacity: 0.5;
+.drawer-scrim.open {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-.disabled-icon svg {
-  color: var(--color-text-secondary);
-  opacity: 0.3;
-}
-
-.empty-title,
-.disabled-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: var(--space-sm);
-}
-
-.empty-description,
-.disabled-description {
-  font-size: 15px;
-  color: var(--color-text-secondary);
-  margin-bottom: var(--space-md);
-  line-height: 1.6;
-}
-
-.empty-hint {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  opacity: 0.8;
-  line-height: 1.6;
-}
-
-.inline-icon {
-  width: 16px;
-  height: 16px;
-  vertical-align: middle;
-  margin: 0 2px;
-}
-
-.open-settings-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-md) var(--space-lg);
-  background: var(--color-primary);
-  color: white;
+.drawer {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: 50;
+  width: var(--drawer-w);
+  display: flex;
+  flex-direction: column;
   border: none;
-  border-radius: var(--radius-md);
-  font-family: var(--font-persian);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
+  border-inline-start: 1px solid var(--glass-border);
+  border-radius: 0;
+  box-shadow: var(--shadow-xl);
+  transform: translateX(100%);
+  visibility: hidden;
+  transition: transform var(--motion-slow, 400ms) var(--ease-out),
+              visibility 0s linear var(--motion-slow, 400ms);
 }
 
-.open-settings-btn:hover {
-  background: var(--color-primary-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+[dir='rtl'] .drawer {
+  transform: translateX(-100%);
 }
 
-.open-settings-btn svg {
-  width: 18px;
-  height: 18px;
+.drawer.open {
+  transform: none;
+  visibility: visible;
+  transition: transform var(--motion-slow, 400ms) var(--ease-out),
+              visibility 0s;
 }
 
-/* Footer */
-.newtab-footer {
+.drawer-head {
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-md);
-  padding-top: var(--space-md);
-  padding-bottom: var(--space-3xl);
-  color: var(--color-text-secondary);
-}
-
-.footer-link {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  color: var(--color-text-secondary);
-  text-decoration: none;
-  font-size: 13px;
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-md);
-  transition: all 0.15s ease;
-}
-
-.footer-link:hover {
-  color: var(--color-primary);
-  background: rgba(99, 102, 241, 0.1);
-}
-
-.footer-link svg {
-  width: 16px;
-  height: 16px;
-}
-
-.footer-divider {
-  color: var(--color-border);
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.flashcard-container {
-  animation: slideUp 0.4s ease-out;
-}
-
-/* Card transition animation */
-.flashcard.transitioning .flashcard-inner {
-  animation: cardTransition 0.3s ease-out;
-}
-
-@keyframes cardTransition {
-  0% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* Hide elements when flashcard container is hidden */
-#flashcard-container:not([hidden]) ~ #empty-state,
-#flashcard-container:not([hidden]) ~ #disabled-state {
-  display: none;
-}
-
-/* ============================================ */
-/* Bookmark Panel                               */
-/* ============================================ */
-
-.bookmark-panel-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
   padding: var(--space-md) var(--space-lg);
-  border-bottom: 1px solid var(--color-border);
-  font-weight: 600;
-  font-size: 15px;
-  color: var(--color-text);
+  border-bottom: 1px solid var(--glass-border);
   flex-shrink: 0;
 }
 
-.bookmark-panel-header svg {
-  width: 18px;
-  height: 18px;
+.drawer-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.drawer-title svg {
+  width: 16px;
+  height: 16px;
   color: var(--color-primary);
 }
 
 .bookmark-search-wrapper {
-  padding: var(--space-sm) var(--space-md);
-  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-md) var(--space-lg);
   flex-shrink: 0;
 }
 
+.bookmark-empty {
+  padding: var(--space-xl) var(--space-lg);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+/* ============================================================
+   RTL
+   ============================================================ */
+
+html[dir='rtl'] body {
+  font-family: var(--font-persian);
+}
+
+html[dir='rtl'] .hero-nav-prev { order: 3; }
+html[dir='rtl'] .hero-nav-next { order: 1; }
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+@media (max-width: 640px) {
+  /* Icon-only chips. All three switches stay reachable, which matters more
+     than their labels; the pressed state already says which are on. */
+  .chip span {
+    display: none;
+  }
+
+  .chip {
+    padding: var(--space-sm);
+  }
+
+  .chip svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .foot {
+    justify-content: center;
+  }
+}
+
+@media (max-height: 700px) {
+  .glance-clock {
+    font-size: var(--text-xl);
+  }
+
+  .tile-icon { width: 46px; height: 46px; }
+  .tile-icon img { width: 26px; height: 26px; }
+  .tile { width: 76px; }
+}
+
+@media (max-height: 560px) {
+  /* The clock survives; the greeting is the first thing worth losing. */
+  .glance-greeting {
+    display: none;
+  }
+
+  .keyboard-hints {
+    display: none;
+  }
+}
+
+/* ============================================================
+   Motion
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  /* The flip is the card's whole interaction, so it stays: it just happens
+     instantly instead of rotating. Nothing here is gated behind motion. */
+  .flashcard-inner,
+  .drawer,
+  .drawer-scrim,
+  .tile-icon,
+  .progress-dot {
+    transition: none !important;
+  }
+
+  .hero-nav,
+  .hero-tool,
+  .hero-hint {
+    opacity: 1;
+  }
+
+  .tile:hover .tile-icon {
+    transform: none;
+  }
+}
+
+@media print {
+  .top-bar,
+  .dock,
+  .foot,
+  .drawer,
+  .drawer-scrim,
+  .hero-nav,
+  .hero-tool {
+    display: none !important;
+  }
+}
+
+/* ============================================================
+   Bookmark tree
+   ============================================================
+   Ported from the previous two-column layout unchanged: these rules were
+   fine, they were only in the wrong place. They now render inside the drawer.
+   ============================================================ */
 .bookmark-search {
   width: 100%;
   padding: var(--space-sm) var(--space-md);
@@ -773,7 +1011,7 @@ kbd {
 
 .bookmark-search:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 15%, transparent);
 }
 
 .bookmark-tree {
@@ -818,11 +1056,9 @@ kbd {
 }
 
 .bookmark-folder-header:hover {
-  background: rgba(99, 102, 241, 0.08);
-}
-
-[data-theme="dark"] .bookmark-folder-header:hover {
-  background: rgba(129, 140, 248, 0.1);
+  /* --color-primary is already the 600 step in light and the 400 step in
+     dark, so one tint serves both and the dark override is unnecessary. */
+  background: color-mix(in srgb, var(--color-primary) 9%, transparent);
 }
 
 .folder-chevron {
@@ -876,12 +1112,8 @@ kbd {
 }
 
 .bookmark-item:hover {
-  background: rgba(99, 102, 241, 0.08);
+  background: color-mix(in srgb, var(--color-primary) 9%, transparent);
   color: var(--color-primary);
-}
-
-[data-theme="dark"] .bookmark-item:hover {
-  background: rgba(129, 140, 248, 0.1);
 }
 
 .bookmark-item-icon {
@@ -916,183 +1148,18 @@ kbd {
 }
 
 .bookmark-search-result:hover {
-  background: rgba(99, 102, 241, 0.08);
+  background: color-mix(in srgb, var(--color-primary) 9%, transparent);
   color: var(--color-primary);
 }
 
-[data-theme="dark"] .bookmark-search-result:hover {
-  background: rgba(129, 140, 248, 0.1);
-}
-
 .bookmark-search-result .bookmark-item-icon {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-  color: var(--color-text-secondary);
+
+.bookmark-tree {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 var(--space-sm) var(--space-md);
 }
 
-.bookmark-search-result .bookmark-result-info {
-  overflow: hidden;
-  min-width: 0;
-}
-
-.bookmark-search-result .bookmark-result-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.bookmark-search-result .bookmark-result-url {
-  font-size: 11px;
-  color: var(--color-text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.bookmark-highlight {
-  background: rgba(251, 191, 36, 0.3);
-  border-radius: 2px;
-  padding: 0 1px;
-}
-
-[data-theme="dark"] .bookmark-highlight {
-  background: rgba(251, 191, 36, 0.2);
-}
-
-/* Empty search state */
-.bookmark-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-xl);
-  text-align: center;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-}
-
-/* RTL support for bookmarks */
-[dir="rtl"] .bookmark-folder-children {
-  padding-left: 0;
-  padding-right: var(--space-lg);
-}
-
-/* [dir="rtl"] .bookmark-item {
-  padding-left: var(--space-md);
-  padding-right: calc(var(--space-md) + 14px + var(--space-sm));
-} */
-
-[dir="rtl"] .bookmark-folder-header {
-  flex-direction: row-reverse;
-}
-
-[dir="rtl"] .bookmark-search {
-  font-family: var(--font-persian);
+[dir='rtl'] .bookmark-item {
   direction: rtl;
-}
-
-[dir="rtl"] .bookmark-folder.open > .bookmark-folder-header .folder-chevron {
-  transform: rotate(-90deg);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .newtab-columns {
-    grid-template-columns: 1fr;
-  }
-
-  .column-left {
-    min-height: 300px;
-  }
-
-  .column-right {
-    max-height: 50vh;
-  }
-
-  .newtab-container {
-    padding: var(--space-md);
-  }
-
-  .flashcard {
-    min-height: 280px;
-  }
-
-  .flashcard-front,
-  .flashcard-back {
-    min-height: 280px;
-    padding: var(--space-lg);
-  }
-
-  .flashcard-saved {
-    font-size: 22px;
-  }
-
-  .flashcard-original {
-    font-size: 18px;
-  }
-
-  .newtab-header {
-    padding-bottom: var(--space-sm);
-  }
-
-  .logo-text {
-    font-size: 14px;
-  }
-
-  .empty-title,
-  .disabled-title {
-    font-size: 20px;
-  }
-
-  .empty-description,
-  .disabled-description {
-    font-size: 14px;
-  }
-
-  .keyboard-hints {
-    display: none;
-  }
-
-  .card-navigation {
-    gap: var(--space-md);
-  }
-
-  .nav-btn {
-    width: 40px;
-    height: 40px;
-  }
-
-  .nav-btn svg {
-    width: 20px;
-    height: 20px;
-  }
-}
-
-/* Very small screens */
-@media (max-width: 480px) {
-  .flashcard-saved {
-    font-size: 18px;
-  }
-
-  .flashcard-original {
-    font-size: 16px;
-  }
-
-  .progress-dots {
-    max-width: 120px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-}
-
-/* Print styles - hide interactive elements */
-@media print {
-  .header-actions,
-  .card-actions,
-  .card-navigation,
-  .keyboard-hints,
-  .newtab-footer {
-    display: none;
-  }
 }
