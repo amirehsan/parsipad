@@ -3316,12 +3316,11 @@
       const themeToggle = document.getElementById("theme-toggle");
       const html = document.documentElement;
 
-      // Check for saved preference or system preference
-      if (
-        localStorage.getItem("theme") === "dark" ||
-        (!localStorage.getItem("theme") &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches)
-      ) {
+      // Light unless the visitor has chosen dark. A first visit deliberately
+      // does not follow prefers-color-scheme: the light palette is the
+      // default presentation of the product, and someone arriving from a
+      // search result should see it before deciding anything.
+      if (localStorage.getItem("theme") === "dark") {
         html.classList.add("dark");
       }
 
