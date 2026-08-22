@@ -170,24 +170,24 @@ In `lib/i18n.js`, add to the `en` block immediately after the existing `explainG
 and to the `fa` block immediately after its `explainGrammar` entry:
 
 ```js
-    cardOtherMeanings: 'معنی‌های دیگر',
+    cardOtherMeanings: 'معنی\u200cهای دیگر',
     cardAlso: 'همچنین',
     cardHere: 'در این جمله',
     cardNote: 'نکته',
     cardListen: 'خواندن',
     cardCopy: 'کپی',
-    cardSave: 'افزودن به علاقه‌مندی‌ها',
+    cardSave: 'افزودن به علاقه\u200cمندی\u200cها',
     cardSentence: 'ترجمه جمله',
     cardExplain: 'توضیح گرامر',
     cardSwap: 'تغییر جهت ترجمه',
     cardClose: 'بستن',
     cardExpandSource: 'نمایش متن کامل',
-    cardProviderHint: 'ترجمه با {provider}. باز کردن تنظیمات ارائه‌دهنده',
+    cardProviderHint: 'ترجمه با {provider}. باز کردن تنظیمات ارائه\u200cدهنده',
     cardSynonyms: 'مشابه',
     cardAntonyms: 'متضاد',
 ```
 
-Write every zero-width non-joiner in those Persian strings as `‌`. The affected strings are `cardOtherMeanings` (معنی‌های), `cardSave` (علاقه‌مندی‌ها) and `cardProviderHint` (ارائه‌دهنده).
+Write every zero-width non-joiner in those Persian strings as `\u200c`. The affected strings are `cardOtherMeanings` (معنی\u200cهای), `cardSave` (علاقه\u200cمندی\u200cها) and `cardProviderHint` (ارائه\u200cدهنده).
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -232,7 +232,7 @@ describe('CARD_STYLES', () => {
 
   it('contains no em dashes and no literal invisible characters', () => {
     expect(CARD_STYLES).not.toMatch(/—/);
-    expect(CARD_STYLES).not.toMatch(/[­​‌‍﻿ ]/);
+    expect(CARD_STYLES).not.toMatch(/[\u00ad\u200b\u200c\u200d\ufeff ]/);
   });
 
   it('gives Persian more leading than Latin at the same size', () => {
@@ -905,14 +905,14 @@ import { describe, it, expect, vi } from 'vitest';
 import { renderSentenceCard } from '../shared/card/sentence-card.js';
 
 const base = {
-  translation: 'جریمه می‌شوید',
+  translation: 'جریمه می\u200cشوید',
   mode: 'sentence',
   direction: 'en-fa',
   sourceText: 'They will charge you a fee for late returns.',
   register: 'neutral',
   alternatives: [
-    { text: 'مبلغی از شما دریافت می‌شود', label: 'more formal' },
-    { text: 'ازت پول می‌گیرن', label: 'colloquial' }
+    { text: 'مبلغی از شما دریافت می\u200cشود', label: 'more formal' },
+    { text: 'ازت پول می\u200cگیرن', label: 'colloquial' }
   ],
   note: 'Persian prefers the passive here.',
   correction: '',
@@ -924,7 +924,7 @@ describe('renderSentenceCard', () => {
   it('shows the source sentence and the translation', () => {
     const el = renderSentenceCard(base, opts());
     expect(el.querySelector('.pp-card-source-text').textContent).toContain('charge you a fee');
-    expect(el.querySelector('.pp-card-translation').textContent).toBe('جریمه می‌شوید');
+    expect(el.querySelector('.pp-card-translation').textContent).toBe('جریمه می\u200cشوید');
   });
 
   it('labels alternatives under Also with a count', () => {
@@ -1179,7 +1179,7 @@ describe('computeBoxPosition', () => {
 
   it('uses the real box height when flipping, not a guess', () => {
     const tall = computeBoxPosition({ ...base, box: { width: 450, height: 600 }, selection: { top: 700, bottom: 720, left: 200 } });
-    expect(tall.top).toBe(12);
+    expect(tall.top).toBe(700 - 600 - 8);
   });
 
   it('clamps to the top padding rather than going off the top edge', () => {
@@ -1256,11 +1256,21 @@ npm run lint && npm test && git add content/placement.js tests/placement.test.js
 
 This is the task where the user sees the change. Take it carefully.
 
-- [ ] **Step 1: Inject the card styles into the shadow root**
+- [ ] **Step 1: Extend web_accessible_resources for the new imports**
+
+This step comes first because skipping it breaks the extension completely rather than subtly.
+
+`content/content.js` imports `content/main.js` as a raw ES module, so every file in its transitive import graph must be listed in `web_accessible_resources` in manifest.json. This task adds imports of `shared/card/index.js` and `content/placement.js`, whose closure pulls in the rest of `shared/card/`. None of them are listed today.
+
+The packaged build bundles these away, so `npm run build` will pass regardless; only the unpacked extension, which is how this project is developed and run, breaks. That exact defect shipped once in the previous sub-project and is now guarded by `tests/web-accessible-resources.test.js`, which computes the real closure from disk and will fail until the manifest covers it.
+
+Add the needed patterns, keeping them tight: prefer `shared/card/*.js` and `content/placement.js` over anything broader, and do not add a bare `lib/*.js`. Run that test and let it tell you the exact set rather than guessing.
+
+- [ ] **Step 2: Inject the card styles into the shadow root**
 
 In `createFloatingBox`, after the existing `shadowRoot.appendChild(style)`, call `injectCardStyles(shadowRoot, document)`. The box's own shell styles stay where they are; the card's styles are additive.
 
-- [ ] **Step 2: Measure before placing**
+- [ ] **Step 3: Measure before placing**
 
 `createFloatingBox(position)` currently receives a position computed from `BOX_HEIGHT_ESTIMATE` before any content exists. Change the flow:
 
@@ -1272,7 +1282,7 @@ In `createFloatingBox`, after the existing `shadowRoot.appendChild(style)`, call
 
 Update the other creators that used `getBoxPosition`: the polish box, the dictionary box and the screenshot result flow all call it today. They keep their current behavior by calling `placeFloatingBox` in the same way; do not redesign them here.
 
-- [ ] **Step 3: Replace the body of showTranslation**
+- [ ] **Step 4: Replace the body of showTranslation**
 
 `showTranslation` currently builds the correction hint, the translation, the rich-context block, the truncation notice and the grammar affordance by hand, and adapts the new result shape onto the old element names. Replace all of that with a single `renderCard` call, keeping the surrounding responsibilities that belong to the host:
 
@@ -1316,11 +1326,11 @@ The box's own footer is hidden because the card now carries its own actions and 
 
 `buildListenHandler`, `buildSentenceHandler` and `buildGrammarHandler` are added in Tasks 9 and 10; for this task, pass `null` for the two that do not exist yet so their controls are simply absent, and wire them in those tasks.
 
-- [ ] **Step 4: Delete what the card replaced**
+- [ ] **Step 5: Delete what the card replaced**
 
 Remove from `content/main.js`: `appendInlineGrammarAffordance` and `renderInlineGrammar` are kept for now and rewired in Task 10, but the hand-built correction hint, translation element, rich-context block and truncation notice inside `showTranslation` all go. Remove from `content/styles/index.js` the rules that nothing references any more: `.parsipad-rich-context*`, `.parsipad-truncated-note`, `.parsipad-text`, `.parsipad-correction-*`, and the provider and cache badge rules in the header. Verify with a grep for each class name before deleting it.
 
-- [ ] **Step 5: Verify**
+- [ ] **Step 6: Verify**
 
 Run `npm run lint`, `npm test` and `npm run build`. Then reload the extension and check in the browser, on the probe page at `http://localhost:8731/index.html` if it is still served or any page with text:
 
@@ -1333,7 +1343,7 @@ Run `npm run lint`, `npm test` and `npm run build`. Then reload the extension an
 
 Report what you saw for each.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add content/main.js content/styles/index.js && git commit -m "feat(content): render the floating box through the shared card"
@@ -1500,9 +1510,13 @@ git add content/main.js && git commit -m "feat(card): add sentence expansion and
 
 The popup keeps its tabs in this sub-project; only the result rendering changes. Removing the tab bar is sub-project 2b.
 
-- [ ] **Step 1: Inject the card styles once**
+- [ ] **Step 1: Satisfy the card's token contract, then inject the styles**
 
-At popup init, call `injectCardStyles(document.head, document)`. The popup's own panel styles stay.
+The card's stylesheet consumes four custom properties: `--pp-text`, `--pp-text-secondary`, `--pp-text-muted` and `--pp-border`. The floating box defines these already. The popup does not: its own tokens are named `--color-*`, a different namespace, and it does not load `lib/design-tokens.css`. Injecting the card styles without addressing that renders every colour in the card as unset.
+
+Add a small mapping block to `popup/popup.css`, scoped to the popup's root, translating its existing tokens onto the four names the card expects. Use the popup's own light and dark values so the card follows the popup's theme rather than defining a second one. Confirm the mapping by checking the computed colour of a rendered card element in the browser, not by reading the CSS.
+
+Then, at popup init, call `injectCardStyles(document.head, document)`. The popup's own panel styles stay.
 
 - [ ] **Step 2: Replace the output section's body**
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sliceContext } from '../content/context.js';
+import { sliceContext, sentenceAround } from '../content/context.js';
 
 const block = 'Library policies apply to everyone. They will charge you a fee for late returns, and a second charge applies after thirty days.';
 
@@ -29,5 +29,40 @@ describe('sliceContext', () => {
   });
   it('returns undefined when the selection is the whole block', () => {
     expect(sliceContext('charge', 'charge')).toBeUndefined();
+  });
+});
+
+describe('sentenceAround', () => {
+  it('trims the captured window back to the one sentence holding the selection', () => {
+    expect(sentenceAround({
+      before: 'Library policies apply to everyone. They will ',
+      selection: 'charge',
+      after: ' you a fee for late returns, and a second charge applies.'
+    })).toBe('They will charge you a fee for late returns, and a second charge applies.');
+  });
+
+  it('keeps a sentence that runs to the end of the captured window', () => {
+    expect(sentenceAround({
+      before: 'One thing. They will ',
+      selection: 'charge',
+      after: ' you a fee'
+    })).toBe('They will charge you a fee');
+  });
+
+  it('does not mistake an abbreviation dot for the sentence start', () => {
+    expect(sentenceAround({
+      before: 'We met Dr. Smith and he will ',
+      selection: 'charge',
+      after: ' a fee.'
+    })).toBe('We met Dr. Smith and he will charge a fee.');
+  });
+
+  it('returns undefined when there is no surrounding sentence to recover', () => {
+    expect(sentenceAround({ before: '', selection: 'charge', after: '' })).toBeUndefined();
+    expect(sentenceAround({ before: '  ', selection: 'charge', after: ' ' })).toBeUndefined();
+  });
+
+  it('returns undefined without a selection', () => {
+    expect(sentenceAround({ before: 'a. b ', selection: '', after: ' c.' })).toBeUndefined();
   });
 });
