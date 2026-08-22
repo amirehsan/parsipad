@@ -33,10 +33,10 @@
   --radius-xl: 16px;
   --radius-2xl: 24px;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px rgba(29, 27, 23, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(29, 27, 23, 0.1), 0 2px 4px -1px rgba(29, 27, 23, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(29, 27, 23, 0.1), 0 4px 6px -2px rgba(29, 27, 23, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(29, 27, 23, 0.1), 0 10px 10px -5px rgba(29, 27, 23, 0.04);
 }
 
 /* Dark Mode */
@@ -52,10 +52,10 @@
   --color-border: var(--color-gray-700);
   --color-success: var(--color-success-500);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(29, 27, 23, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(29, 27, 23, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(29, 27, 23, 0.4);
+  --shadow-xl: 0 20px 25px -5px rgba(29, 27, 23, 0.5);
 }
 
 /* Reset */
@@ -81,17 +81,17 @@ body {
   color: var(--color-text);
   background: var(--color-bg);
   background-image:
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.1) 0, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.1) 0, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(251, 191, 36, 0.05) 0, transparent 50%);
+    radial-gradient(at 0% 0%, rgba(90, 94, 240, 0.1) 0, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(109, 74, 168, 0.1) 0, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(232, 180, 92, 0.05) 0, transparent 50%);
   min-height: 100vh;
 }
 
 [data-theme="dark"] body {
   background-image:
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.15) 0, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(251, 191, 36, 0.08) 0, transparent 50%);
+    radial-gradient(at 0% 0%, rgba(90, 94, 240, 0.15) 0, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(109, 74, 168, 0.15) 0, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(232, 180, 92, 0.08) 0, transparent 50%);
 }
 
 /* Main Container */
@@ -663,7 +663,7 @@ kbd {
 
 .footer-link:hover {
   color: var(--color-primary);
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(90, 94, 240, 0.1);
 }
 
 .footer-link svg {
@@ -773,7 +773,7 @@ kbd {
 
 .bookmark-search:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 2px rgba(90, 94, 240, 0.15);
 }
 
 .bookmark-tree {
@@ -818,11 +818,11 @@ kbd {
 }
 
 .bookmark-folder-header:hover {
-  background: rgba(99, 102, 241, 0.08);
+  background: rgba(90, 94, 240, 0.08);
 }
 
 [data-theme="dark"] .bookmark-folder-header:hover {
-  background: rgba(129, 140, 248, 0.1);
+  background: rgba(109, 120, 245, 0.1);
 }
 
 .folder-chevron {
@@ -876,12 +876,12 @@ kbd {
 }
 
 .bookmark-item:hover {
-  background: rgba(99, 102, 241, 0.08);
+  background: rgba(90, 94, 240, 0.08);
   color: var(--color-primary);
 }
 
 [data-theme="dark"] .bookmark-item:hover {
-  background: rgba(129, 140, 248, 0.1);
+  background: rgba(109, 120, 245, 0.1);
 }
 
 .bookmark-item-icon {
@@ -916,12 +916,12 @@ kbd {
 }
 
 .bookmark-search-result:hover {
-  background: rgba(99, 102, 241, 0.08);
+  background: rgba(90, 94, 240, 0.08);
   color: var(--color-primary);
 }
 
 [data-theme="dark"] .bookmark-search-result:hover {
-  background: rgba(129, 140, 248, 0.1);
+  background: rgba(109, 120, 245, 0.1);
 }
 
 .bookmark-search-result .bookmark-item-icon {
@@ -951,13 +951,13 @@ kbd {
 }
 
 .bookmark-highlight {
-  background: rgba(251, 191, 36, 0.3);
+  background: rgba(232, 180, 92, 0.3);
   border-radius: 2px;
   padding: 0 1px;
 }
 
 [data-theme="dark"] .bookmark-highlight {
-  background: rgba(251, 191, 36, 0.2);
+  background: rgba(232, 180, 92, 0.2);
 }
 
 /* Empty search state */

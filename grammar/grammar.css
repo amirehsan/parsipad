@@ -35,11 +35,11 @@
 
   /* Status colors */
   --success: var(--color-success-500);
-  --success-light: rgba(16, 185, 129, 0.1);
+  --success-light: rgba(15, 109, 77, 0.1);
   --error: var(--color-error-500);
-  --error-light: rgba(239, 68, 68, 0.1);
+  --error-light: rgba(180, 35, 27, 0.1);
   --warning: var(--color-warning-500);
-  --warning-light: rgba(245, 158, 11, 0.1);
+  --warning-light: rgba(138, 90, 4, 0.1);
 
   /* Fonts */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -396,7 +396,7 @@ body.dark {
 }
 
 .dark .direction-badge {
-  background: rgba(99, 102, 241, 0.2);
+  background: rgba(90, 94, 240, 0.2);
   color: var(--primary-300);
 }
 
@@ -435,7 +435,7 @@ body.dark {
 }
 
 .dark .grammar-point-header {
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(90, 94, 240, 0.1);
   border-color: var(--gray-700);
 }
 
@@ -553,7 +553,7 @@ body.dark {
 }
 
 .dark .highlight {
-  background: rgba(245, 158, 11, 0.2);
+  background: rgba(138, 90, 4, 0.2);
   color: var(--warning);
 }
 
@@ -642,8 +642,8 @@ body.dark {
 }
 
 .dark .quiz-section {
-  background: rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.2);
+  background: rgba(90, 94, 240, 0.1);
+  border-color: rgba(90, 94, 240, 0.2);
 }
 
 .quiz-question {
@@ -690,7 +690,7 @@ body.dark {
 }
 
 .dark .quiz-option.selected {
-  background: rgba(99, 102, 241, 0.15);
+  background: rgba(90, 94, 240, 0.15);
 }
 
 .quiz-option.correct {
@@ -824,7 +824,7 @@ body.dark {
 .quiz-feedback.correct {
   background: var(--success-light);
   color: #065f46;
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(15, 109, 77, 0.2);
 }
 
 .dark .quiz-feedback.correct {
@@ -834,7 +834,7 @@ body.dark {
 .quiz-feedback.incorrect {
   background: var(--error-light);
   color: #991b1b;
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(180, 35, 27, 0.2);
 }
 
 .dark .quiz-feedback.incorrect {
@@ -844,7 +844,7 @@ body.dark {
 .quiz-explanation {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  border-top: 1px solid rgba(29, 27, 23, 0.1);
   font-size: 0.875rem;
   color: var(--gray-600);
 }
@@ -903,7 +903,7 @@ body.dark {
   align-items: center;
   gap: 0.5rem;
   font-weight: 500;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 25px rgba(29, 27, 23, 0.2);
   animation: slideUp 0.3s ease-out;
   z-index: 100;
 }
@@ -1342,7 +1342,7 @@ body.dark {
 }
 
 .dark .register-formal {
-  background: rgba(99, 102, 241, 0.2);
+  background: rgba(90, 94, 240, 0.2);
   color: var(--primary-300);
 }
 
@@ -1352,7 +1352,7 @@ body.dark {
 }
 
 .dark .register-informal {
-  background: rgba(245, 158, 11, 0.2);
+  background: rgba(138, 90, 4, 0.2);
   color: var(--warning);
 }
 
