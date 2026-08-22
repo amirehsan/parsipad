@@ -150,6 +150,13 @@
   --accent-polish-200: #ded8bd;
   --accent-polish-bg: rgba(107, 98, 52, 0.10);
 
+  /* ----- Favourite -----
+     A star should read as gold. --color-warning is tuned as TEXT on cream so
+     it is a deep amber, and a star painted with it reads brown. This is the
+     lightest gold that still clears the 3:1 bar for a non-text graphic on
+     both the canvas (3.28) and a card (3.02). */
+  --color-favorite: #b6850b;
+
   /* ----- Categorical palette -----
      One shared set for anything that labels a KIND of thing: chart series,
      type badges, the coloured edge on a saved item. Kept separate from the
@@ -284,6 +291,7 @@
   --accent-polish-200: #3b371f;
   --accent-polish-bg: rgba(201, 191, 134, 0.14);
 
+  --color-favorite: #f0c674;   /* 11.57 on the dark canvas */
   /* Categorical palette, lightened for a dark ground; each carries an ink
      label at 7.3:1 or better. */
   --cat-translate: #ff8f5e;
