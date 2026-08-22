@@ -1,6 +1,7 @@
 import { getTheme, setTheme, getUsageStats, getUsageEvents, clearUsageEvents, getLanguage } from '../lib/storage.js';
 import { PROVIDER_PRICING, PROVIDER_CONFIGS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
+import { applyThemeToRoot } from '../lib/theme.js';
 
 // DOM Elements
 const backBtn = document.getElementById('back-btn');
@@ -62,12 +63,9 @@ async function applyTheme() {
 }
 
 function applyThemeMode(theme) {
-  if (theme === 'system') {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
-  } else {
-    document.documentElement.setAttribute('data-theme', theme);
-  }
+  // Both conventions, always. Writing only data-theme leaves a stale `.dark`
+  // class from theme-boot matching :root.dark, which pins the page dark.
+  applyThemeToRoot(theme);
 }
 
 // ============================================

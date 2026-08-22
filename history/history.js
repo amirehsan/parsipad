@@ -1,6 +1,7 @@
 import { getHistory, clearHistory, removeFromHistory, getPolishHistory, clearPolishHistory, removeFromPolishHistory } from '../lib/history.js';
 import { getTheme, setTheme, getLanguage } from '../lib/storage.js';
 import { t, applyTranslations } from '../lib/i18n.js';
+import { applyThemeToRoot } from '../lib/theme.js';
 
 // DOM Elements
 const backBtn = document.getElementById('back-btn');
@@ -50,11 +51,9 @@ async function initTheme() {
  * Apply theme to the document
  */
 function applyTheme(theme) {
-  let effectiveTheme = theme;
-  if (theme === 'system') {
-    effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-  document.documentElement.setAttribute('data-theme', effectiveTheme);
+  // Both conventions, always. Writing only data-theme leaves a stale `.dark`
+  // class from theme-boot matching :root.dark, which pins the page dark.
+  applyThemeToRoot(theme);
 }
 
 /**

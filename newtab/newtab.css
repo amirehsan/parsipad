@@ -254,6 +254,28 @@ body {
   border-color: var(--button-primary-bg-hover);
 }
 
+/* The button shows the theme you would switch TO, so exactly one icon is
+   visible at a time. These rules were lost in the rewrite, which left both
+   the sun and the moon drawn on top of each other and made the button look
+   like it was doing nothing. */
+#theme-icon-dark {
+  display: none;
+}
+
+#theme-icon-light {
+  display: block;
+}
+
+[data-theme="dark"] #theme-icon-light,
+.dark #theme-icon-light {
+  display: none;
+}
+
+[data-theme="dark"] #theme-icon-dark,
+.dark #theme-icon-dark {
+  display: block;
+}
+
 /* ============================================================
    Glance
    ============================================================ */
@@ -518,25 +540,38 @@ body {
 
 .progress-dots {
   display: flex;
-  gap: var(--space-sm);
+  /* No gap: the dots carry their own padding, which both spaces them and
+     gives them a real click target. */
+  gap: 0;
 }
 
 .progress-dot {
+  /* The dot is 7px of paint inside a 25px target. Two reasons: a 7px click
+     target is nowhere near the 24px minimum, and the active dot is scaled up,
+     which put its bottom edge past the stage's overflow clip and sheared it
+     off. The padding fixes both, and background-clip keeps the visible dot
+     small. */
+  box-sizing: content-box;
   width: 7px;
   height: 7px;
-  border-radius: var(--radius-full, 9999px);
+  padding: 9px;
   background: var(--color-border);
+  background-clip: content-box;
+  border-radius: var(--radius-full, 9999px);
   cursor: pointer;
   transition: background var(--motion-fast, 150ms) ease,
               transform var(--motion-fast, 150ms) ease;
 }
 
+/* background-color, not the background shorthand: the shorthand resets
+   background-clip to border-box, which paints the whole 25px target instead
+   of the 7px dot inside it. */
 .progress-dot:hover {
-  background: var(--color-text-secondary);
+  background-color: var(--color-text-secondary);
 }
 
 .progress-dot.active {
-  background: var(--color-primary);
+  background-color: var(--color-primary);
   transform: scale(1.25);
 }
 
