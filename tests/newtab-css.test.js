@@ -145,3 +145,43 @@ describe('the hero', () => {
     expect(block(".hero-text[data-size='sm']")).toMatch(/-webkit-line-clamp:\s*\d+/);
   });
 });
+
+describe('the theme button', () => {
+  it('shows exactly one icon per theme', () => {
+    // These rules were dropped in the rewrite, which drew the sun and the
+    // moon on top of each other and made the button look inert.
+    expect(block('#theme-icon-dark')).toMatch(/display:\s*none/);
+    expect(block('#theme-icon-light')).toMatch(/display:\s*block/);
+    expect(css).toMatch(/#theme-icon-light,[\s\S]{0,60}display:\s*none/);
+    expect(css).toMatch(/#theme-icon-dark,[\s\S]{0,60}display:\s*block/);
+  });
+
+  it('answers to both dark conventions', () => {
+    // theme-boot sets data-theme and .dark; the icon must not depend on one.
+    const i = css.indexOf('#theme-icon-dark {');
+    const scope = css.slice(i, i + 500);
+    expect(scope).toContain('[data-theme="dark"] #theme-icon-light');
+    expect(scope).toContain('.dark #theme-icon-light');
+  });
+});
+
+describe('the progress dots', () => {
+  it('paints a small dot inside a real click target', () => {
+    // A 7px target is nowhere near the 24px minimum, and the scaled active
+    // dot was being sheared by the stage's overflow clip.
+    const dot = block('.progress-dot {');
+    expect(dot).toMatch(/padding:\s*9px/);
+    expect(dot).toMatch(/background-clip:\s*content-box/);
+    expect(dot).toMatch(/box-sizing:\s*content-box/);
+  });
+
+  it('sets dot state colours with the longhand', () => {
+    // The `background` shorthand resets background-clip to border-box, which
+    // paints the whole target instead of the dot inside it.
+    for (const sel of ['.progress-dot:hover', '.progress-dot.active']) {
+      const b = block(sel);
+      expect(b).toMatch(/background-color:/);
+      expect(b).not.toMatch(/\bbackground:\s*var/);
+    }
+  });
+});

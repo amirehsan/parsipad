@@ -9,6 +9,7 @@ import { renderCard, injectCardStyles } from '../shared/card/index.js';
 import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
 import { getBoundShortcuts } from '../shared/shortcuts.js';
+import { applyThemeToRoot } from '../lib/theme.js';
 
 // DOM Elements
 const settingsBtn = document.getElementById('settings-btn');
@@ -219,13 +220,9 @@ async function initTheme() {
  * @param {'light'|'dark'|'system'} theme
  */
 function applyTheme(theme) {
-  let effectiveTheme = theme;
-
-  if (theme === 'system') {
-    effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-
-  document.documentElement.setAttribute('data-theme', effectiveTheme);
+  // Both conventions, always. Writing only data-theme leaves a stale `.dark`
+  // class from theme-boot matching :root.dark, which pins the page dark.
+  applyThemeToRoot(theme);
 }
 
 /**
