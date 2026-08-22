@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { applyThemeToRoot, resolveTheme } from '../lib/theme.js';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * The bug this guards against shipped on five pages at once.
@@ -98,5 +100,45 @@ describe('resolveTheme', () => {
   it('treats anything unrecognised as light rather than throwing', () => {
     expect(resolveTheme(undefined)).toBe('light');
     expect(resolveTheme('sepia')).toBe('light');
+  });
+});
+
+describe('every page applies theme the same way', () => {
+  const root = path.resolve(__dirname, '..');
+  const PAGES = [
+    'newtab/newtab.js', 'popup/popup.js', 'favorites/favorites.js',
+    'history/history.js', 'analytics/analytics.js',
+    'settings/settings.js', 'grammar/grammar.js', 'welcome/welcome.js'
+  ];
+
+  /**
+   * The bug arrived twice, in mirror image, because the pages were split
+   * across two conventions:
+   *
+   *   five wrote only data-theme  -> could not return to light
+   *   three toggled only .dark    -> could not return to light either
+   *
+   * Both halves look correct in isolation, and both are broken the moment
+   * theme-boot has set the other one. Fixing one half and not the other is
+   * exactly what happened, so the guard is structural: no page reaches for a
+   * convention directly, they all go through the one helper.
+   */
+  it.each(PAGES)('%s routes through applyThemeToRoot', (page) => {
+    const src = fs.readFileSync(path.join(root, page), 'utf8');
+    expect(src).toContain('applyThemeToRoot');
+  });
+
+  it.each(PAGES)('%s never writes a convention directly', (page) => {
+    const src = fs.readFileSync(path.join(root, page), 'utf8');
+    expect(src).not.toMatch(/documentElement\.setAttribute\(\s*['"]data-theme['"]/);
+    expect(src).not.toMatch(/classList\.(toggle|add|remove)\(\s*['"]dark['"]/);
+  });
+
+  it('leaves theme-boot as the one deliberate exception', () => {
+    // It is a classic script that must run in <head> before any module loads,
+    // so it cannot import the helper and keeps its own copy on purpose.
+    const boot = fs.readFileSync(path.join(root, 'lib/theme-boot.js'), 'utf8');
+    expect(boot).toContain("setAttribute('data-theme'");
+    expect(boot).toContain("classList.toggle('dark'");
   });
 });
