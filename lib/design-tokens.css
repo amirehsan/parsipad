@@ -88,49 +88,45 @@
   --radius-2xl: 1rem;     /* 16px - large marketing surfaces only */
   --radius-full: 9999px;
 
-  /* ----- Primary scale (Indigo) -----
-     The design system names a saturated orange as its primary. That orange
-     fails WCAG AA as a button fill (3.27:1 with its own on-primary, and its
-     18px/600 label is 13.5pt bold, under the 14pt large-text threshold), so
-     indigo carries the accent role instead. It is also ParsiPad's existing
-     brand colour and measures 6.23:1 as text and 6.29:1 as a fill. */
-  --color-primary-50: #eef2ff;
-  --color-primary-100: #e0e7ff;
-  --color-primary-200: #c7d2fe;
-  --color-primary-300: #a5b4fc;
-  --color-primary-400: #6d78f5;  /* dark-mode indigo TEXT -- this is the floor.
-                                    4.58 on a dark card; the next step down
-                                    (#666ff3) measures 4.16 and stops being
-                                    legible. Deeper indigo in dark mode means
-                                    giving up indigo TEXT, not tuning it. */
-  --color-primary-500: #5a5ef0;  /* dark-mode button FILL: 3.80 vs canvas, 4.77 under a cream label */
-  --color-primary-600: #4f46e5;
-  --color-primary-700: #4338ca;  /* light-mode primary: 7.71 on the cream canvas */
-  --color-primary-800: #3730a3;
-  --color-primary-900: #312e81;
+  /* ----- Primary scale (Signal Orange) -----
+     The design system's own primary, #ff4f00, restored at the owner's
+     request. Measurements, on the record rather than a surprise later: as a
+     fill under its own on-primary it is 3.27:1, and as text on the canvas
+     3.27:1. Both sit below the 4.5:1 WCAG AA bar for normal text and above
+     the 3:1 bar for a UI boundary, so the button is easy to find but its
+     label is not AA. Darker steps exist for the roles that must pass:
+     -600 reaches 4.55 under a white label, -700 reaches 5.28.
+     tests/design-tokens.test.js records the exceptions explicitly. */
+  --color-primary-50: #fff1eb;
+  --color-primary-100: #ffdccd;
+  --color-primary-200: #ffb896;
+  --color-primary-300: #ff8f5e;
+  --color-primary-400: #ff6a2a;
+  --color-primary-500: #ff4f00;  /* the document's Signal Orange */
+  --color-primary-600: #d44200;  /* 4.55 under a white label */
+  --color-primary-700: #c23c00;  /* 5.28 under a white label */
+  --color-primary-800: #a33300;
+  --color-primary-900: #752400;
 
-  /* ----- Warm neutral ladder -----
-     Named gray-* for call-site compatibility; every value is warm.
-     Steps 50-500 are surfaces and hairlines. Steps 600+ carry text.
+  /* ----- Neutral ladder -----
+     The design system's own values, restored at the owner's request.
+     Named gray-* for call-site compatibility.
 
-     ONE HUE, END TO END (~40deg, warm paper). This matters more than it
-     looks. The source design system's darkest neutral was #201515, a pure
-     red at 0deg, chosen to harmonise with its orange primary -- orange and
-     coffee-red are the same family. Indigo sits at 243deg, so against a red
-     neutral there is no resolution: the surfaces read pink and fight the
-     accent. Holding every step in the same warm-paper band keeps the warmth
-     the design system asks for while letting indigo actually sit on it.
-     tests/design-tokens.test.js pins the hue band. */
-  --color-gray-50: #fdfcfa;   /* page canvas - never pure white */
-  --color-gray-100: #f7f5f1;  /* card / inset surface */
-  --color-gray-200: #edeae3;  /* hover fill */
-  --color-gray-300: #dcd8ce;  /* divider */
-  --color-gray-400: #c8c3b6;  /* hairline border - 1.62 on a card, NEVER text */
-  --color-gray-500: #99948a;  /* decoration only - 2.77 on a card, fails as text */
-  --color-gray-600: #757066;  /* lowest text tone that passes - 4.52 on a card */
-  --color-gray-700: #5f5b52;  /* secondary text - 6.21 on a card */
-  --color-gray-800: #34322d;  /* strong text - 11.76 on a card */
-  --color-gray-900: #1d1b17;  /* headings, primary text - 15.79 on a card */
+     Two of them cannot carry text, and are marked so. The document
+     specifies body-mid and mute as text colours, but they measure 2.92:1
+     and 1.66:1 on a card. They keep the documented values and are used for
+     surfaces, hairlines and decoration; the text tones point at steps that
+     pass. */
+  --color-gray-50: #fffefb;   /* canvas      - the document's page colour */
+  --color-gray-100: #f8f4f0;  /* canvas-soft - cards and inset regions */
+  --color-gray-200: #ece6df;  /* hover fill */
+  --color-gray-300: #d9d2c7;  /* divider */
+  --color-gray-400: #c5c0b1;  /* mute     - 1.66 on a card, NEVER text */
+  --color-gray-500: #939084;  /* body-mid - 2.92 on a card, NEVER text */
+  --color-gray-600: #605d52;  /* body     -  6.03 on a card */
+  --color-gray-700: #36342e;  /* ink-mid  - 11.37 on a card */
+  --color-gray-800: #2f2a26;  /* ink-soft - 12.97 on a card */
+  --color-gray-900: #201515;  /* ink      - 16.27 on a card */
 
   /* ----- Semantic colors -----
      The design system has none; it routes status through ink and its accent.
@@ -167,17 +163,17 @@
      The design system carries elevation with surface contrast (a cream card on
      a lighter canvas) rather than with shadows, so these are deliberately
      quiet, and warm rather than neutral black. */
-  --shadow-sm: 0 1px 2px 0 rgba(29, 27, 23, 0.04);
-  --shadow-card: 0 1px 3px rgba(29, 27, 23, 0.06), 0 1px 2px rgba(29, 27, 23, 0.03);
-  --shadow-card-hover: 0 4px 12px -2px rgba(29, 27, 23, 0.08);
-  --shadow-lg: 0 10px 24px -6px rgba(29, 27, 23, 0.10);
-  --shadow-xl: 0 20px 40px -10px rgba(29, 27, 23, 0.12);
-  --shadow-mockup: 0 24px 48px -12px rgba(29, 27, 23, 0.14);
+  --shadow-sm: 0 1px 2px 0 rgba(32, 21, 21, 0.04);
+  --shadow-card: 0 1px 3px rgba(32, 21, 21, 0.06), 0 1px 2px rgba(32, 21, 21, 0.03);
+  --shadow-card-hover: 0 4px 12px -2px rgba(32, 21, 21, 0.08);
+  --shadow-lg: 0 10px 24px -6px rgba(32, 21, 21, 0.10);
+  --shadow-xl: 0 20px 40px -10px rgba(32, 21, 21, 0.12);
+  --shadow-mockup: 0 24px 48px -12px rgba(32, 21, 21, 0.14);
   --shadow-button-hover: 0 8px 20px -6px rgba(79, 70, 229, 0.35);
 
   /* ----- Focus ring ----- */
   --ring-width: 2px;
-  --ring-color: var(--color-primary-700);
+  --ring-color: var(--color-primary-600);
   --ring-offset: 2px;
 
   /* ----- Motion ----- */
@@ -196,21 +192,23 @@
   /* Three text tones, all measured to pass on both the canvas and a card.
      There is no fourth: the ladder does not have enough contrast headroom
      between the card surface and the body tone to hold one. */
-  --color-text: var(--color-gray-900);            /* 16.27 on a card */
-  --color-text-secondary: var(--color-gray-700);  /*  6.03 on a card */
-  --color-text-muted: var(--color-gray-600);      /*  4.53 on a card */
+  --color-text: var(--color-gray-900);            /* ink     - 16.27 on a card */
+  --color-text-secondary: var(--color-gray-700);  /* ink-mid - 11.37 on a card */
+  --color-text-muted: var(--color-gray-600);      /* body    -  6.03 on a card */
   --color-text-inverse: var(--color-gray-50);
 
   --color-border: var(--color-gray-400);
   --color-border-strong: var(--color-gray-300);
   --color-divider: var(--color-gray-200);
 
+  /* Links are text, so they take the darker step that reaches AA rather than
+     the Signal Orange itself, which measures 3.27 on the canvas. */
   --color-link: var(--color-primary-700);
   --color-link-hover: var(--color-primary-800);
 
-  /* Component-tier tokens */
-  --button-primary-bg: var(--color-primary-700);
-  --button-primary-bg-hover: var(--color-primary-800);
+  /* Component-tier tokens. The fill is the document's Signal Orange. */
+  --button-primary-bg: var(--color-primary-500);
+  --button-primary-bg-hover: var(--color-primary-600);
   --button-primary-text: var(--color-gray-50);
   --button-secondary-bg: var(--color-gray-100);
   --button-secondary-bg-hover: var(--color-gray-200);
@@ -232,19 +230,20 @@
  */
 :root.dark,
 :root[data-theme='dark'] {
-  --color-bg: #14130f;            /* warm near-black page */
-  --color-bg-elevated: #1e1c18;   /* lifted card surface */
-  --color-bg-secondary: #1e1c18;
-  --color-bg-hover: #262420;
+  /* Derived from the document's own ink (#201515); it specifies no dark mode. */
+  --color-bg: #181110;            /* coffee near-black page */
+  --color-bg-elevated: #241a18;   /* lifted card surface */
+  --color-bg-secondary: #241a18;
+  --color-bg-hover: #2e2220;
 
-  --color-text: #faf8f4;          /* 16.04 on a card */
-  --color-text-secondary: #d2cec4;/* 10.83 on a card */
-  --color-text-muted: #aaa599;    /*  6.93 on a card */
-  --color-text-inverse: #14130f;
+  --color-text: #fdfaf6;          /* 16.33 on a card */
+  --color-text-secondary: #d6cdc7;/* 10.86 on a card */
+  --color-text-muted: #b0a49e;    /*  7.00 on a card */
+  --color-text-inverse: #181110;
 
-  --color-border: #34312b;
-  --color-border-strong: #454138;
-  --color-divider: #262420;
+  --color-border: #3b2d2a;
+  --color-border-strong: #4c3b37;
+  --color-divider: #2e2220;
 
   --color-link: var(--color-primary-400);
   --color-link-hover: var(--color-primary-300);
@@ -272,11 +271,11 @@
 
   --button-primary-bg: var(--color-primary-500);
   --button-primary-bg-hover: var(--color-primary-400);
-  --button-primary-text: #fdfcfa;
-  --button-secondary-bg: #1e1c18;
-  --button-secondary-bg-hover: #262420;
-  --button-secondary-text: #d2cec4;
-  --button-ghost-bg-hover: #262420;
+  --button-primary-text: #201515;   /* ink on Signal Orange: 5.40 */
+  --button-secondary-bg: #241a18;
+  --button-secondary-bg-hover: #2e2220;
+  --button-secondary-text: #d6cdc7;
+  --button-ghost-bg-hover: #2e2220;
 }
 
 /* Honor user motion preferences */

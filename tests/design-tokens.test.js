@@ -66,6 +66,26 @@ function contrast(a, b) {
 }
 
 const AA = 4.5;
+const UI_BOUNDARY = 3.0;
+
+/**
+ * Contrast shortfalls that were accepted deliberately, with the value
+ * measured when they were accepted.
+ *
+ * There is exactly one. The design system names #ff4f00 as its primary and
+ * calls the saturated orange its conversion signature; under its own
+ * on-primary that measures 3.27:1, which clears the 3:1 bar for finding a
+ * UI component but not the 4.5:1 bar for reading its label. The owner chose
+ * to keep the documented colour. Darker steps (-600 at 4.55, -700 at 5.28)
+ * carry the roles that are text, so links and inline orange do pass; this
+ * exception covers the filled button alone.
+ *
+ * Entries here are not a way to silence the guard: an exception still has to
+ * clear 3:1, and it fails if it drifts below the value recorded here.
+ */
+const ACCEPTED_BELOW_AA = {
+  'light:button-primary': 3.26
+};
 // Every tone that carries text, and so has to be legible on both grounds.
 const TEXT_TOKENS = [
   '--color-text',
@@ -95,7 +115,22 @@ describe.each([['light', light], ['dark', dark]])('%s theme', (themeName, tokens
   it('the primary button carries its own label', () => {
     const fill = resolve(tokens, '--button-primary-bg');
     const label = resolve(tokens, '--button-primary-text');
-    expect(contrast(label, fill), `${label} on ${fill} in ${themeName}`).toBeGreaterThanOrEqual(AA);
+    const measured = contrast(label, fill);
+    const allowed = ACCEPTED_BELOW_AA[`${themeName}:button-primary`];
+
+    if (allowed === undefined) {
+      expect(measured, `${label} on ${fill} in ${themeName}`).toBeGreaterThanOrEqual(AA);
+      return;
+    }
+
+    // A recorded exception. It still has to clear the 3:1 bar for a UI
+    // component boundary, and it must not drift further than what was
+    // signed off, so this fails if the value gets worse rather than
+    // quietly absorbing the next regression too.
+    expect(measured, `${label} on ${fill} in ${themeName} is a recorded exception`)
+      .toBeGreaterThanOrEqual(UI_BOUNDARY);
+    expect(measured, `recorded at ${allowed}, now ${measured.toFixed(2)}`)
+      .toBeGreaterThanOrEqual(allowed - 0.01);
   });
 
   it('the two surfaces are distinguishable from each other', () => {
