@@ -476,6 +476,20 @@ export function getStyles() {
       border-radius: 4px;
     }
 
+    /*
+     * An empty badge must take up no space at all.
+     *
+     * Both of these are filled only by the screenshot result now; a normal
+     * translation carries its direction in the card's pill and its provider
+     * in the card's footer. Without this the emptied elements still painted
+     * their padding and fill, which showed up as two small coloured bars
+     * floating in the header next to the close button.
+     */
+    .parsipad-badge:empty,
+    .parsipad-provider-badge:empty {
+      display: none;
+    }
+
     .parsipad-provider-badge {
       font-size: 9px;
       font-weight: 500;

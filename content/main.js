@@ -562,7 +562,7 @@ function createFloatingBox(selectionRect) {
         <span class="parsipad-logo-text">ParsiPad</span>
       </div>
       <div class="parsipad-badges">
-        <span class="parsipad-badge">EN → FA</span>
+        <span class="parsipad-badge"></span>
         <span class="parsipad-provider-badge"></span>
       </div>
       <button class="parsipad-close" type="button" title="Close" aria-label="Close translation">×</button>
