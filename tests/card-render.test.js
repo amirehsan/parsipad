@@ -85,6 +85,16 @@ describe('renderCard', () => {
     }
   });
 
+  it('starts the save control in the state the host reports, on every mode', () => {
+    for (const mode of ['word', 'phrase', 'sentence', 'text', 'batch']) {
+      const saved = renderCard(of(mode), { ...opts(), onSave: () => {}, isSaved: true });
+      expect(saved.querySelector('[data-action="cardSave"]').getAttribute('aria-pressed'), mode).toBe('true');
+
+      const unsaved = renderCard(of(mode), { ...opts(), onSave: () => {} });
+      expect(unsaved.querySelector('[data-action="cardSave"]').getAttribute('aria-pressed'), mode).toBe('false');
+    }
+  });
+
   it('never throws on a minimal result', () => {
     expect(() => renderCard({ translation: 'x', mode: 'word' }, opts())).not.toThrow();
     expect(() => renderCard({ translation: 'x' }, opts())).not.toThrow();

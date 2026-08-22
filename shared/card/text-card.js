@@ -27,6 +27,7 @@ export function renderTextCard(result, options) {
     doc,
     onCopy,
     onSave,
+    isSaved = false,
     onSwapDirection,
     provider,
     onOpenSettings
@@ -49,7 +50,7 @@ export function renderTextCard(result, options) {
   const footerEl = footer({
     actions: [
       { key: 'cardCopy', onActivate: onCopy ? () => onCopy(translation) : null },
-      { key: 'cardSave', onActivate: onSave ? () => onSave(result) : null }
+      { key: 'cardSave', onActivate: onSave ? () => onSave(result) : null, pressed: Boolean(isSaved) }
     ],
     provider,
     onOpenSettings,

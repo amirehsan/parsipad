@@ -62,6 +62,10 @@ let boxNeedsFocus = false;
 // was made against. See shared/source-override.js for why it is a pair and
 // not just a language.
 let manualSourceOverride = null;
+// Whether what is on screen is already in favourites. Tracked here so a
+// re-render, after a swap or a sentence expansion, draws the save control
+// in the right state instead of flashing unsaved and correcting itself.
+let translationIsSaved = false;
 
 // Screenshot selection state
 let screenshotOverlay = null;
@@ -889,6 +893,10 @@ function showTranslation(result, originalText) {
   const { translation, direction, displayDirection, provider } = result;
   const directionLabel = displayDirection || formatDirectionBadge(direction);
 
+  // A new result is not known to be saved until checkTranslationFavoriteStatus
+  // says otherwise, and it must not inherit the last result's state.
+  translationIsSaved = false;
+
   // Store translation data for favorites
   currentTranslationData = {
     type: 'translation',
@@ -914,6 +922,7 @@ function showTranslation(result, originalText) {
     onListen: buildListenHandler(result),
     onCopy: (text) => handleCardCopy(text),
     onSave: () => handleTranslationFavorite(),
+    isSaved: translationIsSaved,
     onTranslateSentence: buildSentenceHandler(result, originalText),
     onExplainGrammar: buildGrammarHandler(result, originalText),
     onSwapDirection: (nextSourceLang) => translateAndShow(originalText, { sourceLang: nextSourceLang }),
@@ -1205,6 +1214,7 @@ function favoriteControl() {
  * @param {boolean} favorited
  */
 function setFavoriteState(btn, favorited) {
+  translationIsSaved = favorited;
   if (!btn) return;
 
   btn.setAttribute('aria-pressed', favorited ? 'true' : 'false');
