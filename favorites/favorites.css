@@ -31,8 +31,8 @@
   --radius-md: 8px;
   --radius-lg: 12px;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 2px rgba(29, 27, 23, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(29, 27, 23, 0.1);
 }
 
 /* Dark Mode */
@@ -50,8 +50,8 @@
   --color-error: var(--color-error-500);
   --color-warning: var(--color-warning-500);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(29, 27, 23, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(29, 27, 23, 0.4);
 }
 
 /* Reset */
@@ -306,7 +306,7 @@ body {
 }
 
 .favorite-badge.variant {
-  background: rgba(139, 92, 246, 0.2);
+  background: rgba(109, 74, 168, 0.2);
   color: var(--color-polish);
   font-size: 9px;
 }
@@ -317,7 +317,7 @@ body {
 }
 
 .favorite-badge.direction {
-  background: rgba(16, 185, 129, 0.2);
+  background: rgba(15, 109, 77, 0.2);
   color: var(--color-success-500);
   font-size: 9px;
 }
@@ -352,7 +352,7 @@ body {
 }
 
 .card-action-btn.delete:hover {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: rgba(180, 35, 27, 0.1);
   color: var(--color-error);
 }
 
@@ -415,7 +415,7 @@ body {
   color: var(--color-text);
   margin-bottom: var(--space-sm);
   padding: var(--space-sm);
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(15, 109, 77, 0.1);
   border-radius: var(--radius-sm);
 }
 

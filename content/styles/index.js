@@ -24,7 +24,7 @@ export function themeVars() {
       --pp-text-muted: #9ca3af;
       --pp-border: #e5e7eb;
       --pp-border-strong: #d1d5db;
-      --pp-shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      --pp-shadow-card: 0 10px 25px -5px rgba(29, 27, 23, 0.15), 0 8px 10px -6px rgba(29, 27, 23, 0.1);
       --pp-skeleton-from: #e5e7eb;
       --pp-skeleton-to: #f3f4f6;
       --pp-motion-skeleton: parsipad-shimmer 1.5s infinite;
@@ -39,7 +39,7 @@ export function themeVars() {
       --pp-text-muted: #6b7280;
       --pp-border: #374151;
       --pp-border-strong: #4b5563;
-      --pp-shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+      --pp-shadow-card: 0 10px 25px -5px rgba(29, 27, 23, 0.6), 0 8px 10px -6px rgba(29, 27, 23, 0.4);
       --pp-skeleton-from: #374151;
       --pp-skeleton-to: #4b5563;
     }
@@ -58,7 +58,7 @@ export function getPageProgressStyles() {
       background: var(--pp-bg);
       backdrop-filter: blur(10px);
       border-radius: 16px;
-      box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.25);
+      box-shadow: 0 25px 50px -12px rgba(90, 94, 240, 0.25);
       padding: 16px 24px;
       min-width: 300px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -137,8 +137,8 @@ export function getPageToggleStyles() {
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15),
-                  0 2px 4px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 12px rgba(29, 27, 23, 0.15),
+                  0 2px 4px rgba(29, 27, 23, 0.1);
       transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease;
     }
 
@@ -155,8 +155,8 @@ export function getPageToggleStyles() {
     .parsipad-toggle-btn.showing-translated:hover {
       background: #4f46e5;
       transform: scale(1.08);
-      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4),
-                  0 3px 8px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 6px 20px rgba(90, 94, 240, 0.4),
+                  0 3px 8px rgba(29, 27, 23, 0.12);
     }
 
     .parsipad-toggle-btn.showing-original {
@@ -168,8 +168,8 @@ export function getPageToggleStyles() {
     .parsipad-toggle-btn.showing-original:hover {
       background: var(--pp-bg-secondary);
       transform: scale(1.08);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15),
-                  0 3px 8px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 6px 20px rgba(29, 27, 23, 0.15),
+                  0 3px 8px rgba(29, 27, 23, 0.1);
     }
 
     .parsipad-toggle-btn:active {
@@ -203,7 +203,7 @@ export function getScreenshotStyles() {
 
     .screenshot-dimmer {
       position: absolute;
-      background: rgba(0, 0, 0, 0.4);
+      background: rgba(29, 27, 23, 0.4);
       pointer-events: none;
     }
 
@@ -214,7 +214,7 @@ export function getScreenshotStyles() {
     .screenshot-selection {
       position: absolute;
       border: 2px solid #6366f1;
-      box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.3), 0 4px 12px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 0 0 1px rgba(90, 94, 240, 0.3), 0 4px 12px rgba(29, 27, 23, 0.15);
       pointer-events: none;
       display: none;
     }
@@ -224,7 +224,7 @@ export function getScreenshotStyles() {
       top: 16px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.75);
+      background: rgba(29, 27, 23, 0.75);
       color: #fff;
       padding: 8px 16px;
       border-radius: 8px;
@@ -270,9 +270,9 @@ export function getSelectionPopupStyles(showBelow = false) {
       background: linear-gradient(180deg, var(--pp-bg) 0%, var(--pp-bg-secondary) 100%);
       border-radius: 10px;
       box-shadow:
-        0 4px 16px rgba(0, 0, 0, 0.12),
-        0 1px 3px rgba(0, 0, 0, 0.08),
-        0 0 0 1px rgba(0, 0, 0, 0.04);
+        0 4px 16px rgba(29, 27, 23, 0.12),
+        0 1px 3px rgba(29, 27, 23, 0.08),
+        0 0 0 1px rgba(29, 27, 23, 0.04);
       padding: 6px;
       animation: popup-spring-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
     }
@@ -306,7 +306,7 @@ export function getSelectionPopupStyles(showBelow = false) {
 
     .selection-btn:hover {
       /* Brand-tint background; brighter brand color in dark mode for legibility */
-      background: rgba(99, 102, 241, 0.18);
+      background: rgba(90, 94, 240, 0.18);
       color: var(--pp-accent, #4f46e5);
       transform: scale(1.05);
     }
@@ -363,7 +363,7 @@ export function getSelectionPopupStyles(showBelow = false) {
       transition: opacity 150ms cubic-bezier(0.16, 1, 0.3, 1), visibility 150ms;
       pointer-events: none;
       z-index: 10;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 2px 8px rgba(29, 27, 23, 0.15);
     }
 
     .pp-tooltip::after {
@@ -403,7 +403,7 @@ export function getStyles() {
     .parsipad-box {
       background: var(--pp-bg);
       border-radius: 12px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 10px 25px -5px rgba(29, 27, 23, 0.15), 0 8px 10px -6px rgba(29, 27, 23, 0.1);
       border: 1px solid var(--pp-border);
       min-width: 280px;
       max-width: 450px;
@@ -541,7 +541,7 @@ export function getStyles() {
     /* The word a sentence card grew out of, marked in its source line so
        the user can see what they originally selected. */
     .parsipad-source-match {
-      background: rgba(245, 158, 11, 0.28);
+      background: rgba(138, 90, 4, 0.28);
       color: inherit;
       border-radius: 3px;
       padding: 0 2px;
@@ -763,8 +763,8 @@ export function getStyles() {
       gap: 10px;
       padding: 12px 14px;
       border-radius: 8px;
-      background: rgba(245, 158, 11, 0.10);
-      border: 1px solid rgba(245, 158, 11, 0.28);
+      background: rgba(138, 90, 4, 0.10);
+      border: 1px solid rgba(138, 90, 4, 0.28);
       color: var(--pp-text);
       font-size: 13px;
       line-height: 1.5;
@@ -776,8 +776,8 @@ export function getStyles() {
       color: #d97706;
     }
     .parsipad-error.is-destructive {
-      background: rgba(239, 68, 68, 0.10);
-      border-color: rgba(239, 68, 68, 0.28);
+      background: rgba(180, 35, 27, 0.10);
+      border-color: rgba(180, 35, 27, 0.28);
       color: #b91c1c;
     }
     .parsipad-error.is-destructive svg {
@@ -845,7 +845,7 @@ export function getStyles() {
 
     .parsipad-polish-card:hover {
       transform: translateY(-1px);
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 6px -1px rgba(29, 27, 23, 0.1);
     }
 
     .parsipad-polish-card-header {
