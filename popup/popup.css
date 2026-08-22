@@ -965,7 +965,7 @@ body {
      failed AA; raising the ground opacity and darkening the text fixed it,
      and the move from violet to olive kept the same relationship. */
   color: var(--accent-polish);
-  background: rgba(107, 98, 52, 0.18);
+  background: rgba(107, 98, 52, 0.10);   /* 4.90 with the accent as text */
   padding: 2px 8px;
   border-radius: var(--radius-sm);
   text-transform: lowercase;
