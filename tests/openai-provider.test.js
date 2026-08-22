@@ -65,6 +65,22 @@ describe('OpenAIProvider', () => {
     expect(deltas).toEqual(['سلام ', 'دنیا']);
     expect(result).toEqual({ text: 'سلام دنیا', inputTokens: 6, outputTokens: 2, truncated: false });
   });
+  it('vision() forwards temperature and schema, and reports truncation', async () => {
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      requests.push(JSON.parse(init.body));
+      return jsonResponse({ choices: [{ message: { content: '{}' }, finish_reason: 'length' }], usage: {} });
+    });
+    const result = await provider.vision({
+      systemPrompt: 's', userPrompt: 'u', imageBase64: 'x', mimeType: 'image/png',
+      maxTokens: 4096, temperature: 0.2, responseSchema: WORD_SCHEMA, apiKey: 'k'
+    });
+    expect(requests[0].temperature).toBe(0.2);
+    expect(requests[0].response_format.type).toBe('json_schema');
+    expect(requests[0].max_tokens).toBe(4096);
+    // complete() has always surfaced this; vision() used to drop it, so a
+    // reply cut off mid-JSON looked like a parse failure instead.
+    expect(result.truncated).toBe(true);
+  });
 });
 
 describe('parseOpenAISseEvent', () => {

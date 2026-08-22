@@ -70,6 +70,20 @@ describe('ClaudeProvider', () => {
     expect(deltas).toEqual(['سلام ', 'دنیا']);
     expect(result).toEqual({ text: 'سلام دنیا', inputTokens: 5, outputTokens: 3, truncated: false });
   });
+  it('vision() forwards temperature and schema, and reports truncation', async () => {
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      requests.push(JSON.parse(init.body));
+      return jsonResponse({ content: [{ text: '{}' }], stop_reason: 'max_tokens', usage: {} });
+    });
+    const result = await provider.vision({
+      systemPrompt: 's', userPrompt: 'u', imageBase64: 'x', mimeType: 'image/png',
+      maxTokens: 4096, temperature: 0.2, responseSchema: WORD_SCHEMA, apiKey: 'k'
+    });
+    expect(requests[0].temperature).toBe(0.2);
+    expect(requests[0].output_config.format.type).toBe('json_schema');
+    expect(requests[0].max_tokens).toBe(4096);
+    expect(result.truncated).toBe(true);
+  });
 });
 
 describe('parseClaudeSseEvent', () => {
