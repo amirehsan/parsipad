@@ -225,9 +225,7 @@ function renderActionBreakdown() {
     html += `<div class="action-bar-row">
       <span class="action-bar-label">${label}</span>
       <div class="action-bar-track">
-        <div class="action-bar-fill ${action}" style="width: ${Math.max(pct, 3)}%">
-          ${pct > 15 ? `<span class="action-bar-count">${data.count}</span>` : ''}
-        </div>
+        <div class="action-bar-fill ${action}" style="width: ${Math.max(pct, 3)}%"></div>
       </div>
       <span class="action-bar-value">${data.count}</span>
     </div>`;
