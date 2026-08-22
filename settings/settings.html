@@ -570,24 +570,9 @@
       <div class="card-content">
         <div class="shortcuts-section">
           <h3 class="shortcuts-title" data-i18n="globalShortcuts">Global (works anywhere)</h3>
-          <div class="shortcuts-list">
-            <div class="shortcut-item">
-              <span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>T</kbd></span>
-              <span class="shortcut-desc" data-i18n="shortcutTranslate">Translate selected text</span>
-            </div>
-            <div class="shortcut-item">
-              <span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>D</kbd></span>
-              <span class="shortcut-desc" data-i18n="shortcutDictionary">Dictionary lookup</span>
-            </div>
-            <div class="shortcut-item">
-              <span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>P</kbd></span>
-              <span class="shortcut-desc" data-i18n="shortcutTranslatePage">Translate current page</span>
-            </div>
-            <div class="shortcut-item">
-              <span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>S</kbd></span>
-              <span class="shortcut-desc" data-i18n="shortcutScreenshot">Screenshot region translate</span>
-            </div>
-          </div>
+          <!-- Rendered from chrome.commands.getAll(): what the manifest
+               suggests is not necessarily what Chrome bound. -->
+          <div class="shortcuts-list" id="global-shortcuts-list"></div>
         </div>
         <div class="shortcuts-section">
           <h3 class="shortcuts-title" data-i18n="popupShortcuts">Popup</h3>

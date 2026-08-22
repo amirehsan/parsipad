@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The floating box is measured before it is placed, so a tall result decides correctly whether to sit above or below the selection instead of being positioned from an estimate and nudged afterwards.
 - Keyboard and screen-reader fixes: focus moves into the floating box when it opens and returns where it came from when it closes, the polish and dictionary boxes are proper dialogs, every icon-only control has a name, Persian text is marked as Persian, and the loading shimmer respects "reduce motion". Page translation reports "no translatable text" without a blocking alert.
 
+- **Keyboard shortcuts now show the key that actually works.** Settings listed them from the manifest's suggestions, but Chrome drops a suggested key another extension already claimed, and the shortcuts are user-rebindable, so the list could name a key that does nothing. It is read from the browser now, and a command Chrome did not assign says "Not set" and explains why, next to the button that fixes it. The popup's Translate Page and Screenshot buttons name their own shortcut, so it is learned while doing the slow version of the same thing.
+
 ### Removed
 - `lib/page-translator.js` (unused).
 - Numbered-batch detection on user selections; page translation now passes the batch mode explicitly.

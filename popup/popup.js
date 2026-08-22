@@ -8,6 +8,7 @@ import { setSafeInnerHTML } from '../lib/sanitize.js';
 import { renderCard, injectCardStyles } from '../shared/card/index.js';
 import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
+import { getBoundShortcuts } from '../shared/shortcuts.js';
 
 // DOM Elements
 const settingsBtn = document.getElementById('settings-btn');
@@ -156,6 +157,7 @@ function getCurrentMode() {
 async function init() {
   await initLanguage();
   await initTheme();
+  await annotateShortcuts();
   // The card's rules live in a JS string so the floating box can put them
   // inside a closed shadow root; the popup takes the same string into its
   // own document. popup.css maps the four tokens they consume.
@@ -169,6 +171,31 @@ async function init() {
   updateCharCount();
   updateTab('text');
   updateTextMode('translate');
+}
+
+/**
+ * Name each button's shortcut on the button itself.
+ *
+ * A shortcut is learned while doing the slow version of the same action,
+ * not from a reference list the user would have to go looking for. Only
+ * buttons that do exactly what the command does carry one, and only when
+ * Chrome actually bound it: naming a key that does nothing is worse than
+ * naming none at all.
+ */
+async function annotateShortcuts() {
+  const targets = document.querySelectorAll('[data-shortcut-for]');
+  if (targets.length === 0) return;
+
+  const bound = await getBoundShortcuts();
+
+  targets.forEach(el => {
+    const shortcut = bound.get(el.dataset.shortcutFor);
+    if (!shortcut) return;
+
+    const base = el.getAttribute('title') || el.textContent.trim();
+    el.setAttribute('title', `${base} (${shortcut})`);
+    el.setAttribute('aria-keyshortcuts', shortcut);
+  });
 }
 
 /**
