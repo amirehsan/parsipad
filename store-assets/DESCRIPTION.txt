@@ -144,17 +144,23 @@ Favorites and Flashcards
 Save your best translations and learn vocabulary:
 - Star any translation, polished text, or grammar lesson
 - Access all favorites from dedicated page
-- New tab page with flashcards and Chrome bookmark browser
-- Flip cards to reveal original text
+- Your saved words fill the new tab page in large type, one at a time
+- Click a card to reveal the original text
 - Navigate with keyboard shortcuts
 
-New Tab Bookmark Browser
-Browse your Chrome bookmarks directly from the new tab page:
-- File and folder tree structure with expand and collapse
-- Search and filter bookmarks instantly
-- Two-column layout: flashcards on the left, bookmarks on the right
-- Works even when flashcard feature is disabled
-- All data stays local, read-only access to bookmarks
+New Tab Page
+Every new tab is one saved word, in large Persian or English type, with the
+time and a greeting in both languages above it. Click it to reveal the
+original. Three panels toggle independently, so the page shows what you want
+and nothing else:
+- Cards: your saved translations, one per tab, with keyboard navigation
+- Bookmarks: your Chrome bookmarks in a searchable folder tree, in a drawer
+  that opens with "/" or its button and stays out of the way otherwise
+- Most visited: your most visited sites as shortcut tiles. This one is
+  optional and is only turned on if you ask for it. Site icons are read from
+  your browser's own cache, never from an outside service, so the list of
+  sites you visit is never sent anywhere
+- Bookmark and site access is read-only and never leaves your device
 
 Translation History
 - View past translations, polish operations, and dictionary lookups
@@ -177,7 +183,7 @@ Beautiful Design
 
 Customizable Settings
 - Choose your AI provider (Claude, Gemini, ChatGPT)
-- Enable or disable new tab flashcards
+- Choose which panels your new tab shows: cards, bookmarks, most visited
 - Export and import your data
 - Control dictionary translation directions (EN to FA, FA to EN)
 - Choose UI language
@@ -189,7 +195,7 @@ Privacy First
 - No data collection or tracking
 - All history stored locally
 - Offline caching for instant repeat lookups
-- Bookmark access is read-only and never leaves your device
+- Bookmark and most-visited access is read-only and never leaves your device
 
 How to Use:
 1. Get an API key from your preferred provider:
