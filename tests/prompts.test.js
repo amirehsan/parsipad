@@ -13,6 +13,21 @@ describe('buildSystemPrompt', () => {
     expect(buildSystemPrompt('text')).toMatch(/Output only the translation/);
     expect(buildSystemPrompt('batch')).toMatch(/Keep the \[1\], \[2\] markers/);
   });
+  it('asks for a note on unidiomatic English even when no context was given', () => {
+    // The rule used to end "leave it empty when no context was given", so a
+    // lookup typed straight into the popup could never carry a note. That is
+    // the case where a learner most needs one: "apple yellow" is Persian
+    // adjective order carried into English, and the model translates it
+    // correctly without ever saying so.
+    const word = buildSystemPrompt('word', {});
+    expect(word).toMatch(/even if no context was given/i);
+    expect(word).toMatch(/adjective/i);
+  });
+
+  it('does not let the note repeat the translation', () => {
+    expect(buildSystemPrompt('word', {})).toMatch(/[Nn]ever repeat the translation/);
+  });
+
   it('states the Persian orthography rules once in the core', () => {
     expect(CORE_PROMPT).toMatch(/never Arabic/);
     expect(CORE_PROMPT).toMatch(/zero-width non-joiner/);
