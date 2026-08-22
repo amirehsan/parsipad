@@ -499,13 +499,13 @@ body {
 }
 
 .provider-badge {
-  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  background: linear-gradient(135deg, var(--color-success-500) 0%, var(--color-success-500) 100%);
   font-size: 10px;
   padding: 2px 6px;
 }
 
 .provider-badge.claude {
-  background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+  background: linear-gradient(135deg, var(--color-warning-500) 0%, var(--color-warning-500) 100%);
 }
 
 .provider-badge.gemini {
@@ -513,7 +513,7 @@ body {
 }
 
 .provider-badge.openai {
-  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  background: linear-gradient(135deg, var(--color-success-500) 0%, var(--color-success-500) 100%);
 }
 
 .polish-provider-badge {
@@ -1064,11 +1064,7 @@ body {
 }
 
 .dict-badge {
-  background: #059669 !important;
-}
-
-[data-theme="dark"] .dict-badge {
-  background: #10b981 !important;
+  background: var(--cat-dictionary) !important;
 }
 
 /* ============================================
@@ -1213,8 +1209,8 @@ body {
 }
 
 .cancel-btn:hover {
-  background: #dc2626;
-  border-color: #dc2626;
+  background: var(--color-error-500);
+  border-color: var(--color-error-500);
 }
 
 .cancel-btn:disabled {
@@ -1611,7 +1607,7 @@ body {
 .polish-favorite-btn.favorited .star-filled,
 .icon-btn.favorited .star-filled {
   display: block;
-  color: #FBBF24;
+  color: var(--color-warning-500);
 }
 
 .polish-favorite-btn.favorited .star-outline,
@@ -1621,7 +1617,7 @@ body {
 
 .polish-favorite-btn:hover .star-outline,
 .icon-btn:hover .star-outline {
-  color: #FBBF24;
+  color: var(--color-warning-500);
 }
 
 /* ============================================
@@ -1642,7 +1638,7 @@ body {
   background: linear-gradient(135deg, rgba(232, 180, 92, 0.1) 0%, rgba(232, 180, 92, 0.05) 100%);
   border: 1px solid rgba(232, 180, 92, 0.3);
   border-radius: var(--radius-md);
-  color: #D97706;
+  color: var(--color-warning-500);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -1661,13 +1657,13 @@ body {
 .favorites-link-btn svg {
   width: 16px;
   height: 16px;
-  fill: #FBBF24;
-  stroke: #FBBF24;
+  fill: var(--color-warning-500);
+  stroke: var(--color-warning-500);
 }
 
 .favorites-count {
-  background: #FBBF24;
-  color: #78350F;
+  background: var(--color-warning-500);
+  color: var(--color-warning-500);
   font-size: 11px;
   font-weight: 600;
   padding: 1px 6px;
@@ -1677,7 +1673,7 @@ body {
 }
 
 [data-theme="dark"] .favorites-link-btn {
-  color: #FBBF24;
+  color: var(--color-warning-500);
   background: linear-gradient(135deg, rgba(232, 180, 92, 0.15) 0%, rgba(232, 180, 92, 0.08) 100%);
 }
 
@@ -1699,8 +1695,8 @@ body {
    ============================================ */
 
 .review-prompt-banner {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border-top: 1px solid #f59e0b;
+  background: var(--color-warning-100);
+  border-top: 1px solid var(--color-warning-500);
   padding: 12px 16px;
   display: flex;
   flex-direction: column;
@@ -1708,21 +1704,16 @@ body {
   margin-top: var(--space-md);
 }
 
-[data-theme="dark"] .review-prompt-banner {
-  background: linear-gradient(135deg, #78350f 0%, #92400e 100%);
-  border-color: #f59e0b;
-}
-
 .review-prompt-content {
   display: flex;
   align-items: center;
   gap: 8px;
   font-weight: 500;
-  color: #78350f;
+  color: var(--color-warning-500);
 }
 
 [data-theme="dark"] .review-prompt-content {
-  color: #fef3c7;
+  color: var(--color-warning-100);
 }
 
 .review-prompt-icon {
@@ -1747,29 +1738,29 @@ body {
 }
 
 .review-btn-primary {
-  background: #f59e0b;
-  color: #78350f;
+  background: var(--color-warning-500);
+  color: var(--color-warning-500);
 }
 
 .review-btn-primary:hover {
-  background: #d97706;
+  background: var(--color-warning-500);
 }
 
 .review-btn-secondary {
   background: transparent;
-  color: #92400e;
+  color: var(--color-warning-500);
 }
 
 .review-btn-secondary:hover {
-  color: #78350f;
+  color: var(--color-warning-500);
 }
 
 [data-theme="dark"] .review-btn-secondary {
-  color: #fcd34d;
+  color: var(--color-warning-500);
 }
 
 [data-theme="dark"] .review-btn-secondary:hover {
-  color: #fef3c7;
+  color: var(--color-warning-100);
 }
 
 .review-btn-icon {
@@ -1779,7 +1770,7 @@ body {
   cursor: pointer;
   opacity: 0.6;
   font-size: 14px;
-  color: #78350f;
+  color: var(--color-warning-500);
   padding: 4px;
 }
 
@@ -1788,7 +1779,7 @@ body {
 }
 
 [data-theme="dark"] .review-btn-icon {
-  color: #fcd34d;
+  color: var(--color-warning-500);
 }
 
 /* RTL support for review prompt */
@@ -1885,15 +1876,15 @@ body {
 }
 
 .favorites-header-btn svg {
-  fill: #FBBF24;
-  stroke: #FBBF24;
+  fill: var(--color-warning-500);
+  stroke: var(--color-warning-500);
   width: 18px;
   height: 18px;
 }
 
 .favorites-header-btn:hover svg {
-  fill: #F59E0B;
-  stroke: #F59E0B;
+  fill: var(--color-warning-500);
+  stroke: var(--color-warning-500);
 }
 
 .favorites-header-count {

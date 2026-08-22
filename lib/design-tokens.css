@@ -150,6 +150,25 @@
   --accent-polish-200: #ded8bd;
   --accent-polish-bg: rgba(107, 98, 52, 0.10);
 
+  /* ----- Categorical palette -----
+     One shared set for anything that labels a KIND of thing: chart series,
+     type badges, the coloured edge on a saved item. Kept separate from the
+     semantic tokens on purpose. Pages were reaching for --color-success as
+     a category colour for grammar and --color-warning for favourites, which
+     made a status colour mean "grammar" in one place and "went well" in
+     another, and left every page free to invent its own set.
+
+     All six carry a cream label at 5.28:1 or better and separate by
+     luminance as well as hue, so a chart built from them survives being
+     read in greyscale. */
+  --cat-translate: #c23c00;
+  --cat-dictionary: #1f6b52;
+  --cat-polish: #6b6234;
+  --cat-grammar: #8a4b2a;
+  --cat-document: #8a5a04;
+  --cat-image: #5c3317;
+  --cat-on: #fffefb;
+
   /* ----- Provider brand colors -----
      Third-party marks. Left at their owners' values on purpose; they are not
      ours to warm, and they only ever appear as small badges. */
@@ -264,6 +283,16 @@
   --accent-polish-100: #2b2818;
   --accent-polish-200: #3b371f;
   --accent-polish-bg: rgba(201, 191, 134, 0.14);
+
+  /* Categorical palette, lightened for a dark ground; each carries an ink
+     label at 7.3:1 or better. */
+  --cat-translate: #ff8f5e;
+  --cat-dictionary: #6fc9a6;
+  --cat-polish: #c9bf86;
+  --cat-grammar: #d9a184;
+  --cat-document: #e8b45c;
+  --cat-image: #c49a78;
+  --cat-on: #181110;
 
   --ring-color: var(--color-primary-400);
 

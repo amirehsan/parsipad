@@ -240,3 +240,19 @@
   -webkit-text-fill-color: transparent;
   color: transparent;
 }
+
+/* ------------- The hidden attribute ------------- */
+
+/*
+ * `hidden` only carries `display: none` from the user-agent stylesheet, so any
+ * component that sets its own display silently defeats it: the element stays
+ * on screen and `el.hidden = true` appears to do nothing.
+ *
+ * That was live on the favourites page, where the empty state rendered
+ * underneath the user's actual favourites, and latent on eighteen other
+ * elements across six pages. One rule fixes all of them, and stops the next
+ * component that sets `display` from reintroducing it.
+ */
+[hidden] {
+  display: none !important;
+}
