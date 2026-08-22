@@ -4,34 +4,34 @@
   "version": "2.11.6",
   "description": "__MSG_extensionDescription__",
   "default_locale": "en",
-
   "permissions": [
     "storage",
     "contextMenus",
     "activeTab",
     "scripting",
-    "bookmarks"
+    "bookmarks",
+    "favicon"
   ],
-
   "host_permissions": [
     "https://api.anthropic.com/*",
     "https://generativelanguage.googleapis.com/*",
     "https://api.openai.com/*"
   ],
-
   "background": {
     "service_worker": "background/service-worker.js",
     "type": "module"
   },
-
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content/content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
-
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
@@ -41,20 +41,16 @@
       "128": "icons/icon-128.png"
     }
   },
-
   "options_page": "settings/settings.html",
-
   "chrome_url_overrides": {
     "newtab": "newtab/newtab.html"
   },
-
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-
   "commands": {
     "translate-selection": {
       "suggested_key": {
@@ -85,7 +81,6 @@
       "description": "__MSG_cmdScreenshotTranslate__"
     }
   },
-
   "web_accessible_resources": [
     {
       "resources": [
@@ -105,7 +100,12 @@
         "lib/language-detect.js",
         "lib/translation/*.js"
       ],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "<all_urls>"
+      ]
     }
+  ],
+  "optional_permissions": [
+    "topSites"
   ]
 }
