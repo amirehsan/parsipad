@@ -210,11 +210,11 @@ body.dark {
 
 .feature-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(29, 27, 23, 0.1);
+  box-shadow: 0 10px 25px -5px rgba(27, 24, 38, 0.1);
 }
 
 .dark .feature-card:hover {
-  box-shadow: 0 10px 25px -5px rgba(29, 27, 23, 0.3);
+  box-shadow: 0 10px 25px -5px rgba(27, 24, 38, 0.3);
 }
 
 .feature-icon {
@@ -286,7 +286,7 @@ body.dark {
   border-radius: 1.5rem;
   padding: 2rem;
   border: 1px solid var(--gray-200);
-  box-shadow: 0 4px 6px -1px rgba(29, 27, 23, 0.1);
+  box-shadow: 0 4px 6px -1px rgba(27, 24, 38, 0.1);
 }
 
 .dark .setup-section {
@@ -365,7 +365,7 @@ body.dark {
 }
 
 .dark .provider-option input:checked + .provider-content {
-  background: rgba(255, 79, 0, 0.1);
+  background: rgba(99, 102, 241, 0.1);
   border-color: var(--primary-500);
 }
 
@@ -432,7 +432,7 @@ body.dark {
 .text-input:focus {
   outline: none;
   border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(255, 79, 0, 0.15);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
 .text-input::placeholder {
@@ -514,7 +514,7 @@ body.dark {
 
 .btn-primary:hover {
   background: var(--primary-600);
-  box-shadow: 0 4px 12px rgba(255, 79, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 .btn-secondary {
@@ -554,15 +554,15 @@ body.dark {
 }
 
 .status-message.success {
-  background: rgba(15, 109, 77, 0.1);
+  background: rgba(15, 107, 82, 0.1);
   color: var(--success);
-  border: 1px solid rgba(15, 109, 77, 0.2);
+  border: 1px solid rgba(15, 107, 82, 0.2);
 }
 
 .status-message.error {
-  background: rgba(180, 35, 27, 0.1);
+  background: rgba(192, 38, 58, 0.1);
   color: var(--error);
-  border: 1px solid rgba(180, 35, 27, 0.2);
+  border: 1px solid rgba(192, 38, 58, 0.2);
 }
 
 /* RTL Support */

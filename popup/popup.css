@@ -69,8 +69,8 @@
   --color-primary-hover: var(--color-primary-300);
   --color-primary-light: var(--color-primary-300);
   /* Tinted fills, indigo-400 based to match the dark primary. */
-  --color-primary-50: rgba(255, 106, 42, 0.12);
-  --color-primary-100: rgba(255, 106, 42, 0.20);
+  --color-primary-50: rgba(129, 140, 248, 0.12);
+  --color-primary-100: rgba(129, 140, 248, 0.20);
 }
 
 /* Reset */
@@ -321,7 +321,7 @@ body {
 .textarea:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(255, 79, 0, 0.1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .textarea::placeholder {
@@ -561,8 +561,8 @@ body {
 }
 
 .error-section.is-destructive {
-  background-color: rgba(180, 35, 27, 0.10);
-  border-color: rgba(180, 35, 27, 0.28);
+  background-color: rgba(192, 38, 58, 0.10);
+  border-color: rgba(192, 38, 58, 0.28);
 }
 
 .error-section.is-destructive::before {
@@ -968,14 +968,14 @@ body {
      failed AA; raising the ground opacity and darkening the text fixed it,
      and the move from violet to olive kept the same relationship. */
   color: var(--accent-polish);
-  background: rgba(107, 98, 52, 0.10);   /* 4.90 with the accent as text */
+  background: rgba(139, 63, 168, 0.10);   /* 4.90 with the accent as text */
   padding: 2px 8px;
   border-radius: var(--radius-sm);
   text-transform: lowercase;
 }
 
 [data-theme="dark"] .dict-pos {
-  background: rgba(107, 98, 52, 0.28);
+  background: rgba(139, 63, 168, 0.28);
   color: var(--accent-polish);
 }
 
@@ -1025,8 +1025,8 @@ body {
 }
 
 .dict-tag-antonym {
-  background: rgba(180, 35, 27, 0.1);
-  border-color: rgba(180, 35, 27, 0.3);
+  background: rgba(192, 38, 58, 0.1);
+  border-color: rgba(192, 38, 58, 0.3);
   color: var(--color-error);
 }
 
@@ -1086,7 +1086,7 @@ body {
 
 .upload-area:hover {
   border-color: var(--color-primary);
-  background: rgba(255, 79, 0, 0.05);
+  background: rgba(99, 102, 241, 0.05);
 }
 
 .upload-icon {
@@ -1374,8 +1374,8 @@ body {
   width: 100%;
   padding: var(--space-sm) var(--space-md);
   margin-top: var(--space-md);
-  background: linear-gradient(135deg, rgba(255, 79, 0, 0.1) 0%, rgba(255, 79, 0, 0.05) 100%);
-  border: 1px solid rgba(255, 79, 0, 0.3);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(99, 102, 241, 0.05) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: var(--radius-md);
   color: var(--color-text);
   font-size: 13px;
@@ -1385,8 +1385,8 @@ body {
 }
 
 .grammar-learn-more-btn:hover {
-  background: linear-gradient(135deg, rgba(255, 79, 0, 0.15) 0%, rgba(255, 79, 0, 0.1) 100%);
-  border-color: rgba(255, 79, 0, 0.5);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.1) 100%);
+  border-color: rgba(99, 102, 241, 0.5);
 }
 
 .grammar-learn-more-btn:active {
@@ -1399,13 +1399,13 @@ body {
 }
 
 [data-theme="dark"] .grammar-learn-more-btn {
-  background: linear-gradient(135deg, rgba(255, 106, 42, 0.15) 0%, rgba(255, 106, 42, 0.08) 100%);
-  border-color: rgba(255, 106, 42, 0.3);
+  background: linear-gradient(135deg, rgba(129, 140, 248, 0.15) 0%, rgba(129, 140, 248, 0.08) 100%);
+  border-color: rgba(129, 140, 248, 0.3);
 }
 
 [data-theme="dark"] .grammar-learn-more-btn:hover {
-  background: linear-gradient(135deg, rgba(255, 106, 42, 0.2) 0%, rgba(255, 106, 42, 0.12) 100%);
-  border-color: rgba(255, 106, 42, 0.5);
+  background: linear-gradient(135deg, rgba(129, 140, 248, 0.2) 0%, rgba(129, 140, 248, 0.12) 100%);
+  border-color: rgba(129, 140, 248, 0.5);
 }
 
 /* RTL support for Learn More button */
@@ -1853,13 +1853,13 @@ body {
 }
 
 [data-theme="dark"] .translate-page-btn {
-  background: linear-gradient(135deg, rgba(255, 106, 42, 0.15) 0%, rgba(255, 106, 42, 0.08) 100%);
-  border-color: rgba(255, 106, 42, 0.3);
+  background: linear-gradient(135deg, rgba(129, 140, 248, 0.15) 0%, rgba(129, 140, 248, 0.08) 100%);
+  border-color: rgba(129, 140, 248, 0.3);
 }
 
 [data-theme="dark"] .translate-page-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(255, 106, 42, 0.2) 0%, rgba(255, 106, 42, 0.12) 100%);
-  border-color: rgba(255, 106, 42, 0.5);
+  background: linear-gradient(135deg, rgba(129, 140, 248, 0.2) 0%, rgba(129, 140, 248, 0.12) 100%);
+  border-color: rgba(129, 140, 248, 0.5);
 }
 
 /* RTL Support for translate page button */

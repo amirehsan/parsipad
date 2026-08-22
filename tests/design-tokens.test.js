@@ -69,28 +69,18 @@ const AA = 4.5;
 const UI_BOUNDARY = 3.0;
 
 /**
- * Contrast shortfalls that were accepted deliberately, with the value
- * measured when they were accepted.
+ * Contrast shortfalls accepted deliberately, with the value measured when
+ * they were accepted.
  *
- * There is exactly one. The design system names #ff4f00 as its primary and
- * calls the saturated orange its conversion signature; under its own
- * on-primary that measures 3.27:1, which clears the 3:1 bar for finding a
- * UI component but not the 4.5:1 bar for reading its label. The owner chose
- * to keep the documented colour. Darker steps (-600 at 4.55, -700 at 5.28)
- * carry the roles that are text, so links and inline orange do pass; this
- * exception covers the filled button alone.
+ * Empty, and that is the point. The previous palette needed one: its
+ * Signal Orange primary measured 3.27:1 under its own label, below AA for
+ * text. The indigo primary reaches 6.29 in light and 6.24 in dark, so the
+ * button passes on its own merits and nothing here is being waived.
  *
- * Entries here are not a way to silence the guard: an exception still has to
- * clear 3:1, and it fails if it drifts below the value recorded here.
+ * An entry is not a way to silence the guard: it still has to clear 3:1,
+ * and it fails if it drifts below the value recorded.
  */
-const ACCEPTED_BELOW_AA = {
-  'light:button-primary': 3.26,
-  // Dark carries the same cream label so the CTA is identical in both
-  // themes. An ink label measured 5.40 and would have passed, so this is a
-  // deliberate trade of contrast for consistency, made by the owner.
-  'dark:button-primary': 3.26
-};
-// Every tone that carries text, and so has to be legible on both grounds.
+const ACCEPTED_BELOW_AA = {};// Every tone that carries text, and so has to be legible on both grounds.
 const TEXT_TOKENS = [
   '--color-text',
   '--color-text-secondary',
@@ -165,16 +155,30 @@ describe('the warm neutral ladder', () => {
     expect(descending, `luminances: ${lums.map(l => l.toFixed(3)).join(' ')}`).toBe(true);
   });
 
-  it('keeps every neutral warm, with no cool greys left', () => {
-    // A warm neutral has red >= blue. A cool grey does not. This is the single
-    // characteristic the design system calls its voice.
-    const cool = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]
+  it('keeps every neutral in the accent hue band, with no stray greys', () => {
+    // The ladder is tinted toward the accent rather than being a generic
+    // grey; that is what makes the palette read as one colour rather than as
+    // an accent sitting on neutral chrome. The check is a hue band rather
+    // than "is it cool", because a generic 220deg blue-grey would pass the
+    // looser test while still looking like a different system.
+    //
+    // Steps 50 and 900 are excluded: at very low and very high lightness the
+    // hue of a near-white or near-black is numerically unstable and says
+    // nothing useful about how it reads.
+    const strays = [100, 200, 300, 400, 500, 600, 700, 800]
       .map(n => [n, resolve(light, `--color-gray-${n}`)])
       .filter(([, hex]) => {
         const h = hex.replace('#', '');
-        return parseInt(h.slice(0, 2), 16) < parseInt(h.slice(4, 6), 16);
+        const [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        if (max === min) return true;                       // a true grey
+        const d = max - min;
+        let hue = max === r ? ((g - b) / d + (g < b ? 6 : 0))
+          : max === g ? ((b - r) / d + 2) : ((r - g) / d + 4);
+        hue *= 60;
+        return hue < 235 || hue > 275;                      // outside the band
       })
       .map(([n]) => n);
-    expect(cool).toEqual([]);
+    expect(strays).toEqual([]);
   });
 });
