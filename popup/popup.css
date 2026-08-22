@@ -6,25 +6,27 @@
 @import url('../lib/components.css');
 
 /*
- * Legacy alias map. Existing popup styles reference --color-primary, --space-md,
- * etc. We keep those names alive by aliasing them to the canonical tokens, so
- * the rest of this file can be migrated incrementally without breaking visual
- * regressions. New code should reference the canonical names directly.
+ * Popup-local aliases.
+ *
+ * This used to redefine the whole semantic layer -- background, all three text
+ * tones, borders -- which meant lib/design-tokens.css was the source of truth
+ * in name only. It also shadowed the corrected text tones with the failing
+ * ones: --color-text-secondary resolved to neutral-500, which measures 2.92:1
+ * on a card, and --color-text-tertiary to neutral-400 at 1.66:1. Both fed
+ * straight into the translation card through the --pp-* mapping below.
+ *
+ * What is left here are names the popup genuinely owns: a shorter alias for
+ * the primary, its four-tier spacing scale, and its rhythm tokens. Everything
+ * chromatic now comes from the token file, in both themes.
  */
 :root {
-  --color-primary: var(--color-primary-600);
-  --color-primary-hover: var(--color-primary-700);
+  --color-primary: var(--color-primary-700);
+  --color-primary-hover: var(--color-primary-800);
   --color-primary-light: var(--color-primary-400);
-  /* --color-primary-50 / -100 come straight from design-tokens.css */
 
-  --color-bg: #ffffff;
-  --color-bg-secondary: var(--color-gray-50);
-
-  --color-text: var(--color-gray-900);
-  --color-text-secondary: var(--color-gray-500);
-  --color-text-tertiary: var(--color-gray-400);
-
-  --color-border: var(--color-gray-200);
+  /* The popup's third text tone maps onto the token file's muted tone, which
+     is the lowest one measured to stay legible on a card. */
+  --color-text-tertiary: var(--color-text-muted);
 
   /* The shared card's stylesheet consumes exactly these four names and
      defines none of them. Mapping them onto the popup's own tokens here,
@@ -64,22 +66,11 @@
 
 [data-theme='dark'] {
   --color-primary: var(--color-primary-400);
-  --color-primary-hover: var(--color-primary-500);
+  --color-primary-hover: var(--color-primary-300);
   --color-primary-light: var(--color-primary-300);
-  --color-primary-50: rgba(99, 102, 241, 0.1);
-  --color-primary-100: rgba(99, 102, 241, 0.2);
-
-  --color-bg: var(--color-gray-900);
-  --color-bg-secondary: var(--color-gray-800);
-
-  --color-text: #f9fafb;
-  --color-text-secondary: var(--color-gray-400);
-  --color-text-tertiary: var(--color-gray-500);
-
-  --color-border: var(--color-gray-700);
-  --color-success: #34d399;
-  --color-error: #f87171;
-  --color-warning: #fbbf24;
+  /* Tinted fills, indigo-400 based to match the dark primary. */
+  --color-primary-50: rgba(129, 140, 248, 0.12);
+  --color-primary-100: rgba(129, 140, 248, 0.20);
 }
 
 /* Reset */
@@ -266,7 +257,7 @@ body {
   gap: 2px;
   padding: 2px;
   margin-bottom: var(--space-3);
-  background: var(--color-bg-secondary);
+  background: var(--color-bg-hover);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
   font-size: var(--text-xs);
@@ -292,7 +283,8 @@ body {
 .mode-switcher-btn[aria-selected='true'] {
   background: var(--color-bg);
   color: var(--color-primary);
-  box-shadow: var(--shadow-sm);
+  /* Ring rather than a border so selecting a mode does not reflow the row. */
+  box-shadow: 0 0 0 1px var(--color-border-strong), var(--shadow-sm);
 }
 
 .mode-switcher-btn:focus-visible {
@@ -429,8 +421,8 @@ body {
   padding: var(--space-3) var(--space-4);
   font-size: 14px;
   font-weight: 500;
-  background-color: var(--color-primary);
-  color: white;
+  background-color: var(--button-primary-bg);
+  color: var(--button-primary-text);
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -498,8 +490,8 @@ body {
   font-size: 11px;
   font-weight: 500;
   padding: var(--space-xs) var(--space-sm);
-  background-color: var(--color-primary);
-  color: white;
+  background-color: var(--button-primary-bg);
+  color: var(--button-primary-text);
   border-radius: var(--radius-sm);
 }
 
@@ -667,8 +659,8 @@ body {
   font-size: 9px;
   font-weight: 500;
   padding: 2px 4px;
-  background: var(--color-primary);
-  color: white;
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
   border-radius: 3px;
   flex-shrink: 0;
 }
@@ -1897,8 +1889,8 @@ body {
   position: absolute;
   top: -2px;
   right: -2px;
-  background: var(--color-primary);
-  color: white;
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
   font-size: 9px;
   font-weight: 600;
   min-width: 14px;
