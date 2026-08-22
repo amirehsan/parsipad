@@ -10,35 +10,35 @@
 /* CSS Variables */
 :root {
   /* Primary Colors - Indigo palette */
-  --primary-50: #eef2ff;
-  --primary-100: #e0e7ff;
-  --primary-200: #c7d2fe;
-  --primary-300: #a5b4fc;
-  --primary-400: #818cf8;
-  --primary-500: #6366f1;
-  --primary-600: #4f46e5;
-  --primary-700: #4338ca;
-  --primary-800: #3730a3;
-  --primary-900: #312e81;
+  --primary-50: var(--color-primary-50);
+  --primary-100: var(--color-primary-100);
+  --primary-200: var(--color-primary-200);
+  --primary-300: var(--color-primary-300);
+  --primary-400: var(--color-primary-400);
+  --primary-500: var(--color-primary-500);
+  --primary-600: var(--color-primary-600);
+  --primary-700: var(--color-primary-700);
+  --primary-800: var(--color-primary-800);
+  --primary-900: var(--color-primary-900);
 
   /* Gray palette */
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
-  --gray-400: #9ca3af;
-  --gray-500: #6b7280;
-  --gray-600: #4b5563;
-  --gray-700: #374151;
-  --gray-800: #1f2937;
-  --gray-900: #111827;
+  --gray-50: var(--color-gray-50);
+  --gray-100: var(--color-gray-100);
+  --gray-200: var(--color-gray-200);
+  --gray-300: var(--color-gray-300);
+  --gray-400: var(--color-gray-400);
+  --gray-500: var(--color-gray-500);
+  --gray-600: var(--color-gray-700);
+  --gray-700: var(--color-gray-800);
+  --gray-800: var(--color-gray-800);
+  --gray-900: var(--color-gray-900);
 
   /* Status colors */
-  --success: #10b981;
+  --success: var(--color-success-500);
   --success-light: rgba(16, 185, 129, 0.1);
-  --error: #ef4444;
+  --error: var(--color-error-500);
   --error-light: rgba(239, 68, 68, 0.1);
-  --warning: #f59e0b;
+  --warning: var(--color-warning-500);
   --warning-light: rgba(245, 158, 11, 0.1);
 
   /* Fonts */
@@ -68,14 +68,14 @@ body {
 html.dark body,
 .dark body,
 body.dark {
-  background: linear-gradient(135deg, var(--gray-900) 0%, #1e1b4b 100%);
+  background: linear-gradient(135deg, var(--gray-900) 0%, var(--color-primary-900) 100%);
 }
 
 /* Utility classes */
 .bg-gray-50 { background-color: var(--gray-50); }
-.dark .dark\:bg-gray-900 { background-color: var(--gray-900); }
+.dark .dark\:bg-gray-900 { background-color: var(--color-bg); }
 .text-gray-900 { color: var(--gray-900); }
-.dark .dark\:text-white { color: #ffffff; }
+.dark .dark\:text-white { color: var(--color-gray-50); }
 
 /* Ensure hidden attribute works globally */
 [hidden] { display: none !important; }
@@ -137,7 +137,7 @@ body.dark {
 }
 
 .dark .logo-text {
-  color: #ffffff;
+  color: var(--color-gray-50);
 }
 
 /* Icon Buttons */
@@ -166,7 +166,7 @@ body.dark {
 
 .dark .icon-btn:hover {
   background: var(--gray-700);
-  color: #ffffff;
+  color: var(--color-gray-50);
 }
 
 .icon-btn svg {
@@ -324,7 +324,7 @@ body.dark {
 }
 
 .source-card {
-  background: #ffffff;
+  background: var(--color-bg-elevated);
   border-radius: 1rem;
   padding: 1.5rem;
   border: 1px solid var(--gray-200);
@@ -365,7 +365,7 @@ body.dark {
 }
 
 .dark .source-text {
-  color: #ffffff;
+  color: var(--color-gray-50);
 }
 
 /* Persian text class - applies Persian font and RTL */
@@ -414,7 +414,7 @@ body.dark {
 
 /* Grammar Point Card */
 .grammar-point {
-  background: #ffffff;
+  background: var(--color-bg-elevated);
   border-radius: 1rem;
   border: 1px solid var(--gray-200);
   overflow: hidden;
@@ -443,7 +443,7 @@ body.dark {
   width: 28px;
   height: 28px;
   background: var(--primary-500);
-  color: #ffffff;
+  color: var(--color-gray-50);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -460,7 +460,7 @@ body.dark {
 }
 
 .dark .grammar-point-title {
-  color: #ffffff;
+  color: var(--color-gray-50);
 }
 
 .grammar-point-content {
@@ -532,7 +532,7 @@ body.dark {
 }
 
 .dark .example-source {
-  color: #ffffff;
+  color: var(--color-gray-50);
 }
 
 .example-target {
@@ -653,7 +653,7 @@ body.dark {
 }
 
 .dark .quiz-question {
-  color: #ffffff;
+  color: var(--color-gray-50);
 }
 
 .quiz-options {
@@ -668,7 +668,7 @@ body.dark {
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  background: #ffffff;
+  background: var(--color-bg-elevated);
   border: 2px solid var(--gray-200);
   border-radius: 0.5rem;
   cursor: pointer;
@@ -781,7 +781,7 @@ body.dark {
 
 .btn-primary {
   background: var(--primary-500);
-  color: #ffffff;
+  color: var(--color-gray-50);
 }
 
 .btn-primary:hover {
@@ -858,7 +858,7 @@ body.dark {
 .related-section {
   margin-top: 2rem;
   padding: 1.5rem;
-  background: #ffffff;
+  background: var(--color-bg-elevated);
   border-radius: 1rem;
   border: 1px solid var(--gray-200);
 }
@@ -896,7 +896,7 @@ body.dark {
   left: 50%;
   transform: translateX(-50%);
   background: var(--gray-900);
-  color: #ffffff;
+  color: var(--color-gray-50);
   padding: 0.875rem 1.5rem;
   border-radius: 0.75rem;
   display: flex;
@@ -1113,7 +1113,7 @@ body.dark {
 }
 
 .skeleton-card {
-  background: #ffffff;
+  background: var(--color-bg-elevated);
   border-radius: 1rem;
   padding: 1.5rem;
   margin-bottom: 1rem;
@@ -1504,7 +1504,7 @@ details[open] .collapsible-chevron {
 
 .collapsible-content {
   padding: 1rem;
-  background: #ffffff;
+  background: var(--color-bg-elevated);
 }
 
 .dark .collapsible-content {
