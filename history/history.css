@@ -135,8 +135,8 @@ body {
 .logo-icon {
   width: 32px;
   height: 32px;
-  background: var(--color-primary);
-  color: white;
+  background: var(--cat-translate);
+  color: var(--cat-on);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -223,9 +223,10 @@ body {
 }
 
 .filter-tab.active {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: white;
+  background: var(--color-bg);
+  border-color: var(--color-text);
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
 }
 
 /* Search */
@@ -313,13 +314,13 @@ body {
 }
 
 .history-badge.translation {
-  background: var(--color-primary);
-  color: white;
+  background: var(--cat-translate);
+  color: var(--cat-on);
 }
 
 .history-badge.polish {
-  background: var(--color-polish);
-  color: white;
+  background: var(--cat-polish);
+  color: var(--cat-on);
 }
 
 .history-time {
@@ -488,7 +489,7 @@ body {
 
 .clear-btn:hover {
   background: var(--color-error);
-  color: white;
+  color: var(--color-text-inverse);
 }
 
 /* RTL Support */

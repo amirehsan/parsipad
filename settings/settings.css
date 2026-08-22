@@ -512,7 +512,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   width: 18px;
   left: 3px;
   bottom: 3px;
-  background-color: white;
+  background-color: var(--color-gray-50);
   transition: 0.3s;
   border-radius: 50%;
   box-shadow: 0 1px 3px rgba(29, 27, 23, 0.2);
