@@ -275,7 +275,10 @@
 
   --button-primary-bg: var(--color-primary-500);
   --button-primary-bg-hover: var(--color-primary-400);
-  --button-primary-text: #201515;   /* ink on Signal Orange: 5.40 */
+  /* Cream, matching light, so the CTA looks the same in both themes.
+     3.27 rather than the 5.40 an ink label gave; recorded in
+     tests/design-tokens.test.js alongside the light-mode entry. */
+  --button-primary-text: #fffefb;
   --button-secondary-bg: #241a18;
   --button-secondary-bg-hover: #2e2220;
   --button-secondary-text: #d6cdc7;
