@@ -159,7 +159,11 @@ export function renderWordCard(result, options) {
   el.appendChild(translationLine({ text: translation, doc }));
 
   if (inContext) {
-    el.appendChild(note({ lead: cardLabel('cardHere', lang), text: inContext, lang, doc }));
+    // "Note" rather than "Here": the field carries a remark about the
+    // selection itself now, not only about the sentence it came from, and
+    // the Persian for "Here" is literally "in this sentence", which is
+    // wrong for a lookup typed straight into the popup.
+    el.appendChild(note({ lead: cardLabel('cardNote', lang), text: inContext, lang, doc }));
   }
 
   const remaining = otherSenses(senses, translation);

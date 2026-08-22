@@ -1,22 +1,24 @@
-import { getRandomFavorites, getNewTabEnabled, getTheme, setTheme, getNewTabPhraseCount, getLanguage } from '../lib/storage.js';
+import { getRandomFavorites, getNewTabEnabled, getTheme, setTheme, getNewTabPhraseCount, getLanguage, getNewTabPanels, setNewTabPanels, NEWTAB_PANELS } from '../lib/storage.js';
+import { getTopSites, faviconUrl, hasTopSitesPermission, requestTopSitesPermission } from '../lib/top-sites.js';
 import { t, applyTranslations } from '../lib/i18n.js';
+import { greetingKeyForHour, formatClock, msUntilNextMinute } from './glance.js';
+import { heroSizeStep, stepBelow } from './hero-scale.js';
+import { applyThemeToRoot } from '../lib/theme.js';
 
-// DOM Elements - Bookmarks
-const bookmarksPanel = document.getElementById('bookmarks-panel');
+// DOM Elements - Bookmarks (now inside the drawer)
 const bookmarkSearch = document.getElementById('bookmark-search');
 const bookmarkTree = document.getElementById('bookmark-tree');
 const bookmarkEmpty = document.getElementById('bookmark-empty');
 
 // DOM Elements
-const flashcardContainer = document.getElementById('flashcard-container');
+const hero = document.getElementById('hero');
+const heroFooter = document.getElementById('hero-footer');
 const flashcard = document.getElementById('flashcard');
 const cardBadge = document.getElementById('card-badge');
 const cardBadgeBack = document.getElementById('card-badge-back');
 const cardSaved = document.getElementById('card-saved');
 const cardOriginal = document.getElementById('card-original');
 const cardSavedBack = document.getElementById('card-saved-back');
-const currentCardEl = document.getElementById('current-card');
-const totalCardsEl = document.getElementById('total-cards');
 const progressDots = document.getElementById('progress-dots');
 const emptyState = document.getElementById('empty-state');
 const disabledState = document.getElementById('disabled-state');
@@ -29,6 +31,18 @@ const openSettingsBtn = document.getElementById('open-settings-btn');
 const viewAllLink = document.getElementById('view-all-link');
 const openSettingsLink = document.getElementById('open-settings-link');
 const keyboardHints = document.getElementById('keyboard-hints');
+const clockEl = document.getElementById('clock');
+const greetingPrimary = document.getElementById('greeting-primary');
+const greetingSecondary = document.getElementById('greeting-secondary');
+const drawer = document.getElementById('bookmarks-drawer');
+const drawerScrim = document.getElementById('drawer-scrim');
+const drawerClose = document.getElementById('drawer-close');
+const chipBookmarks = document.getElementById('chip-bookmarks');
+const recentsPanel = document.getElementById('recents-panel');
+const tileGrid = document.getElementById('tile-grid');
+const recentsPermission = document.getElementById('recents-permission');
+const recentsEmpty = document.getElementById('recents-empty');
+const recentsGrantBtn = document.getElementById('recents-grant-btn');
 
 // State
 let favorites = [];
@@ -36,6 +50,15 @@ let currentIndex = 0;
 let isFlipped = false;
 let currentLang = 'en';
 let bookmarkData = [];
+// `panels.bookmarks` is legacy. Bookmarks stopped being a panel when it
+// became a drawer, and a drawer is per-tab state that is never persisted.
+// The stored key is left alone so an older build still reads a coherent
+// object; this page simply does not consult it.
+let panels = { flashcard: true, bookmarks: true, recents: false };
+let drawerOpen = false;
+let bookmarksLoaded = false;
+let drawerInvoker = null;
+let clockTimer = null;
 
 /**
  * Initialize the new tab page
@@ -50,8 +73,12 @@ async function init() {
   // Setup common event listeners first (theme, settings links, etc.)
   setupCommonEventListeners();
 
-  // Load bookmarks (always, independent of flashcard setting)
-  await loadBookmarks();
+  // Panels first: it decides what is on screen, so doing it before the data
+  // loads avoids a frame where a hidden panel is briefly visible.
+  await initPanels();
+
+  startGlance();
+  setupDrawer();
 
   // Check if feature is enabled
   const isEnabled = await getNewTabEnabled();
@@ -107,11 +134,9 @@ async function initTheme() {
  * Apply theme to the document
  */
 function applyTheme(theme) {
-  let effectiveTheme = theme;
-  if (theme === 'system') {
-    effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-  document.documentElement.setAttribute('data-theme', effectiveTheme);
+  // Both conventions, always. Writing only data-theme leaves a stale `.dark`
+  // class from theme-boot matching :root.dark, which pins the page dark.
+  applyThemeToRoot(theme);
 }
 
 /**
@@ -152,30 +177,41 @@ async function loadFavorites() {
  * Show flashcard view
  */
 function showFlashcardView() {
-  flashcardContainer.hidden = false;
-  emptyState.hidden = true;
-  disabledState.hidden = true;
-  keyboardHints.hidden = false;
+  setStage('cards');
 }
 
 /**
  * Show empty state
  */
 function showEmptyState() {
-  flashcardContainer.hidden = true;
-  emptyState.hidden = false;
-  disabledState.hidden = true;
-  keyboardHints.hidden = true;
+  setStage('empty');
 }
 
 /**
  * Show disabled state
  */
 function showDisabledState() {
-  flashcardContainer.hidden = true;
-  emptyState.hidden = true;
-  disabledState.hidden = false;
-  keyboardHints.hidden = true;
+  setStage('disabled');
+}
+
+/**
+ * The stage holds exactly one of three things. Routing them through one
+ * function keeps them mutually exclusive by construction.
+ *
+ * @param {'cards'|'empty'|'disabled'} which
+ */
+function setStage(which) {
+  const cards = which === 'cards' && panels.flashcard;
+  if (hero) hero.hidden = !cards;
+  if (heroFooter) heroFooter.hidden = !cards;
+  emptyState.hidden = which !== 'empty' || !panels.flashcard;
+  disabledState.hidden = which !== 'disabled' || !panels.flashcard;
+
+  // The card keys mean nothing without a card, but the bookmarks key still
+  // works, so the pill stays and only its card items go.
+  keyboardHints?.querySelectorAll('[data-hint="card"]').forEach(item => {
+    item.hidden = !cards;
+  });
 }
 
 /**
@@ -193,9 +229,9 @@ function renderCurrentCard() {
   // Update badge
   const badgeInfo = getBadgeInfo(item);
   cardBadge.textContent = badgeInfo.text;
-  cardBadge.className = `flashcard-badge ${badgeInfo.type}`;
+  cardBadge.className = `hero-eyebrow ${badgeInfo.type}`;
   cardBadgeBack.textContent = badgeInfo.text;
-  cardBadgeBack.className = `flashcard-badge ${badgeInfo.type}`;
+  cardBadgeBack.className = `hero-eyebrow ${badgeInfo.type}`;
 
   // Update text content (support both new and legacy field names)
   const savedText = item.savedText || item.saved;
@@ -210,9 +246,13 @@ function renderCurrentCard() {
   cardSavedBack.textContent = savedText;
   cardSavedBack.dir = detectRTL(savedText) ? 'rtl' : 'ltr';
 
-  // Update progress indicator
-  currentCardEl.textContent = currentIndex + 1;
-  totalCardsEl.textContent = favorites.length;
+  // A favourite can be one word or a whole sentence and the hero has no box
+  // to overflow into, so the length picks the display size. The flipped side
+  // sits a step below its own so the original and its translation read as a
+  // hierarchy rather than competing.
+  const frontStep = heroSizeStep(savedText);
+  cardSaved.dataset.size = frontStep;
+  cardOriginal.dataset.size = stepBelow(heroSizeStep(originalText));
 }
 
 /**
@@ -240,6 +280,8 @@ function renderProgressDots() {
     `<div class="progress-dot ${index === currentIndex ? 'active' : ''}" data-index="${index}"></div>`
   ).join('');
 
+  updateProgressLabel();
+
   // Add click handlers to dots
   progressDots.querySelectorAll('.progress-dot').forEach(dot => {
     dot.addEventListener('click', () => {
@@ -255,6 +297,7 @@ function renderProgressDots() {
 function updateNavigation() {
   prevBtn.disabled = currentIndex === 0;
   nextBtn.disabled = currentIndex === favorites.length - 1;
+  updateProgressLabel();
 
   // Update active dot
   progressDots.querySelectorAll('.progress-dot').forEach((dot, index) => {
@@ -312,7 +355,9 @@ async function copyCurrentCard() {
   if (favorites.length === 0) return;
 
   const item = favorites[currentIndex];
-  const text = item.saved;
+  // Same fallback the renderer uses. Reading only `saved` copied undefined
+  // for any favourite stored under the newer field name.
+  const text = item.savedText || item.saved;
 
   try {
     await navigator.clipboard.writeText(text);
@@ -405,21 +450,30 @@ function setupFlashcardEventListeners() {
  */
 function setupKeyboardShortcuts() {
   document.addEventListener('keydown', (e) => {
-    // Handle Escape in search input
+    // Escape in the search box clears it first, and only closes the drawer
+    // once there is nothing left to clear.
     if (e.key === 'Escape' && e.target === bookmarkSearch) {
-      bookmarkSearch.value = '';
-      filterBookmarks('');
-      bookmarkSearch.blur();
+      if (bookmarkSearch.value) {
+        bookmarkSearch.value = '';
+        filterBookmarks('');
+      } else {
+        closeDrawer();
+      }
+      return;
+    }
+
+    if (e.key === 'Escape' && drawerOpen) {
+      closeDrawer();
       return;
     }
 
     // Ignore if typing in an input
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-    // Focus bookmark search with /
+    // Open the bookmarks drawer with /
     if (e.key === '/') {
       e.preventDefault();
-      if (bookmarkSearch) bookmarkSearch.focus();
+      openDrawer(e.target instanceof HTMLElement ? e.target : null);
       return;
     }
 
@@ -482,8 +536,10 @@ async function loadBookmarks() {
     renderBookmarkTree(bookmarkData);
     setupBookmarkEventListeners();
   } catch (error) {
-    // Bookmarks API unavailable — hide panel gracefully
-    if (bookmarksPanel) bookmarksPanel.hidden = true;
+    // The drawer was opened deliberately, so say there is nothing rather than
+    // presenting an empty box with no explanation.
+    if (bookmarkTree) bookmarkTree.innerHTML = '';
+    if (bookmarkEmpty) bookmarkEmpty.hidden = false;
   }
 }
 
@@ -676,3 +732,271 @@ function escapeHtml(str) {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', init);
+
+/* ------------------------------------------------------------------
+   Panel switches and the most-visited tiles
+   ------------------------------------------------------------------ */
+
+/**
+ * Read the stored panel switches, reflect them, and wire the chips.
+ */
+async function initPanels() {
+  panels = await getNewTabPanels();
+
+  // A panel can be stored as on from a previous session while the optional
+  // permission behind it has since been revoked from Chrome's own settings,
+  // which this page does not get told about. Reconcile before rendering so
+  // the chip never claims to show something it cannot.
+  if (panels.recents && !await hasTopSitesPermission()) {
+    panels.recents = false;
+    await setNewTabPanels({ recents: false });
+  }
+
+  applyPanels();
+
+  // Toggling recents loads the tiles, but a tab that opens with the panel
+  // already on never toggled anything: without this the dock renders as an
+  // empty band under the word.
+  if (panels.recents) await loadTopSites();
+
+  document.querySelectorAll('.chip[data-panel]').forEach(chip => {
+    chip.addEventListener('click', () => togglePanel(chip.dataset.panel));
+  });
+  recentsGrantBtn?.addEventListener('click', enableRecents);
+}
+
+/**
+ * @param {string} name
+ */
+async function togglePanel(name) {
+  if (!NEWTAB_PANELS.includes(name)) return;
+
+  if (name === 'recents' && !panels.recents) {
+    await enableRecents();
+    return;
+  }
+
+  panels = await setNewTabPanels({ [name]: !panels[name] });
+  applyPanels();
+  if (panels.recents) await loadTopSites();
+}
+
+/**
+ * Turn on Most visited, asking for the optional permission if it is not
+ * granted yet. This runs from a click because chrome.permissions.request
+ * requires a user gesture; requesting it on page load would be rejected.
+ */
+async function enableRecents() {
+  const granted = await hasTopSitesPermission() || await requestTopSitesPermission();
+
+  if (!granted) {
+    // Show the panel with its explanation rather than silently doing nothing,
+    // so a declined prompt does not look like a broken button.
+    panels = await setNewTabPanels({ recents: true });
+    applyPanels();
+    setRecentsState('permission');
+    return;
+  }
+
+  panels = await setNewTabPanels({ recents: true });
+  applyPanels();
+  await loadTopSites();
+}
+
+/**
+ * Reflect the current switches in the chips and the layout.
+ */
+function applyPanels() {
+  // Only the two real switches. The bookmarks chip is a disclosure and owns
+  // its own aria-expanded.
+  document.querySelectorAll('.chip[data-panel]').forEach(chip => {
+    chip.setAttribute('aria-pressed', String(Boolean(panels[chip.dataset.panel])));
+  });
+
+  if (recentsPanel) recentsPanel.hidden = !panels.recents;
+
+  if (!panels.flashcard) {
+    setStage('none');
+  }
+}
+
+/**
+ * @param {'tiles'|'permission'|'empty'} state
+ */
+function setRecentsState(state) {
+  if (tileGrid) tileGrid.hidden = state !== 'tiles';
+  if (recentsPermission) recentsPermission.hidden = state !== 'permission';
+  if (recentsEmpty) recentsEmpty.hidden = state !== 'empty';
+}
+
+/**
+ * Fetch and render the most visited tiles.
+ */
+async function loadTopSites() {
+  if (!tileGrid) return;
+
+  if (!await hasTopSitesPermission()) {
+    setRecentsState('permission');
+    return;
+  }
+
+  const tiles = await getTopSites();
+  if (!tiles.length) {
+    setRecentsState('empty');
+    return;
+  }
+
+  tileGrid.replaceChildren(...tiles.map(renderTile));
+  setRecentsState('tiles');
+}
+
+/**
+ * One tile. Built with DOM calls rather than an HTML string because the title
+ * and host come from pages the user has visited, and this page has no business
+ * parsing markup from them.
+ *
+ * @param {{url: string, title: string, host: string, initial: string}} tile
+ * @returns {HTMLAnchorElement}
+ */
+function renderTile(tile) {
+  const link = document.createElement('a');
+  link.className = 'tile';
+  link.href = tile.url;
+  link.title = `${tile.title}\n${tile.host}`;
+
+  const icon = document.createElement('div');
+  icon.className = 'tile-icon';
+
+  const initial = document.createElement('span');
+  initial.className = 'tile-initial';
+  initial.textContent = tile.initial;
+  initial.hidden = true;
+
+  const img = document.createElement('img');
+  img.src = faviconUrl(tile.url);
+  img.alt = '';
+  img.loading = 'lazy';
+  // The favicon service answers from the browser's own cache, so a host it has
+  // never seen yields nothing. Fall back to the initial instead of the broken
+  // image glyph.
+  img.addEventListener('error', () => {
+    img.remove();
+    initial.hidden = false;
+  });
+
+  icon.append(img, initial);
+
+  const label = document.createElement('span');
+  label.className = 'tile-label';
+  label.textContent = tile.title;
+
+  link.append(icon, label);
+  return link;
+}
+
+/* ------------------------------------------------------------------
+   The glance line: clock and greeting
+   ------------------------------------------------------------------ */
+
+/**
+ * Draw the clock and greeting, then keep them current.
+ *
+ * The tick is aligned to the top of the minute rather than set to a plain
+ * 60s interval, so a tab opened at :59 does not show the wrong minute for
+ * almost a full one.
+ */
+function startGlance() {
+  renderGlance();
+  clearTimeout(clockTimer);
+  clockTimer = setTimeout(function tick() {
+    renderGlance();
+    clockTimer = setTimeout(tick, 60000);
+  }, msUntilNextMinute(new Date()));
+}
+
+function renderGlance() {
+  const now = new Date();
+  if (clockEl) clockEl.textContent = formatClock(now, currentLang);
+
+  // Both languages, the reader's own first. This line is the only place the
+  // page says out loud what the product is for.
+  const key = greetingKeyForHour(now.getHours());
+  const other = currentLang === 'fa' ? 'en' : 'fa';
+  if (greetingPrimary) {
+    greetingPrimary.textContent = t(key, currentLang);
+    greetingPrimary.lang = currentLang;
+  }
+  if (greetingSecondary) {
+    greetingSecondary.textContent = t(key, other);
+    greetingSecondary.lang = other;
+    greetingSecondary.dir = other === 'fa' ? 'rtl' : 'ltr';
+  }
+}
+
+/**
+ * Announce which card is showing. The dots are the visual counter; without a
+ * label they are decoration to a screen reader.
+ */
+function updateProgressLabel() {
+  if (!progressDots || favorites.length === 0) return;
+  progressDots.setAttribute('aria-label', t('cardProgress', currentLang)
+    .replace('{n}', String(currentIndex + 1))
+    .replace('{total}', String(favorites.length)));
+}
+
+/* ------------------------------------------------------------------
+   Bookmarks drawer
+   ------------------------------------------------------------------ */
+
+function setupDrawer() {
+  chipBookmarks?.addEventListener('click', () => {
+    drawerOpen ? closeDrawer() : openDrawer(chipBookmarks);
+  });
+  drawerClose?.addEventListener('click', () => closeDrawer());
+
+  drawerScrim?.addEventListener('click', (e) => {
+    // The chip sits above the scrim; without this guard its own click would
+    // close the drawer here and immediately reopen it in the chip handler.
+    if (e.target.closest('#chip-bookmarks')) return;
+    closeDrawer();
+  });
+}
+
+/**
+ * @param {HTMLElement|null} invoker - What to hand focus back to on close.
+ */
+async function openDrawer(invoker) {
+  if (drawerOpen || !drawer) return;
+  drawerOpen = true;
+  drawerInvoker = invoker || chipBookmarks;
+
+  // The tree is only built the first time it is asked for, which keeps
+  // reading every bookmark off the critical path of every new tab.
+  if (!bookmarksLoaded) {
+    bookmarksLoaded = true;
+    await loadBookmarks();
+  }
+
+  drawer.removeAttribute('inert');
+  drawer.classList.add('open');
+  drawerScrim?.classList.add('open');
+  chipBookmarks?.setAttribute('aria-expanded', 'true');
+  bookmarkSearch?.focus();
+}
+
+function closeDrawer() {
+  if (!drawerOpen || !drawer) return;
+  drawerOpen = false;
+
+  // Blur before making the subtree inert, or focus is left on an element the
+  // browser is about to remove from the accessibility tree.
+  if (drawer.contains(document.activeElement)) document.activeElement.blur();
+
+  drawer.classList.remove('open');
+  drawerScrim?.classList.remove('open');
+  drawer.setAttribute('inert', '');
+  chipBookmarks?.setAttribute('aria-expanded', 'false');
+
+  drawerInvoker?.focus?.();
+  drawerInvoker = null;
+}

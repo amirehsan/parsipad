@@ -123,37 +123,6 @@
   height: 1rem;
 }
 
-/* ------------- Card ------------- */
-
-.pp-card {
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-card);
-}
-
-.pp-card-header {
-  padding: var(--space-5) var(--space-6);
-  border-bottom: 1px solid var(--color-divider);
-}
-
-.pp-card-body {
-  padding: var(--space-5) var(--space-6);
-}
-
-.pp-card-title {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-  color: var(--color-text);
-  margin: 0;
-}
-
-.pp-card-subtitle {
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-  margin: var(--space-1) 0 0;
-}
-
 /* ------------- Inputs ------------- */
 
 .pp-input,
@@ -179,7 +148,7 @@
 .pp-textarea:focus {
   outline: none;
   border-color: var(--color-primary-500);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
 }
 
 .pp-textarea {
@@ -270,4 +239,20 @@
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
+}
+
+/* ------------- The hidden attribute ------------- */
+
+/*
+ * `hidden` only carries `display: none` from the user-agent stylesheet, so any
+ * component that sets its own display silently defeats it: the element stays
+ * on screen and `el.hidden = true` appears to do nothing.
+ *
+ * That was live on the favourites page, where the empty state rendered
+ * underneath the user's actual favourites, and latent on eighteen other
+ * elements across six pages. One rule fixes all of them, and stops the next
+ * component that sets `display` from reintroducing it.
+ */
+[hidden] {
+  display: none !important;
 }

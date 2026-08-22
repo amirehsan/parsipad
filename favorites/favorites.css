@@ -8,50 +8,48 @@
   --color-primary: var(--color-primary-600);
   --color-primary-hover: var(--color-primary-700);
   --color-polish: var(--accent-polish);
-  --color-favorite: #FBBF24;
-  --color-bg: #FFFFFF;
-  --color-bg-secondary: #F9FAFB;
-  --color-text: #111827;
-  --color-text-secondary: #6B7280;
-  --color-border: #E5E7EB;
-  --color-success: #10B981;
-  --color-error: #EF4444;
-  --color-warning: #F59E0B;
+  --color-bg: var(--color-bg-elevated);
+  --color-bg-secondary: var(--color-gray-50);
+  --color-text: var(--color-gray-900);
+  --color-text-secondary: var(--color-gray-500);
+  --color-border: var(--color-gray-200);
+  --color-success: var(--color-success-500);
+  --color-error: var(--color-error-500);
+  --color-warning: var(--color-warning-500);
 
   --font-persian: 'Vazirmatn', 'Tahoma', sans-serif;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 32px;
+  /* Aliases onto the canonical 4px scale; these short names are local. */
+  --space-xs: var(--space-1);
+  --space-sm: var(--space-2);
+  --space-md: var(--space-4);
+  --space-lg: var(--space-6);
+  --space-xl: var(--space-8);
 
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  /* The radius scale is the design system's; redefining it here as 4/8/12
+     was why none of these pages used the system's 6/12 shape language. */
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 2px rgba(27, 24, 38, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(27, 24, 38, 0.1);
 }
 
 /* Dark Mode */
 [data-theme="dark"] {
-  --color-primary: #818CF8;
-  --color-primary-hover: #6366F1;
-  --color-polish: #a78bfa;
-  --color-favorite: #FCD34D;
-  --color-bg: #111827;
-  --color-bg-secondary: #1F2937;
-  --color-text: #F9FAFB;
-  --color-text-secondary: #9CA3AF;
-  --color-border: #374151;
-  --color-success: #34D399;
-  --color-error: #F87171;
-  --color-warning: #FBBF24;
+  --color-primary: var(--color-primary-400);
+  --color-primary-hover: var(--color-primary-500);
+  --color-polish: var(--accent-polish);
+  --color-bg: var(--color-gray-900);
+  --color-bg-secondary: var(--color-gray-800);
+  --color-text: var(--color-gray-50);
+  --color-text-secondary: var(--color-gray-400);
+  --color-border: var(--color-gray-800);
+  --color-success: var(--color-success-500);
+  --color-error: var(--color-error-500);
+  --color-warning: var(--color-warning-500);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(27, 24, 38, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(27, 24, 38, 0.4);
 }
 
 /* Reset */
@@ -138,7 +136,7 @@ body {
   width: 32px;
   height: 32px;
   background: var(--color-primary);
-  color: white;
+  color: var(--button-primary-text);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -217,6 +215,7 @@ body {
 }
 
 .filter-tab {
+  min-height: 32px;
   padding: var(--space-sm) var(--space-md);
   font-size: 13px;
   font-weight: 500;
@@ -234,9 +233,10 @@ body {
 }
 
 .filter-tab.active {
-  background: var(--color-favorite);
-  border-color: var(--color-favorite);
-  color: #78350F;
+  background: var(--color-bg);
+  border-color: var(--color-text);
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
 }
 
 /* Favorites Container */
@@ -262,17 +262,6 @@ body {
   box-shadow: var(--shadow-md);
 }
 
-.favorite-card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--color-favorite);
-  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-}
-
 .favorite-card-header {
   display: flex;
   justify-content: space-between;
@@ -296,29 +285,29 @@ body {
 }
 
 .favorite-badge.translation {
-  background: var(--color-primary);
-  color: white;
+  background: var(--cat-translate);
+  color: var(--cat-on);
 }
 
 .favorite-badge.polish {
-  background: var(--color-polish);
-  color: white;
+  background: var(--cat-polish);
+  color: var(--cat-on);
 }
 
 .favorite-badge.variant {
-  background: rgba(139, 92, 246, 0.2);
-  color: var(--color-polish);
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
   font-size: 9px;
 }
 
 .favorite-badge.grammar {
-  background: #10b981;
-  color: white;
+  background: var(--cat-grammar);
+  color: var(--cat-on);
 }
 
 .favorite-badge.direction {
-  background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
   font-size: 9px;
 }
 
@@ -352,7 +341,7 @@ body {
 }
 
 .card-action-btn.delete:hover {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: rgba(192, 38, 58, 0.1);
   color: var(--color-error);
 }
 
@@ -390,7 +379,7 @@ body {
   padding: var(--space-sm);
   background: var(--color-bg);
   border-radius: var(--radius-sm);
-  border-left: 3px solid var(--color-favorite);
+  border: 1px solid var(--color-border);
 }
 
 /* Persian text support */
@@ -400,22 +389,16 @@ body {
 .favorite-card-original.persian-text {
   font-family: var(--font-persian);
   text-align: right;
-  border-left: none;
-  border-right: 3px solid var(--color-favorite);
 }
 
 /* Grammar Card Styles */
-.grammar-card::before {
-  background: #10b981;
-}
-
 .grammar-lesson-title {
   font-size: 16px;
   font-weight: 600;
   color: var(--color-text);
   margin-bottom: var(--space-sm);
   padding: var(--space-sm);
-  background: rgba(16, 185, 129, 0.1);
+  background: var(--color-bg-hover);
   border-radius: var(--radius-sm);
 }
 
@@ -435,15 +418,6 @@ body {
   margin-top: var(--space-sm);
   padding-top: var(--space-sm);
   border-top: 1px solid var(--color-border);
-}
-
-.grammar-card .favorite-card-saved {
-  border-left-color: #10b981;
-}
-
-.grammar-card .favorite-card-saved[dir="rtl"] {
-  border-left: none;
-  border-right: 3px solid #10b981;
 }
 
 /* Empty State */
@@ -500,7 +474,7 @@ body {
 
 .clear-btn:hover {
   background: var(--color-error);
-  color: white;
+  color: var(--color-text-inverse);
 }
 
 /* RTL Support */
@@ -536,12 +510,6 @@ body {
 
 [dir="rtl"] .favorite-card-meta {
   flex-direction: row-reverse;
-}
-
-[dir="rtl"] .favorite-card::before {
-  left: auto;
-  right: 0;
-  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
 }
 
 [dir="rtl"] .filter-tabs {

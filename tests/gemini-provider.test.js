@@ -63,6 +63,20 @@ describe('GeminiProvider', () => {
     expect(deltas).toEqual(['سلام ', 'دنیا']);
     expect(result).toEqual({ text: 'سلام دنیا', inputTokens: 3, outputTokens: 2, truncated: false });
   });
+  it('vision() forwards temperature and schema, and reports truncation', async () => {
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      requests.push(JSON.parse(init.body));
+      return jsonResponse({ candidates: [{ content: { parts: [{ text: '{}' }] }, finishReason: 'MAX_TOKENS' }], usageMetadata: {} });
+    });
+    const result = await provider.vision({
+      systemPrompt: 's', userPrompt: 'u', imageBase64: 'x', mimeType: 'image/png',
+      maxTokens: 4096, temperature: 0.2, responseSchema: SENTENCE_SCHEMA, apiKey: 'k'
+    });
+    expect(requests[0].generationConfig.temperature).toBe(0.2);
+    expect(requests[0].generationConfig.responseMimeType).toBe('application/json');
+    expect(requests[0].generationConfig.maxOutputTokens).toBe(4096);
+    expect(result.truncated).toBe(true);
+  });
 });
 
 describe('parseGeminiSseEvent', () => {

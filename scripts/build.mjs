@@ -38,7 +38,10 @@ const MODULE_ENTRIES = [
   { in: 'analytics/analytics.js',        out: 'analytics/analytics.js' }
 ];
 const IIFE_ENTRIES = [
-  { in: 'content/content.js', out: 'content/content.js' }
+  { in: 'content/content.js', out: 'content/content.js' },
+  // Classic script, loaded in each page's <head> before the body so the
+  // stored theme is applied before first paint.
+  { in: 'lib/theme-boot.js', out: 'lib/theme-boot.js' }
 ];
 
 const STATIC = [
