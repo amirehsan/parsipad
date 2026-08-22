@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-08-22
+
+### Added
+- **The New Tab page is built around one word.** The saved favourite sits directly on the gradient in Vazirmatn or Inter at up to 84px, with the time and a greeting in both languages above it, and still flips to reveal the original. Because a favourite can be a word or a whole sentence, the text length picks one of four display sizes, each bounded so a long one cannot push the page off screen.
+- **Most visited sites**, as plates on the background. Favicons are read from the browser's own cache rather than a remote favicon service, which would otherwise be sent a list of your most visited sites every time you open a tab. Uses the optional `topSites` permission, requested only when you switch the panel on.
+- **Panel switches**: three independent toggles for Cards, Bookmarks and Most visited, covering every combination rather than a fixed set of layouts.
+- Bookmarks moved into a drawer that opens from its chip or `/` and closes on Esc, the scrim, or the chip again. The tree is built on first open instead of on every new tab.
+
+### Changed
+- The New Tab page never scrolls, at any window size. The bookmark tree scrolls inside its drawer and the tile row inside its own strip.
+- Every extension surface moved onto one measured token system, in both themes, with the neutral palette tinted toward the indigo accent so a surface that appears in both the extension and the marketing site matches rather than merely coordinating.
+
+### Fixed
+- **Image translation could return the source text back to you as its own translation.** The image path was the only one calling its provider without a response schema, without a pinned temperature, and without reading the truncation flag its provider already reported. It now runs at the same temperature as text translation, is constrained by a schema, raises a clear error when a reply is cut off instead of returning half a translation, and acts on the "not Persian or English" signal that the prompt has always asked for and that this path alone ignored.
+- **Light mode was unreachable on eight pages once a page had opened in dark.** Dark is styled two ways across the extension, by class and by attribute, and the pre-paint boot script sets both. Each page then cleared only the one it used, leaving the other behind, so the palette stayed dark while the page's own rules went light. All eight now apply themes through one place.
+- The New Tab theme button drew both its icons at once, and the progress dots were being clipped by the page's own overflow.
+- Contrast: every text tone on every surface now meets WCAG AA in both themes, measured on the rendered page rather than read off the palette.
+
+
 ### Changed
 - **Translation core rebuilt around modes and context.** Selections are classified as word, phrase, sentence or text. Words and phrases are translated using the sentence around them and return senses by part of speech, synonyms, antonyms, IPA and register; sentences return labelled alternatives in the target language; long text streams into the card progressively.
 - Providers use native structured output (Claude `output_config.format`, Gemini `responseSchema`, OpenAI strict `json_schema`), temperature 0.2 for translation, token budgets scaled to the input, and report truncation instead of showing cut-off JSON.

@@ -33,6 +33,7 @@ import {
 import { applyThemeToRoot } from '../lib/theme.js';
 
 // DOM Elements - Language
+const aboutVersionEl = document.getElementById('about-version');
 const langEnRadio = document.getElementById('lang-en');
 const langFaRadio = document.getElementById('lang-fa');
 
@@ -97,7 +98,11 @@ const cacheCountExportEl = document.getElementById('cache-count-export');
 
 // Backup constants
 const BACKUP_VERSION = '1.0';
-const EXTENSION_VERSION = '2.11.6';
+// Read, not restated. This was a hardcoded literal that had to be edited in
+// lockstep with the manifest, next to another copy of the same number in
+// settings.html, which is exactly how a version goes stale in the UI while
+// the manifest is correct.
+const EXTENSION_VERSION = chrome.runtime.getManifest().version;
 
 // State
 let currentLang = 'en';
@@ -118,6 +123,7 @@ async function init() {
   await loadCacheStats();
   await loadDataCounts();
   await loadKeyboardShortcuts();
+  if (aboutVersionEl) aboutVersionEl.textContent = EXTENSION_VERSION;
   setupEventListeners();
 }
 

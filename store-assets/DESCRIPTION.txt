@@ -1,4 +1,16 @@
-ParsiPad is a powerful AI-powered translation extension that makes Persian-English translation seamless and intelligent.
+ParsiPad is an AI-powered Persian-English translator that lives in your browser. Select text on any page for a translation that understands the sentence around it, learn the grammar behind it, and keep the words you want to remember.
+
+You bring your own API key from Claude, Gemini, or ChatGPT. Your text goes to the provider you chose and nowhere else. There is no ParsiPad account, no server of ours in the middle, and nothing is stored outside your own browser.
+
+Version 3.0.0:
+- New Tab, rebuilt: one saved word fills the page in large Persian or English type, with the time and a greeting in both languages above it. Click it to reveal the original.
+- Most visited sites are now on the New Tab page as a row of site tiles. Icons come from your browser's own cache, so no list of the sites you visit is ever sent anywhere. This uses an optional permission that is only requested if you switch the panel on.
+- Choose what your New Tab shows: cards, bookmarks and most-visited each toggle independently.
+- Bookmarks moved into a drawer that opens with "/" or its button, so the page is no longer half a bookmark list.
+- The New Tab page never scrolls, at any window size.
+- Fixed: image translation could hand back the text it read from the picture instead of translating it. That path was missing the safeguards the text translator already had, including a clear message when a long image is cut off, and now uses them.
+- Fixed: once a page had opened in dark mode, switching back to light did not work. Affected every settings, popup, history, analytics, favorites and grammar page.
+- Every screen was measured for colour contrast in both light and dark mode, and now meets WCAG AA throughout.
 
 Version 2.11.6:
 - Fixed Gemini translations failing with a "model is no longer available" error after Google retired the older Gemini model; the extension now uses the current Gemini model
