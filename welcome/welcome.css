@@ -227,38 +227,37 @@ body.dark {
   margin-bottom: 1rem;
 }
 
-/* Icon background colors */
-.bg-blue-100 { background: #dbeafe; }
-.dark .dark\:bg-blue-900\/30 { background: rgba(30, 58, 138, 0.3); }
-.text-blue-500 { color: #3b82f6; }
+/* Feature icon colours.
+   These keep their Tailwind-ish class names because the markup uses them,
+   but the values come from the shared categorical palette so the welcome
+   page uses the same six colours as the analytics chart and the favourites
+   badges. They were an eight-hue rainbow spanning blue, purple, pink and
+   teal, which is four cool families in a warm system and a set no other
+   page shared. The tint is the colour itself at low alpha, so light and
+   dark both follow the token without a second rule. */
+.bg-blue-100,   .dark .dark\:bg-blue-900\/30   { background: color-mix(in srgb, var(--cat-dictionary) 16%, transparent); }
+.text-blue-500  { color: var(--cat-dictionary); }
 
-.bg-purple-100 { background: #f3e8ff; }
-.dark .dark\:bg-purple-900\/30 { background: rgba(88, 28, 135, 0.3); }
-.text-purple-500 { color: #a855f7; }
+.bg-purple-100, .dark .dark\:bg-purple-900\/30 { background: color-mix(in srgb, var(--cat-polish) 16%, transparent); }
+.text-purple-500 { color: var(--cat-polish); }
 
-.bg-green-100 { background: #dcfce7; }
-.dark .dark\:bg-green-900\/30 { background: rgba(20, 83, 45, 0.3); }
-.text-green-500 { color: #22c55e; }
+.bg-green-100,  .dark .dark\:bg-green-900\/30  { background: color-mix(in srgb, var(--cat-dictionary) 16%, transparent); }
+.text-green-500 { color: var(--cat-dictionary); }
 
-.bg-yellow-100 { background: #fef9c3; }
-.dark .dark\:bg-yellow-900\/30 { background: rgba(113, 63, 18, 0.3); }
-.text-yellow-500 { color: #eab308; }
+.bg-yellow-100, .dark .dark\:bg-yellow-900\/30 { background: color-mix(in srgb, var(--cat-document) 16%, transparent); }
+.text-yellow-500 { color: var(--cat-document); }
 
-.bg-indigo-100 { background: var(--color-primary-100); }
-.dark .dark\:bg-indigo-900\/30 { background: rgba(49, 46, 129, 0.3); }
-.text-indigo-500 { color: var(--color-primary-500); }
+.bg-indigo-100, .dark .dark\:bg-indigo-900\/30 { background: color-mix(in srgb, var(--cat-translate) 16%, transparent); }
+.text-indigo-500 { color: var(--cat-translate); }
 
-.bg-pink-100 { background: #fce7f3; }
-.dark .dark\:bg-pink-900\/30 { background: rgba(131, 24, 67, 0.3); }
-.text-pink-500 { color: #ec4899; }
+.bg-pink-100,   .dark .dark\:bg-pink-900\/30   { background: color-mix(in srgb, var(--cat-grammar) 16%, transparent); }
+.text-pink-500  { color: var(--cat-grammar); }
 
-.bg-orange-100 { background: #ffedd5; }
-.dark .dark\:bg-orange-900\/30 { background: rgba(124, 45, 18, 0.3); }
-.text-orange-500 { color: #f97316; }
+.bg-orange-100, .dark .dark\:bg-orange-900\/30 { background: color-mix(in srgb, var(--cat-translate) 16%, transparent); }
+.text-orange-500 { color: var(--cat-translate); }
 
-.bg-teal-100 { background: #ccfbf1; }
-.dark .dark\:bg-teal-900\/30 { background: rgba(19, 78, 74, 0.3); }
-.text-teal-500 { color: #14b8a6; }
+.bg-teal-100,   .dark .dark\:bg-teal-900\/30   { background: color-mix(in srgb, var(--cat-image) 16%, transparent); }
+.text-teal-500  { color: var(--cat-image); }
 
 .feature-title {
   font-size: 1rem;
