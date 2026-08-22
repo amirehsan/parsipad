@@ -93,6 +93,37 @@ failed. Neither would have been caught by reading it.
 - The session override refines the spec's wording, which says only that the
   choice is remembered. Remembering it literally is broken for bilingual use.
 
+## Post-merge spec audit
+
+Run after the merge, section by section against the code, because the earlier
+completeness claim had already been wrong once about section 6.
+
+Holding: 3.1, 3.2, 4.1, 4.2 (including the two-line clamp and its expand
+control), 4.3, 5 (all ten keys in both languages, all three replaced keys
+gone), 6, 7, 7.1, 8 (both `BOX_HEIGHT_ESTIMATE` and `clampBoxIntoViewport`
+absent), 10, 11.
+
+One gap found and closed: section 3.3's callback contract lists `isSaved`,
+which nothing implemented. Saved state was applied by the host reaching into
+the card's DOM after rendering, leaving the control with no `aria-pressed`
+until an async favourites check returned.
+
+Three deliberate departures, left as they are:
+
+- **7, sentence highlighting.** The spec highlights the originating word in
+  both source and translation. The plan narrowed this to the source alone,
+  reasoning that the word's position in Persian cannot be derived from the
+  English and a wrong highlight is worse than none. The plan's call stands.
+- **9, `role="dialog"` on the card container.** Applied to the box shell
+  instead. The card also renders inside the popup panel, which is not a
+  dialog, so following the spec literally would announce one that is not
+  there. The box is the dialog and carries the role.
+- **4.4, a direction pill during loading.** The spec asks for one "as soon as
+  the direction is known", but section 6 requires the pill to show the
+  resolved direction rather than the pre-request guess, and that is not known
+  until the result arrives. The two cannot both hold; section 6 is the
+  stronger commitment, so the pill appears with the result.
+
 ## Not verified
 
 The live probe table in Task 13 needs the extension loaded in Chrome with a
