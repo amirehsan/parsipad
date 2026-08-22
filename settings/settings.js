@@ -24,6 +24,7 @@ import {
 import { PROVIDERS, PROVIDER_CONFIGS, STORAGE_KEYS } from '../lib/constants.js';
 import { translationCache } from '../lib/cache.js';
 import { t, applyTranslations } from '../lib/i18n.js';
+import { COMMAND_DESCRIPTIONS, getBoundShortcuts, shortcutKeys } from '../shared/shortcuts.js';
 import {
   getHistory,
   getPolishHistory,
@@ -115,6 +116,7 @@ async function init() {
   await loadAllApiKeyStatuses();
   await loadCacheStats();
   await loadDataCounts();
+  await loadKeyboardShortcuts();
   setupEventListeners();
 }
 
@@ -152,6 +154,52 @@ async function loadLanguage() {
   }
 
   applyTranslations(currentLang);
+}
+
+/**
+ * Render the global shortcuts from what Chrome actually bound.
+ *
+ * These used to be written out in the markup, which meant the page could
+ * confidently name a key that does nothing: Chrome drops a suggested_key
+ * another extension already claimed, and the user can clear or rebind any
+ * of them. An unbound command now says so, and says why, next to the button
+ * that fixes it.
+ */
+async function loadKeyboardShortcuts() {
+  const list = document.getElementById('global-shortcuts-list');
+  if (!list) return;
+
+  const bound = await getBoundShortcuts();
+  list.replaceChildren();
+
+  Object.entries(COMMAND_DESCRIPTIONS).forEach(([command, descriptionKey]) => {
+    const item = document.createElement('div');
+    item.className = 'shortcut-item';
+
+    const keys = document.createElement('span');
+    keys.className = 'shortcut-keys';
+
+    const parts = shortcutKeys(bound.get(command));
+    if (parts.length === 0) {
+      keys.classList.add('is-unset');
+      keys.textContent = t('shortcutNotSet', currentLang);
+      keys.title = t('shortcutNotSetHint', currentLang);
+    } else {
+      parts.forEach((key, index) => {
+        if (index > 0) keys.appendChild(document.createTextNode(' + '));
+        const kbd = document.createElement('kbd');
+        kbd.textContent = key;
+        keys.appendChild(kbd);
+      });
+    }
+
+    const description = document.createElement('span');
+    description.className = 'shortcut-desc';
+    description.textContent = t(descriptionKey, currentLang);
+
+    item.append(keys, description);
+    list.appendChild(item);
+  });
 }
 
 /**
