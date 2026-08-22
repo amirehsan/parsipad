@@ -177,12 +177,21 @@ async function prepareTranslation(payload) {
  * Apply detected-source corrections and Persian normalization to a raw
  * translate() result, producing the result contract.
  */
-function finalizeResult(raw, { mode, info, sourceText }) {
+function finalizeResult(raw, { mode, info, sourceText, sourceLang }) {
   let finalInfo = info;
-  if (raw.detectedSource === 'fa-latn' || (raw.detectedSource === 'fa' && info.from !== 'fa')) {
-    finalInfo = getTranslationInfo(sourceText, 'fa');
-  } else if (raw.detectedSource === 'en' && info.from === 'fa') {
-    finalInfo = getTranslationInfo(sourceText, 'en');
+  // The detected-source correction is there to repair script-based guessing,
+  // above all Persian typed in Latin letters, which the character detector
+  // reads as English. An explicit sourceLang is not a guess: it is the user
+  // overruling that detector through the swap control, so the model's
+  // opinion must not overrule them back. Applying it regardless sent the
+  // result home with the direction the user had just rejected, which made
+  // swapping look like it did nothing.
+  if (sourceLang === 'auto') {
+    if (raw.detectedSource === 'fa-latn' || (raw.detectedSource === 'fa' && info.from !== 'fa')) {
+      finalInfo = getTranslationInfo(sourceText, 'fa');
+    } else if (raw.detectedSource === 'en' && info.from === 'fa') {
+      finalInfo = getTranslationInfo(sourceText, 'en');
+    }
   }
   const toPersian = finalInfo.to === 'fa';
   const fixTarget = (s) => (toPersian && s ? normalizePersian(s) : (s || ''));

@@ -27,6 +27,7 @@ export function themeVars() {
       --pp-shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
       --pp-skeleton-from: #e5e7eb;
       --pp-skeleton-to: #f3f4f6;
+      --pp-motion-skeleton: parsipad-shimmer 1.5s infinite;
     }
     :host([data-theme='dark']) {
       --pp-bg: #1f2937;
@@ -523,69 +524,18 @@ export function getStyles() {
       overflow-y: auto;
     }
 
-    .parsipad-correction-hint {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 4px;
-      margin-bottom: 10px;
-      padding: 6px 10px;
-      background: rgba(245, 158, 11, 0.12);
-      border: 1px solid rgba(245, 158, 11, 0.3);
-      border-radius: 6px;
-      font-size: 12px;
-      color: var(--pp-text);
+    /* The word a sentence card grew out of, marked in its source line so
+       the user can see what they originally selected. */
+    .parsipad-source-match {
+      background: rgba(245, 158, 11, 0.28);
+      color: inherit;
+      border-radius: 3px;
+      padding: 0 2px;
     }
-    .parsipad-correction-label {
-      color: var(--pp-text-secondary);
-      font-weight: 500;
-    }
-    .parsipad-correction-original {
-      color: var(--pp-text-secondary);
-      text-decoration: line-through;
-    }
-    .parsipad-correction-corrected {
-      color: var(--pp-text);
-      font-weight: 600;
-    }
+
     /* Inline grammar block: lazy-loaded after the user clicks "Explain grammar".
-       Sits between the translation/alternatives and the footer. Reads cleanly
-       in both light and dark themes via --pp-* tokens. */
-    .parsipad-grammar-section {
-      margin-top: 16px;
-      padding-top: 12px;
-      border-top: 1px solid var(--pp-border);
-    }
-    .parsipad-explain-grammar {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      background: transparent;
-      color: #6366f1;
-      border: 1px solid var(--pp-border);
-      border-radius: 6px;
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 12px;
-      font-weight: 500;
-      transition: background-color 0.15s, border-color 0.15s;
-    }
-    .parsipad-explain-grammar:hover:not(:disabled) {
-      background: rgba(99, 102, 241, 0.08);
-      border-color: #6366f1;
-    }
-    .parsipad-explain-grammar:focus-visible {
-      outline: 2px solid #6366f1;
-      outline-offset: 2px;
-    }
-    .parsipad-explain-grammar:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    :host([data-theme='dark']) .parsipad-explain-grammar {
-      color: #a5b4fc;
-    }
+       Sits above the card's footer. Reads cleanly in both light and dark
+       themes via --pp-* tokens. */
     .parsipad-grammar-slot:empty {
       display: none;
     }
@@ -661,68 +611,10 @@ export function getStyles() {
       color: #fca5a5;
     }
 
-    .parsipad-rich-context {
-      margin-top: 16px;
-      padding-top: 12px;
-      border-top: 1px solid var(--pp-border);
-      font-size: 12px;
-      color: var(--pp-text-secondary);
-    }
-    .parsipad-rich-context-nuance {
-      font-style: italic;
-      font-size: 13px;
-      line-height: 1.6;
-      color: var(--pp-text-secondary);
-      margin-bottom: 12px;
-    }
-    /* Vazirmatn ships no italic, so an italic Persian run renders as a
-       synthesized oblique. Keep Persian upright. */
-    .parsipad-rich-context-nuance[dir="rtl"] {
-      font-style: normal;
-      line-height: 1.8;
-    }
-    .parsipad-rich-context-title {
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--pp-text-muted);
-      margin-bottom: 8px;
-    }
-    .parsipad-rich-context-list {
-      margin: 0;
-      padding-inline-start: 18px;
-      line-height: 1.7;
-      color: var(--pp-text);
-      font-size: 14px;
-    }
-    .parsipad-rich-context-list li {
-      margin-bottom: 4px;
-    }
-    .parsipad-rich-context-list li[dir="rtl"] {
-      line-height: 1.8;
-      margin-bottom: 8px;
-    }
-    .parsipad-rich-context-list li:last-child {
-      margin-bottom: 0;
-    }
-    .parsipad-truncated-note {
-      margin-top: 8px;
-      font-size: 12px;
-      line-height: 1.5;
-      color: #b45309;
-    }
-    .parsipad-truncated-note[dir="rtl"] {
-      line-height: 1.8;
-    }
-    :host([data-theme='dark']) .parsipad-truncated-note {
-      color: #fbbf24;
-    }
-
     /* One rule covers every Persian node in the box. Elements carry dir
        set from their own content, so this reaches the translation, the
-       senses and alternatives, the correction hint and the notes without
-       each selector having to name the family. */
+       dictionary entry and the polish variants without each selector
+       having to name the family. */
     [dir="rtl"] {
       font-family: 'Vazirmatn', 'Tahoma', sans-serif;
     }
@@ -802,7 +694,7 @@ export function getStyles() {
       align-items: center;
       justify-content: center;
       border-radius: 6px;
-      transition: all 0.15s;
+      transition: background-color 0.15s, border-color 0.15s, color 0.15s;
     }
 
     .parsipad-favorite:hover {
@@ -833,7 +725,7 @@ export function getStyles() {
       height: 14px;
       background: linear-gradient(90deg, var(--pp-border) 25%, var(--pp-bg-hover) 50%, var(--pp-border) 75%);
       background-size: 200% 100%;
-      animation: parsipad-shimmer 1.5s infinite;
+      animation: var(--pp-motion-skeleton);
       border-radius: 4px;
     }
 

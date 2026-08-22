@@ -12,9 +12,13 @@ import {
   getStyles
 } from './styles/index.js';
 import { t } from '../lib/i18n.js';
-import { getTextDirection } from '../lib/language-detect.js';
+import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
-import { captureSelectionContext } from './context.js';
+import { captureSelectionContext, sentenceAround } from './context.js';
+import { computeBoxPosition } from './placement.js';
+import { renderCard, injectCardStyles } from '../shared/card/index.js';
+import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
+import { applySourceOverride } from '../shared/source-override.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils/batch.js';
 
 // Re-injection guard: skip if the script has already run in this isolated world.
@@ -38,6 +42,26 @@ let selectionDebounceTimer = null;
 let currentPolishOriginalText = null; // Store original text for regeneration
 let currentTranslationData = null; // Store current translation for favorites
 let currentDictionaryData = null; // Store current dictionary result for favorites
+// The selection the current box is anchored to, in viewport coordinates.
+// Kept so the box can be placed again once its real size is known, and
+// again if streamed content grows it past the bottom edge.
+let boxSelectionRect = null;
+// Once a user opens the other meanings, keep them open for the rest of the
+// page's life rather than making them reopen it on every lookup.
+let sensesExpandedForSession = false;
+// The card currently on screen, and the context the selection came from.
+// The card is where grammar points and the sentence highlight are appended
+// after the fact; the context is what a sentence request is built from.
+let currentCardEl = null;
+let currentSelectionContext = null;
+// Focus moves into the box when it opens and back out when it closes, so
+// keyboard users are not dropped back at the top of the page.
+let previouslyFocused = null;
+let boxNeedsFocus = false;
+// The correction the user last made with the swap control, as the pair it
+// was made against. See shared/source-override.js for why it is a pair and
+// not just a language.
+let manualSourceOverride = null;
 
 // Screenshot selection state
 let screenshotOverlay = null;
@@ -278,21 +302,33 @@ function handleMessage(message, sender, sendResponse) {
 /**
  * Translate text and show floating box. Long selections stream into the box.
  */
-async function translateAndShow(text) {
+async function translateAndShow(text, { sourceLang } = {}) {
   if (!text || text.trim().length === 0) {
     return;
   }
 
-  const selection = window.getSelection();
-  const position = getBoxPosition(selection);
-  const context = captureSelectionContext(selection);
+  const resolved = applySourceOverride({
+    detected: detectLanguage(text),
+    chosen: sourceLang,
+    override: manualSourceOverride
+  });
+  manualSourceOverride = resolved.override;
+  const requestedSourceLang = resolved.sourceLang;
 
-  createFloatingBox(position);
+  const selection = window.getSelection();
+  // Both reads happen before the box exists: taking focus clears the
+  // selection, and neither the rectangle nor the context survives that.
+  const selectionRect = captureSelectionRect(selection);
+  const context = captureSelectionContext(selection);
+  currentSelectionContext = context;
+
+  createFloatingBox(selectionRect);
   showLoading();
+  placeFloatingBox();
 
   let streamed = '';
   try {
-    const response = await requestTranslation({ text, sourceLang: 'auto', context }, {
+    const response = await requestTranslation({ text, sourceLang: requestedSourceLang, context }, {
       onDelta: (delta) => {
         streamed += delta;
         showStreamingText(streamed);
@@ -330,6 +366,8 @@ function showStreamingText(text) {
   }
   textEl.setAttribute('dir', getTextDirection(text));
   textEl.textContent = text;
+
+  keepFloatingBoxInViewport();
 }
 
 /**
@@ -343,13 +381,13 @@ async function polishAndShow(text) {
   // Store original text for regeneration
   currentPolishOriginalText = text;
 
-  // Get selection position for box placement
-  const selection = window.getSelection();
-  const position = getBoxPosition(selection);
+  // Capture the selection rectangle before the box takes focus and clears it.
+  const selectionRect = captureSelectionRect(window.getSelection());
 
   // Create or update the polish floating box
-  createPolishBox(position);
+  createPolishBox(selectionRect);
   showPolishLoading();
+  placeFloatingBox();
 
   try {
     // Send polish request to background script
@@ -368,77 +406,131 @@ async function polishAndShow(text) {
   }
 }
 
+const BOX_GAP = 8;
+const BOX_VIEWPORT_PADDING = 12;
+// Where an unanchored box goes: the keyboard and context-menu paths can
+// reach a box with no live selection to sit under.
+const UNANCHORED_BOX_OFFSET = 100;
+
 /**
- * Calculate position for floating box based on selection
- * Uses smart flip to position above or below based on available space
+ * The selection's rectangle in viewport coordinates, in the shape
+ * computeBoxPosition expects. Null when nothing is selected.
+ *
+ * Captured before the box is created, because taking focus clears the
+ * selection and the rectangle is unrecoverable after that.
+ *
+ * @param {Selection|null} selection
+ * @returns {{top: number, bottom: number, left: number}|null}
  */
-function getBoxPosition(selection) {
-  // Constants for floating box dimensions
-  const BOX_WIDTH = 450;
-  const BOX_HEIGHT_ESTIMATE = 200; // Approximate height for flip calculation
-  const GAP = 8;
-  const VIEWPORT_PADDING = 12;
+function captureSelectionRect(selection) {
+  if (!selection || selection.rangeCount === 0) return null;
+  const rect = selection.getRangeAt(0).getBoundingClientRect();
+  return { top: rect.top, bottom: rect.bottom, left: rect.left };
+}
 
-  let top = 100;
-  let left = 100;
+/**
+ * Place the box now that it has been rendered and can be measured.
+ *
+ * The box is created hidden precisely so this can happen: measuring real
+ * content beats the height estimate the old placement guessed with, which
+ * is what used to leave a tall result hanging off the bottom of the
+ * viewport until a separate clamping pass nudged it back.
+ *
+ * Safe to call more than once. Every renderer calls it after its content
+ * lands, since the content is what determines the size.
+ */
+function placeFloatingBox() {
+  if (!floatingBox) return;
 
-  if (selection && selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-
-    // Calculate space above and below selection
-    const spaceAbove = rect.top;
-    const spaceBelow = window.innerHeight - rect.bottom;
-
-    // Prefer below, but flip to above if not enough space below AND more space above
-    if (spaceBelow < BOX_HEIGHT_ESTIMATE + GAP && spaceAbove > spaceBelow) {
-      // Position above the selection (subtract estimated height)
-      top = rect.top + window.scrollY - BOX_HEIGHT_ESTIMATE - GAP;
-      // Ensure it doesn't go above the viewport
-      if (top < window.scrollY + VIEWPORT_PADDING) {
-        top = window.scrollY + VIEWPORT_PADDING;
-      }
-    } else {
-      // Position below the selection
-      top = rect.bottom + window.scrollY + GAP;
-    }
-
-    left = rect.left + window.scrollX;
-
-    // Ensure box doesn't go off-screen to the right
-    const maxLeft = window.innerWidth - BOX_WIDTH - VIEWPORT_PADDING;
-    if (left > maxLeft) {
-      left = maxLeft > 0 ? maxLeft : VIEWPORT_PADDING;
-    }
-
-    // Ensure box doesn't go off-screen to the left
-    if (left < VIEWPORT_PADDING) {
-      left = VIEWPORT_PADDING;
-    }
+  if (!boxSelectionRect) {
+    floatingBox.style.top = `${window.scrollY + UNANCHORED_BOX_OFFSET}px`;
+    floatingBox.style.left = `${window.scrollX + UNANCHORED_BOX_OFFSET}px`;
+    floatingBox.style.visibility = 'visible';
+    focusBoxOnce();
+    return;
   }
 
-  return { top, left };
+  const rect = floatingBox.getBoundingClientRect();
+  const { top, left } = computeBoxPosition({
+    selection: boxSelectionRect,
+    box: { width: rect.width, height: rect.height },
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    scroll: { x: window.scrollX, y: window.scrollY },
+    gap: BOX_GAP,
+    padding: BOX_VIEWPORT_PADDING
+  });
+
+  floatingBox.style.top = `${top}px`;
+  floatingBox.style.left = `${left}px`;
+  floatingBox.style.visibility = 'visible';
+  focusBoxOnce();
+}
+
+/**
+ * Move focus into the box the first time it becomes visible.
+ *
+ * Deferred to here rather than done at creation because a hidden element
+ * cannot take focus, and placement is the moment it stops being hidden.
+ * Scrolling is suppressed: the box was just positioned against the
+ * selection, so the viewport is already where it should be.
+ */
+function focusBoxOnce() {
+  if (!boxNeedsFocus || !shadowRoot) return;
+  const box = shadowRoot.querySelector('.parsipad-box');
+  if (!box) return;
+  boxNeedsFocus = false;
+  box.focus({ preventScroll: true });
+}
+
+/**
+ * Re-place the box only if growing content has pushed it off the bottom.
+ *
+ * Streaming calls this on every delta, so re-placing unconditionally would
+ * slide the text upward while the user is reading it.
+ */
+function keepFloatingBoxInViewport() {
+  if (!floatingBox) return;
+  const rect = floatingBox.getBoundingClientRect();
+  if (rect.bottom <= window.innerHeight - BOX_VIEWPORT_PADDING) return;
+  placeFloatingBox();
+}
+
+/**
+ * The shared opening moves for every floating box: drop whatever box is
+ * on screen, remember what this one is anchored to, and build a host that
+ * is laid out but not yet painted.
+ *
+ * @param {{top: number, bottom: number, left: number}|null} selectionRect
+ * @returns {HTMLElement} the host element, not yet in the document
+ */
+function createBoxHost(selectionRect) {
+  // Ordered: closing the old box hands focus back to whatever it took it
+  // from, and only then is the element this box will return to captured.
+  removeFloatingBox();
+  previouslyFocused = document.activeElement;
+  boxNeedsFocus = true;
+  boxSelectionRect = selectionRect || null;
+
+  const host = document.createElement('div');
+  host.id = 'parsipad-host';
+  host.style.cssText = `
+    position: absolute;
+    top: 0;
+    left: 0;
+    visibility: hidden;
+    z-index: 2147483647;
+  `;
+  return host;
 }
 
 /**
  * Create the floating translation box with Shadow DOM
  */
-function createFloatingBox(position) {
-  // Remove existing box if present
-  removeFloatingBox();
-
+function createFloatingBox(selectionRect) {
   // Persian type in the box relies on faces registered on the host document.
   ensurePersianFontLoaded();
 
-  // Create host element
-  const host = document.createElement('div');
-  host.id = 'parsipad-host';
-  host.style.cssText = `
-    position: absolute;
-    top: ${position.top}px;
-    left: ${position.left}px;
-    z-index: 2147483647;
-  `;
+  const host = createBoxHost(selectionRect);
 
   // Create shadow root for style isolation
   shadowRoot = host.attachShadow({ mode: 'closed' });
@@ -448,12 +540,17 @@ function createFloatingBox(position) {
   const style = document.createElement('style');
   style.textContent = getStyles();
   shadowRoot.appendChild(style);
+  // The card brings its own rules; the box's shell styles above stay as they are.
+  injectCardStyles(shadowRoot, document);
 
   // Create box structure
   const box = document.createElement('div');
   box.className = 'parsipad-box';
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-label', 'ParsiPad translation');
+  // Focusable by script but not in the tab order: focus is moved here when
+  // the box opens and handed back when it closes.
+  box.setAttribute('tabindex', '-1');
   box.innerHTML = `
     <div class="parsipad-header">
       <div class="parsipad-logo">
@@ -596,222 +693,244 @@ function formatDirectionBadge(direction) {
 }
 
 /**
- * Keep the box inside the viewport once its real height is known.
+ * The card's Listen handler, or null when there is nothing speakable.
  *
- * Placement is computed before the content exists, from an estimated height,
- * so a tall result can run past the bottom edge. Once the content has
- * rendered, nudge the box up by however much it overflows, never above the
- * top padding. No-op when the box already fits, so it costs nothing in the
- * common case.
+ * Returning null omits the control entirely, which is how a Persian
+ * result ends up with no Listen button without the card needing to know
+ * why. The card decides which side of the pair to speak and hands the
+ * text over, so the choice is made once, in the card.
+ *
+ * @param {Object} result
+ * @returns {Function|null}
  */
-function clampBoxIntoViewport() {
-  if (!floatingBox) return;
-
-  const PADDING = 12;
-  const rect = floatingBox.getBoundingClientRect();
-  const overflowBelow = rect.bottom - (window.innerHeight - PADDING);
-  if (overflowBelow <= 0) return;
-
-  const currentTop = parseFloat(floatingBox.style.top) || 0;
-  const minTop = window.scrollY + PADDING;
-  floatingBox.style.top = `${Math.max(minTop, currentTop - overflowBelow)}px`;
+function buildListenHandler(result) {
+  const spoken = result.direction && result.direction.startsWith('en')
+    ? result.sourceText
+    : result.translation;
+  if (!canSpeak(spoken)) return null;
+  return (text) => speak(text || spoken);
 }
 
 /**
- * Show translation result
+ * The card's Sentence handler, or null when there is no sentence to grow into.
+ *
+ * Only a word or a phrase has anywhere to expand to, and only if the
+ * captured context actually holds a sentence around it. Returning null
+ * omits the control, so the affordance never appears where activating it
+ * would just resend the same words.
+ *
+ * @param {Object} result
+ * @param {string} originalText
+ * @returns {Function|null}
+ */
+function buildSentenceHandler(result, originalText) {
+  if (result.mode !== 'word' && result.mode !== 'phrase') return null;
+
+  const context = currentSelectionContext;
+  const sentence = sentenceAround({
+    before: context && context.before,
+    selection: originalText,
+    after: context && context.after
+  });
+  if (!sentence) return null;
+
+  return async () => {
+    showLoading();
+    placeFloatingBox();
+
+    try {
+      const response = await requestTranslation({
+        text: sentence,
+        sourceLang: applySourceOverride({
+          detected: detectLanguage(sentence),
+          override: manualSourceOverride
+        }).sourceLang,
+        mode: 'sentence',
+        context
+      });
+
+      if (response.errorCode === 'ABORTED') return;
+
+      if (response.error) {
+        showError(response);
+        return;
+      }
+
+      showTranslation(response, sentence);
+      highlightInSource(originalText);
+    } catch (error) {
+      showError(error.message || 'Translation failed');
+    }
+  };
+}
+
+/**
+ * Mark the originating word inside the sentence card's source line.
+ *
+ * Only the source side is highlighted. Where the word landed in the
+ * Persian cannot be derived reliably from the English, and a highlight on
+ * the wrong word is worse than none at all.
+ *
+ * @param {string} word
+ */
+function highlightInSource(word) {
+  const needle = (word || '').trim();
+  if (!currentCardEl || !needle) return;
+
+  const textEl = currentCardEl.querySelector('.pp-card-source-text');
+  if (!textEl) return;
+
+  const source = textEl.textContent || '';
+  const at = source.toLowerCase().indexOf(needle.toLowerCase());
+  if (at === -1) return;
+
+  const mark = document.createElement('mark');
+  mark.className = 'parsipad-source-match';
+  mark.textContent = source.slice(at, at + needle.length);
+
+  textEl.replaceChildren(
+    document.createTextNode(source.slice(0, at)),
+    mark,
+    document.createTextNode(source.slice(at + needle.length))
+  );
+}
+
+/**
+ * The slot the grammar block renders into, created on first use and
+ * placed above the card's footer so the actions stay at the bottom.
+ * @returns {HTMLElement|null}
+ */
+function grammarSlot() {
+  if (!currentCardEl) return null;
+
+  const existing = currentCardEl.querySelector('.parsipad-grammar-slot');
+  if (existing) return existing;
+
+  const slot = document.createElement('div');
+  slot.className = 'parsipad-grammar-slot';
+  const footerEl = currentCardEl.querySelector('.pp-card-footer');
+  if (footerEl) currentCardEl.insertBefore(slot, footerEl);
+  else currentCardEl.appendChild(slot);
+  return slot;
+}
+
+/**
+ * Put a grammar failure in the grammar slot and nowhere else.
+ * @param {HTMLElement} slot
+ * @param {string} message
+ */
+function showGrammarError(slot, message) {
+  const err = document.createElement('div');
+  err.className = 'parsipad-grammar-error';
+  err.textContent = message;
+  slot.replaceChildren(err);
+  keepFloatingBoxInViewport();
+}
+
+/**
+ * The card's Explain handler, or null for a single word.
+ *
+ * The lesson costs extra tokens, so the request only fires on an explicit
+ * click. Whatever comes back, and whatever goes wrong, lands in the
+ * grammar slot: the translation the user is already reading is never
+ * touched.
+ *
+ * @param {Object} result
+ * @param {string} originalText
+ * @returns {Function|null}
+ */
+function buildGrammarHandler(result, originalText) {
+  const source = originalText || result.sourceText || '';
+  if (!source || source.trim().split(/\s+/).length < 2) return null;
+
+  return async () => {
+    const slot = grammarSlot();
+    if (!slot) return;
+
+    const loading = document.createElement('div');
+    loading.className = 'parsipad-grammar-empty';
+    loading.setAttribute('role', 'status');
+    loading.textContent = t('loadingLesson', userLang) || 'Loading...';
+    slot.replaceChildren(loading);
+    keepFloatingBoxInViewport();
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'EXPLAIN_GRAMMAR',
+        source,
+        translation: result.translation,
+        direction: result.direction
+      });
+
+      if (response && response.error) {
+        showGrammarError(slot, response.error);
+        return;
+      }
+
+      renderInlineGrammar(slot, (response && response.grammar) || [], source, result.translation, result.direction);
+      keepFloatingBoxInViewport();
+    } catch (error) {
+      showGrammarError(slot, (error && error.message) || 'Failed to load grammar.');
+    }
+  };
+}
+
+/**
+ * Show translation result.
+ *
+ * Everything inside the content area is the card's business now. What
+ * stays here is what belongs to the host rather than to the card: the
+ * favourites record, the box's own header badge, placement, and the
+ * callbacks that reach Chrome.
  */
 function showTranslation(result, originalText) {
   if (!shadowRoot) return;
 
-  const { translation, direction, displayDirection, fromCache, provider, correction, alternatives, senses, note, inContext, truncated } = result;
-  const corrections = correction ? [{ original: (originalText || '').trim(), corrected: correction }] : [];
-  const alternativeItems = Array.isArray(alternatives) && alternatives.length
-    ? alternatives.map(a => a.text)
-    : (Array.isArray(senses) ? senses.map(s => s.meaning).filter(Boolean) : []);
-  const nuance = note || inContext || '';
+  const { translation, direction, displayDirection, provider } = result;
+  const directionLabel = displayDirection || formatDirectionBadge(direction);
 
   // Store translation data for favorites
   currentTranslationData = {
     type: 'translation',
     originalText: originalText,
     savedText: translation,
-    direction: displayDirection || formatDirectionBadge(direction),
+    direction: directionLabel,
     provider: provider
   };
 
-  // Update direction badge - use displayDirection if available, otherwise format from direction
+  // The card's pill carries the direction now, so the shell badge would only
+  // repeat it two lines higher. The element stays because the screenshot
+  // result still renders through the shell and sets its own.
   const badge = shadowRoot.querySelector('.parsipad-badge');
-  badge.textContent = displayDirection || formatDirectionBadge(direction);
+  badge.textContent = '';
 
-  // Update provider badge
-  const providerBadge = shadowRoot.querySelector('.parsipad-provider-badge');
-  if (providerBadge && provider) {
-    providerBadge.textContent = provider;
-    providerBadge.className = `parsipad-provider-badge parsipad-provider-${provider.toLowerCase()}`;
-  }
-
-  // Update content via DOM API (no innerHTML interpolation of model output).
-  // Renders, in order: optional auto-correction hint -> translation -> optional
-  // alternatives / nuance summary as a compact bullet list.
   const content = shadowRoot.querySelector('.parsipad-content');
-  const targetLang = direction.split('-')[1] || 'fa';
-  const textDir = ['fa', 'ar', 'he'].includes(targetLang) ? 'rtl' : 'ltr';
-  content.replaceChildren();
+  currentCardEl = renderCard(result, {
+    lang: userLang,
+    doc: document,
+    provider,
+    sensesExpanded: sensesExpandedForSession,
+    onToggleSenses: (open) => { sensesExpandedForSession = open; },
+    onListen: buildListenHandler(result),
+    onCopy: (text) => handleCardCopy(text),
+    onSave: () => handleTranslationFavorite(),
+    onTranslateSentence: buildSentenceHandler(result, originalText),
+    onExplainGrammar: buildGrammarHandler(result, originalText),
+    onSwapDirection: (nextSourceLang) => translateAndShow(originalText, { sourceLang: nextSourceLang }),
+    onOpenSettings: () => chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' })
+  });
+  content.replaceChildren(currentCardEl);
 
-  if (Array.isArray(corrections) && corrections.length) {
-    const hint = document.createElement('div');
-    hint.className = 'parsipad-correction-hint';
-    hint.setAttribute('role', 'status');
-    // Keep the correction line itself LTR so the "<original> → <corrected>" reads
-    // left-to-right even when the surrounding box inherits RTL from a Persian page.
-    hint.setAttribute('dir', 'ltr');
-    const label = document.createElement('span');
-    label.className = 'parsipad-correction-label';
-    label.textContent = t('didYouMean', userLang) || 'Did you mean:';
-    hint.append(label, document.createTextNode(' '));
-    corrections.forEach((c, i) => {
-      if (i > 0) hint.appendChild(document.createTextNode(', '));
-      const orig = document.createElement('span');
-      orig.className = 'parsipad-correction-original';
-      orig.setAttribute('dir', getTextDirection(c.original || ''));
-      orig.textContent = c.original || '';
-      const arrow = document.createTextNode(' → ');
-      const corr = document.createElement('strong');
-      corr.className = 'parsipad-correction-corrected';
-      corr.setAttribute('dir', getTextDirection(c.corrected || ''));
-      corr.textContent = c.corrected || '';
-      hint.append(orig, arrow, corr);
-    });
-    content.appendChild(hint);
-  }
-
-  const textEl = document.createElement('div');
-  textEl.className = 'parsipad-text';
-  textEl.setAttribute('dir', textDir);
-  textEl.textContent = translation;
-  content.appendChild(textEl);
-
-  if ((Array.isArray(alternativeItems) && alternativeItems.length) || (typeof nuance === 'string' && nuance.trim())) {
-    const extras = document.createElement('div');
-    extras.className = 'parsipad-rich-context';
-    if (typeof nuance === 'string' && nuance.trim()) {
-      const note = document.createElement('div');
-      note.className = 'parsipad-rich-context-nuance';
-      note.setAttribute('dir', getTextDirection(nuance));
-      note.textContent = nuance;
-      extras.appendChild(note);
-    }
-    if (Array.isArray(alternativeItems) && alternativeItems.length) {
-      const title = document.createElement('div');
-      title.className = 'parsipad-rich-context-title';
-      title.textContent = t('alternatives', userLang) || 'Alternatives';
-      extras.appendChild(title);
-      const list = document.createElement('ul');
-      list.className = 'parsipad-rich-context-list';
-      alternativeItems.forEach(alt => {
-        const li = document.createElement('li');
-        li.textContent = alt;
-        li.setAttribute('dir', getTextDirection(alt));
-        list.appendChild(li);
-      });
-      extras.appendChild(list);
-    }
-    content.appendChild(extras);
-  }
-
-  if (truncated) {
-    const notice = document.createElement('div');
-    const truncatedMessage = t('errorTruncated', userLang);
-    notice.className = 'parsipad-truncated-note';
-    notice.setAttribute('role', 'status');
-    notice.setAttribute('dir', getTextDirection(truncatedMessage));
-    notice.textContent = truncatedMessage;
-    content.appendChild(notice);
-  }
-
-  // Inline "Explain grammar" affordance + slot that holds the response when
-  // the user opts in. Lazy on purpose - costs extra tokens, so we only fire
-  // the request after an explicit click.
-  appendInlineGrammarAffordance(content, originalText, translation, direction);
-
-  // Show footer
+  // The card carries its own actions and provider indicator, so the box's
+  // footer would only repeat them. The element stays in the shell because
+  // the screenshot result still renders through it.
   const footer = shadowRoot.querySelector('.parsipad-footer');
-  footer.style.display = 'flex';
+  footer.style.display = 'none';
 
-  // Update cache badge
-  const cacheBadge = shadowRoot.querySelector('.parsipad-cache-badge');
-  cacheBadge.textContent = fromCache ? 'From cache' : '';
+  placeFloatingBox();
 
   // Check if already favorited
   checkTranslationFavoriteStatus();
-
-  clampBoxIntoViewport();
-}
-
-/**
- * Append the "Explain grammar" button (and a placeholder grammar slot) to the
- * floating translation box. The button is hidden by default if the input is
- * obviously too short (single word) to have a meaningful grammar lesson.
- *
- * On click:
- *   1. Disable the button + show a small spinner
- *   2. Send the EXPLAIN_GRAMMAR action with the translation already on screen,
- *      so the translation the user is reading never changes underneath them.
- *   3. Render the grammar points inline and reveal a "Learn More" CTA that
- *      opens the full grammar.html via the OPEN_GRAMMAR_PAGE message.
- */
-function appendInlineGrammarAffordance(content, originalText, translation, direction) {
-  if (!originalText || originalText.trim().split(/\s+/).length < 2) return; // skip single-word
-
-  const section = document.createElement('div');
-  section.className = 'parsipad-grammar-section';
-
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'parsipad-explain-grammar';
-  btn.textContent = t('explainGrammar', userLang) || 'Explain grammar';
-  section.appendChild(btn);
-
-  // Slot for the rendered grammar block once fetched.
-  const slot = document.createElement('div');
-  slot.className = 'parsipad-grammar-slot';
-  section.appendChild(slot);
-
-  btn.addEventListener('click', async () => {
-    btn.disabled = true;
-    btn.textContent = t('loadingLesson', userLang) || 'Loading...';
-
-    try {
-      const response = await chrome.runtime.sendMessage({
-        action: 'EXPLAIN_GRAMMAR',
-        source: originalText,
-        translation,
-        direction
-      });
-
-      if (response?.error) {
-        btn.disabled = false;
-        btn.textContent = t('explainGrammar', userLang) || 'Explain grammar';
-        const err = document.createElement('div');
-        err.className = 'parsipad-grammar-error';
-        err.textContent = response.error;
-        slot.replaceChildren(err);
-        return;
-      }
-
-      renderInlineGrammar(slot, response?.grammar || [], originalText, translation, direction);
-      btn.remove();
-    } catch (err) {
-      btn.disabled = false;
-      btn.textContent = t('explainGrammar', userLang) || 'Explain grammar';
-      const errEl = document.createElement('div');
-      errEl.className = 'parsipad-grammar-error';
-      errEl.textContent = err?.message || 'Failed to load grammar.';
-      slot.replaceChildren(errEl);
-    }
-  });
-
-  content.appendChild(section);
 }
 
 /**
@@ -924,12 +1043,19 @@ function showError(errorOrResponse) {
   // Hide footer on error
   const footer = shadowRoot.querySelector('.parsipad-footer');
   footer.style.display = 'none';
+
+  placeFloatingBox();
 }
 
 /**
- * Floating toast used when no floating box is on-screen (e.g. during page translation).
+ * Floating toast used when no floating box is on-screen (e.g. during page
+ * translation).
+ *
+ * @param {Object} [options]
+ * @param {string} [options.message] - what to say
+ * @param {boolean} [options.withSettings] - offer the settings shortcut
  */
-function showMissingApiKeyToast() {
+function showToast({ message = 'API key not configured.', withSettings = true } = {}) {
   const existing = document.getElementById('parsipad-missing-key-toast');
   if (existing) existing.remove();
 
@@ -969,19 +1095,32 @@ function showMissingApiKeyToast() {
       }
     </style>
     <div class="toast" role="alert">
-      <span>API key not configured.</span>
-      <button class="open" type="button">Open Settings</button>
+      <span class="message"></span>
+      <button class="open" type="button" hidden>Open Settings</button>
       <button class="close" type="button" aria-label="Dismiss">×</button>
     </div>
   `;
+  root.querySelector('.message').textContent = message;
   document.body.appendChild(host);
 
-  root.querySelector('.open').addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' });
-    host.remove();
-  });
+  const openBtn = root.querySelector('.open');
+  if (withSettings) {
+    openBtn.hidden = false;
+    openBtn.addEventListener('click', () => {
+      chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' });
+      host.remove();
+    });
+  }
   root.querySelector('.close').addEventListener('click', () => host.remove());
   setTimeout(() => host.remove(), 10000);
+}
+
+/**
+ * The missing-API-key case, which is the toast's original and most common
+ * caller. Kept as its own name so the call sites still read as intent.
+ */
+function showMissingApiKeyToast() {
+  showToast({ message: 'API key not configured.', withSettings: true });
 }
 
 /**
@@ -1024,6 +1163,63 @@ async function handleCopy() {
 }
 
 /**
+ * Copy from the card's own Copy control, which hands over the text it
+ * rendered rather than making the host dig it back out of the DOM.
+ * @param {string} text
+ */
+async function handleCardCopy(text) {
+  if (!text) return;
+
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (error) {
+    // Silently handle copy errors, same as the box footer's Copy control.
+    return;
+  }
+
+  const btn = shadowRoot && shadowRoot.querySelector('[data-action="cardCopy"]');
+  if (!btn) return;
+
+  const label = btn.textContent;
+  btn.textContent = t('copied', userLang);
+  setTimeout(() => { btn.textContent = label; }, 1500);
+}
+
+/**
+ * The control that toggles the current result in and out of favourites:
+ * the card's Save action, or the box footer's star when what is on screen
+ * is not a card (the screenshot result still is not).
+ * @returns {HTMLElement|null}
+ */
+function favoriteControl() {
+  if (!shadowRoot) return null;
+  return shadowRoot.querySelector('[data-action="cardSave"]')
+    || shadowRoot.querySelector('.parsipad-favorite');
+}
+
+/**
+ * Reflect the favourite state on whichever control is showing. The star in
+ * the box footer also swaps its fill; the card's Save is a plain text
+ * button, so aria-pressed is the whole of its state.
+ * @param {HTMLElement} btn
+ * @param {boolean} favorited
+ */
+function setFavoriteState(btn, favorited) {
+  if (!btn) return;
+
+  btn.setAttribute('aria-pressed', favorited ? 'true' : 'false');
+
+  if (!btn.classList.contains('parsipad-favorite')) return;
+
+  btn.classList.toggle('favorited', favorited);
+  btn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="${favorited ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </svg>
+  `;
+}
+
+/**
  * Check if current translation is already favorited
  */
 async function checkTranslationFavoriteStatus() {
@@ -1037,15 +1233,7 @@ async function checkTranslationFavoriteStatus() {
     });
 
     if (response.isFavorite) {
-      const favBtn = shadowRoot.querySelector('.parsipad-favorite');
-      if (favBtn) {
-        favBtn.classList.add('favorited');
-        favBtn.innerHTML = `
-          <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
-        `;
-      }
+      setFavoriteState(favoriteControl(), true);
     }
   } catch (error) {
     // Silently handle errors
@@ -1058,49 +1246,47 @@ async function checkTranslationFavoriteStatus() {
 async function handleTranslationFavorite() {
   if (!shadowRoot || !currentTranslationData) return;
 
-  const favBtn = shadowRoot.querySelector('.parsipad-favorite');
+  const favBtn = favoriteControl();
   if (!favBtn) return;
 
-  const isFavorited = favBtn.classList.contains('favorited');
+  const isFavorited = favBtn.getAttribute('aria-pressed') === 'true';
 
   try {
     if (isFavorited) {
-      // Remove from favorites
       await chrome.runtime.sendMessage({
         action: 'REMOVE_FAVORITE',
         originalText: currentTranslationData.originalText,
         savedText: currentTranslationData.savedText
       });
-
-      favBtn.classList.remove('favorited');
-      favBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-        </svg>
-      `;
     } else {
-      // Add to favorites
       await chrome.runtime.sendMessage({
         action: 'ADD_FAVORITE',
         item: currentTranslationData
       });
-
-      favBtn.classList.add('favorited');
-      favBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-        </svg>
-      `;
     }
   } catch (error) {
     // Silently handle errors
+    return;
   }
+
+  setFavoriteState(favBtn, !isFavorited);
 }
 
 /**
  * Remove the floating box
  */
 function removeFloatingBox() {
+  boxSelectionRect = null;
+  currentCardEl = null;
+  currentSelectionContext = null;
+  boxNeedsFocus = false;
+  cancelSpeech();
+
+  const returnTo = previouslyFocused;
+  previouslyFocused = null;
+  if (returnTo && typeof returnTo.focus === 'function' && document.contains(returnTo)) {
+    returnTo.focus({ preventScroll: true });
+  }
   if (floatingBox) {
     floatingBox.remove();
     floatingBox = null;
@@ -1114,19 +1300,8 @@ function removeFloatingBox() {
 /**
  * Create the floating polish box with Shadow DOM
  */
-function createPolishBox(position) {
-  // Remove existing box if present
-  removeFloatingBox();
-
-  // Create host element
-  const host = document.createElement('div');
-  host.id = 'parsipad-host';
-  host.style.cssText = `
-    position: absolute;
-    top: ${position.top}px;
-    left: ${position.left}px;
-    z-index: 2147483647;
-  `;
+function createPolishBox(selectionRect) {
+  const host = createBoxHost(selectionRect);
 
   // Create shadow root for style isolation
   shadowRoot = host.attachShadow({ mode: 'closed' });
@@ -1140,6 +1315,9 @@ function createPolishBox(position) {
   // Create box structure for polish results
   const box = document.createElement('div');
   box.className = 'parsipad-box parsipad-polish-box';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', 'ParsiPad polish');
+  box.setAttribute('tabindex', '-1');
   box.innerHTML = `
     <div class="parsipad-header">
       <div class="parsipad-logo">
@@ -1150,7 +1328,7 @@ function createPolishBox(position) {
         <span class="parsipad-badge parsipad-badge-polish">Polish</span>
         <span class="parsipad-provider-badge"></span>
       </div>
-      <button class="parsipad-close" title="Close">×</button>
+      <button class="parsipad-close" type="button" title="Close" aria-label="Close polish">×</button>
     </div>
     <div class="parsipad-polish-content">
       <!-- Polish cards will be inserted here -->
@@ -1239,19 +1417,19 @@ function showPolishResults(result) {
       <div class="parsipad-polish-card-header">
         <span class="parsipad-polish-title">Professional</span>
         <div class="parsipad-polish-actions">
-          <button class="parsipad-polish-favorite" data-version="professional" title="Add to favorites">
+          <button class="parsipad-polish-favorite" data-version="professional" type="button" title="Add to favorites" aria-label="Add to favorites">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
           </button>
-          <button class="parsipad-polish-regenerate" data-version="professional" title="Regenerate">
+          <button class="parsipad-polish-regenerate" data-version="professional" type="button" title="Regenerate" aria-label="Regenerate">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M23 4v6h-6"/>
               <path d="M1 20v-6h6"/>
               <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
             </svg>
           </button>
-          <button class="parsipad-polish-copy" data-version="professional" title="Copy">
+          <button class="parsipad-polish-copy" data-version="professional" type="button" title="Copy" aria-label="Copy">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -1265,19 +1443,19 @@ function showPolishResults(result) {
       <div class="parsipad-polish-card-header">
         <span class="parsipad-polish-title">Conversational</span>
         <div class="parsipad-polish-actions">
-          <button class="parsipad-polish-favorite" data-version="conversational" title="Add to favorites">
+          <button class="parsipad-polish-favorite" data-version="conversational" type="button" title="Add to favorites" aria-label="Add to favorites">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
           </button>
-          <button class="parsipad-polish-regenerate" data-version="conversational" title="Regenerate">
+          <button class="parsipad-polish-regenerate" data-version="conversational" type="button" title="Regenerate" aria-label="Regenerate">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M23 4v6h-6"/>
               <path d="M1 20v-6h6"/>
               <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
             </svg>
           </button>
-          <button class="parsipad-polish-copy" data-version="conversational" title="Copy">
+          <button class="parsipad-polish-copy" data-version="conversational" type="button" title="Copy" aria-label="Copy">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -1291,19 +1469,19 @@ function showPolishResults(result) {
       <div class="parsipad-polish-card-header">
         <span class="parsipad-polish-title">Concise</span>
         <div class="parsipad-polish-actions">
-          <button class="parsipad-polish-favorite" data-version="concise" title="Add to favorites">
+          <button class="parsipad-polish-favorite" data-version="concise" type="button" title="Add to favorites" aria-label="Add to favorites">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
           </button>
-          <button class="parsipad-polish-regenerate" data-version="concise" title="Regenerate">
+          <button class="parsipad-polish-regenerate" data-version="concise" type="button" title="Regenerate" aria-label="Regenerate">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M23 4v6h-6"/>
               <path d="M1 20v-6h6"/>
               <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
             </svg>
           </button>
-          <button class="parsipad-polish-copy" data-version="concise" title="Copy">
+          <button class="parsipad-polish-copy" data-version="concise" type="button" title="Copy" aria-label="Copy">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -1332,6 +1510,8 @@ function showPolishResults(result) {
 
   // Check favorite status for each variant
   checkPolishFavoriteStatus(polishData);
+
+  placeFloatingBox();
 }
 
 /**
@@ -1559,6 +1739,8 @@ function showPolishError(errorOrResponse) {
       </div>
     `;
   }
+
+  placeFloatingBox();
 }
 
 // ============================================
@@ -1579,13 +1761,13 @@ async function dictionaryAndShow(word) {
     return;
   }
 
-  // Get selection position for box placement
-  const selection = window.getSelection();
-  const position = getBoxPosition(selection);
+  // Capture the selection rectangle before the box takes focus and clears it.
+  const selectionRect = captureSelectionRect(window.getSelection());
 
   // Create dictionary floating box
-  createDictionaryBox(position);
+  createDictionaryBox(selectionRect);
   showDictionaryLoading();
+  placeFloatingBox();
 
   try {
     // Send dictionary lookup request to background script
@@ -1608,23 +1790,12 @@ async function dictionaryAndShow(word) {
 /**
  * Create the floating dictionary box with Shadow DOM
  */
-function createDictionaryBox(position) {
-  // Remove existing box if present
-  removeFloatingBox();
-
+function createDictionaryBox(selectionRect) {
   // The definition card renders Persian translations, which need the
   // bundled faces registered on the host document.
   ensurePersianFontLoaded();
 
-  // Create host element
-  const host = document.createElement('div');
-  host.id = 'parsipad-host';
-  host.style.cssText = `
-    position: absolute;
-    top: ${position.top}px;
-    left: ${position.left}px;
-    z-index: 2147483647;
-  `;
+  const host = createBoxHost(selectionRect);
 
   // Create shadow root for style isolation
   shadowRoot = host.attachShadow({ mode: 'closed' });
@@ -1638,6 +1809,9 @@ function createDictionaryBox(position) {
   // Create box structure for dictionary
   const box = document.createElement('div');
   box.className = 'parsipad-box parsipad-dictionary-box';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', 'ParsiPad dictionary');
+  box.setAttribute('tabindex', '-1');
   box.innerHTML = `
     <div class="parsipad-header">
       <div class="parsipad-logo">
@@ -1648,7 +1822,7 @@ function createDictionaryBox(position) {
         <span class="parsipad-badge parsipad-badge-dictionary">Dictionary</span>
         <span class="parsipad-provider-badge"></span>
       </div>
-      <button class="parsipad-close" title="Close">×</button>
+      <button class="parsipad-close" type="button" title="Close" aria-label="Close dictionary">×</button>
     </div>
     <div class="parsipad-dictionary-content">
       <!-- Dictionary result will be inserted here -->
@@ -1773,12 +1947,12 @@ function showDictionaryResult(result) {
         <div class="parsipad-dict-section-title">Translation</div>
         <div class="parsipad-dict-translation-text" ${isTargetRTL ? 'dir="rtl"' : ''}>${escapeHtml(translation)}</div>
         <div class="parsipad-dict-translation-actions">
-          <button class="parsipad-dict-favorite-translation" title="Add to favorites">
+          <button class="parsipad-dict-favorite-translation" type="button" title="Add to favorites" aria-label="Add to favorites">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
           </button>
-          <button class="parsipad-dict-copy-translation" title="Copy translation">
+          <button class="parsipad-dict-copy-translation" type="button" title="Copy translation" aria-label="Copy translation">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -1802,6 +1976,8 @@ function showDictionaryResult(result) {
     // Check if already favorited
     checkDictionaryFavoriteStatus();
   }
+
+  placeFloatingBox();
 }
 
 /**
@@ -1920,6 +2096,8 @@ function showDictionaryError(message) {
       ${escapeHtml(message)}
     </div>
   `;
+
+  placeFloatingBox();
 }
 
 // ============================================
@@ -1970,7 +2148,9 @@ async function handleTranslatePage() {
     if (pageTranslationState.textNodes.length === 0) {
       hidePageProgressOverlay();
       pageTranslationState.isTranslating = false;
-      alert('No translatable text found on this page.');
+      // Page translation runs without a floating box, so there is nothing to
+      // render an error into; the toast is the surface that does not need one.
+      showToast({ message: 'No translatable text found on this page.', withSettings: false });
       return;
     }
 
@@ -2589,16 +2769,14 @@ function startScreenshotSelection(screenshotDataUrl) {
 async function cropAndTranslate(rect, screenshotDataUrl) {
   const { x, y, w, h } = rect;
 
-  // Calculate position for floating box (center of selection)
-  const boxTop = y + h + 8 + window.scrollY;
-  const boxLeft = Math.max(12, Math.min(x + window.scrollX, window.innerWidth - 450 - 12));
-
   // Remove screenshot overlay
   cancelScreenshotMode();
 
-  // Create floating box at selection position
-  createFloatingBox({ top: boxTop, left: boxLeft });
+  // The crop rectangle is in viewport coordinates, which is exactly what
+  // the placer anchors to, so the cropped region stands in for a selection.
+  createFloatingBox({ top: y, bottom: y + h, left: x });
   showLoading();
+  placeFloatingBox();
 
   try {
     // Load screenshot image
@@ -2703,6 +2881,8 @@ function showImageTranslationResult(response) {
     };
     checkTranslationFavoriteStatus();
   }
+
+  placeFloatingBox();
 }
 
 /**

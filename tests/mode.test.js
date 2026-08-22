@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classifyMode, countSentenceTerminators, stripEdgePunctuation } from '../lib/translation/mode.js';
+import { classifyMode, countSentenceTerminators, findTerminatorEnds, stripEdgePunctuation } from '../lib/translation/mode.js';
 import { getLanguageName } from '../lib/translation/languages.js';
 
 describe('stripEdgePunctuation', () => {
@@ -21,6 +21,19 @@ describe('countSentenceTerminators', () => {
   });
   it('treats a run like ?! as one terminator', () => {
     expect(countSentenceTerminators('Really?! Yes.')).toBe(2);
+  });
+});
+
+describe('findTerminatorEnds', () => {
+  it('reports the offset just past each terminator run', () => {
+    expect(findTerminatorEnds('One. Two!')).toEqual([4, 9]);
+  });
+  it('skips abbreviation dots, in step with countSentenceTerminators', () => {
+    expect(findTerminatorEnds('e.g. apples')).toEqual([]);
+    expect(findTerminatorEnds('We met Dr. Smith.')).toEqual([17]);
+  });
+  it('keeps a run like ?! together', () => {
+    expect(findTerminatorEnds('Really?! Yes.')).toEqual([8, 13]);
   });
 });
 

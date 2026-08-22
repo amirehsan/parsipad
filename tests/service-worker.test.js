@@ -295,6 +295,70 @@ describe('the Finglish path', () => {
   });
 });
 
+describe('an explicit source language', () => {
+  const wordResult = (detectedSource) => ({
+    translation: 'x',
+    detectedSource,
+    pronunciation: '',
+    pos: 'noun',
+    register: 'neutral',
+    inContext: '',
+    correction: '',
+    senses: [],
+    synonyms: [],
+    antonyms: [],
+    truncated: false,
+    inputTokens: 1,
+    outputTokens: 1
+  });
+
+  it('is not overruled by the model disagreeing about the source', async () => {
+    // The swap control forces the opposite source. The model looks at the
+    // text, decides it is English after all, and says so. That correction
+    // exists for script-based mis-detection, not to reverse a choice the
+    // user made by hand: honouring it here sent the request straight back
+    // to the direction the user had just rejected, so swapping appeared to
+    // do nothing at all.
+    translate.mockResolvedValue(wordResult('en'));
+
+    const res = await sendMessage({ action: 'TRANSLATE', text: 'charge', sourceLang: 'fa' });
+
+    expect(res.direction).toBe('fa-en');
+    expect(res.displayDirection).toBe('FA \u2192 EN');
+  });
+
+  it('still lets the model correct a source that was only guessed', async () => {
+    translate.mockResolvedValue(wordResult('fa-latn'));
+
+    const res = await sendMessage({ action: 'TRANSLATE', text: 'khoobam', sourceLang: 'auto' });
+
+    expect(res.direction).toBe('fa-en');
+  });
+
+  it('sends the swapped direction to the provider, not the detected one', async () => {
+    translate.mockResolvedValue(wordResult('en'));
+
+    await sendMessage({ action: 'TRANSLATE', text: 'charge', sourceLang: 'fa' });
+
+    expect(translate).toHaveBeenCalledWith(expect.objectContaining({
+      direction: 'fa-en',
+      detectedByScript: false
+    }));
+  });
+
+  it('caches the two directions separately, so swapping is not served the previous answer', async () => {
+    translate.mockResolvedValue(wordResult('en'));
+    const first = await sendMessage({ action: 'TRANSLATE', text: 'charge', sourceLang: 'auto' });
+
+    translate.mockResolvedValue(wordResult('en'));
+    const swapped = await sendMessage({ action: 'TRANSLATE', text: 'charge', sourceLang: 'fa' });
+
+    expect(first.direction).toBe('en-fa');
+    expect(swapped.direction).toBe('fa-en');
+    expect(swapped.fromCache).toBe(false);
+  });
+});
+
 describe('truncation', () => {
   it('returns and records a truncated result without caching it', async () => {
     translate.mockResolvedValue({

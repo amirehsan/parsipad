@@ -16,6 +16,12 @@ Thumbs.db
 .claude/
 .vercel/
 
+# Agent working state (task briefs, per-task reports, review diffs).
+# The durable artefacts live in docs/superpowers/: the spec, the plan, and
+# the execution log. .superpowers/sdd/ already carries its own "*" ignore,
+# so this only makes the intent apply to the whole directory.
+.superpowers/
+
 # Build outputs
 dist/
 build/

@@ -111,49 +111,7 @@
 
     <!-- Output Section -->
     <section id="output-section" class="section output-section" hidden>
-      <div class="output-header">
-        <div class="output-badges">
-          <span id="direction-badge" class="badge">EN → FA</span>
-          <span id="provider-badge" class="badge provider-badge" hidden></span>
-        </div>
-        <div class="output-actions">
-          <button id="favorite-translation-btn" class="icon-btn" data-i18n-title="addToFavorites" title="Add to favorites">
-            <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-            <svg class="star-filled" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          </button>
-          <button id="copy-btn" class="icon-btn" data-i18n-title="copyToClipboard" title="Copy to clipboard">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div id="output-text" class="output-text"></div>
-      <div id="cache-badge" class="cache-badge" hidden data-i18n="fromCache">From cache</div>
-
-      <!-- Grammar Explanation Section -->
-      <div id="grammar-section" class="grammar-section" hidden>
-        <div class="grammar-header">
-          <svg class="grammar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-          </svg>
-          <span data-i18n="grammarExplanation">Grammar Notes</span>
-        </div>
-        <div id="grammar-points" class="grammar-points"></div>
-        <!-- Learn More Button -->
-        <button id="grammar-learn-more" class="grammar-learn-more-btn" hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-          </svg>
-          <span data-i18n="learnMore">Learn More with Examples</span>
-        </button>
-      </div>
+      <div id="card-slot"></div>
     </section>
 
     <!-- Polish Output Section -->
