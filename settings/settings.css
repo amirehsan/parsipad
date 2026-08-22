@@ -252,7 +252,7 @@ main {
 .dark .settings-tab.is-active,
 .dark .settings-tab[aria-selected='true'] {
   color: var(--primary-300);
-  background: rgba(90, 94, 240, 0.18);
+  background: rgba(255, 79, 0, 0.18);
 }
 
 .settings-tab:focus-visible {
@@ -400,7 +400,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 }
 
 .dark .language-option input:checked + .option-content {
-  background: rgba(90, 94, 240, 0.1);
+  background: rgba(255, 79, 0, 0.1);
   border-color: var(--primary-500);
 }
 
@@ -668,7 +668,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 .text-input:focus {
   outline: none;
   border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(90, 94, 240, 0.15);
+  box-shadow: 0 0 0 3px rgba(255, 79, 0, 0.15);
 }
 
 .text-input::placeholder {
@@ -704,7 +704,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 .select-input:focus {
   outline: none;
   border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(90, 94, 240, 0.15);
+  box-shadow: 0 0 0 3px rgba(255, 79, 0, 0.15);
 }
 
 .select-input option {
@@ -809,7 +809,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 
 .btn-primary:hover {
   background: var(--primary-600);
-  box-shadow: 0 4px 12px rgba(90, 94, 240, 0.3);
+  box-shadow: 0 4px 12px rgba(255, 79, 0, 0.3);
 }
 
 .btn-secondary {
@@ -1307,7 +1307,7 @@ html {
 }
 
 .dark .provider-option input:checked + .provider-content {
-  background: rgba(90, 94, 240, 0.1);
+  background: rgba(255, 79, 0, 0.1);
   border-color: var(--primary-500);
 }
 
@@ -1413,7 +1413,7 @@ html {
 
 .dark .api-key-tab.active {
   color: var(--primary-400);
-  background: rgba(90, 94, 240, 0.1);
+  background: rgba(255, 79, 0, 0.1);
 }
 
 .key-status {
