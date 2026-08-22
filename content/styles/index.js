@@ -15,18 +15,18 @@
 export function themeVars() {
   return `
     :host {
-      --pp-bg: #ffffff;
-      --pp-bg-secondary: #f9fafb;
-      --pp-bg-hover: #f3f4f6;
-      --pp-text: #111827;
-      --pp-text-strong: #374151;
-      --pp-text-secondary: #6b7280;
-      --pp-text-muted: #9ca3af;
-      --pp-border: #e5e7eb;
-      --pp-border-strong: #d1d5db;
+      --pp-bg: #fffefb;
+      --pp-bg-secondary: #f8f4f0;
+      --pp-bg-hover: #ece6df;
+      --pp-text: #201515;
+      --pp-text-strong: #2f2a26;
+      --pp-text-secondary: #36342e;
+      --pp-text-muted: #605d52;
+      --pp-border: #c5c0b1;
+      --pp-border-strong: #d9d2c7;
       --pp-shadow-card: 0 10px 25px -5px rgba(29, 27, 23, 0.15), 0 8px 10px -6px rgba(29, 27, 23, 0.1);
-      --pp-skeleton-from: #e5e7eb;
-      --pp-skeleton-to: #f3f4f6;
+      --pp-skeleton-from: #ece6df;
+      --pp-skeleton-to: #f8f4f0;
       --pp-motion-skeleton: parsipad-shimmer 1.5s infinite;
       /* Brand accent. Previously scattered as var(--pp-accent) literals through this
          file, which is why the box kept the old colour when the palette
@@ -38,18 +38,18 @@ export function themeVars() {
       --pp-on-accent: #fffefb;
     }
     :host([data-theme='dark']) {
-      --pp-bg: #1f2937;
-      --pp-bg-secondary: #111827;
-      --pp-bg-hover: #374151;
-      --pp-text: #f9fafb;
-      --pp-text-strong: #e5e7eb;
-      --pp-text-secondary: #9ca3af;
-      --pp-text-muted: #6b7280;
-      --pp-border: #374151;
-      --pp-border-strong: #4b5563;
+      --pp-bg: #241a18;
+      --pp-bg-secondary: #181110;
+      --pp-bg-hover: #2e2220;
+      --pp-text: #fdfaf6;
+      --pp-text-strong: #ece3dd;
+      --pp-text-secondary: #d6cdc7;
+      --pp-text-muted: #b0a49e;
+      --pp-border: #3b2d2a;
+      --pp-border-strong: #4c3b37;
       --pp-shadow-card: 0 10px 25px -5px rgba(29, 27, 23, 0.6), 0 8px 10px -6px rgba(29, 27, 23, 0.4);
-      --pp-skeleton-from: #374151;
-      --pp-skeleton-to: #4b5563;
+      --pp-skeleton-from: #2e2220;
+      --pp-skeleton-to: #3b2d2a;
       --pp-accent: #ff6a2a;
       --pp-accent-strong: #ff4f00;
       --pp-accent-soft: rgba(255, 106, 42, 0.16);

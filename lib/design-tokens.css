@@ -140,11 +140,15 @@
   --color-warning-500: #8a5a04;  /* 5.87 canvas / 5.41 card */
   --color-warning-100: #f6e8cf;
 
-  /* ----- Accent (Polish / secondary brand) ----- */
-  --accent-polish: #6d4aa8;        /* warmed violet, 6.62 on canvas */
-  --accent-polish-100: #ebe4f5;
-  --accent-polish-200: #dbcfee;
-  --accent-polish-bg: rgba(109, 74, 168, 0.10);
+  /* ----- Accent (Polish / secondary feature) -----
+     The design system allows one chromatic accent, so this cannot be a
+     second brand colour competing with the Signal Orange. Olive stays in
+     the warm family and still reads as a distinctly different thing from
+     the CTA rather than a duller version of it. */
+  --accent-polish: #6b6234;        /* 6.08 canvas / 5.61 card */
+  --accent-polish-100: #eeebdc;
+  --accent-polish-200: #ded8bd;
+  --accent-polish-bg: rgba(107, 98, 52, 0.10);
 
   /* ----- Provider brand colors -----
      Third-party marks. Left at their owners' values on purpose; they are not
@@ -157,7 +161,7 @@
   --color-openai-700: #059669;
 
   /* ----- Brand gradient ----- */
-  --gradient-brand: linear-gradient(135deg, #4f46e5 0%, #6d4aa8 100%);
+  --gradient-brand: linear-gradient(135deg, #ff4f00 0%, #d44200 100%);
 
   /* ----- Shadows -----
      The design system carries elevation with surface contrast (a cream card on
@@ -169,7 +173,7 @@
   --shadow-lg: 0 10px 24px -6px rgba(32, 21, 21, 0.10);
   --shadow-xl: 0 20px 40px -10px rgba(32, 21, 21, 0.12);
   --shadow-mockup: 0 24px 48px -12px rgba(32, 21, 21, 0.14);
-  --shadow-button-hover: 0 8px 20px -6px rgba(79, 70, 229, 0.35);
+  --shadow-button-hover: 0 8px 20px -6px rgba(255, 79, 0, 0.35);
 
   /* ----- Focus ring ----- */
   --ring-width: 2px;
@@ -256,10 +260,10 @@
   --color-warning-500: #e8b45c;   /* 9.89 canvas / 9.04 card */
   --color-warning-100: #3a2f1b;
 
-  --accent-polish: #b69ae0;
-  --accent-polish-100: #2c2140;
-  --accent-polish-200: #3b2d55;
-  --accent-polish-bg: rgba(182, 154, 224, 0.14);
+  --accent-polish: #c9bf86;        /* 10.6 dark canvas */
+  --accent-polish-100: #2b2818;
+  --accent-polish-200: #3b371f;
+  --accent-polish-bg: rgba(201, 191, 134, 0.14);
 
   --ring-color: var(--color-primary-400);
 
