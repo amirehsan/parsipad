@@ -1,0 +1,311 @@
+/**
+ * Block translate: wiring, lifecycle, and the translation request itself.
+ *
+ * Detection needs no observer. Resolution runs on hover, against whatever is in
+ * the DOM at that moment, so dynamic content and SPA navigation need no special
+ * handling on the detection side. The one observer this feature owns exists only
+ * to notice when a site re-render removes a translation we inserted, and it runs
+ * only while at least one translation is on screen.
+ */
+
+import { requestTranslation } from '../../lib/translation/client.js';
+import { isMissingApiKeyResponse } from '../utils/text.js';
+import { batchTextNodesForTranslation, parseNumberedTranslations } from '../utils/batch.js';
+import { resolveBlock } from './resolve.js';
+import { showIconFor, hideIcon, repositionIcon, destroyIcon, currentIconBlock } from './icon.js';
+import {
+  renderSkeleton, setPartText, setPartError, addFooter,
+  dismissBlock, hasRendered, activeBlockIds, sweepDetached, clearAllRendered
+} from './render.js';
+
+const HIDE_GRACE_MS = 120;
+const SWEEP_DEBOUNCE_MS = 300;
+const MAX_CONCURRENT = 3;
+
+let deps = { onMissingApiKey: () => {} };
+let enabled = true;
+let started = false;
+// The stored setting is read asynchronously, so a toggle arriving before that
+// read resolves would otherwise be clobbered by the stale stored value. Whoever
+// sets the flag first wins.
+let settingLoaded = false;
+
+let lastTarget = null;
+let pendingTarget = null;
+let rafHandle = 0;
+let hideTimer = null;
+
+let sweepObserver = null;
+let sweepTimer = null;
+
+const inFlight = new Map();
+let activeCount = 0;
+
+// Re-exported so content/main.js can join the icon to its existing Escape
+// dismissal chain without importing from content/blocks/icon.js directly.
+export { hideIcon as hideBlockIcon } from './icon.js';
+
+// ------------------------------------------------------------------
+// Hover
+// ------------------------------------------------------------------
+
+function onPointerMove(event) {
+  if (!enabled) return;
+  // The cheap early-out that makes this affordable: consecutive events over one
+  // element share a target, so a resting pointer costs one comparison.
+  if (event.target === lastTarget) return;
+  lastTarget = event.target;
+  pendingTarget = event.target;
+
+  if (rafHandle) return;
+  rafHandle = requestAnimationFrame(() => {
+    rafHandle = 0;
+    const target = pendingTarget;
+    pendingTarget = null;
+    handleTarget(target);
+  });
+}
+
+function handleTarget(target) {
+  const block = resolveBlock(target);
+
+  if (!block) {
+    scheduleHide();
+    return;
+  }
+
+  clearHide();
+  if (currentIconBlock()?.id === block.id) return;
+  showIconFor(block, translateBlock);
+}
+
+function scheduleHide() {
+  if (hideTimer) return;
+  // Grace period so the pointer can travel from the block to the icon without
+  // the icon evaporating on the way.
+  hideTimer = setTimeout(() => {
+    hideTimer = null;
+    hideIcon();
+  }, HIDE_GRACE_MS);
+}
+
+function clearHide() {
+  if (!hideTimer) return;
+  clearTimeout(hideTimer);
+  hideTimer = null;
+}
+
+let repositionQueued = false;
+function onViewportChange() {
+  if (!currentIconBlock() || repositionQueued) return;
+  repositionQueued = true;
+  requestAnimationFrame(() => {
+    repositionQueued = false;
+    repositionIcon();
+  });
+}
+
+// ------------------------------------------------------------------
+// Reattach sweep
+// ------------------------------------------------------------------
+
+function ensureSweepObserver() {
+  if (sweepObserver || activeBlockIds().length === 0) return;
+  sweepObserver = new MutationObserver(() => {
+    if (sweepTimer) return;
+    sweepTimer = setTimeout(() => {
+      sweepTimer = null;
+      sweepDetached();
+      stopSweepObserverIfIdle();
+    }, SWEEP_DEBOUNCE_MS);
+  });
+  sweepObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+function stopSweepObserverIfIdle() {
+  if (activeBlockIds().length > 0 || !sweepObserver) return;
+  sweepObserver.disconnect();
+  sweepObserver = null;
+  if (sweepTimer) {
+    clearTimeout(sweepTimer);
+    sweepTimer = null;
+  }
+}
+
+// ------------------------------------------------------------------
+// Translation
+// ------------------------------------------------------------------
+
+function textOf(el) {
+  return (el.textContent || '').trim();
+}
+
+async function translateLeaf(block, controller) {
+  const response = await requestTranslation(
+    { text: textOf(block.parts[0]) },
+    { signal: controller.signal, onDelta: (chunk) => setPartText(block.id, 0, chunk) }
+  );
+  return { response, apply: () => setPartText(block.id, 0, response.translation) };
+}
+
+async function translateSection(block, controller) {
+  const items = block.parts.map((el) => ({ el, text: textOf(el) }));
+  const batches = batchTextNodesForTranslation(items);
+
+  let response = null;
+  let offset = 0;
+  for (const batch of batches) {
+    if (controller.signal.aborted) break;
+    const numbered = batch.map((item, index) => `[${index + 1}] ${item.text}`).join('\n');
+    response = await requestTranslation(
+      { text: numbered, mode: 'batch' },
+      { signal: controller.signal }
+    );
+    if (response.error) return { response, apply: () => {} };
+
+    const translations = parseNumberedTranslations(response.translation, batch.length);
+    for (let i = 0; i < batch.length; i += 1) {
+      setPartText(block.id, offset + i, translations[i] || batch[i].text);
+    }
+    offset += batch.length;
+  }
+  return { response: response || {}, apply: () => {} };
+}
+
+/**
+ * Translate one block and render the result beneath it.
+ *
+ * @param {{id: string, kind: 'leaf'|'section', parts: Element[], truncated: boolean}} block
+ */
+export async function translateBlock(block) {
+  if (!enabled || !block || hasRendered(block.id) || inFlight.has(block.id)) return;
+  if (activeCount >= MAX_CONCURRENT) return;
+
+  const controller = new AbortController();
+  inFlight.set(block.id, controller);
+  activeCount += 1;
+
+  // Insert the placeholder before the request goes out, so the click always
+  // produces visible feedback and shows where the answer will land.
+  renderSkeleton(block);
+  ensureSweepObserver();
+
+  try {
+    const { response, apply } = block.kind === 'section'
+      ? await translateSection(block, controller)
+      : await translateLeaf(block, controller);
+
+    if (isMissingApiKeyResponse(response)) {
+      dismissBlock(block.id);
+      deps.onMissingApiKey();
+      return;
+    }
+    if (response.errorCode === 'ABORTED') {
+      dismissBlock(block.id);
+      return;
+    }
+    if (response.error) {
+      setPartError(block.id, 0, response.error, () => {
+        dismissBlock(block.id);
+        translateBlock(block);
+      });
+      return;
+    }
+
+    apply();
+    addFooter(block.id, { truncated: block.truncated, partCount: block.parts.length });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      dismissBlock(block.id);
+      return;
+    }
+    setPartError(block.id, 0, error?.message || 'Translation failed.', () => {
+      dismissBlock(block.id);
+      translateBlock(block);
+    });
+  } finally {
+    inFlight.delete(block.id);
+    activeCount -= 1;
+    stopSweepObserverIfIdle();
+  }
+}
+
+// ------------------------------------------------------------------
+// Lifecycle
+// ------------------------------------------------------------------
+
+/**
+ * Translate the block holding the keyboard focus, falling back to whatever sits
+ * at the centre of the viewport. This is the non-pointer path; the hover icon is
+ * invisible to keyboard and touch users without it.
+ */
+export function translateFocusedBlock() {
+  const focused = document.activeElement;
+  const fallback = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
+  const block = resolveBlock(focused && focused !== document.body ? focused : fallback);
+  if (block) translateBlock(block);
+}
+
+/** @param {boolean} value */
+export function setEnabled(value) {
+  settingLoaded = true;
+  enabled = Boolean(value);
+  if (enabled) return;
+  hideIcon();
+  for (const controller of inFlight.values()) controller.abort();
+  inFlight.clear();
+  activeCount = 0;
+  clearAllRendered();
+  stopSweepObserverIfIdle();
+}
+
+/** Drop everything a page transition invalidates. */
+export function resetForNavigation() {
+  for (const controller of inFlight.values()) controller.abort();
+  inFlight.clear();
+  activeCount = 0;
+  clearAllRendered();
+  stopSweepObserverIfIdle();
+  hideIcon();
+  lastTarget = null;
+}
+
+/**
+ * @param {{onMissingApiKey: () => void}} dependencies
+ */
+export function initBlockTranslate(dependencies = {}) {
+  deps = { onMissingApiKey: () => {}, ...dependencies };
+  if (started) return;
+  started = true;
+
+  document.addEventListener('mouseover', onPointerMove, { passive: true });
+  window.addEventListener('scroll', onViewportChange, { passive: true });
+  window.addEventListener('resize', onViewportChange, { passive: true });
+  window.addEventListener('parsipad:locationchange', resetForNavigation);
+  window.addEventListener('popstate', resetForNavigation);
+
+  chrome.storage.local.get('block_translate_enabled').then((stored) => {
+    if (settingLoaded) return;
+    settingLoaded = true;
+    enabled = stored.block_translate_enabled ?? true;
+  }).catch(() => { settingLoaded = true; });
+
+  chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace !== 'local' || !changes.block_translate_enabled) return;
+    setEnabled(changes.block_translate_enabled.newValue ?? true);
+  });
+}
+
+/** Remove every listener and surface. Used by tests. */
+export function teardownBlockTranslate() {
+  document.removeEventListener('mouseover', onPointerMove);
+  window.removeEventListener('scroll', onViewportChange);
+  window.removeEventListener('resize', onViewportChange);
+  window.removeEventListener('parsipad:locationchange', resetForNavigation);
+  window.removeEventListener('popstate', resetForNavigation);
+  resetForNavigation();
+  destroyIcon();
+  started = false;
+  enabled = true;
+  settingLoaded = false;
+}
