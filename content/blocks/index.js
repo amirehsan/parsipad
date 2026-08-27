@@ -13,6 +13,7 @@ import { isMissingApiKeyResponse } from '../utils/text.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from '../utils/batch.js';
 import { detectLanguage } from '../../lib/language-detect.js';
 import { resolveBlock } from './resolve.js';
+import { elementText } from './describe.js';
 import { showIconFor, hideIcon, repositionIcon, destroyIcon, currentIconBlock, isIconElement } from './icon.js';
 import {
   renderSkeleton, setPartText, setPartError, addFooter, clearPartsFrom,
@@ -250,7 +251,7 @@ function stopSweepObserverIfIdle() {
 // ------------------------------------------------------------------
 
 function textOf(el) {
-  return (el.textContent || '').trim();
+  return elementText(el);
 }
 
 async function translateLeaf(block, controller) {

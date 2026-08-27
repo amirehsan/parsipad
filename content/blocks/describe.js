@@ -4,34 +4,42 @@
  * Split out from resolve.js so section.js can use it too without the two
  * forming an import cycle, and so gate.js can stay entirely DOM-free.
  *
- * Everything here reads textContent rather than innerText. innerText forces
- * layout, and this runs on the hover path.
+ * Everything here walks childNodes itself rather than reading innerText.
+ * innerText forces layout, and this runs on the hover path.
  */
 
 import { containsLetters } from './gate.js';
 
+const NON_TEXT_TAGS = new Set(['STYLE', 'SCRIPT', 'NOSCRIPT', 'TEMPLATE']);
+
 /**
- * Text for word counting, with element boundaries preserved.
+ * The element's prose, with element boundaries preserved.
  *
- * textContent concatenates children with no separator, so a separator-free
- * <ul><li>Point one</li><li>Point two</li></ul> flattens to "Point onePoint two"
- * and counts three words instead of four. Formatted markup escapes this because
- * the whitespace between tags survives; framework-rendered DOM does not, since
- * React strips whitespace between sibling elements.
- *
- * Undercounting drops candidates below MIN_WORDS and costs them an icon, which
- * is the false-negative direction this gate is deliberately tuned against.
+ * Two problems with textContent, both real on Wikipedia. It includes the
+ * contents of <style> and <script>, and Wikipedia inlines TemplateStyles
+ * blocks inside article content, so a naive read hands the model a stylesheet
+ * and counts it as words when gating. And it concatenates children with no
+ * separator, so a separator-free list reads as one run-together word.
  */
-function spacedText(el) {
-  let out = '';
+function collectText(el, parts) {
   for (const node of el.childNodes) {
     if (node.nodeType === Node.TEXT_NODE) {
-      out += node.nodeValue;
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
-      out += ` ${node.textContent} `;
+      parts.push(node.nodeValue);
+    } else if (node.nodeType === Node.ELEMENT_NODE && !NON_TEXT_TAGS.has(node.tagName)) {
+      parts.push(' ');
+      collectText(node, parts);
+      parts.push(' ');
     }
   }
-  return out.trim();
+  return parts;
+}
+
+/**
+ * @param {Element} el
+ * @returns {string} prose with runs of whitespace collapsed
+ */
+export function elementText(el) {
+  return collectText(el, []).join('').replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -40,7 +48,7 @@ function spacedText(el) {
  *            hasLetters: boolean, classId: string}}
  */
 export function describeElement(el) {
-  const trimmed = (el.textContent || '').trim();
+  const trimmed = elementText(el);
 
   // An element that is itself a link contributes all of its text to the link
   // total. Without this a single long anchor reads as a clean paragraph,
@@ -59,7 +67,7 @@ export function describeElement(el) {
       // matters: a link-like ancestor OUTSIDE el must not suppress a real count.
       const outer = anchor.parentElement?.closest('a, [role="link"]');
       if (outer && el.contains(outer)) continue;
-      linkTextLength += (anchor.textContent || '').trim().length;
+      linkTextLength += elementText(anchor).length;
     }
   }
 
@@ -67,12 +75,10 @@ export function describeElement(el) {
   const className = typeof el.className === 'string' ? el.className : '';
   const id = typeof el.id === 'string' ? el.id : '';
 
-  const spaced = spacedText(el);
-
   return {
     textLength: trimmed.length,
     linkTextLength,
-    wordCount: spaced ? spaced.split(/\s+/).length : 0,
+    wordCount: trimmed ? trimmed.split(/\s+/).length : 0,
     hasLetters: containsLetters(trimmed),
     classId: `${className} ${id}`.trim()
   };

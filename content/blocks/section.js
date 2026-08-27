@@ -8,7 +8,7 @@
  */
 
 import { passesTextGate } from './gate.js';
-import { describeElement } from './describe.js';
+import { describeElement, elementText } from './describe.js';
 
 export const SECTION_MAX_PARTS = 30;
 export const SECTION_MAX_CHARS = 12000;
@@ -147,7 +147,7 @@ function capParts(parts) {
   let chars = 0;
   for (const el of parts) {
     if (out.length >= SECTION_MAX_PARTS) break;
-    const length = (el.textContent || '').trim().length;
+    const length = elementText(el).length;
     if (out.length > 0 && chars + length > SECTION_MAX_CHARS) break;
     out.push(el);
     chars += length;
