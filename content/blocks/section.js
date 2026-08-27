@@ -7,7 +7,7 @@
  * paragraph followed by its Persian, rather than as a wall of text at the end.
  */
 
-import { passesTextGate } from './gate.js';
+import { GATE, passesTextGate } from './gate.js';
 import { describeElement, elementText } from './describe.js';
 
 export const SECTION_MAX_PARTS = 30;
@@ -41,6 +41,19 @@ export function headingRank(el) {
 
 function isContentful(el) {
   return passesTextGate(describeElement(el));
+}
+
+/**
+ * Length of the text a parent holds directly, ignoring what its child elements
+ * contain. CMS markup often puts a heading and its prose in one container with
+ * the prose as a bare text node, and that prose belongs to the parent alone.
+ */
+function directTextLength(el) {
+  let chars = 0;
+  for (const node of el.childNodes) {
+    if (node.nodeType === Node.TEXT_NODE) chars += (node.nodeValue || '').trim().length;
+  }
+  return chars;
 }
 
 /**
@@ -160,6 +173,15 @@ function capParts(parts) {
  * @returns {{parts: Element[], truncated: boolean}}
  */
 export function resolveSection(heading) {
+  const parent = heading.parentElement;
+  // The heading labels prose sitting directly beside it rather than opening a
+  // run of sibling blocks. Taking the parent as one part keeps the heading and
+  // its prose together, and matches what hovering that prose now resolves to,
+  // so both gestures give the same block.
+  if (parent && directTextLength(parent) >= GATE.MIN_CHARS) {
+    return { parts: [parent], truncated: false };
+  }
+
   const rank = headingRank(heading);
   const row = rowElementFor(heading);
   const container = row.parentElement;

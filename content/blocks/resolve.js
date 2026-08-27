@@ -98,6 +98,12 @@ export function isHardReject(el) {
  */
 export function ownsItsText(el) {
   for (const child of el.children) {
+    // A heading labels the content beside it rather than competing with it.
+    // Letting one disqualify its parent strands prose that sits as a bare text
+    // node next to it: the parent is rejected for not owning its text, and the
+    // heading is not the prose, so nothing resolves at all.
+    if (isHeading(child)) continue;
+
     // Only a child that could itself be a block may claim the text. An inline
     // <span> wrapping a whole paragraph is never a candidate, so letting it
     // disqualify the parent strands the text: the div is rejected for not
