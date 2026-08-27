@@ -3,7 +3,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   renderSkeleton, setPartText, setPartError, addFooter, dismissBlock,
-  hasRendered, activeBlockIds, sweepDetached, clearAllRendered
+  hasRendered, activeBlockIds, sweepDetached, clearAllRendered, renderedTextFor
 } from '../content/blocks/render.js';
 
 const LONG = 'This sentence is comfortably past the twenty five character floor.';
@@ -161,24 +161,45 @@ describe('setPartError', () => {
 });
 
 describe('index alignment when a part is disconnected before render', () => {
-  // The closed shadow root means a test cannot read what setPartText wrote
-  // into a wrapper, so these do not assert where translated content landed.
-  // They assert the structural contract that alignment depends on: a hole
-  // takes no DOM slot, stays inert, and does not shift any surviving index.
+  // renderedTextFor reads through the closed shadow root, so the alignment
+  // test below can assert where translated content actually landed rather
+  // than only that a call did not throw. The other tests in this block still
+  // do not depend on content placement.
   it('keeps part indices aligned when a part detaches before render', () => {
     document.body.innerHTML = `<div id="w"><p id="a">${LONG} A</p><p id="b">${LONG} B</p><p id="c">${LONG} C</p></div>`;
     const parts = ['a', 'b', 'c'].map((id) => document.getElementById(id));
     parts[1].remove();
     renderSkeleton({ id: 'pp-b1', kind: 'section', anchor: parts[0], parts, truncated: false });
 
-    // Two hosts, on the two surviving sources, and nowhere else.
-    expect(document.querySelectorAll('[data-parsipad-translation]').length).toBe(2);
-    expect(document.getElementById('a').nextElementSibling.hasAttribute('data-parsipad-translation')).toBe(true);
-    expect(document.getElementById('c').nextElementSibling.hasAttribute('data-parsipad-translation')).toBe(true);
+    setPartText('pp-b1', 0, 'A translated');
+    setPartText('pp-b1', 2, 'C translated');
 
-    // The hole is inert and creates nothing.
-    expect(() => setPartText('pp-b1', 1, 'x')).not.toThrow();
-    expect(document.querySelectorAll('[data-parsipad-translation]').length).toBe(2);
+    // Index 2 must reach the third paragraph's slot, not the second surviving
+    // one. Under a compacting filter, parts[2] is out of bounds and C's text is
+    // dropped, while a write to index 1 would land under C instead.
+    expect(renderedTextFor('pp-b1', 0)).toBe('A translated');
+    expect(renderedTextFor('pp-b1', 2)).toBe('C translated');
+
+    // Index 1 is the hole. Writing there must reach nothing at all.
+    setPartText('pp-b1', 1, 'must not appear');
+    expect(renderedTextFor('pp-b1', 1)).toBeNull();
+    expect(renderedTextFor('pp-b1', 2)).toBe('C translated');
+  });
+
+  it('writes each part independently without disturbing its neighbours', () => {
+    document.body.innerHTML = `<div id="w"><p id="a">${LONG} A</p><p id="b">${LONG} B</p></div>`;
+    const parts = ['a', 'b'].map((id) => document.getElementById(id));
+    renderSkeleton({ id: 'pp-b1', kind: 'section', anchor: parts[0], parts, truncated: false });
+
+    setPartText('pp-b1', 0, 'first');
+    setPartText('pp-b1', 1, 'second');
+    expect(renderedTextFor('pp-b1', 0)).toBe('first');
+    expect(renderedTextFor('pp-b1', 1)).toBe('second');
+
+    // A later write replaces only its own part, which is what streaming does.
+    setPartText('pp-b1', 0, 'first, revised');
+    expect(renderedTextFor('pp-b1', 0)).toBe('first, revised');
+    expect(renderedTextFor('pp-b1', 1)).toBe('second');
   });
 
   it('dismisses cleanly when a slot is a hole', () => {
