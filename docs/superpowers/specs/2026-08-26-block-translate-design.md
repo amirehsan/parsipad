@@ -83,9 +83,14 @@ content/blocks/
   styles.js     CSS strings, imports themeVars()
   icon.js       the singleton hover icon
   gate.js       pure predicates
+  describe.js   Element -> the facts gate.js judges
   adapters.js   declarative site rules
   anchor.js     pure positioning
 ```
+
+`describe.js` exists to keep `gate.js` free of the DOM while both `resolve.js` and `section.js` need element facts. Without it, `section.js` would import the extractor from `resolve.js`, which imports `section.js` back — a cycle.
+
+Block identity is a `WeakMap<Element, string>` keyed on the anchor, never a data attribute written to the page. Marking the source element would be a mutation, and §9's byte-identity assertion would rightly fail on it.
 
 The directory is flat because `tests/web-accessible-resources.test.js` compiles manifest globs with `*` as `[^/]*`, so `content/blocks/*.js` does not match a nested path.
 
@@ -238,7 +243,7 @@ Scroll and resize get a rAF-throttled reposition, but only while an icon is visi
 1. `if (event.target === lastTarget) return`. This catches the overwhelming majority, since consecutive events over one element share a target. A pointer resting on a paragraph costs one comparison per event.
 2. rAF-coalesce the survivors, so a fast sweep resolves once per frame rather than once per element crossed.
 3. A `WeakMap<Element, Block|null>` verdict cache, so re-entering a block is free and eviction is garbage collection's problem.
-4. Only then walk, and call `getComputedStyle` only on the final candidate, never during the climb.
+4. Only then walk. `getComputedStyle` is reached only by a `div` or `span` that has already passed the cheaper `textContent`-only ownership check, and every wrapper on the climb fails that check, so in practice it runs once per resolution rather than once per ancestor.
 
 `textContent.length` is used for length checks; `innerText` is never used in the hot path because it forces layout. `Element.checkVisibility()` is used where available (Chrome 105+), falling back to the existing `getComputedStyle` chain.
 
