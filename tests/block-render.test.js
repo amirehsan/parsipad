@@ -2,7 +2,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
-  renderSkeleton, setPartText, setPartError, addFooter, dismissBlock,
+  renderSkeleton, setPartText, setPartError, addFooter, dismissBlock, clearPartsFrom,
   hasRendered, activeBlockIds, sweepDetached, clearAllRendered, renderedTextFor
 } from '../content/blocks/render.js';
 
@@ -244,5 +244,17 @@ describe('index alignment when a part is disconnected before render', () => {
     expect(() => setPartText('pp-nope', 0, 'x')).not.toThrow();
     expect(() => setPartText('pp-b1', 9, 'x')).not.toThrow();
     expect(document.querySelectorAll('[data-parsipad-translation]').length).toBe(1);
+  });
+
+  it('drops a block whose parts are all cleared', () => {
+    document.body.innerHTML = `<div id="w"><p id="a">${LONG} A</p><p id="b">${LONG} B</p></div>`;
+    const parts = ['a', 'b'].map((id) => document.getElementById(id));
+    renderSkeleton({ id: 'pp-b1', kind: 'section', anchor: parts[0], parts, truncated: false });
+
+    clearPartsFrom('pp-b1', 0);
+
+    expect(hasRendered('pp-b1')).toBe(false);
+    expect(activeBlockIds()).toEqual([]);
+    expect(document.querySelectorAll('[data-parsipad-translation]').length).toBe(0);
   });
 });

@@ -84,6 +84,17 @@ export function isIconElement(node) {
  * @param {(block: object) => void} onActivate
  */
 export function showIconFor(block, onActivate) {
+  // Refuse outright rather than showing and then being hidden from inside
+  // repositionIcon, whose hideIcon() this function's trailing data-visible
+  // write would clobber. The anchor can be gone by now: handleTarget runs a
+  // frame after the pointer event that captured its target, and resolveBlock
+  // does not check isConnected, so a row pruned inside that frame still
+  // resolves.
+  if (!block?.anchor?.isConnected) {
+    hideIcon();
+    return;
+  }
+
   build();
   currentBlock = block;
   activateHandler = onActivate;

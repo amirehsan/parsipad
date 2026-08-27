@@ -109,4 +109,17 @@ describe('the hover icon', () => {
     expect(document.querySelector('[data-parsipad-icon]').getAttribute('data-visible')).toBe('false');
     expect(currentIconBlock()).toBeNull();
   });
+
+  it('refuses to show for an anchor that is already detached', () => {
+    const p = document.getElementById('p');
+    p.remove();
+    showIconFor(blockFor(p), vi.fn());
+
+    const host = document.querySelector('[data-parsipad-icon]');
+    // Either no host was built, or it was built and left hidden. What must not
+    // happen is a visible icon with no block behind it, which looks live and
+    // does nothing when clicked.
+    expect(host === null || host.getAttribute('data-visible') === 'false').toBe(true);
+    expect(currentIconBlock()).toBeNull();
+  });
 });

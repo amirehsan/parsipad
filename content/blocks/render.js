@@ -291,6 +291,9 @@ export function clearPartsFrom(blockId, index) {
     record.host.remove();
     entry.parts[i] = null;
   }
+  // Nothing visible left. Drop the entry rather than leaving hasRendered true
+  // for a block with no UI, which would make a later hover silently do nothing.
+  if (!entry.parts.some(Boolean)) rendered.delete(blockId);
 }
 
 /** Drop everything. Used on SPA navigation and by tests. */
