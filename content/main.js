@@ -2534,7 +2534,11 @@ function handleKeyDown(event) {
   // The non-pointer path into block translate. Kept here rather than in
   // manifest.commands because Chrome allows only four suggested keys and all
   // four are already assigned.
-  if (event.altKey && (event.key === 'b' || event.key === 'B')) {
+  //
+  // event.code, not just event.key: on macOS Option composes, so Option+B
+  // reports the character it produces rather than "b". Both are accepted so
+  // the shortcut works regardless of platform or keyboard layout.
+  if (event.altKey && (event.code === 'KeyB' || event.key === 'b' || event.key === 'B')) {
     event.preventDefault();
     translateFocusedBlock();
     return;

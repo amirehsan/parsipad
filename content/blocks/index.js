@@ -17,6 +17,7 @@ import {
   renderSkeleton, setPartText, setPartError, addFooter, clearPartsFrom,
   dismissBlock, hasRendered, activeBlockIds, sweepDetached, clearAllRendered
 } from './render.js';
+import { setUiLang } from './lang.js';
 
 const HIDE_GRACE_MS = 120;
 const SWEEP_DEBOUNCE_MS = 300;
@@ -310,15 +311,21 @@ export function initBlockTranslate(dependencies = {}) {
   window.addEventListener('parsipad:locationchange', resetForNavigation);
   window.addEventListener('popstate', resetForNavigation);
 
-  chrome.storage.local.get('block_translate_enabled').then((stored) => {
+  chrome.storage.local.get(['block_translate_enabled', 'ui_language']).then((stored) => {
+    setUiLang(stored.ui_language || 'en');
     if (settingLoaded) return;
     settingLoaded = true;
     enabled = stored.block_translate_enabled ?? true;
   }).catch(() => { settingLoaded = true; });
 
   storageListener = (changes, namespace) => {
-    if (namespace !== 'local' || !changes.block_translate_enabled) return;
-    setEnabled(changes.block_translate_enabled.newValue ?? true);
+    if (namespace !== 'local') return;
+    if (changes.block_translate_enabled) {
+      setEnabled(changes.block_translate_enabled.newValue ?? true);
+    }
+    if (changes.ui_language) {
+      setUiLang(changes.ui_language.newValue || 'en');
+    }
   };
   chrome.storage.onChanged.addListener(storageListener);
 }
@@ -340,4 +347,5 @@ export function teardownBlockTranslate() {
   started = false;
   enabled = true;
   settingLoaded = false;
+  setUiLang('en');
 }

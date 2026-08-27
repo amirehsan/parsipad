@@ -13,6 +13,7 @@
 import { applyHostTheme } from '../host-page.js';
 import { computeIconPosition } from './anchor.js';
 import { getBlockIconStyles, ICON_SIZE } from './styles.js';
+import { label } from './lang.js';
 
 export { ICON_SIZE };
 
@@ -20,6 +21,7 @@ const TRANSLATE_PATH =
   'M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129';
 
 let host = null;
+let button = null;
 let activateHandler = null;
 let currentBlock = null;
 
@@ -37,10 +39,9 @@ function build() {
   style.textContent = getBlockIconStyles();
   shadow.appendChild(style);
 
-  const button = document.createElement('button');
+  button = document.createElement('button');
   button.type = 'button';
   button.className = 'pp-block-icon';
-  button.setAttribute('aria-label', 'Translate this block to Persian');
 
   const ns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(ns, 'svg');
@@ -96,6 +97,10 @@ export function showIconFor(block, onActivate) {
   }
 
   build();
+  // Set on every show rather than only at build time, which runs once per
+  // page. Otherwise a language change mid-session would leave the label
+  // stuck in whatever language was current the first time the icon appeared.
+  button.setAttribute('aria-label', label('blockTranslateIconLabel'));
   currentBlock = block;
   activateHandler = onActivate;
   repositionIcon();
@@ -141,6 +146,7 @@ export function currentIconBlock() {
 export function destroyIcon() {
   if (host) host.remove();
   host = null;
+  button = null;
   currentBlock = null;
   activateHandler = null;
 }
