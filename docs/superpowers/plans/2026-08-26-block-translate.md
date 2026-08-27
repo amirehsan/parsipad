@@ -3148,7 +3148,7 @@ After Task 10, the branch is complete when all of these hold:
 npm test          # every suite green, including web-accessible-resources
 npm run lint      # no errors
 git status        # clean, nothing under landing/ staged
-git log --oneline main..feat/block-translate   # 11 commits: spec + 10 tasks
+git log --oneline main..feat/block-translate   # spec, plan, 10 tasks, plus a commit per fix round
 ```
 
 And the four manual checks in Task 10 Step 10 pass in a real browser. Tests cannot cover the fourth, timeline recycling on X is the failure mode the whole architecture exists to prevent, and it needs a human to scroll.
