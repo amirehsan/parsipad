@@ -421,6 +421,33 @@ describe('language gate', () => {
     // feature exists for.
     expect(currentIconBlock()).not.toBeNull();
   });
+
+  it('does not let an inline stylesheet tip language detection', async () => {
+    // A Persian block carrying inlined TemplateStyles rules, as Persian
+    // Wikipedia serves (same MediaWiki software as the English site). A
+    // single short rule does not move detectLanguage's 0.2 fa-ratio
+    // threshold far enough for a sentence this length; several concatenated
+    // rules, which is what a real scrape of a busier region of the page
+    // holds, do: reading the raw mix below scores fa at 0.145 and detects
+    // 'en', while the Persian text alone scores 0.98 and detects 'fa'.
+    const css = '.mw-parser-output .itn-img{float:right;margin-left:0.5em;margin-top:0.2em}' +
+      '.mw-parser-output .hatnote{font-style:italic}' +
+      '.mw-parser-output .navbox{border:1px solid #a2a9b1;background-color:#fdfdfd;clear:both;font-size:88%;text-align:center}' +
+      '.mw-parser-output .hlist dd,.mw-parser-output .hlist dt,.mw-parser-output .hlist li{margin:0;display:inline}';
+    const persianText = 'این یک جمله فارسی است که به اندازه کافی طولانی است تا از حد مجاز عبور کند.';
+
+    globalThis.chrome.storage.local.get = vi.fn().mockResolvedValue({ ui_language: 'fa' });
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+
+    document.body.innerHTML = `<main><div id="p"><style>${css}</style>${persianText}</div></main>`;
+    const p = document.getElementById('p');
+    p.getBoundingClientRect = () => ({ top: 300, left: 200, right: 800, bottom: 360, width: 600, height: 60 });
+
+    p.dispatchEvent(new Event('mouseover', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 600));
+
+    expect(currentIconBlock()).toBeNull();
+  });
 });
 
 describe('lifecycle', () => {

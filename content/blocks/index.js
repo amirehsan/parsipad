@@ -132,7 +132,7 @@ function onDwellElapsed() {
  */
 function isWorthOffering(block) {
   if (!readsPersian()) return true;
-  const text = block.parts.map((el) => el.textContent || '').join(' ');
+  const text = block.parts.map((el) => elementText(el)).join(' ');
   return detectLanguage(text) !== 'fa';
 }
 
