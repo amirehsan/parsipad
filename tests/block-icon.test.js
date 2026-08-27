@@ -1,7 +1,9 @@
 // tests/block-icon.test.js
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { showIconFor, hideIcon, destroyIcon, isIconElement, currentIconBlock } from '../content/blocks/icon.js';
+import {
+  showIconFor, hideIcon, destroyIcon, isIconElement, currentIconBlock, repositionIcon
+} from '../content/blocks/icon.js';
 
 const LONG = 'This sentence is comfortably past the twenty five character floor.';
 
@@ -93,6 +95,18 @@ describe('the hover icon', () => {
     expect(currentIconBlock().id).toBe('pp-b1');
 
     hideIcon();
+    expect(currentIconBlock()).toBeNull();
+  });
+
+  it('hides itself when its anchor is torn out of the page', () => {
+    const p = document.getElementById('p');
+    showIconFor(blockFor(p), vi.fn());
+    expect(document.querySelector('[data-parsipad-icon]').getAttribute('data-visible')).toBe('true');
+
+    p.remove();
+    repositionIcon();
+
+    expect(document.querySelector('[data-parsipad-icon]').getAttribute('data-visible')).toBe('false');
     expect(currentIconBlock()).toBeNull();
   });
 });

@@ -93,7 +93,14 @@ export function showIconFor(block, onActivate) {
 
 /** Recompute the icon's position against its current block. */
 export function repositionIcon() {
-  if (!host || !currentBlock?.anchor?.isConnected) return;
+  if (!host || !currentBlock) return;
+  // The anchor was torn out from under us, most likely a virtualized list
+  // recycling its rows. Hide rather than silently no-op, or the icon freezes on
+  // screen pointing at nothing until the pointer happens to move again.
+  if (!currentBlock.anchor.isConnected) {
+    hideIcon();
+    return;
+  }
 
   const rect = currentBlock.anchor.getBoundingClientRect();
   const { top, left } = computeIconPosition({
