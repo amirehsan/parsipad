@@ -89,15 +89,19 @@ export function renderSkeleton(block) {
   if (rendered.has(block.id)) return;
   ensurePersianFontLoaded();
 
-  const parts = block.parts
-    .filter((source) => source.isConnected)
-    .map((source) => {
-      const record = mountHost(source, block.id);
-      showSkeleton(record);
-      return record;
-    });
+  // Index-aligned with block.parts, holes and all. The caller batches over the
+  // original array and calls setPartText with those indices, so compacting here
+  // would shift every later part down: a translation meant for one paragraph
+  // would land under the next, and the last would fall out of bounds. That is
+  // the misattribution this module exists to prevent, scoped to one block.
+  const parts = block.parts.map((source) => {
+    if (!source.isConnected) return null;
+    const record = mountHost(source, block.id);
+    showSkeleton(record);
+    return record;
+  });
 
-  if (parts.length > 0) rendered.set(block.id, { block, parts });
+  if (parts.some(Boolean)) rendered.set(block.id, { block, parts });
 }
 
 /**
@@ -166,7 +170,10 @@ export function addFooter(blockId, { truncated = false, partCount = 0 } = {}) {
   const entry = rendered.get(blockId);
   if (!entry) return;
 
-  const last = entry.parts[entry.parts.length - 1];
+  // The last part actually on screen. Blindly taking the final slot would
+  // anchor the dismiss control to a hole, or to a record already swept out,
+  // leaving a visible translation the user has no way to dismiss.
+  const last = [...entry.parts].reverse().find((record) => record && record.host.isConnected);
   if (!last) return;
 
   const wrapper = wrapperOf(last);
@@ -208,7 +215,9 @@ export function activeBlockIds() {
 export function dismissBlock(blockId) {
   const entry = rendered.get(blockId);
   if (!entry) return;
-  for (const record of entry.parts) record.host.remove();
+  for (const record of entry.parts) {
+    if (record) record.host.remove();
+  }
   rendered.delete(blockId);
 }
 
@@ -223,16 +232,21 @@ export function dismissBlock(blockId) {
 export function sweepDetached() {
   for (const [blockId, entry] of rendered) {
     let live = 0;
-    for (const record of entry.parts) {
+    entry.parts.forEach((record, index) => {
+      if (!record) return;
       if (record.host.isConnected) {
         live += 1;
-        continue;
+        return;
       }
       if (record.source.isConnected) {
         record.source.insertAdjacentElement('afterend', record.host);
         live += 1;
+        return;
       }
-    }
+      // Both gone. Clear the slot so the dead record is not retained, but keep
+      // the hole so the surviving indices stay aligned.
+      entry.parts[index] = null;
+    });
     if (live === 0) rendered.delete(blockId);
   }
 }

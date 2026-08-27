@@ -2,7 +2,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
-  renderSkeleton, setPartText, setPartError, dismissBlock,
+  renderSkeleton, setPartText, setPartError, addFooter, dismissBlock,
   hasRendered, activeBlockIds, sweepDetached, clearAllRendered
 } from '../content/blocks/render.js';
 
@@ -157,5 +157,71 @@ describe('setPartError', () => {
     document.body.innerHTML = `<p id="p">${LONG}</p>`;
     renderSkeleton(blockOf(['p']));
     expect(() => setPartError('pp-b1', 7, 'x', vi.fn())).not.toThrow();
+  });
+});
+
+describe('index alignment when a part is disconnected before render', () => {
+  // The closed shadow root means a test cannot read what setPartText wrote
+  // into a wrapper, so these do not assert where translated content landed.
+  // They assert the structural contract that alignment depends on: a hole
+  // takes no DOM slot, stays inert, and does not shift any surviving index.
+  it('keeps part indices aligned when a part detaches before render', () => {
+    document.body.innerHTML = `<div id="w"><p id="a">${LONG} A</p><p id="b">${LONG} B</p><p id="c">${LONG} C</p></div>`;
+    const parts = ['a', 'b', 'c'].map((id) => document.getElementById(id));
+    parts[1].remove();
+    renderSkeleton({ id: 'pp-b1', kind: 'section', anchor: parts[0], parts, truncated: false });
+
+    // Two hosts, on the two surviving sources, and nowhere else.
+    expect(document.querySelectorAll('[data-parsipad-translation]').length).toBe(2);
+    expect(document.getElementById('a').nextElementSibling.hasAttribute('data-parsipad-translation')).toBe(true);
+    expect(document.getElementById('c').nextElementSibling.hasAttribute('data-parsipad-translation')).toBe(true);
+
+    // The hole is inert and creates nothing.
+    expect(() => setPartText('pp-b1', 1, 'x')).not.toThrow();
+    expect(document.querySelectorAll('[data-parsipad-translation]').length).toBe(2);
+  });
+
+  it('dismisses cleanly when a slot is a hole', () => {
+    document.body.innerHTML = `<div id="w"><p id="a">${LONG} A</p><p id="b">${LONG} B</p></div>`;
+    const parts = ['a', 'b'].map((id) => document.getElementById(id));
+    parts[1].remove();
+    const before = document.getElementById('w').outerHTML;
+    renderSkeleton({ id: 'pp-b1', kind: 'section', anchor: parts[0], parts, truncated: false });
+
+    expect(() => dismissBlock('pp-b1')).not.toThrow();
+    expect(document.getElementById('w').outerHTML).toBe(before);
+    expect(activeBlockIds()).toEqual([]);
+  });
+
+  it('prunes a slot whose host and source are both gone, keeping the rest aligned', () => {
+    document.body.innerHTML = `<div id="w"><p id="a">${LONG} A</p><p id="b">${LONG} B</p></div>`;
+    const parts = ['a', 'b'].map((id) => document.getElementById(id));
+    renderSkeleton({ id: 'pp-b1', kind: 'section', anchor: parts[0], parts, truncated: false });
+
+    // Second paragraph and its translation both torn out by a re-render.
+    document.getElementById('b').nextElementSibling.remove();
+    document.getElementById('b').remove();
+    sweepDetached();
+
+    // The block survives on its remaining live part rather than being dropped.
+    expect(activeBlockIds()).toEqual(['pp-b1']);
+    expect(document.querySelectorAll('[data-parsipad-translation]').length).toBe(1);
+  });
+
+  it('addFooter is inert for an unknown block and safe for a valid one', () => {
+    document.body.innerHTML = `<p id="p">${LONG}</p>`;
+    expect(() => addFooter('pp-nope', { truncated: false, partCount: 0 })).not.toThrow();
+
+    renderSkeleton(blockOf(['p']));
+    expect(() => addFooter('pp-b1', { truncated: true, partCount: 7 })).not.toThrow();
+    expect(activeBlockIds()).toEqual(['pp-b1']);
+  });
+
+  it('setPartText is inert for an unknown block or an out-of-range index', () => {
+    document.body.innerHTML = `<p id="p">${LONG}</p>`;
+    renderSkeleton(blockOf(['p']));
+    expect(() => setPartText('pp-nope', 0, 'x')).not.toThrow();
+    expect(() => setPartText('pp-b1', 9, 'x')).not.toThrow();
+    expect(document.querySelectorAll('[data-parsipad-translation]').length).toBe(1);
   });
 });
