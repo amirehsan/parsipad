@@ -19,7 +19,11 @@ import {
 } from './render.js';
 import { label, setUiLang } from './lang.js';
 
-const HIDE_GRACE_MS = 120;
+const HIDE_GRACE_MS = 320;
+// How far outside its block the pointer may stray before the icon gives up.
+// Generous on purpose: the icon straddles the block's corner, and a user
+// travelling to it or pausing on the way must not lose it.
+const NEAR_BLOCK_PADDING = 56;
 const SWEEP_DEBOUNCE_MS = 300;
 const MAX_CONCURRENT = 3;
 
@@ -36,6 +40,8 @@ let storageListener = null;
 
 let lastTarget = null;
 let pendingTarget = null;
+let pendingX = 0;
+let pendingY = 0;
 let rafHandle = 0;
 let hideTimer = null;
 
@@ -60,17 +66,21 @@ function onPointerMove(event) {
   if (event.target === lastTarget) return;
   lastTarget = event.target;
   pendingTarget = event.target;
+  pendingX = event.clientX;
+  pendingY = event.clientY;
 
   if (rafHandle) return;
   rafHandle = requestAnimationFrame(() => {
     rafHandle = 0;
     const target = pendingTarget;
+    const x = pendingX;
+    const y = pendingY;
     pendingTarget = null;
-    handleTarget(target);
+    handleTarget(target, x, y);
   });
 }
 
-function handleTarget(target) {
+function handleTarget(target, x, y) {
   // The pointer landing on our own icon must not start the hide timer. The
   // icon never resolves to a block, so without this the grace period covers
   // the whole gesture instead of just the travel, and any click slower than
@@ -83,6 +93,10 @@ function handleTarget(target) {
   const block = resolveCached(target);
 
   if (!block) {
+    if (nearCurrentBlock(x, y)) {
+      clearHide();
+      return;
+    }
     scheduleHide();
     return;
   }
@@ -97,6 +111,20 @@ function handleTarget(target) {
   clearHide();
   if (currentIconBlock()?.id === block.id) return;
   showIconFor(block, translateBlock);
+}
+
+/**
+ * True when the pointer is still within a tolerance of the block the icon is
+ * armed for. Hovering the margin beside a paragraph, or the gap between the
+ * text and the icon, resolves to no block at all; without this the hide timer
+ * starts there and a moment's hesitation loses the icon.
+ */
+function nearCurrentBlock(x, y) {
+  const anchor = currentIconBlock()?.anchor;
+  if (!anchor?.isConnected) return false;
+  const r = anchor.getBoundingClientRect();
+  return x >= r.left - NEAR_BLOCK_PADDING && x <= r.right + NEAR_BLOCK_PADDING &&
+         y >= r.top - NEAR_BLOCK_PADDING && y <= r.bottom + NEAR_BLOCK_PADDING;
 }
 
 // Only failed resolutions are cached. That is where the cost is: a hover that
