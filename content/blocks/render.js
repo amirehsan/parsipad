@@ -13,6 +13,7 @@
 
 import { applyHostTheme, ensurePersianFontLoaded } from '../host-page.js';
 import { getBlockTranslationStyles } from './styles.js';
+import { label } from './lang.js';
 
 /**
  * @typedef {Object} PartRecord
@@ -173,7 +174,7 @@ export function setPartError(blockId, index, message, onRetry) {
   const retry = document.createElement('button');
   retry.type = 'button';
   retry.className = 'pp-block-retry';
-  retry.textContent = 'Retry';
+  retry.textContent = label('blockTranslateRetry');
   retry.addEventListener('click', (event) => {
     event.stopPropagation();
     if (onRetry) onRetry();
@@ -205,14 +206,14 @@ export function addFooter(blockId, { truncated = false, partCount = 0 } = {}) {
 
   if (truncated) {
     const note = document.createElement('span');
-    note.textContent = `First ${partCount} parts`;
+    note.textContent = label('blockTranslateTruncated').replace('{count}', partCount);
     footer.appendChild(note);
   }
 
   const dismiss = document.createElement('button');
   dismiss.type = 'button';
   dismiss.className = 'pp-block-dismiss';
-  dismiss.textContent = 'Dismiss';
+  dismiss.textContent = label('blockTranslateDismiss');
   dismiss.addEventListener('click', (event) => {
     event.stopPropagation();
     dismissBlock(blockId);
