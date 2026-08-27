@@ -91,6 +91,11 @@ describe('the hover icon', () => {
 
   it('forgets its block on hide, so a later click cannot fire on a stale one', () => {
     const p = document.getElementById('p');
+    // happy-dom never lays elements out, so an unstubbed rect is {0,0,0,0},
+    // which the visible-rect check in repositionIcon now reads as nothing on
+    // screen and refuses to show for. Stub a normal on-screen rect so this
+    // test exercises hide-then-forget rather than never-shown.
+    p.getBoundingClientRect = () => ({ top: 300, left: 200, right: 800, bottom: 360, width: 600, height: 60 });
     showIconFor(blockFor(p), vi.fn());
     expect(currentIconBlock().id).toBe('pp-b1');
 
@@ -100,10 +105,30 @@ describe('the hover icon', () => {
 
   it('hides itself when its anchor is torn out of the page', () => {
     const p = document.getElementById('p');
+    p.getBoundingClientRect = () => ({ top: 300, left: 200, right: 800, bottom: 360, width: 600, height: 60 });
     showIconFor(blockFor(p), vi.fn());
     expect(document.querySelector('[data-parsipad-icon]').getAttribute('data-visible')).toBe('true');
 
     p.remove();
+    repositionIcon();
+
+    expect(document.querySelector('[data-parsipad-icon]').getAttribute('data-visible')).toBe('false');
+    expect(currentIconBlock()).toBeNull();
+  });
+
+  it('hides rather than parking at the screen top when a block has scrolled above the fold', () => {
+    const p = document.getElementById('p');
+    p.getBoundingClientRect = () => ({ top: 300, left: 200, right: 800, bottom: 360, width: 600, height: 60 });
+    showIconFor(blockFor(p), vi.fn());
+    expect(document.querySelector('[data-parsipad-icon]').getAttribute('data-visible')).toBe('true');
+
+    // The page scrolled the block entirely above the viewport while the
+    // pointer stayed still, the way a long read commonly does. Passing this
+    // raw rect straight to computeIconPosition would clamp top to the 4px
+    // padding value, pinning the icon to the screen's top edge nowhere near
+    // the block it belongs to, which is the "redundant icon in the corner"
+    // from the bug report.
+    p.getBoundingClientRect = () => ({ top: -500, left: 200, right: 800, bottom: -440, width: 600, height: 60 });
     repositionIcon();
 
     expect(document.querySelector('[data-parsipad-icon]').getAttribute('data-visible')).toBe('false');
