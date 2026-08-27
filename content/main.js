@@ -21,7 +21,7 @@ import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils/batch.js';
 import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
-import { initBlockTranslate, translateFocusedBlock, hideBlockIcon } from './blocks/index.js';
+import { initBlockTranslate, translateFocusedBlock, hideBlockIcon, isBlockTranslateEnabled } from './blocks/index.js';
 
 // Re-injection guard: skip if the script has already run in this isolated world.
 // Without this, chrome.scripting.executeScript on an already-injected tab throws
@@ -2538,7 +2538,23 @@ function handleKeyDown(event) {
   // event.code, not just event.key: on macOS Option composes, so Option+B
   // reports the character it produces rather than "b". Both are accepted so
   // the shortcut works regardless of platform or keyboard layout.
-  if (event.altKey && (event.code === 'KeyB' || event.key === 'b' || event.key === 'B')) {
+  //
+  // Narrowed beyond the raw key match because this content script runs at
+  // <all_urls>: ctrlKey/metaKey are excluded so AltGr (which reports
+  // ctrlKey && altKey) and any site's own Ctrl+Alt+B pass through untouched;
+  // editable regions are excluded so typing "b" while holding Option on macOS
+  // does not eat the compose character for a resolution that would fail
+  // anyway, since resolveBlock hard-rejects editable regions; and the enabled
+  // check runs before preventDefault so a user who turned the feature off
+  // keeps the shortcut everywhere else.
+  const keyTarget = event.target;
+  const isEditableTarget = keyTarget instanceof HTMLElement &&
+    (keyTarget.isContentEditable || keyTarget.tagName === 'INPUT' ||
+     keyTarget.tagName === 'TEXTAREA' || keyTarget.tagName === 'SELECT');
+
+  if (event.altKey && !event.ctrlKey && !event.metaKey && !isEditableTarget &&
+      isBlockTranslateEnabled() &&
+      (event.code === 'KeyB' || event.key === 'b' || event.key === 'B')) {
     event.preventDefault();
     translateFocusedBlock();
     return;

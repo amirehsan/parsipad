@@ -8,6 +8,7 @@ vi.mock('../lib/translation/client.js', () => ({ requestTranslation }));
 const { initBlockTranslate, teardownBlockTranslate, translateBlock, setEnabled } =
   await import('../content/blocks/index.js');
 const { activeBlockIds, clearAllRendered, renderedTextFor } = await import('../content/blocks/render.js');
+const { currentIconBlock } = await import('../content/blocks/icon.js');
 
 const LONG = 'This sentence is comfortably past the twenty five character floor.';
 
@@ -132,6 +133,64 @@ describe('translateBlock', () => {
     // Nothing after the failure is left spinning on a skeleton.
     expect(renderedTextFor('pp-s', 24)).toBeNull();
   });
+
+  it('accumulates streamed deltas rather than replacing', async () => {
+    requestTranslation.mockImplementation((payload, { onDelta }) => {
+      onDelta('سلام ');
+      onDelta('دنیا');
+      return Promise.resolve({ translation: 'سلام دنیا' });
+    });
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+    document.body.innerHTML = `<main><p id="p">${LONG}</p></main>`;
+    const p = document.getElementById('p');
+
+    await translateBlock({ id: 'pp-b1', kind: 'leaf', anchor: p, parts: [p], truncated: false });
+    expect(renderedTextFor('pp-b1', 0)).toBe('سلام دنیا');
+  });
+
+  // The test above does not discriminate a replacing onDelta from an
+  // accumulating one: translateBlock's success path calls apply() once the
+  // response resolves, which sets the part to response.translation regardless
+  // of what onDelta did along the way, and the mock's final translation here
+  // happens to already equal the correctly-accumulated string. A response
+  // that never resolves keeps apply() from ever running, so this observes
+  // only what onDelta itself wrote.
+  it('shows the accumulated text mid-stream, before the response resolves', async () => {
+    requestTranslation.mockImplementation((payload, { onDelta }) => {
+      onDelta('سلام ');
+      onDelta('دنیا');
+      return new Promise(() => {});
+    });
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+    document.body.innerHTML = `<main><p id="p">${LONG}</p></main>`;
+    const p = document.getElementById('p');
+
+    // Not awaited: the mock's onDelta calls run synchronously before the first
+    // real await inside translateLeaf, so they have already landed by the time
+    // this call returns control to the test.
+    translateBlock({ id: 'pp-mid', kind: 'leaf', anchor: p, parts: [p], truncated: false });
+
+    expect(renderedTextFor('pp-mid', 0)).toBe('سلام دنیا');
+  });
+
+  it('shows a message when the concurrency cap drops a click', async () => {
+    // Three translations that never settle, so the fourth is capped.
+    requestTranslation.mockImplementation(() => new Promise(() => {}));
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+    document.body.innerHTML = '<main>' +
+      Array.from({ length: 4 }, (_, i) => `<p id="p${i}">${LONG} ${i}</p>`).join('') + '</main>';
+
+    for (let i = 0; i < 3; i += 1) {
+      const el = document.getElementById(`p${i}`);
+      translateBlock({ id: `pp-${i}`, kind: 'leaf', anchor: el, parts: [el], truncated: false });
+    }
+    const last = document.getElementById('p3');
+    await translateBlock({ id: 'pp-3', kind: 'leaf', anchor: last, parts: [last], truncated: false });
+
+    // A node was inserted and it says something, rather than nothing happening.
+    expect(document.getElementById('p3').nextElementSibling
+      .hasAttribute('data-parsipad-translation')).toBe(true);
+  });
 });
 
 describe('setEnabled', () => {
@@ -152,6 +211,44 @@ describe('setEnabled', () => {
     await translateBlock(blockOf(['p']));
 
     expect(requestTranslation).not.toHaveBeenCalled();
+  });
+});
+
+describe('hover', () => {
+  // Placed before "keeps the icon armed": resolve.js mints block ids from a
+  // module-scoped counter, and this is the one test in the file that needs
+  // its hovered element to land on the same id ('pp-b1') the block below was
+  // manually translated under. Running first guarantees that; any hover-
+  // triggering test ahead of it would consume the counter and desync the two.
+  it('does not offer the icon on a block that is already translated', async () => {
+    requestTranslation.mockResolvedValue({ translation: 'ترجمه' });
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+    document.body.innerHTML = `<main><p id="p">${LONG}</p></main>`;
+    const p = document.getElementById('p');
+
+    await translateBlock({ id: 'pp-b1', kind: 'leaf', anchor: p, parts: [p], truncated: false });
+    p.dispatchEvent(new Event('mouseover', { bubbles: true }));
+    await new Promise((r) => requestAnimationFrame(() => r()));
+
+    expect(currentIconBlock()).toBeNull();
+  });
+
+  it('keeps the icon armed while the pointer rests on it', async () => {
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+    document.body.innerHTML = `<main><p id="p">${LONG}</p></main>`;
+
+    document.getElementById('p').dispatchEvent(new Event('mouseover', { bubbles: true }));
+    await new Promise((r) => requestAnimationFrame(() => r()));
+    expect(currentIconBlock()).not.toBeNull();
+
+    // The pointer travels onto the icon, then the user takes their time.
+    document.querySelector('[data-parsipad-icon]')
+      .dispatchEvent(new Event('mouseover', { bubbles: true }));
+    await new Promise((r) => requestAnimationFrame(() => r()));
+    await new Promise((r) => setTimeout(r, 200));
+
+    // Still armed, so the click that follows actually does something.
+    expect(currentIconBlock()).not.toBeNull();
   });
 });
 

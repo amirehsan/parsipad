@@ -126,6 +126,21 @@ describe('lifecycle', () => {
     expect(activeBlockIds()).toEqual([]);
   });
 
+  it('does not reattach onto a source whose text has changed', () => {
+    document.body.innerHTML = `<div id="w"><p id="a">${LONG} A</p></div>`;
+    const p = document.getElementById('a');
+    renderSkeleton({ id: 'pp-b1', kind: 'leaf', anchor: p, parts: [p], truncated: false });
+    setPartText('pp-b1', 0, 'ترجمه');
+
+    // A virtualized list removes our node and repurposes the element.
+    document.querySelector('[data-parsipad-translation]').remove();
+    p.textContent = 'A completely different post now occupies this element.';
+    sweepDetached();
+
+    expect(document.querySelectorAll('[data-parsipad-translation]').length).toBe(0);
+    expect(activeBlockIds()).toEqual([]);
+  });
+
   it('forgets the block after dismiss', () => {
     document.body.innerHTML = `<p id="p">${LONG}</p>`;
     renderSkeleton(blockOf(['p']));
