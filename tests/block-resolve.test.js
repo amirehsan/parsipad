@@ -70,6 +70,18 @@ describe('ownsItsText', () => {
   });
 });
 
+describe('resolveBlock with a heading beside bare-text prose', () => {
+  it('resolves a container whose only element child is a heading', () => {
+    mount('<div class="wrapper"><div class="text" id="text"><h2>Secure Your Spot On Our Schedule</h2>At Carolina Center for Eye Care, we provide the highest quality service to all our patients. Use the form below to request your appointment.</div></div>');
+    expect(resolveBlock(pick('text')).anchor).toBe(pick('text'));
+  });
+
+  it('still lets a real block child claim the text from its parent', () => {
+    mount(`<div id="outer"><h2>Title</h2><p id="p">${LONG}</p></div>`);
+    expect(resolveBlock(pick('p')).anchor).toBe(pick('p'));
+  });
+});
+
 describe('resolveBlock', () => {
   it('resolves a paragraph from a text node target inside it', () => {
     mount(`<main><p id="p">${LONG}</p></main>`);

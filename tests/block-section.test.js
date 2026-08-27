@@ -180,4 +180,18 @@ describe('resolveSection', () => {
       </div>`);
     expect(rowElementFor(document.getElementById('a')).id).toBe('w');
   });
+
+  it('takes the parent as the unit when a heading labels prose beside it', () => {
+    mount(`<div class="wrapper"><div class="text" id="text"><h2 id="h">Secure Your Spot On Our Schedule</h2>At Carolina Center for Eye Care, we provide the highest quality service to all our patients.</div><div id="after"><p>${LONG} unrelated</p></div></div>`);
+    const { parts } = resolveSection(document.getElementById('h'));
+    expect(parts).toEqual([document.getElementById('text')]);
+    // and it must not wander into the next container
+    expect(parts.some((p) => p.id === 'after')).toBe(false);
+  });
+
+  it('still walks siblings when the heading stands alone in its container', () => {
+    mount(`<div><div class="mw-heading" id="w"><h2 id="a">History</h2></div><p>${LONG} one</p><p>${LONG} two</p></div>`);
+    const { parts } = resolveSection(document.getElementById('a'));
+    expect(parts.length).toBe(3);
+  });
 });
