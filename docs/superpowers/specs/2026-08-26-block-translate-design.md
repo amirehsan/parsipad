@@ -157,7 +157,9 @@ Thresholds live in one exported constants block so they are tunable without hunt
 
 1. **HTML5 sectioning.** The heading is the first element child of a `<section>` or `<article>`; that container is the unit.
 2. **Flat siblings.** Collect following siblings until one contains a heading of equal or higher rank. An h3 stops at the next h3 or h2 and swallows an h4.
-3. **Wrapped headings.** Wikipedia emits `<div class="mw-heading"><h2>…</h2></div>`. Handled by a generic rule: if every text-bearing element child of the heading's parent is either the heading itself or fails the §4.3 gate, the parent is the row element the sibling walk starts from. An edit link fails the gate on link density, so the rule catches Wikipedia without naming it.
+3. **Wrapped headings.** Wikipedia emits `<div class="mw-heading"><h2>…</h2></div>`. Handled by a generic rule: if every non-heading child of the heading's parent is empty or entirely link text, the parent is the row element the sibling walk starts from. An edit link is wholly a link, so the rule catches Wikipedia without naming it.
+
+Link share is the test rather than the whole gate. The gate also rejects anything short, so a wrapper holding the heading plus two brief spans of ordinary prose would read as a heading wrapper, and the walk would start outside the wrapper and collect content belonging to a different section.
 
 The third is why Wikipedia needs no adapter. Rank comes from the tag or from `aria-level` on `[role=heading]`.
 
