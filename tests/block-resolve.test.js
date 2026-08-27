@@ -164,6 +164,17 @@ describe('resolveBlock', () => {
     expect(resolveBlock(pick('t'), 'x.com').anchor).toBe(pick('t'));
   });
 
+  it('resolves nothing outside the adapter selector on an adapter site', () => {
+    mount(`<article id="card"><div data-testid="tweetText" id="t">${LONG}</div><div id="meta">${LONG} counts and controls</div></article>`);
+    // The post text still resolves.
+    expect(resolveBlock(pick('t'), 'x.com').anchor).toBe(pick('t'));
+    // The card around it does not, where before it resolved as an ARTICLE.
+    expect(resolveBlock(pick('card'), 'x.com')).toBeNull();
+    expect(resolveBlock(pick('meta'), 'x.com')).toBeNull();
+    // And the generic path is untouched on a site with no adapter.
+    expect(resolveBlock(pick('meta'), 'example.com')).not.toBeNull();
+  });
+
   it('returns null for a null target', () => {
     expect(resolveBlock(null)).toBeNull();
   });

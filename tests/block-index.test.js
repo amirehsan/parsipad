@@ -352,6 +352,31 @@ describe('hover', () => {
     await new Promise((r) => setTimeout(r, 100));
     expect(currentIconBlock()).not.toBeNull();
   });
+
+  it('does not offer a leaf block the size of the viewport', async () => {
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+    document.body.innerHTML = `<main><div id="card">${LONG}</div></main>`;
+    const card = document.getElementById('card');
+    // A post card taller than the viewport, reaching from above the fold down.
+    card.getBoundingClientRect = () => ({ top: -300, left: 100, right: 900, bottom: 700, width: 800, height: 1000 });
+
+    card.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, clientX: 400, clientY: 200 }));
+    await new Promise((r) => setTimeout(r, 700));
+
+    expect(currentIconBlock()).toBeNull();
+  });
+
+  it('still offers an ordinary paragraph', async () => {
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+    document.body.innerHTML = `<main><p id="p">${LONG}</p></main>`;
+    const p = document.getElementById('p');
+    p.getBoundingClientRect = () => ({ top: 300, left: 200, right: 800, bottom: 360, width: 600, height: 60 });
+
+    p.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, clientX: 400, clientY: 330 }));
+    await new Promise((r) => setTimeout(r, 700));
+
+    expect(currentIconBlock()).not.toBeNull();
+  });
 });
 
 // Placed after 'hover' rather than before it, for the same counter reason

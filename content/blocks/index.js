@@ -31,6 +31,12 @@ const HIDE_GRACE_MS = 320;
 const NEAR_BLOCK_PADDING = 56;
 const SWEEP_DEBOUNCE_MS = 300;
 const MAX_CONCURRENT = 3;
+// A leaf block taller than this is a container, not a passage. Resting on a
+// post's padding rather than its text resolves the whole card, whose icon then
+// lands wherever the card's visible corner happens to be, often a screen edge.
+// Sections are exempt by construction: their anchor is the heading, which is
+// small however long the section runs.
+const MAX_LEAF_VIEWPORT_FRACTION = 0.6;
 
 let deps = { onMissingApiKey: () => {} };
 let enabled = true;
@@ -108,7 +114,7 @@ function onDwellElapsed() {
   if (!target || !target.isConnected) return;
 
   const block = resolveCached(target);
-  if (!block || hasRendered(block.id) || !isWorthOffering(block)) {
+  if (!block || hasRendered(block.id) || !isWorthOffering(block) || !isReasonablySized(block)) {
     scheduleHide();
     return;
   }
@@ -127,6 +133,19 @@ function isWorthOffering(block) {
   if (!readsPersian()) return true;
   const text = block.parts.map((el) => el.textContent || '').join(' ');
   return detectLanguage(text) !== 'fa';
+}
+
+/**
+ * Whether a leaf block's anchor is a passage rather than a container. A
+ * section is always fine here: its anchor is the heading that introduces it,
+ * not the run of content below, so its height says nothing about how much
+ * that section holds.
+ */
+function isReasonablySized(block) {
+  if (block.kind !== 'leaf') return true;
+  const height = block.anchor.getBoundingClientRect().height;
+  if (!height) return true;   // unmeasurable, do not punish it
+  return height <= window.innerHeight * MAX_LEAF_VIEWPORT_FRACTION;
 }
 
 /**
