@@ -21,6 +21,7 @@ import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils/batch.js';
 import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
+import { initBlockTranslate, translateFocusedBlock, hideBlockIcon } from './blocks/index.js';
 
 // Re-injection guard: skip if the script has already run in this isolated world.
 // Without this, chrome.scripting.executeScript on an already-injected tab throws
@@ -112,6 +113,10 @@ function init() {
       userLang = changes.ui_language.newValue || 'en';
     }
   });
+
+  // Block translate owns its own hover, storage and observer wiring; it needs
+  // only the toast, which lives here.
+  initBlockTranslate({ onMissingApiKey: showMissingApiKeyToast });
 
   // Reset page translation state on SPA navigation. SPAs swap content via
   // pushState/replaceState without firing a full page load, so the old
@@ -2526,7 +2531,17 @@ function handleDocumentClick(event) {
  * Handle keyboard events
  */
 function handleKeyDown(event) {
+  // The non-pointer path into block translate. Kept here rather than in
+  // manifest.commands because Chrome allows only four suggested keys and all
+  // four are already assigned.
+  if (event.altKey && (event.key === 'b' || event.key === 'B')) {
+    event.preventDefault();
+    translateFocusedBlock();
+    return;
+  }
+
   if (event.key === 'Escape') {
+    hideBlockIcon();
     if (screenshotOverlay) {
       cancelScreenshotMode();
       return;

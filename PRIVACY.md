@@ -29,7 +29,7 @@ All data is stored locally on your device using Chrome's storage API:
 
 ### Text Sent to AI Provider APIs
 
-When you request a translation, the selected text is sent to your chosen AI provider's API for processing. This is necessary for the translation functionality to work.
+When you request a translation, the text you asked to translate is sent to your chosen AI provider's API for processing. This is necessary for the translation functionality to work. Depending on which action you use, that text is a selection you made, a block or section you pointed at, or the visible text of the page.
 
 **Supported providers:**
 - **Claude (Anthropic)**: api.anthropic.com

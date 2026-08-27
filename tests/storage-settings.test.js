@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { STORAGE_KEYS } from '../lib/constants.js';
 
 function installChromeStub() {
   const data = new Map();
@@ -75,5 +76,11 @@ describe('New Tab panel switches', () => {
     expect(await storage.getNewTabPanels()).toEqual({
       flashcard: true, bookmarks: true, recents: false
     });
+  });
+});
+
+describe('block translate setting', () => {
+  it('registers a storage key', () => {
+    expect(STORAGE_KEYS.blockTranslate).toBe('block_translate_enabled');
   });
 });

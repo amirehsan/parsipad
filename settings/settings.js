@@ -45,6 +45,9 @@ const dictFaToEnCheckbox = document.getElementById('dict-fa-to-en');
 const selectionPopupToggle = document.getElementById('selection-popup-toggle');
 const translateOtherLanguagesToggle = document.getElementById('translate-other-languages-toggle');
 
+// DOM Elements - Block Translate
+const blockTranslateToggle = document.getElementById('block-translate-toggle');
+
 // DOM Elements - New Tab
 const newtabToggle = document.getElementById('newtab-toggle');
 const phraseCountSlider = document.getElementById('phrase-count-slider');
@@ -117,6 +120,7 @@ async function init() {
   await loadDictionarySettings();
   await loadSelectionPopupSetting();
   await loadTranslateOtherLanguagesSetting();
+  await loadBlockTranslateSetting();
   await loadNewTabSetting();
   await loadProviderSettings();
   await loadAllApiKeyStatuses();
@@ -231,6 +235,16 @@ async function loadSelectionPopupSetting() {
  */
 async function loadTranslateOtherLanguagesSetting() {
   translateOtherLanguagesToggle.checked = await getTranslateOtherLanguages();
+}
+
+/**
+ * Load the block translate setting. Block translate manages its own storage
+ * wiring in content/blocks/index.js rather than through lib/storage.js, so
+ * this reads the same raw key directly instead of going through a getter.
+ */
+async function loadBlockTranslateSetting() {
+  const stored = await chrome.storage.local.get(STORAGE_KEYS.blockTranslate);
+  blockTranslateToggle.checked = stored[STORAGE_KEYS.blockTranslate] ?? true;
 }
 
 /**
@@ -423,6 +437,9 @@ function setupEventListeners() {
   selectionPopupToggle.addEventListener('change', handleSelectionPopupChange);
   translateOtherLanguagesToggle.addEventListener('change', handleTranslateOtherLanguagesChange);
 
+  // Block translate setting
+  blockTranslateToggle.addEventListener('change', handleBlockTranslateChange);
+
   // New tab setting
   newtabToggle.addEventListener('change', handleNewTabChange);
 
@@ -544,6 +561,13 @@ async function handleSelectionPopupChange() {
  */
 async function handleTranslateOtherLanguagesChange() {
   await setTranslateOtherLanguages(translateOtherLanguagesToggle.checked);
+}
+
+/**
+ * Handle block translate setting change
+ */
+async function handleBlockTranslateChange() {
+  await chrome.storage.local.set({ [STORAGE_KEYS.blockTranslate]: blockTranslateToggle.checked });
 }
 
 /**
