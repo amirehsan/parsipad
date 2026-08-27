@@ -149,6 +149,10 @@ export function resolveBlock(target, hostname = location.hostname) {
     if (adapter.reject && el.closest(adapter.reject)) return null;
     const hit = adapter.block && el.closest(adapter.block);
     if (hit) return makeBlock('leaf', hit, [hit], false);
+    // The adapter's selector is this site's definitive answer. Falling through
+    // to the generic walk here is what let a whole post card resolve when the
+    // pointer was merely near the text rather than on it.
+    if (adapter.block) return null;
   }
 
   let steps = 0;
