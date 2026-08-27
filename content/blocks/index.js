@@ -11,14 +11,19 @@
 import { requestTranslation } from '../../lib/translation/client.js';
 import { isMissingApiKeyResponse } from '../utils/text.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from '../utils/batch.js';
+import { detectLanguage } from '../../lib/language-detect.js';
 import { resolveBlock } from './resolve.js';
 import { showIconFor, hideIcon, repositionIcon, destroyIcon, currentIconBlock, isIconElement } from './icon.js';
 import {
   renderSkeleton, setPartText, setPartError, addFooter, clearPartsFrom,
   dismissBlock, hasRendered, activeBlockIds, sweepDetached, clearAllRendered
 } from './render.js';
-import { label, setUiLang } from './lang.js';
+import { label, setUiLang, readsPersian } from './lang.js';
 
+// How long the pointer must rest on a new block before the icon offers it.
+// Entering a block is involuntary; only stopping on one is intent, and
+// nothing about the block is resolved until this elapses.
+const DWELL_MS = 450;
 const HIDE_GRACE_MS = 320;
 // How far outside its block the pointer may stray before the icon gives up.
 // Generous on purpose: the icon straddles the block's corner, and a user
@@ -39,10 +44,9 @@ let settingLoaded = false;
 let storageListener = null;
 
 let lastTarget = null;
-let pendingTarget = null;
-let pendingX = 0;
-let pendingY = 0;
-let rafHandle = 0;
+let lastPointer = { x: 0, y: 0 };
+let dwellTimer = null;
+let dwellTarget = null;
 let hideTimer = null;
 
 let sweepObserver = null;
@@ -61,56 +65,68 @@ export { hideIcon as hideBlockIcon } from './icon.js';
 
 function onPointerMove(event) {
   if (!enabled) return;
-  // The cheap early-out that makes this affordable: consecutive events over one
-  // element share a target, so a resting pointer costs one comparison.
+  lastPointer = { x: event.clientX, y: event.clientY };
+  // mouseover fires only on entering a new element, so a resting pointer
+  // produces no further events at all; this guards the rare duplicate event
+  // for the target already current.
   if (event.target === lastTarget) return;
   lastTarget = event.target;
-  pendingTarget = event.target;
-  pendingX = event.clientX;
-  pendingY = event.clientY;
 
-  if (rafHandle) return;
-  rafHandle = requestAnimationFrame(() => {
-    rafHandle = 0;
-    const target = pendingTarget;
-    const x = pendingX;
-    const y = pendingY;
-    pendingTarget = null;
-    handleTarget(target, x, y);
-  });
-}
+  const target = event.target;
 
-function handleTarget(target, x, y) {
-  // The pointer landing on our own icon must not start the hide timer. The
-  // icon never resolves to a block, so without this the grace period covers
-  // the whole gesture instead of just the travel, and any click slower than
-  // HIDE_GRACE_MS lands on an icon that has already forgotten its block.
+  // The pointer reached our own icon. Change nothing.
   if (isIconElement(target)) {
     clearHide();
+    clearDwell();
     return;
   }
+
+  // Still inside the block the icon is already armed for. Moving around within
+  // a paragraph must not restart the dwell, or the icon would never settle.
+  const armed = currentIconBlock()?.anchor;
+  if (armed?.isConnected && armed.contains(target)) {
+    clearHide();
+    clearDwell();
+    return;
+  }
+
+  // New territory. Nothing is resolved until the pointer actually rests here:
+  // crossing a paragraph on the way somewhere else is not a request to
+  // translate it, and resolving on every crossing is what made this both noisy
+  // and expensive.
+  clearDwell();
+  dwellTarget = target;
+  dwellTimer = setTimeout(onDwellElapsed, DWELL_MS);
+
+  if (!nearCurrentBlock(lastPointer.x, lastPointer.y)) scheduleHide();
+}
+
+function onDwellElapsed() {
+  dwellTimer = null;
+  const target = dwellTarget;
+  dwellTarget = null;
+  if (!target || !target.isConnected) return;
 
   const block = resolveCached(target);
-
-  if (!block) {
-    if (nearCurrentBlock(x, y)) {
-      clearHide();
-      return;
-    }
-    scheduleHide();
-    return;
-  }
-
-  // A translated block already shows its Persian; offering the icon again
-  // would present an affordance that does nothing.
-  if (hasRendered(block.id)) {
+  if (!block || hasRendered(block.id) || !isWorthOffering(block)) {
     scheduleHide();
     return;
   }
 
   clearHide();
-  if (currentIconBlock()?.id === block.id) return;
   showIconFor(block, translateBlock);
+}
+
+/**
+ * Whether this block is worth offering to translate at all.
+ *
+ * Text already in the reader's language is noise: on a Persian page it would
+ * put an icon beside every paragraph for a reader who needs none of them.
+ */
+function isWorthOffering(block) {
+  if (!readsPersian()) return true;
+  const text = block.parts.map((el) => el.textContent || '').join(' ');
+  return detectLanguage(text) !== 'fa';
 }
 
 /**
@@ -157,15 +173,19 @@ function clearHide() {
   hideTimer = null;
 }
 
+function clearDwell() {
+  if (dwellTimer) {
+    clearTimeout(dwellTimer);
+    dwellTimer = null;
+  }
+  dwellTarget = null;
+}
+
 // A hover resolved just before a teardown or navigation still fires one frame
 // later otherwise, reaching showIconFor and rebuilding the icon host right
 // after destroyIcon removed it.
 function cancelPendingHover() {
-  if (rafHandle) {
-    cancelAnimationFrame(rafHandle);
-    rafHandle = 0;
-  }
-  pendingTarget = null;
+  clearDwell();
   clearHide();
 }
 

@@ -9,6 +9,7 @@ const { initBlockTranslate, teardownBlockTranslate, translateBlock, setEnabled }
   await import('../content/blocks/index.js');
 const { activeBlockIds, clearAllRendered, renderedTextFor } = await import('../content/blocks/render.js');
 const { currentIconBlock } = await import('../content/blocks/icon.js');
+const { setUiLang } = await import('../content/blocks/lang.js');
 
 const LONG = 'This sentence is comfortably past the twenty five character floor.';
 
@@ -228,7 +229,11 @@ describe('hover', () => {
 
     await translateBlock({ id: 'pp-b1', kind: 'leaf', anchor: p, parts: [p], truncated: false });
     p.dispatchEvent(new Event('mouseover', { bubbles: true }));
-    await new Promise((r) => requestAnimationFrame(() => r()));
+    // Past DWELL_MS. Under the old immediate resolution, one frame reached
+    // handleTarget; under dwell, resolution itself does not run until the
+    // timer elapses, so waiting only a frame would pass here even if the
+    // hasRendered gate below were deleted.
+    await new Promise((r) => setTimeout(r, 600));
 
     expect(currentIconBlock()).toBeNull();
   });
@@ -236,15 +241,17 @@ describe('hover', () => {
   it('keeps the icon armed while the pointer rests on it', async () => {
     initBlockTranslate({ onMissingApiKey: vi.fn() });
     document.body.innerHTML = `<main><p id="p">${LONG}</p></main>`;
+    const p = document.getElementById('p');
+    p.getBoundingClientRect = () => ({ top: 300, left: 200, right: 800, bottom: 360, width: 600, height: 60 });
 
-    document.getElementById('p').dispatchEvent(new Event('mouseover', { bubbles: true }));
-    await new Promise((r) => requestAnimationFrame(() => r()));
+    p.dispatchEvent(new Event('mouseover', { bubbles: true }));
+    // Past DWELL_MS, so the rest-to-reveal timer has actually fired.
+    await new Promise((r) => setTimeout(r, 600));
     expect(currentIconBlock()).not.toBeNull();
 
     // The pointer travels onto the icon, then the user takes their time.
     document.querySelector('[data-parsipad-icon]')
       .dispatchEvent(new Event('mouseover', { bubbles: true }));
-    await new Promise((r) => requestAnimationFrame(() => r()));
     await new Promise((r) => setTimeout(r, 200));
 
     // Still armed, so the click that follows actually does something.
@@ -258,14 +265,17 @@ describe('hover', () => {
     p.getBoundingClientRect = () => ({ top: 300, left: 200, right: 800, bottom: 360, width: 600, height: 60 });
 
     p.dispatchEvent(new Event('mouseover', { bubbles: true }));
-    await new Promise((r) => requestAnimationFrame(() => r()));
+    // Past DWELL_MS, so the icon is actually armed for p before the stray
+    // move below is dispatched.
+    await new Promise((r) => setTimeout(r, 600));
     expect(currentIconBlock()).not.toBeNull();
 
     // The pointer drifts just outside the block, into space that resolves to
-    // nothing, and stops there.
+    // nothing, and stops there. nearCurrentBlock keeps this from scheduling a
+    // hide; the dwell timer this also arms, for the stray point itself,
+    // resolves to nothing HIDE_GRACE_MS could act on within this wait.
     const stray = new MouseEvent('mouseover', { bubbles: true, clientX: 810, clientY: 305 });
     document.querySelector('main').dispatchEvent(stray);
-    await new Promise((r) => requestAnimationFrame(() => r()));
     await new Promise((r) => setTimeout(r, 400));
 
     expect(currentIconBlock()).not.toBeNull();
@@ -278,28 +288,130 @@ describe('hover', () => {
     p.getBoundingClientRect = () => ({ top: 300, left: 200, right: 800, bottom: 360, width: 600, height: 60 });
 
     p.dispatchEvent(new Event('mouseover', { bubbles: true }));
-    await new Promise((r) => requestAnimationFrame(() => r()));
+    await new Promise((r) => setTimeout(r, 600));
+    // Confirms the icon was actually armed, so the eviction checked below
+    // observes a real hide rather than an icon that was never shown. Under
+    // dwell, waiting only one frame before the far move (as this test used to)
+    // cancels the still-pending dwell timer outright, leaving the assertion
+    // below true whether or not eviction itself still works.
+    expect(currentIconBlock()).not.toBeNull();
 
     const far = new MouseEvent('mouseover', { bubbles: true, clientX: 20, clientY: 20 });
     document.querySelector('main').dispatchEvent(far);
-    await new Promise((r) => requestAnimationFrame(() => r()));
+    // Past HIDE_GRACE_MS. far is outside nearCurrentBlock's tolerance, so
+    // scheduleHide() runs synchronously off this event rather than waiting on
+    // a dwell timer.
     await new Promise((r) => setTimeout(r, 400));
 
     expect(currentIconBlock()).toBeNull();
   });
+
+  it('shows nothing while the pointer is merely passing over blocks', async () => {
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+    document.body.innerHTML = '<main>' +
+      Array.from({ length: 3 }, (_, i) => `<p id="p${i}">${LONG} ${i}</p>`).join('') + '</main>';
+
+    // Sweep across all three without resting on any.
+    for (let i = 0; i < 3; i += 1) {
+      document.getElementById(`p${i}`).dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 60));
+    }
+
+    expect(currentIconBlock()).toBeNull();
+  });
+
+  it('shows the icon once the pointer rests on a block', async () => {
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+    document.body.innerHTML = `<main><p id="p">${LONG}</p></main>`;
+    // happy-dom never lays elements out, so an unstubbed rect is {0,0,0,0} at
+    // every edge, which Fix 1's visible-rect check in repositionIcon reads as
+    // "nothing on screen" and correctly declines to show for. A real mouseover
+    // can never fire for a genuinely zero-area element, so this stub is only
+    // replacing what a real layout engine would already provide.
+    document.getElementById('p').getBoundingClientRect = () =>
+      ({ top: 300, left: 200, right: 800, bottom: 360, width: 600, height: 60 });
+
+    document.getElementById('p').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 600));
+
+    expect(currentIconBlock()).not.toBeNull();
+  });
+
+  it('does not restart the dwell while moving within the same block', async () => {
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+    document.body.innerHTML = `<main><p id="p">${LONG} <em id="e">emphasis</em> tail</p></main>`;
+    document.getElementById('p').getBoundingClientRect = () =>
+      ({ top: 300, left: 200, right: 800, bottom: 360, width: 600, height: 60 });
+
+    document.getElementById('p').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 600));
+    expect(currentIconBlock()).not.toBeNull();
+
+    // Moving onto a child of the same block must not disturb the armed icon.
+    document.getElementById('e').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 100));
+    expect(currentIconBlock()).not.toBeNull();
+  });
+});
+
+// Placed after 'hover' rather than before it, for the same counter reason
+// documented at the top of that block: these tests dispatch mouseover on
+// their own fresh elements and so also consume resolve.js's module-scoped id
+// counter, which would desync 'does not offer the icon on a block that is
+// already translated' if run ahead of it.
+describe('language gate', () => {
+  const FA_TEXT = 'این یک جمله فارسی است که برای آزمایش نوشته شده است.';
+
+  it('does not offer the icon on a Persian block when the reader reads Persian', async () => {
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+    // The async storage read (mocked in beforeEach with no ui_language key)
+    // sets uiLang back to 'en' with no freshest-wins guard, unlike `enabled`
+    // in the same read - a known, separately tracked gap. setUiLang('fa')
+    // below has to run after that promise has settled, or it is silently
+    // reverted the moment it resolves.
+    await new Promise((r) => setTimeout(r, 0));
+    setUiLang('fa');
+
+    document.body.innerHTML = `<main><p id="p">${FA_TEXT}</p></main>`;
+    const p = document.getElementById('p');
+    p.getBoundingClientRect = () => ({ top: 300, left: 200, right: 800, bottom: 360, width: 600, height: 60 });
+
+    p.dispatchEvent(new Event('mouseover', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 600));
+
+    expect(currentIconBlock()).toBeNull();
+  });
+
+  it('still offers the icon on that same Persian block when the interface stays English', async () => {
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+    document.body.innerHTML = `<main><p id="p">${FA_TEXT}</p></main>`;
+    const p = document.getElementById('p');
+    p.getBoundingClientRect = () => ({ top: 300, left: 200, right: 800, bottom: 360, width: 600, height: 60 });
+
+    p.dispatchEvent(new Event('mouseover', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 600));
+
+    // Proves the gate is one-directional: an English interface must not
+    // suppress the icon on Persian text, which is exactly the audience the
+    // feature exists for.
+    expect(currentIconBlock()).not.toBeNull();
+  });
 });
 
 describe('lifecycle', () => {
-  it('cancels a pending hover frame on teardown', () => {
+  it('cancels a pending dwell timer on teardown', async () => {
     initBlockTranslate({ onMissingApiKey: vi.fn() });
     document.body.innerHTML = `<main><p id="p">${LONG}</p></main>`;
     document.getElementById('p').dispatchEvent(new Event('mouseover', { bubbles: true }));
 
     teardownBlockTranslate();
 
-    return new Promise((resolve) => requestAnimationFrame(() => {
-      expect(document.querySelectorAll('[data-parsipad-icon]').length).toBe(0);
-      resolve();
-    }));
+    // Past DWELL_MS. A dwell timer that survived teardown would fire in this
+    // window and rebuild the icon host destroyIcon() already removed. Waiting
+    // only one frame, as this test did before dwell existed, would pass
+    // regardless of whether cancelPendingHover still clears the timer, since a
+    // 450ms timeout cannot have fired within one frame either way.
+    await new Promise((r) => setTimeout(r, 600));
+    expect(document.querySelectorAll('[data-parsipad-icon]').length).toBe(0);
   });
 });

@@ -87,10 +87,10 @@ export function isIconElement(node) {
 export function showIconFor(block, onActivate) {
   // Refuse outright rather than showing and then being hidden from inside
   // repositionIcon, whose hideIcon() this function's trailing data-visible
-  // write would clobber. The anchor can be gone by now: handleTarget runs a
-  // frame after the pointer event that captured its target, and resolveBlock
-  // does not check isConnected, so a row pruned inside that frame still
-  // resolves.
+  // write would clobber. The anchor can be gone by now: resolution happens in
+  // index.js's dwell timer, DWELL_MS after the pointer event that captured the
+  // target, and resolveBlock does not check isConnected, so a row pruned in
+  // that window still resolves.
   if (!block?.anchor?.isConnected) {
     hideIcon();
     return;
@@ -104,7 +104,11 @@ export function showIconFor(block, onActivate) {
   currentBlock = block;
   activateHandler = onActivate;
   repositionIcon();
-  host.setAttribute('data-visible', 'true');
+  // repositionIcon can itself decide to hide, now that it gives up when none
+  // of the anchor is on screen (see its own comment): the page can have
+  // scrolled the block away during the dwell wait. Only the trailing write
+  // below would clobber that decision, so it must not run unconditionally.
+  if (currentBlock) host.setAttribute('data-visible', 'true');
 }
 
 /** Recompute the icon's position against its current block. */
@@ -118,11 +122,31 @@ export function repositionIcon() {
     return;
   }
 
-  const rect = currentBlock.anchor.getBoundingClientRect();
+  const r = currentBlock.anchor.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // Anchor to the visible part of the block. Passing the raw rect for a block
+  // scrolled half out of view lets computeIconPosition's clamp pin the icon to
+  // a viewport edge, stranding it in a screen corner far from the block it
+  // belongs to, where the pointer cannot reach it before the hover tolerance
+  // expires.
+  const visible = {
+    top: Math.max(r.top, 0),
+    left: Math.max(r.left, 0),
+    right: Math.min(r.right, vw),
+    bottom: Math.min(r.bottom, vh)
+  };
+
+  if (visible.bottom <= visible.top || visible.right <= visible.left) {
+    hideIcon();
+    return;
+  }
+
   const { top, left } = computeIconPosition({
-    block: { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom },
+    block: visible,
     icon: { width: ICON_SIZE, height: ICON_SIZE },
-    viewport: { width: window.innerWidth, height: window.innerHeight },
+    viewport: { width: vw, height: vh },
     dir: getComputedStyle(currentBlock.anchor).direction === 'rtl' ? 'rtl' : 'ltr'
   });
 
