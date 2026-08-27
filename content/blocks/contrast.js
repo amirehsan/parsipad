@@ -54,12 +54,83 @@ export function readableTextColor(sourceColor, background) {
     : fallback;
 }
 
+/** Composite an overlay of the given alpha over an opaque background. */
+export function overlay(background, target, alpha) {
+  return {
+    r: background.r + (target.r - background.r) * alpha,
+    g: background.g + (target.g - background.g) * alpha,
+    b: background.b + (target.b - background.b) * alpha
+  };
+}
+
 /**
- * Colours for the feature's own controls, as alpha overlays so they hold up on
- * any background rather than only on the one the palette was designed against.
+ * The lowest alpha, in steps of 0.04 from 0.28, at which the better-contrasting
+ * of pure white or pure black over `background` clears `minRatio`.
+ *
+ * Solved rather than guessed: contrast is not linear in alpha, so one fixed
+ * value cannot serve both a near-black page and a mid-grey one.
+ *
+ * The target is picked by comparing both directly rather than by
+ * isDarkBackground's threshold. That threshold exists to choose an overall
+ * theme bucket (see data-theme in render.js), not to guarantee the
+ * highest-contrast single colour, and the two disagree for a background with
+ * luminance roughly between 0.18 and 0.4: there, isDarkBackground calls it
+ * dark and would reach for white, but white cannot clear 3:1 against a
+ * background that light no matter how opaque it goes, while black clears it
+ * with room to spare. Comparing both directly has no such gap: the two curves
+ * cross at luminance ~0.179, and even there the winner still reaches ~4.58:1,
+ * which is the global worst case across every possible background.
+ *
+ * Roughly seventeen steps of cheap arithmetic, run once per insertion, which
+ * is irrelevant next to the getComputedStyle calls already happening there.
+ */
+function solveBoundaryAlpha(background, minRatio) {
+  const white = { r: 255, g: 255, b: 255 };
+  const black = { r: 0, g: 0, b: 0 };
+  const target = contrastRatio(white, background) >= contrastRatio(black, background) ? white : black;
+  for (let alpha = 0.28; alpha <= 0.96; alpha += 0.04) {
+    if (contrastRatio(overlay(background, target, alpha), background) >= minRatio) {
+      return `rgba(${target.r}, ${target.g}, ${target.b}, ${alpha.toFixed(2)})`;
+    }
+  }
+  // The loop above stops at 0.96. Solid black or white, whichever contrasts
+  // better, is guaranteed at least ~4.58:1 against any background at all (the
+  // crossover point described above is the global worst case for either
+  // colour alone), so this always clears both bars this function is used
+  // for. Reached only for backgrounds in a sliver right at that crossover,
+  // where 0.96 falls just short of what 1.0 gives.
+  return `rgba(${target.r}, ${target.g}, ${target.b}, 1)`;
+}
+
+/**
+ * A boundary colour that clears WCAG's 3:1 bar for non-text UI (a border,
+ * an icon outline) against this particular background.
+ */
+export function boundaryColor(background) {
+  return solveBoundaryAlpha(background, 3);
+}
+
+/**
+ * A boundary colour that clears WCAG AA's 4.5:1 bar for text against this
+ * particular background. Same search as boundaryColor, aimed at the stricter
+ * bar text is held to rather than the one for a graphical boundary.
+ */
+export function boundaryTextColor(background) {
+  return solveBoundaryAlpha(background, 4.5);
+}
+
+/**
+ * Colours for the feature's own controls. Text and border are solved against
+ * the measured background so they hold up on any shade rather than only the
+ * one the palette was designed against; the hover wash is left as a fixed
+ * subtle overlay gated on isDarkBackground's theme bucket, since a hover
+ * state has no contrast bar to clear and a light-on-dark or dark-on-light
+ * wash reads fine either way.
  */
 export function chromeColors(background) {
-  return isDarkBackground(background)
-    ? { text: 'rgba(255, 255, 255, 0.74)', border: 'rgba(255, 255, 255, 0.30)', hover: 'rgba(255, 255, 255, 0.10)' }
-    : { text: 'rgba(0, 0, 0, 0.66)', border: 'rgba(0, 0, 0, 0.24)', hover: 'rgba(0, 0, 0, 0.06)' };
+  return {
+    text: boundaryTextColor(background),
+    border: boundaryColor(background),
+    hover: isDarkBackground(background) ? 'rgba(255, 255, 255, 0.10)' : 'rgba(0, 0, 0, 0.06)'
+  };
 }
