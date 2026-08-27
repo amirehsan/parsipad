@@ -89,15 +89,20 @@ export function isHardReject(el) {
  */
 export function ownsItsText(el) {
   for (const child of el.children) {
-    const facts = describeElement(child);
-    if (facts.textLength < GATE.OWNERSHIP_MIN_CHARS) continue;
-    if (!passesTextGate(facts)) continue;
     // Only a child that could itself be a block may claim the text. An inline
     // <span> wrapping a whole paragraph is never a candidate, so letting it
     // disqualify the parent strands the text: the div is rejected for not
     // owning it and the span is rejected for being inline, and nothing at all
     // resolves.
-    if (BLOCK_TAGS.has(child.tagName) || child.tagName === 'DIV') return false;
+    //
+    // Tag first: it is a set lookup, and a child that could never be a block
+    // cannot claim the text regardless of what it contains. Checking it before
+    // describeElement avoids reading the subtree twice for every inline child
+    // that was going to be skipped anyway.
+    if (!BLOCK_TAGS.has(child.tagName) && child.tagName !== 'DIV') continue;
+    const facts = describeElement(child);
+    if (facts.textLength < GATE.OWNERSHIP_MIN_CHARS) continue;
+    if (passesTextGate(facts)) return false;
   }
   return true;
 }

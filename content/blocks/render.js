@@ -20,6 +20,9 @@ import { label } from './lang.js';
  * @property {Element} source
  * @property {HTMLElement} host
  * @property {ShadowRoot} shadow
+ * @property {number} sourceLength - source.textContent, trimmed, at mount
+ *   time. Lets the reattach sweep tell a genuinely detached source from one a
+ *   virtualized list has repurposed for different data.
  */
 
 /** @type {Map<string, {block: object, parts: PartRecord[]}>} */
@@ -59,7 +62,7 @@ function mountHost(source, blockId) {
   shadow.appendChild(wrapper);
 
   source.insertAdjacentElement('afterend', host);
-  return { source, host, shadow };
+  return { source, host, shadow, sourceLength: (source.textContent || '').trim().length };
 }
 
 function wrapperOf(record) {
@@ -127,7 +130,10 @@ export function setPartText(blockId, index, text) {
 
 /**
  * The translated text currently rendered for one part, or null when that slot
- * holds no record or nothing has been written to it yet.
+ * holds no record. A slot that has a record but has not been written to yet
+ * (immediately after renderSkeleton, before any setPartText call) reads back
+ * as the empty string, not null, because showSkeleton already builds a
+ * .pp-block-body. Only the absence of a record itself is null.
  *
  * This exists because the shadow root is closed, so nothing outside this module
  * can observe what was rendered or which paragraph it landed under. Without it
@@ -262,13 +268,17 @@ export function sweepDetached() {
         live += 1;
         return;
       }
-      if (record.source.isConnected) {
+      if (record.source.isConnected &&
+          (record.source.textContent || '').trim().length === record.sourceLength) {
         record.source.insertAdjacentElement('afterend', record.host);
         live += 1;
         return;
       }
-      // Both gone. Clear the slot so the dead record is not retained, but keep
-      // the hole so the surviving indices stay aligned.
+      // Either the source is gone, or it is still present but now holds
+      // different text, which is what a virtualized list does when it
+      // repurposes a node for different data. Reattaching there would put
+      // this translation under content it does not belong to, so clear the
+      // slot. The hole is kept so the surviving indices stay aligned.
       entry.parts[index] = null;
     });
     if (live === 0) rendered.delete(blockId);

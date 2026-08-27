@@ -12,12 +12,12 @@ import { requestTranslation } from '../../lib/translation/client.js';
 import { isMissingApiKeyResponse } from '../utils/text.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from '../utils/batch.js';
 import { resolveBlock } from './resolve.js';
-import { showIconFor, hideIcon, repositionIcon, destroyIcon, currentIconBlock } from './icon.js';
+import { showIconFor, hideIcon, repositionIcon, destroyIcon, currentIconBlock, isIconElement } from './icon.js';
 import {
   renderSkeleton, setPartText, setPartError, addFooter, clearPartsFrom,
   dismissBlock, hasRendered, activeBlockIds, sweepDetached, clearAllRendered
 } from './render.js';
-import { setUiLang } from './lang.js';
+import { label, setUiLang } from './lang.js';
 
 const HIDE_GRACE_MS = 120;
 const SWEEP_DEBOUNCE_MS = 300;
@@ -71,9 +71,25 @@ function onPointerMove(event) {
 }
 
 function handleTarget(target) {
-  const block = resolveBlock(target);
+  // The pointer landing on our own icon must not start the hide timer. The
+  // icon never resolves to a block, so without this the grace period covers
+  // the whole gesture instead of just the travel, and any click slower than
+  // HIDE_GRACE_MS lands on an icon that has already forgotten its block.
+  if (isIconElement(target)) {
+    clearHide();
+    return;
+  }
+
+  const block = resolveCached(target);
 
   if (!block) {
+    scheduleHide();
+    return;
+  }
+
+  // A translated block already shows its Persian; offering the icon again
+  // would present an affordance that does nothing.
+  if (hasRendered(block.id)) {
     scheduleHide();
     return;
   }
@@ -81,6 +97,20 @@ function handleTarget(target) {
   clearHide();
   if (currentIconBlock()?.id === block.id) return;
   showIconFor(block, translateBlock);
+}
+
+// Only failed resolutions are cached. That is where the cost is: a hover that
+// resolves reads a few hundred characters, while one that does not can walk 25
+// ancestors calling describeElement on each of their children. Caching a
+// successful Block would risk handing back a stale parts list after a
+// re-render, which is a correctness risk the saving does not justify.
+let missCache = new WeakMap();
+
+function resolveCached(target) {
+  if (missCache.has(target)) return null;
+  const block = resolveBlock(target);
+  if (!block) missCache.set(target, true);
+  return block;
 }
 
 function scheduleHide() {
@@ -157,9 +187,20 @@ function textOf(el) {
 }
 
 async function translateLeaf(block, controller) {
+  // onDelta receives an incremental delta, not the running text, so it must be
+  // accumulated here. Passing the raw chunk to setPartText, which clears the
+  // wrapper before writing, replaces the visible text each time instead of
+  // growing it.
+  let streamed = '';
   const response = await requestTranslation(
     { text: textOf(block.parts[0]) },
-    { signal: controller.signal, onDelta: (chunk) => setPartText(block.id, 0, chunk) }
+    {
+      signal: controller.signal,
+      onDelta: (delta) => {
+        streamed += delta;
+        setPartText(block.id, 0, streamed);
+      }
+    }
   );
   return { response, apply: () => setPartText(block.id, 0, response.translation), failedAt: 0 };
 }
@@ -195,16 +236,26 @@ async function translateSection(block, controller) {
  */
 export async function translateBlock(block) {
   if (!enabled || !block || hasRendered(block.id) || inFlight.has(block.id)) return;
-  if (activeCount >= MAX_CONCURRENT) return;
+
+  // Insert the placeholder before the request goes out, and before the
+  // concurrency check, so the click always produces visible feedback even
+  // when it is the one that gets capped.
+  renderSkeleton(block);
+  ensureSweepObserver();
+
+  if (activeCount >= MAX_CONCURRENT) {
+    // Spec section 8: a click always produces visible feedback. Silently
+    // dropping it looks like the icon is broken.
+    setPartError(block.id, 0, label('errorRateLimited'), () => {
+      dismissBlock(block.id);
+      translateBlock(block);
+    });
+    return;
+  }
 
   const controller = new AbortController();
   inFlight.set(block.id, controller);
   activeCount += 1;
-
-  // Insert the placeholder before the request goes out, so the click always
-  // produces visible feedback and shows where the answer will land.
-  renderSkeleton(block);
-  ensureSweepObserver();
 
   let failedAt = 0;
   try {
@@ -272,6 +323,11 @@ export function translateFocusedBlock() {
   if (block) translateBlock(block);
 }
 
+/** Whether block translate is currently active. */
+export function isBlockTranslateEnabled() {
+  return enabled;
+}
+
 /** @param {boolean} value */
 export function setEnabled(value) {
   settingLoaded = true;
@@ -295,6 +351,9 @@ export function resetForNavigation() {
   stopSweepObserverIfIdle();
   hideIcon();
   lastTarget = null;
+  // A miss cached against a pre-navigation element must not suppress a
+  // resolution on whatever the SPA has put in its place.
+  missCache = new WeakMap();
 }
 
 /**
@@ -306,7 +365,10 @@ export function initBlockTranslate(dependencies = {}) {
   started = true;
 
   document.addEventListener('mouseover', onPointerMove, { passive: true });
-  window.addEventListener('scroll', onViewportChange, { passive: true });
+  // scroll does not bubble, so a window-level listener only ever sees the
+  // document scrolling. Capture-phase on document sees every element's scroll
+  // too, since the capture phase reaches every ancestor regardless of bubbling.
+  document.addEventListener('scroll', onViewportChange, { capture: true, passive: true });
   window.addEventListener('resize', onViewportChange, { passive: true });
   window.addEventListener('parsipad:locationchange', resetForNavigation);
   window.addEventListener('popstate', resetForNavigation);
@@ -333,7 +395,7 @@ export function initBlockTranslate(dependencies = {}) {
 /** Remove every listener and surface. Used by tests. */
 export function teardownBlockTranslate() {
   document.removeEventListener('mouseover', onPointerMove);
-  window.removeEventListener('scroll', onViewportChange);
+  document.removeEventListener('scroll', onViewportChange, { capture: true });
   window.removeEventListener('resize', onViewportChange);
   window.removeEventListener('parsipad:locationchange', resetForNavigation);
   window.removeEventListener('popstate', resetForNavigation);

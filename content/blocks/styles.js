@@ -18,7 +18,7 @@ export function getBlockIconStyles() {
       pointer-events: none;
     }
     .pp-block-icon {
-      pointer-events: auto;
+      pointer-events: none;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -36,6 +36,7 @@ export function getBlockIconStyles() {
       transition: opacity 120ms ease, transform 120ms ease, background 120ms ease;
     }
     :host([data-visible='true']) .pp-block-icon {
+      pointer-events: auto;
       opacity: 1;
       transform: scale(1);
     }
@@ -96,7 +97,6 @@ export function getBlockTranslationStyles() {
       font-family: 'Inter', system-ui, sans-serif;
       font-size: 11px;
       color: var(--pp-text-muted);
-      direction: ltr;
     }
     .pp-block-footer button {
       padding: 2px 8px;
@@ -112,7 +112,6 @@ export function getBlockTranslationStyles() {
       color: var(--pp-error);
       font-family: 'Inter', system-ui, sans-serif;
       font-size: 13px;
-      direction: ltr;
     }
     @keyframes parsipad-shimmer {
       0% { background-position: 200% 0; }
