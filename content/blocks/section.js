@@ -3,8 +3,8 @@
  *
  * A section is not a special kind of block; it is a list of the same leaf
  * elements a paragraph hover would produce. Rendering inserts one translation
- * after each, so a translated section comes out interleaved — every source
- * paragraph followed by its Persian — rather than as a wall of text at the end.
+ * after each, so a translated section comes out interleaved, every source
+ * paragraph followed by its Persian, rather than as a wall of text at the end.
  */
 
 import { passesTextGate } from './gate.js';
@@ -44,14 +44,32 @@ function isContentful(el) {
 }
 
 /**
- * The element the sibling walk starts from: the heading, or the wrapper that
- * holds nothing but the heading.
+ * True for a non-heading child a heading wrapper may legitimately carry:
+ * nothing at all, or text that is entirely a link.
  *
- * Wikipedia emits <div class="mw-heading"><h2>…</h2><span><a>edit</a></span></div>,
+ * Wikipedia's mw-heading div holds the heading plus a section edit link, and
+ * promoting to that wrapper is the whole point of the rule. A child holding
+ * ordinary prose is a different thing: promoting past it starts the sibling
+ * walk outside the wrapper, where it collects content from another section.
+ *
+ * Link share is the test rather than the full gate, because the gate also
+ * rejects anything short, so two brief spans of real text would read as
+ * trivia and let the walk escape its container.
+ */
+function isHeadingWrapperTrivia(child) {
+  const facts = describeElement(child);
+  if (facts.textLength === 0) return true;
+  return facts.linkTextLength >= facts.textLength;
+}
+
+/**
+ * The element the sibling walk starts from: the heading, or the wrapper that
+ * holds nothing but the heading and, optionally, trivia such as a section
+ * edit link.
+ *
+ * Wikipedia emits <div class="mw-heading"><h2>...</h2><span><a>edit</a></span></div>,
  * so the heading has no siblings of its own and a naive walk finds nothing.
- * The rule is stated generically — a wrapper whose only other children fail the
- * gate — so it catches that markup without naming Wikipedia. An edit link fails
- * on link density.
+ * See isHeadingWrapperTrivia for what counts as trivia and why.
  *
  * @param {Element} heading
  * @returns {Element}
@@ -61,18 +79,21 @@ export function rowElementFor(heading) {
   if (!parent || parent === document.body) return heading;
   if (parent.tagName === 'SECTION' || parent.tagName === 'ARTICLE') return heading;
 
-  const others = [...parent.children].filter(
-    (child) => child !== heading && (child.textContent || '').trim()
-  );
-  if (others.every((child) => !isContentful(child))) return parent;
+  const others = [...parent.children].filter((child) => child !== heading);
+  if (others.every(isHeadingWrapperTrivia)) return parent;
   return heading;
 }
 
 function containsHeadingOfRank(el, maxRank) {
   if (isHeading(el) && headingRank(el) <= maxRank) return true;
-  if (typeof el.querySelector !== 'function') return false;
-  const inner = el.querySelector(HEADING_SELECTOR);
-  return Boolean(inner && headingRank(inner) <= maxRank);
+  if (typeof el.querySelectorAll !== 'function') return false;
+  // Every descendant heading, not just the first. querySelector returns the
+  // first match in document order across the whole selector list, so a deep
+  // h6 sitting before an h2 would hide the boundary that actually matters.
+  for (const inner of el.querySelectorAll(HEADING_SELECTOR)) {
+    if (headingRank(inner) <= maxRank) return true;
+  }
+  return false;
 }
 
 /**

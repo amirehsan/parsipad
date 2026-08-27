@@ -3,7 +3,7 @@
  *
  * Nothing here touches the DOM. Callers extract facts with describe.js and
  * pass them in, which keeps every threshold decision unit-testable without a
- * document — the same split used by content/placement.js and
+ * document, the same split used by content/placement.js and
  * lib/translation/mode.js.
  *
  * The gate is deliberately permissive. A false positive is an icon the user
