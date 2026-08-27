@@ -91,6 +91,7 @@
         "content/main.js",
         "content/context.js",
         "content/placement.js",
+        "content/host-page.js",
         "content/utils/*.js",
         "content/styles/*.js",
         "shared/card/*.js",
