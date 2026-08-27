@@ -98,6 +98,35 @@ describe('renderSkeleton', () => {
   });
 });
 
+describe('adaptive colour', () => {
+  // happy-dom does honour inline background-color and color through
+  // getComputedStyle (confirmed directly against the happy-dom package before
+  // writing this), so backgroundBehind's ancestor walk is exercised for real
+  // here rather than through a separate seam.
+  it('reads dark theme and a legible source colour from a dark card, leaving the source untouched', () => {
+    document.body.innerHTML =
+      '<div id="card" style="background-color: rgb(58, 58, 58)">' +
+      `<p id="p" style="color: rgb(230, 230, 230)">${LONG}</p></div>`;
+    const before = document.getElementById('p').outerHTML;
+
+    renderSkeleton(blockOf(['p']));
+    const host = document.querySelector('[data-parsipad-translation]');
+
+    expect(host.getAttribute('data-theme')).toBe('dark');
+    // Light text on this background clears the AA contrast bar, so the source's
+    // own colour is what should come through rather than the generic fallback.
+    expect(host.style.getPropertyValue('--pp-source-color')).toBe('rgb(230, 230, 230)');
+    expect(document.getElementById('p').outerHTML).toBe(before);
+  });
+
+  it('reads light theme from a light card', () => {
+    document.body.innerHTML = `<div id="card" style="background-color: rgb(245, 245, 245)"><p id="p">${LONG}</p></div>`;
+    renderSkeleton(blockOf(['p']));
+    const host = document.querySelector('[data-parsipad-translation]');
+    expect(host.getAttribute('data-theme')).toBe('light');
+  });
+});
+
 describe('lifecycle', () => {
   it('tracks and reports active blocks', () => {
     document.body.innerHTML = `<p id="p">${LONG}</p>`;
