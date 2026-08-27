@@ -14,7 +14,7 @@ import { batchTextNodesForTranslation, parseNumberedTranslations } from '../util
 import { resolveBlock } from './resolve.js';
 import { showIconFor, hideIcon, repositionIcon, destroyIcon, currentIconBlock } from './icon.js';
 import {
-  renderSkeleton, setPartText, setPartError, addFooter,
+  renderSkeleton, setPartText, setPartError, addFooter, clearPartsFrom,
   dismissBlock, hasRendered, activeBlockIds, sweepDetached, clearAllRendered
 } from './render.js';
 
@@ -29,6 +29,9 @@ let started = false;
 // read resolves would otherwise be clobbered by the stale stored value. Whoever
 // sets the flag first wins.
 let settingLoaded = false;
+// Held so teardown can remove exactly the listener init added, rather than
+// leaking one more live listener on every init/teardown cycle.
+let storageListener = null;
 
 let lastTarget = null;
 let pendingTarget = null;
@@ -95,6 +98,18 @@ function clearHide() {
   hideTimer = null;
 }
 
+// A hover resolved just before a teardown or navigation still fires one frame
+// later otherwise, reaching showIconFor and rebuilding the icon host right
+// after destroyIcon removed it.
+function cancelPendingHover() {
+  if (rafHandle) {
+    cancelAnimationFrame(rafHandle);
+    rafHandle = 0;
+  }
+  pendingTarget = null;
+  clearHide();
+}
+
 let repositionQueued = false;
 function onViewportChange() {
   if (!currentIconBlock() || repositionQueued) return;
@@ -145,7 +160,7 @@ async function translateLeaf(block, controller) {
     { text: textOf(block.parts[0]) },
     { signal: controller.signal, onDelta: (chunk) => setPartText(block.id, 0, chunk) }
   );
-  return { response, apply: () => setPartText(block.id, 0, response.translation) };
+  return { response, apply: () => setPartText(block.id, 0, response.translation), failedAt: 0 };
 }
 
 async function translateSection(block, controller) {
@@ -161,7 +176,7 @@ async function translateSection(block, controller) {
       { text: numbered, mode: 'batch' },
       { signal: controller.signal }
     );
-    if (response.error) return { response, apply: () => {} };
+    if (response.error) return { response, apply: () => {}, failedAt: offset };
 
     const translations = parseNumberedTranslations(response.translation, batch.length);
     for (let i = 0; i < batch.length; i += 1) {
@@ -191,7 +206,7 @@ export async function translateBlock(block) {
   ensureSweepObserver();
 
   try {
-    const { response, apply } = block.kind === 'section'
+    const { response, apply, failedAt = 0 } = block.kind === 'section'
       ? await translateSection(block, controller)
       : await translateLeaf(block, controller);
 
@@ -205,10 +220,16 @@ export async function translateBlock(block) {
       return;
     }
     if (response.error) {
-      setPartError(block.id, 0, response.error, () => {
+      // The error belongs on the first part that actually failed. Putting it at
+      // index 0 would overwrite a translation an earlier batch had already
+      // delivered.
+      setPartError(block.id, failedAt, response.error, () => {
         dismissBlock(block.id);
         translateBlock(block);
       });
+      // Everything after the failure has a skeleton nothing will fill. Leaving
+      // them spinning reads as a hang rather than an error.
+      clearPartsFrom(block.id, failedAt + 1);
       return;
     }
 
@@ -261,6 +282,7 @@ export function setEnabled(value) {
 
 /** Drop everything a page transition invalidates. */
 export function resetForNavigation() {
+  cancelPendingHover();
   for (const controller of inFlight.values()) controller.abort();
   inFlight.clear();
   activeCount = 0;
@@ -290,10 +312,11 @@ export function initBlockTranslate(dependencies = {}) {
     enabled = stored.block_translate_enabled ?? true;
   }).catch(() => { settingLoaded = true; });
 
-  chrome.storage.onChanged.addListener((changes, namespace) => {
+  storageListener = (changes, namespace) => {
     if (namespace !== 'local' || !changes.block_translate_enabled) return;
     setEnabled(changes.block_translate_enabled.newValue ?? true);
-  });
+  };
+  chrome.storage.onChanged.addListener(storageListener);
 }
 
 /** Remove every listener and surface. Used by tests. */
@@ -303,6 +326,11 @@ export function teardownBlockTranslate() {
   window.removeEventListener('resize', onViewportChange);
   window.removeEventListener('parsipad:locationchange', resetForNavigation);
   window.removeEventListener('popstate', resetForNavigation);
+  if (storageListener) {
+    chrome.storage.onChanged.removeListener(storageListener);
+    storageListener = null;
+  }
+  cancelPendingHover();
   resetForNavigation();
   destroyIcon();
   started = false;

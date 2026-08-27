@@ -7,7 +7,7 @@ vi.mock('../lib/translation/client.js', () => ({ requestTranslation }));
 
 const { initBlockTranslate, teardownBlockTranslate, translateBlock, setEnabled } =
   await import('../content/blocks/index.js');
-const { activeBlockIds, clearAllRendered } = await import('../content/blocks/render.js');
+const { activeBlockIds, clearAllRendered, renderedTextFor } = await import('../content/blocks/render.js');
 
 const LONG = 'This sentence is comfortably past the twenty five character floor.';
 
@@ -25,7 +25,7 @@ beforeEach(() => {
     runtime: { getURL: (p) => `chrome-extension://test/${p}` },
     storage: {
       local: { get: vi.fn().mockResolvedValue({ block_translate_enabled: true }) },
-      onChanged: { addListener: vi.fn() }
+      onChanged: { addListener: vi.fn(), removeListener: vi.fn() }
     }
   };
 });
@@ -108,6 +108,30 @@ describe('translateBlock', () => {
     expect(requestTranslation.mock.calls[0][0].mode).toBe('batch');
     expect(document.querySelectorAll('[data-parsipad-translation]').length).toBe(3);
   });
+
+  it('puts a batch failure on the part that failed, not on part zero', async () => {
+    document.body.innerHTML = '<div id="w">' +
+      Array.from({ length: 25 }, (_, i) => `<p id="p${i}">${LONG} ${i}</p>`).join('') + '</div>';
+    const parts = Array.from({ length: 25 }, (_, i) => document.getElementById(`p${i}`));
+    let call = 0;
+    requestTranslation.mockImplementation(() => {
+      call += 1;
+      if (call === 1) {
+        return Promise.resolve({
+          translation: Array.from({ length: 20 }, (_, i) => `[${i + 1}] ترجمه ${i}`).join('\n')
+        });
+      }
+      return Promise.resolve({ error: 'Too many requests.', errorCode: 'RATE_LIMITED' });
+    });
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+
+    await translateBlock({ id: 'pp-s', kind: 'section', anchor: parts[0], parts, truncated: false });
+
+    // The first batch's work survives instead of being overwritten by the error.
+    expect(renderedTextFor('pp-s', 0)).toBe('ترجمه 0');
+    // Nothing after the failure is left spinning on a skeleton.
+    expect(renderedTextFor('pp-s', 24)).toBeNull();
+  });
 });
 
 describe('setEnabled', () => {
@@ -128,5 +152,20 @@ describe('setEnabled', () => {
     await translateBlock(blockOf(['p']));
 
     expect(requestTranslation).not.toHaveBeenCalled();
+  });
+});
+
+describe('lifecycle', () => {
+  it('cancels a pending hover frame on teardown', () => {
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+    document.body.innerHTML = `<main><p id="p">${LONG}</p></main>`;
+    document.getElementById('p').dispatchEvent(new Event('mouseover', { bubbles: true }));
+
+    teardownBlockTranslate();
+
+    return new Promise((resolve) => requestAnimationFrame(() => {
+      expect(document.querySelectorAll('[data-parsipad-icon]').length).toBe(0);
+      resolve();
+    }));
   });
 });

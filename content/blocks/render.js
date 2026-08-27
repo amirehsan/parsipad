@@ -274,6 +274,25 @@ export function sweepDetached() {
   }
 }
 
+/**
+ * Remove the hosts for every part from `index` onward, leaving holes so the
+ * surviving indices stay aligned.
+ *
+ * A failed batch leaves later parts holding a skeleton nothing will ever fill.
+ * Without this they spin indefinitely, which reads to a user as a hang rather
+ * than as the error it is.
+ */
+export function clearPartsFrom(blockId, index) {
+  const entry = rendered.get(blockId);
+  if (!entry) return;
+  for (let i = index; i < entry.parts.length; i += 1) {
+    const record = entry.parts[i];
+    if (!record) continue;
+    record.host.remove();
+    entry.parts[i] = null;
+  }
+}
+
 /** Drop everything. Used on SPA navigation and by tests. */
 export function clearAllRendered() {
   for (const blockId of [...rendered.keys()]) dismissBlock(blockId);
