@@ -952,10 +952,13 @@ describe('resolveSection', () => {
   });
 
   it('keeps a short list as one part instead of splitting it', () => {
+    // textContent concatenates list items without separators, so the <ul> reads
+    // as "alpha onebeta twogamma threedelta four" — 38 chars and 5 words, which
+    // clears the floors, while no single <li> does.
     mount(`
       <div>
         <h2 id="a">Title</h2>
-        <ul><li>alpha</li><li>beta</li><li>gamma</li><li>delta epsilon</li></ul>
+        <ul><li>alpha one</li><li>beta two</li><li>gamma three</li><li>delta four</li></ul>
       </div>`);
     const { parts } = resolveSection(document.getElementById('a'));
     expect(parts.length).toBe(2);
@@ -1080,7 +1083,10 @@ function containsHeadingOfRank(el, maxRank) {
  * @returns {Element[]}
  */
 export function collectParts(root, out = []) {
-  if (out.length >= SECTION_MAX_PARTS) return out;
+  // Overshoot the cap by one deliberately. capParts trims back to the cap and
+  // reports truncation by comparing the two lengths, so a collector that
+  // stopped at exactly the cap would make every capped section look complete.
+  if (out.length > SECTION_MAX_PARTS) return out;
 
   if (isHeading(root)) {
     out.push(root);
@@ -1097,7 +1103,7 @@ export function collectParts(root, out = []) {
   }
 
   for (const child of candidates) {
-    if (out.length >= SECTION_MAX_PARTS) break;
+    if (out.length > SECTION_MAX_PARTS) break;
     collectParts(child, out);
   }
   return out;
@@ -1145,7 +1151,7 @@ export function resolveSection(heading) {
 
   const parts = [heading];
   let sibling = row.nextElementSibling;
-  while (sibling && parts.length < SECTION_MAX_PARTS) {
+  while (sibling && parts.length <= SECTION_MAX_PARTS) {
     if (containsHeadingOfRank(sibling, rank)) break;
     collectParts(sibling, parts);
     sibling = sibling.nextElementSibling;
@@ -2601,6 +2607,10 @@ const MAX_CONCURRENT = 3;
 let deps = { onMissingApiKey: () => {} };
 let enabled = true;
 let started = false;
+// The stored setting is read asynchronously, so a toggle arriving before that
+// read resolves would otherwise be clobbered by the stale stored value. Whoever
+// sets the flag first wins.
+let settingLoaded = false;
 
 let lastTarget = null;
 let pendingTarget = null;
@@ -2820,6 +2830,7 @@ export function translateFocusedBlock() {
 
 /** @param {boolean} value */
 export function setEnabled(value) {
+  settingLoaded = true;
   enabled = Boolean(value);
   if (enabled) return;
   hideIcon();
@@ -2856,8 +2867,10 @@ export function initBlockTranslate(dependencies = {}) {
   window.addEventListener('popstate', resetForNavigation);
 
   chrome.storage.local.get('block_translate_enabled').then((stored) => {
+    if (settingLoaded) return;
+    settingLoaded = true;
     enabled = stored.block_translate_enabled ?? true;
-  }).catch(() => { enabled = true; });
+  }).catch(() => { settingLoaded = true; });
 
   chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace !== 'local' || !changes.block_translate_enabled) return;
@@ -2876,6 +2889,7 @@ export function teardownBlockTranslate() {
   destroyIcon();
   started = false;
   enabled = true;
+  settingLoaded = false;
 }
 ```
 
