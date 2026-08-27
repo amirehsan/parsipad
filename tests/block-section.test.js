@@ -119,7 +119,7 @@ describe('resolveSection', () => {
 
   it('keeps a short list as one part instead of splitting it', () => {
     // textContent concatenates list items without separators, so the <ul> reads
-    // as "alpha onebeta twogamma threedelta four" — 38 chars and 5 words, which
+    // as "alpha onebeta twogamma threedelta four", 38 chars and 5 words, which
     // clears the floors, while no single <li> does.
     mount(`
       <div>
@@ -142,5 +142,42 @@ describe('resolveSection', () => {
   it('reports no truncation for a section that fits', () => {
     mount(`<div><h2 id="a">Title</h2><p>${LONG}</p></div>`);
     expect(resolveSection(document.getElementById('a')).truncated).toBe(false);
+  });
+
+  it('stops at a same-rank heading buried after a deeper one', () => {
+    mount(`
+      <div>
+        <h2 id="a">First</h2>
+        <div id="mixed">
+          <h6>tiny aside heading here now</h6>
+          <p>${LONG} filler</p>
+          <h2 id="next">Actually next section</h2>
+          <p>${LONG} leaked</p>
+        </div>
+      </div>`);
+    const { parts } = resolveSection(document.getElementById('a'));
+    expect(parts.some((p) => p.id === 'next')).toBe(false);
+    expect(parts.some((p) => p.textContent.includes('leaked'))).toBe(false);
+  });
+
+  it('does not promote past a wrapper child holding real prose', () => {
+    mount(`
+      <div id="wrap">
+        <h2 id="a">Title</h2>
+        <span>short one</span><span>short two</span>
+      </div>
+      <p id="outside">${LONG}</p>`);
+    expect(rowElementFor(document.getElementById('a')).id).toBe('a');
+    const { parts } = resolveSection(document.getElementById('a'));
+    expect(parts.some((p) => p.id === 'outside')).toBe(false);
+  });
+
+  it('still promotes past a wrapper child that is entirely a link', () => {
+    mount(`
+      <div>
+        <div class="mw-heading" id="w"><h2 id="a">History</h2><span><a href="#">edit this section</a></span></div>
+        <p>${LONG}</p>
+      </div>`);
+    expect(rowElementFor(document.getElementById('a')).id).toBe('w');
   });
 });
