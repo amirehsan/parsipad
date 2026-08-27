@@ -1,7 +1,7 @@
 // tests/block-describe.test.js
 // @vitest-environment happy-dom
 import { describe, it, expect } from 'vitest';
-import { describeElement } from '../content/blocks/describe.js';
+import { describeElement, elementText } from '../content/blocks/describe.js';
 
 function el(html) {
   const host = document.createElement('div');
@@ -80,5 +80,23 @@ describe('describeElement', () => {
     wrapper.innerHTML = '<a href="/wrap"><span id="inner"><span role="link">real link</span></span></a>';
     const span = wrapper.querySelector('#inner');
     expect(describeElement(span).linkTextLength).toBe(9);
+  });
+
+  it('does not read an inline stylesheet as prose', () => {
+    const host = el('<div><style>.a{float:right;margin-left:0.5em;margin-top:0.2em}</style><p>Real prose that a reader would want translated.</p></div>');
+    const facts = describeElement(host);
+    expect(facts.textLength).toBe('Real prose that a reader would want translated.'.length);
+  });
+
+  it('separates text across nested element boundaries, not just the top level', () => {
+    const host = el('<div><span><b>Hello</b><i>World</i></span></div>');
+    expect(describeElement(host).wordCount).toBe(2);
+  });
+});
+
+describe('elementText', () => {
+  it('excludes script text as well as style text', () => {
+    const host = el('<div><script>doSomething();</script><p>Real prose here.</p></div>');
+    expect(elementText(host)).toBe('Real prose here.');
   });
 });

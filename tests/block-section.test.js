@@ -118,9 +118,9 @@ describe('resolveSection', () => {
   });
 
   it('keeps a short list as one part instead of splitting it', () => {
-    // textContent concatenates list items without separators, so the <ul> reads
-    // as "alpha onebeta twogamma threedelta four", 38 chars and 5 words, which
-    // clears the floors, while no single <li> does.
+    // elementText inserts a separator at every element boundary, so the <ul>
+    // reads as "alpha one beta two gamma three delta four", 41 chars and 8
+    // words, which clears the floors, while no single <li> does.
     mount(`
       <div>
         <h2 id="a">Title</h2>

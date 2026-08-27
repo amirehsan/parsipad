@@ -132,6 +132,22 @@ describe('resolveBlock', () => {
     expect(resolveBlock(pick('leaf')).anchor).toBe(pick('leaf'));
   });
 
+  it('does not let a container swallow a list it merely holds', () => {
+    mount(`
+      <div id="box">
+        <span><style>.mw-parser-output .itn-img{float:right;margin-left:0.5em}</style></span>
+        <div class="itn-img">Dolly Parton in 1977</div>
+        <ul>
+          <li id="one">At least 335 people are killed and over a thousand are missing after flash flooding in Nepal.</li>
+          <li id="two">American singer-songwriter and actress Dolly Parton dies at the age of 80 today.</li>
+        </ul>
+      </div>`);
+    // The box is not a block: the list inside it holds the real content.
+    expect(resolveBlock(pick('box'))).toBeNull();
+    // Pointing at a news item gives that item.
+    expect(resolveBlock(pick('one')).anchor).toBe(pick('one'));
+  });
+
   it('gives the same id for repeated resolutions of one element', () => {
     mount(`<main><p id="p">${LONG}</p></main>`);
     expect(resolveBlock(pick('p')).id).toBe(resolveBlock(pick('p')).id);

@@ -32,6 +32,15 @@ const BLOCK_TAGS = new Set([
   'ARTICLE', 'SECTION', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'
 ]);
 
+// Tags that hold content in their own right, for the purpose of deciding
+// whether an ancestor may claim that content as its own text. Wider than
+// BLOCK_TAGS, which decides what can be a block: a <ul> is never itself a
+// translatable block, but a container holding one must not swallow it.
+const OWNERSHIP_BLOCKERS = new Set([
+  ...BLOCK_TAGS,
+  'DIV', 'UL', 'OL', 'DL', 'TABLE', 'FIGURE', 'PRE', 'FORM', 'MAIN', 'ASIDE', 'NAV'
+]);
+
 const BLOCK_ROLES = new Set(['article', 'listitem', 'paragraph', 'heading', 'note']);
 
 const BLOCK_DISPLAYS = new Set(['block', 'flex', 'grid', 'list-item', 'table-cell', 'flow-root']);
@@ -99,7 +108,7 @@ export function ownsItsText(el) {
     // cannot claim the text regardless of what it contains. Checking it before
     // describeElement avoids reading the subtree twice for every inline child
     // that was going to be skipped anyway.
-    if (!BLOCK_TAGS.has(child.tagName) && child.tagName !== 'DIV') continue;
+    if (!OWNERSHIP_BLOCKERS.has(child.tagName)) continue;
     const facts = describeElement(child);
     if (facts.textLength < GATE.OWNERSHIP_MIN_CHARS) continue;
     if (passesTextGate(facts)) return false;
