@@ -205,10 +205,13 @@ export async function translateBlock(block) {
   renderSkeleton(block);
   ensureSweepObserver();
 
+  let failedAt = 0;
   try {
-    const { response, apply, failedAt = 0 } = block.kind === 'section'
+    const result = block.kind === 'section'
       ? await translateSection(block, controller)
       : await translateLeaf(block, controller);
+    const { response, apply } = result;
+    failedAt = result.failedAt ?? 0;
 
     if (isMissingApiKeyResponse(response)) {
       dismissBlock(block.id);
@@ -240,10 +243,11 @@ export async function translateBlock(block) {
       dismissBlock(block.id);
       return;
     }
-    setPartError(block.id, 0, error?.message || 'Translation failed.', () => {
+    setPartError(block.id, failedAt, error?.message || 'Translation failed.', () => {
       dismissBlock(block.id);
       translateBlock(block);
     });
+    clearPartsFrom(block.id, failedAt + 1);
   } finally {
     inFlight.delete(block.id);
     activeCount -= 1;
