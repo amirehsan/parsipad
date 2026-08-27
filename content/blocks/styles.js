@@ -71,7 +71,7 @@ export function getBlockTranslationStyles() {
       font-family: 'Vazirmatn', 'Tahoma', sans-serif;
       font-size: var(--pp-source-font-size, 1rem);
       line-height: var(--pp-source-line-height, 1.7);
-      color: var(--pp-text);
+      color: var(--pp-source-color, var(--pp-text));
       direction: rtl;
       text-align: start;
     }
@@ -96,18 +96,18 @@ export function getBlockTranslationStyles() {
       margin-top: 6px;
       font-family: 'Inter', system-ui, sans-serif;
       font-size: 11px;
-      color: var(--pp-text-muted);
+      color: var(--pp-chrome-text, var(--pp-text-muted));
     }
     .pp-block-footer button {
       padding: 2px 8px;
-      border: 1px solid var(--pp-border);
+      border: 1px solid var(--pp-chrome-border, var(--pp-border));
       border-radius: 5px;
       background: transparent;
-      color: var(--pp-text-secondary);
+      color: var(--pp-chrome-text, var(--pp-text-secondary));
       font: inherit;
       cursor: pointer;
     }
-    .pp-block-footer button:hover { background: var(--pp-bg-hover); }
+    .pp-block-footer button:hover { background: var(--pp-chrome-hover, var(--pp-bg-hover)); }
     .pp-block-error {
       color: var(--pp-error);
       font-family: 'Inter', system-ui, sans-serif;

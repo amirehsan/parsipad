@@ -11,9 +11,10 @@
  * byte-identical across a full render. Do not weaken that test.
  */
 
-import { applyHostTheme, ensurePersianFontLoaded } from '../host-page.js';
+import { ensurePersianFontLoaded } from '../host-page.js';
 import { getBlockTranslationStyles } from './styles.js';
 import { label } from './lang.js';
+import { parseColor, isDarkBackground, readableTextColor, chromeColors } from './contrast.js';
 
 /**
  * @typedef {Object} PartRecord
@@ -27,6 +28,23 @@ import { label } from './lang.js';
 
 /** @type {Map<string, {block: object, parts: PartRecord[]}>} */
 const rendered = new Map();
+
+/**
+ * The colour actually behind an element.
+ *
+ * Most elements are transparent, so the visible background belongs to some
+ * ancestor. Walking up for the first opaque one is what lets a block on a dark
+ * card get dark-card treatment even when the page as a whole is light.
+ */
+function backgroundBehind(el) {
+  let node = el;
+  while (node && node.nodeType === Node.ELEMENT_NODE) {
+    const colour = parseColor(getComputedStyle(node).backgroundColor);
+    if (colour && colour.a >= 0.1) return colour;
+    node = node.parentElement;
+  }
+  return { r: 255, g: 255, b: 255, a: 1 };
+}
 
 function mountHost(source, blockId) {
   const host = document.createElement('div');
@@ -48,7 +66,17 @@ function mountHost(source, blockId) {
     host.style.gridColumn = '1 / -1';
   }
 
-  applyHostTheme(host);
+  // Not applyHostTheme: that reads document.body once for the whole page and
+  // would overwrite data-theme with that page-level guess on the next host-page
+  // mutation, clobbering the per-block reading below. A block sitting on a card
+  // of a different shade than the page needs its own measurement.
+  const background = backgroundBehind(source);
+  const chrome = chromeColors(background);
+  host.setAttribute('data-theme', isDarkBackground(background) ? 'dark' : 'light');
+  host.style.setProperty('--pp-source-color', readableTextColor(parseColor(sourceStyle.color), background));
+  host.style.setProperty('--pp-chrome-text', chrome.text);
+  host.style.setProperty('--pp-chrome-border', chrome.border);
+  host.style.setProperty('--pp-chrome-hover', chrome.hover);
 
   const shadow = host.attachShadow({ mode: 'closed' });
   const style = document.createElement('style');
