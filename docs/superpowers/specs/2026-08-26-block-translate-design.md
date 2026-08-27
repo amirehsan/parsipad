@@ -88,7 +88,7 @@ content/blocks/
   anchor.js     pure positioning
 ```
 
-`describe.js` exists to keep `gate.js` free of the DOM while both `resolve.js` and `section.js` need element facts. Without it, `section.js` would import the extractor from `resolve.js`, which imports `section.js` back — a cycle.
+`describe.js` exists to keep `gate.js` free of the DOM while both `resolve.js` and `section.js` need element facts. Without it, `section.js` would import the extractor from `resolve.js`, which imports `section.js` back, a cycle.
 
 Block identity is a `WeakMap<Element, string>` keyed on the anchor, never a data attribute written to the page. Marking the source element would be a mutation, and §9's byte-identity assertion would rightly fail on it.
 

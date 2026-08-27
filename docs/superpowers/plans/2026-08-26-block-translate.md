@@ -99,7 +99,7 @@ describe('ensurePersianFontLoaded', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/host-page.test.js`
-Expected: FAIL — `Failed to resolve import "../content/host-page.js"`
+Expected: FAIL, `Failed to resolve import "../content/host-page.js"`
 
 - [ ] **Step 3: Create `content/host-page.js`**
 
@@ -218,7 +218,7 @@ Add to the import block at the top (after the `batch.js` import on line 22):
 import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
 ```
 
-`detectHostTheme` is not imported — after this move nothing in `main.js` calls it directly.
+`detectHostTheme` is not imported, after this move nothing in `main.js` calls it directly.
 
 - [ ] **Step 5: Add the manifest entry**
 
@@ -247,7 +247,7 @@ theme observer serves every surface instead of one per surface."
 
 ---
 
-### Task 2: `gate.js` — the pure content-quality predicates
+### Task 2: `gate.js`, the pure content-quality predicates
 
 **Files:**
 - Create: `content/blocks/gate.js`
@@ -358,7 +358,7 @@ describe('passesTextGate', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/block-gate.test.js`
-Expected: FAIL — `Failed to resolve import "../content/blocks/gate.js"`
+Expected: FAIL, `Failed to resolve import "../content/blocks/gate.js"`
 
 - [ ] **Step 3: Write the implementation**
 
@@ -370,7 +370,7 @@ Create `content/blocks/gate.js`:
  *
  * Nothing here touches the DOM. Callers extract facts with describe.js and
  * pass them in, which keeps every threshold decision unit-testable without a
- * document — the same split used by content/placement.js and
+ * document, the same split used by content/placement.js and
  * lib/translation/mode.js.
  *
  * The gate is deliberately permissive. A false positive is an icon the user
@@ -484,7 +484,7 @@ check removes the counts and timestamps that surround every X post."
 
 ---
 
-### Task 3: `anchor.js` — where the icon sits
+### Task 3: `anchor.js`, where the icon sits
 
 **Files:**
 - Create: `content/blocks/anchor.js`
@@ -561,7 +561,7 @@ describe('computeIconPosition', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/block-anchor.test.js`
-Expected: FAIL — `Failed to resolve import "../content/blocks/anchor.js"`
+Expected: FAIL, `Failed to resolve import "../content/blocks/anchor.js"`
 
 - [ ] **Step 3: Write the implementation**
 
@@ -665,7 +665,7 @@ they have no horizontal gutter, so it lands in whitespace."
 
 ---
 
-### Task 4: `describe.js` — Element to facts
+### Task 4: `describe.js`, Element to facts
 
 **Files:**
 - Create: `content/blocks/describe.js`
@@ -738,7 +738,7 @@ describe('describeElement', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/block-describe.test.js`
-Expected: FAIL — `Failed to resolve import "../content/blocks/describe.js"`
+Expected: FAIL, `Failed to resolve import "../content/blocks/describe.js"`
 
 - [ ] **Step 3: Write the implementation**
 
@@ -817,7 +817,7 @@ reads as a clean paragraph."
 
 ---
 
-### Task 5: `section.js` — a heading resolves to its section
+### Task 5: `section.js`, a heading resolves to its section
 
 **Files:**
 - Create: `content/blocks/section.js`
@@ -953,7 +953,7 @@ describe('resolveSection', () => {
 
   it('keeps a short list as one part instead of splitting it', () => {
     // textContent concatenates list items without separators, so the <ul> reads
-    // as "alpha onebeta twogamma threedelta four" — 38 chars and 5 words, which
+    // as "alpha onebeta twogamma threedelta four", 38 chars and 5 words, which
     // clears the floors, while no single <li> does.
     mount(`
       <div>
@@ -983,7 +983,7 @@ describe('resolveSection', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/block-section.test.js`
-Expected: FAIL — `Failed to resolve import "../content/blocks/section.js"`
+Expected: FAIL, `Failed to resolve import "../content/blocks/section.js"`
 
 - [ ] **Step 3: Write the implementation**
 
@@ -995,8 +995,8 @@ Create `content/blocks/section.js`:
  *
  * A section is not a special kind of block; it is a list of the same leaf
  * elements a paragraph hover would produce. Rendering inserts one translation
- * after each, so a translated section comes out interleaved — every source
- * paragraph followed by its Persian — rather than as a wall of text at the end.
+ * after each, so a translated section comes out interleaved, every source
+ * paragraph followed by its Persian, rather than as a wall of text at the end.
  */
 
 import { passesTextGate } from './gate.js';
@@ -1041,8 +1041,8 @@ function isContentful(el) {
  *
  * Wikipedia emits <div class="mw-heading"><h2>…</h2><span><a>edit</a></span></div>,
  * so the heading has no siblings of its own and a naive walk finds nothing.
- * The rule is stated generically — a wrapper whose only other children fail the
- * gate — so it catches that markup without naming Wikipedia. An edit link fails
+ * The rule is stated generically, a wrapper whose only other children fail the
+ * gate, so it catches that markup without naming Wikipedia. An edit link fails
  * on link density.
  *
  * @param {Element} heading
@@ -1186,7 +1186,7 @@ gate\", which catches Wikipedia's mw-heading div without naming it."
 
 ---
 
-### Task 6: `resolve.js` and `adapters.js` — the walk
+### Task 6: `resolve.js` and `adapters.js`, the walk
 
 **Files:**
 - Create: `content/blocks/adapters.js`, `content/blocks/resolve.js`
@@ -1361,7 +1361,7 @@ describe('resolveBlock', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/block-resolve.test.js`
-Expected: FAIL — `Failed to resolve import "../content/blocks/resolve.js"`
+Expected: FAIL, `Failed to resolve import "../content/blocks/resolve.js"`
 
 - [ ] **Step 3: Write `content/blocks/adapters.js`**
 
@@ -1590,7 +1590,7 @@ resolution stays append-only along with everything else."
 
 ---
 
-### Task 7: `styles.js` and `icon.js` — the singleton hover icon
+### Task 7: `styles.js` and `icon.js`, the singleton hover icon
 
 **Files:**
 - Create: `content/blocks/styles.js`, `content/blocks/icon.js`
@@ -1674,7 +1674,7 @@ describe('the hover icon', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/block-icon.test.js`
-Expected: FAIL — `Failed to resolve import "../content/blocks/icon.js"`
+Expected: FAIL, `Failed to resolve import "../content/blocks/icon.js"`
 
 - [ ] **Step 3: Write `content/blocks/styles.js`**
 
@@ -1811,7 +1811,7 @@ export function getBlockTranslationStyles() {
  *
  * There is exactly one, for the page's whole lifetime. It is moved and toggled,
  * never recreated, which is why duplicate icons are not defended against so much
- * as made unrepresentable — and why the render cost is constant rather than
+ * as made unrepresentable, and why the render cost is constant rather than
  * proportional to the number of blocks on the page.
  *
  * The host is position: fixed and never enters the page's own DOM tree beyond
@@ -1959,7 +1959,7 @@ unrepresentable, and render cost stays constant with page size."
 
 ---
 
-### Task 8: `render.js` — insert, stream, dismiss
+### Task 8: `render.js`, insert, stream, dismiss
 
 This task carries the safety property the whole design rests on. Step 1's first test is the one that must never be weakened.
 
@@ -2142,7 +2142,7 @@ describe('setPartError', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/block-render.test.js`
-Expected: FAIL — `Failed to resolve import "../content/blocks/render.js"`
+Expected: FAIL, `Failed to resolve import "../content/blocks/render.js"`
 
 - [ ] **Step 3: Write the implementation**
 
@@ -2421,7 +2421,7 @@ enforces rather than one the code merely intends."
 
 ---
 
-### Task 9: `index.js` — hover wiring and translation
+### Task 9: `index.js`, hover wiring and translation
 
 **Files:**
 - Create: `content/blocks/index.js`
@@ -2573,7 +2573,7 @@ describe('setEnabled', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/block-index.test.js`
-Expected: FAIL — `Failed to resolve import "../content/blocks/index.js"`
+Expected: FAIL, `Failed to resolve import "../content/blocks/index.js"`
 
 - [ ] **Step 3: Write the implementation**
 
@@ -2981,7 +2981,7 @@ describe('block translate copy', () => {
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run tests/block-i18n.test.js tests/storage-settings.test.js`
-Expected: FAIL — `expected undefined to be a string` for every key, and `expected undefined to be 'block_translate_enabled'`.
+Expected: FAIL, `expected undefined to be a string` for every key, and `expected undefined to be 'block_translate_enabled'`.
 
 - [ ] **Step 3: Add the storage key**
 
@@ -3120,10 +3120,10 @@ Build and load the unpacked extension, then check all four:
 npm run build:dev
 ```
 
-1. On `en.wikipedia.org`, hover a body paragraph — one icon appears in the left margin. Click it; Persian appears beneath, the English is untouched.
-2. On the same page, hover a section heading — clicking translates the heading and its paragraphs, interleaved, stopping at the next heading of the same rank.
-3. On the same page, hover the left sidebar navigation and the table of contents — **no icon should appear**.
-4. On `x.com`, hover a post body — the icon appears. Click, then scroll far enough to recycle the row and scroll back; the translation is still attached to the right post, and no post shows another post's translation.
+1. On `en.wikipedia.org`, hover a body paragraph, one icon appears in the left margin. Click it; Persian appears beneath, the English is untouched.
+2. On the same page, hover a section heading, clicking translates the heading and its paragraphs, interleaved, stopping at the next heading of the same rank.
+3. On the same page, hover the left sidebar navigation and the table of contents, **no icon should appear**.
+4. On `x.com`, hover a post body, the icon appears. Click, then scroll far enough to recycle the row and scroll back; the translation is still attached to the right post, and no post shows another post's translation.
 
 - [ ] **Step 11: Commit**
 
@@ -3151,4 +3151,4 @@ git status        # clean, nothing under landing/ staged
 git log --oneline main..feat/block-translate   # 11 commits: spec + 10 tasks
 ```
 
-And the four manual checks in Task 10 Step 10 pass in a real browser. Tests cannot cover the fourth — timeline recycling on X is the failure mode the whole architecture exists to prevent, and it needs a human to scroll.
+And the four manual checks in Task 10 Step 10 pass in a real browser. Tests cannot cover the fourth, timeline recycling on X is the failure mode the whole architecture exists to prevent, and it needs a human to scroll.
