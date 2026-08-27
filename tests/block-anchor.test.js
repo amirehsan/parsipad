@@ -4,36 +4,30 @@ import { computeIconPosition } from '../content/blocks/anchor.js';
 
 const viewport = { width: 1200, height: 800 };
 const icon = { width: 24, height: 24 };
-const base = { icon, viewport, gutter: 6, padding: 4 };
+const base = { icon, viewport, padding: 4 };
+
+// The fixture used for the corner-straddle assertions below. Its viewport is
+// deliberately its own (1024x768) rather than the shared `base.viewport`,
+// matching the geometry the expected numbers were computed against.
+const cornerBlock = { top: 300, left: 200, right: 800, bottom: 360 };
+const cornerViewport = { width: 1024, height: 768 };
 
 describe('computeIconPosition', () => {
-  it('sits outside the inline-start edge when the margin has room', () => {
-    const r = computeIconPosition({ ...base, block: { top: 200, left: 300, right: 900, bottom: 260 } });
-    expect(r.placement).toBe('outside');
-    expect(r.left).toBe(300 - 24 - 6);
-  });
-
   it('straddles the block top edge so it lands in the paragraph margin', () => {
-    const r = computeIconPosition({ ...base, block: { top: 200, left: 300, right: 900, bottom: 260 } });
-    expect(r.top).toBe(200 - 12);
+    const r = computeIconPosition({ ...base, viewport: cornerViewport, block: cornerBlock });
+    expect(r.top).toBe(288);
   });
 
-  it('falls back to flush with the edge when there is no room outside', () => {
-    const r = computeIconPosition({ ...base, block: { top: 200, left: 8, right: 900, bottom: 260 } });
-    expect(r.placement).toBe('inset');
-    expect(r.left).toBe(8);
+  it('straddles the inline-end corner in LTR', () => {
+    const r = computeIconPosition({ ...base, viewport: cornerViewport, block: cornerBlock });
+    expect(r.placement).toBe('corner');
+    expect(r.left).toBe(788);
   });
 
-  it('mirrors to the right edge in RTL', () => {
-    const r = computeIconPosition({ ...base, dir: 'rtl', block: { top: 200, left: 300, right: 900, bottom: 260 } });
-    expect(r.placement).toBe('outside');
-    expect(r.left).toBe(900 + 6);
-  });
-
-  it('insets against the right edge in RTL when the margin is too narrow', () => {
-    const r = computeIconPosition({ ...base, dir: 'rtl', block: { top: 200, left: 300, right: 1190, bottom: 260 } });
-    expect(r.placement).toBe('inset');
-    expect(r.left).toBe(1190 - 24);
+  it('mirrors to the inline-start corner in RTL', () => {
+    const r = computeIconPosition({ ...base, viewport: cornerViewport, dir: 'rtl', block: cornerBlock });
+    expect(r.placement).toBe('corner');
+    expect(r.left).toBe(188);
   });
 
   it('clamps a block scrolled above the viewport to the top padding', () => {

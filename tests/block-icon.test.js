@@ -70,23 +70,23 @@ describe('the hover icon', () => {
     showIconFor(blockFor(p), vi.fn());
 
     const host = document.querySelector('[data-parsipad-icon]');
-    // Straddles the block's top edge: 300 - 24/2. Sits outside the inline-start
-    // edge with room to spare: 200 - 24 - 6. Distinct values, so a swapped
-    // top/left assignment fails here rather than passing by symmetry.
+    // Straddles the block's top edge: 300 - 24/2. Straddles the inline-end
+    // corner too: 800 - 24/2. Distinct values, so a swapped top/left
+    // assignment fails here rather than passing by symmetry.
     expect(host.style.top).toBe('288px');
-    expect(host.style.left).toBe('170px');
+    expect(host.style.left).toBe('788px');
   });
 
-  it('mirrors to the far edge when the block is right-to-left', () => {
+  it('mirrors to the inline-start corner when the block is right-to-left', () => {
     const p = document.getElementById('p');
     p.style.direction = 'rtl';
     p.getBoundingClientRect = () => ({ top: 300, left: 200, right: 800, bottom: 360, width: 600, height: 60 });
     showIconFor(blockFor(p), vi.fn());
 
     const host = document.querySelector('[data-parsipad-icon]');
-    // Outside the right edge instead: 800 + 6. An inverted direction check
-    // would give 170px here.
-    expect(host.style.left).toBe('806px');
+    // Straddles the left edge instead: 200 - 24/2. An inverted direction
+    // check would give 788px here.
+    expect(host.style.left).toBe('188px');
   });
 
   it('forgets its block on hide, so a later click cannot fire on a stale one', () => {

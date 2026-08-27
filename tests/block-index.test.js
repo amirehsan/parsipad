@@ -250,6 +250,43 @@ describe('hover', () => {
     // Still armed, so the click that follows actually does something.
     expect(currentIconBlock()).not.toBeNull();
   });
+
+  it('keeps the icon while the pointer strays into the margin beside its block', async () => {
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+    document.body.innerHTML = `<main><p id="p">${LONG}</p></main>`;
+    const p = document.getElementById('p');
+    p.getBoundingClientRect = () => ({ top: 300, left: 200, right: 800, bottom: 360, width: 600, height: 60 });
+
+    p.dispatchEvent(new Event('mouseover', { bubbles: true }));
+    await new Promise((r) => requestAnimationFrame(() => r()));
+    expect(currentIconBlock()).not.toBeNull();
+
+    // The pointer drifts just outside the block, into space that resolves to
+    // nothing, and stops there.
+    const stray = new MouseEvent('mouseover', { bubbles: true, clientX: 810, clientY: 305 });
+    document.querySelector('main').dispatchEvent(stray);
+    await new Promise((r) => requestAnimationFrame(() => r()));
+    await new Promise((r) => setTimeout(r, 400));
+
+    expect(currentIconBlock()).not.toBeNull();
+  });
+
+  it('gives up once the pointer is well clear of the block', async () => {
+    initBlockTranslate({ onMissingApiKey: vi.fn() });
+    document.body.innerHTML = `<main><p id="p">${LONG}</p></main>`;
+    const p = document.getElementById('p');
+    p.getBoundingClientRect = () => ({ top: 300, left: 200, right: 800, bottom: 360, width: 600, height: 60 });
+
+    p.dispatchEvent(new Event('mouseover', { bubbles: true }));
+    await new Promise((r) => requestAnimationFrame(() => r()));
+
+    const far = new MouseEvent('mouseover', { bubbles: true, clientX: 20, clientY: 20 });
+    document.querySelector('main').dispatchEvent(far);
+    await new Promise((r) => requestAnimationFrame(() => r()));
+    await new Promise((r) => setTimeout(r, 400));
+
+    expect(currentIconBlock()).toBeNull();
+  });
 });
 
 describe('lifecycle', () => {
