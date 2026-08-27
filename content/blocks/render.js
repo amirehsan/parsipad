@@ -125,6 +125,29 @@ export function setPartText(blockId, index, text) {
 }
 
 /**
+ * The translated text currently rendered for one part, or null when that slot
+ * holds no record or nothing has been written to it yet.
+ *
+ * This exists because the shadow root is closed, so nothing outside this module
+ * can observe what was rendered or which paragraph it landed under. Without it
+ * the index-alignment guarantee in renderSkeleton is unobservable, and a change
+ * that reintroduced array compaction would put a translation under the wrong
+ * paragraph with no test able to fail.
+ *
+ * Reading is all it offers. The root stays closed, so a host page script still
+ * cannot reach our UI.
+ *
+ * @param {string} blockId
+ * @param {number} index
+ * @returns {string | null}
+ */
+export function renderedTextFor(blockId, index) {
+  const record = rendered.get(blockId)?.parts[index];
+  if (!record) return null;
+  return record.shadow.querySelector('.pp-block-body')?.textContent ?? null;
+}
+
+/**
  * Show a failure next to the block that failed, rather than in a corner toast.
  *
  * @param {string} blockId
