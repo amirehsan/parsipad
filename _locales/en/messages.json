@@ -4,7 +4,7 @@
     "description": "Extension name shown in the Chrome Web Store and Extensions page."
   },
   "extensionDescription": {
-    "message": "Learn Persian while you translate. Screenshot translate, grammar lessons, flashcards. Choose Claude, Gemini, or ChatGPT",
+    "message": "Hover any paragraph to translate it. Screenshot translate, grammar lessons, flashcards. Claude, Gemini, or ChatGPT",
     "description": "Short description shown in the Web Store listing."
   },
   "cmdTranslateSelection": {

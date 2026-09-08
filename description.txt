@@ -7,6 +7,12 @@ KEY FEATURES:
 🤖 Multi-AI Provider Support
 Choose between Claude (Anthropic), Gemini (Google), or ChatGPT (OpenAI). Use your own API key for complete privacy.
 
+🖱️ Block Translate
+Rest the pointer on any paragraph, post, or heading for about half a second and a small icon appears at its corner. Click it and the Persian is inserted directly underneath, so the original stays in place and both can be read together. Hovering a heading translates the whole section, interleaving each paragraph's Persian beneath it instead of one block of text at the end. Colors are drawn from the page behind it, so it stays legible on dark sites and light ones alike. Press Alt+B to translate from the keyboard. Works on any site with no setup, and is on by default (turn it off anytime in Settings).
+
+📸 Screenshot Region Translate
+Select any area of a webpage, even text that is not selectable, like a banner or an image. Press Alt+S or right-click and choose "Screenshot and Translate," then drag to select the region and let AI extract and translate what it finds.
+
 🖼️ Image Translation
 Extract and translate text from images using AI-powered OCR. Perfect for screenshots, photos of signs, menus, or documents.
 
@@ -27,6 +33,9 @@ Look up words with definitions, phonetics, synonyms, and antonyms. Press Alt+D o
 ⭐ Favorites & Flashcards
 Star your best translations to save them. Review favorites as interactive flashcards every time you open a new tab.
 
+🕐 New Tab, Redesigned
+Every new tab shows one saved word in large Persian or English type, with the time and a greeting in both languages above it. Click it to reveal the original. Your most visited sites can appear as a row of tiles, read straight from your browser's own cache and never sent anywhere, and your bookmarks live in a searchable drawer that opens with "/".
+
 📄 Document Translation
 Upload TXT files and translate entire documents with progress tracking.
 
@@ -35,11 +44,14 @@ Translate entire webpages with one click! Right-click and select "Translate this
 
 🎯 Quick Access
 • Selection popup: Select text and click floating icons
-• Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary), Alt+P (page)
-• Right-click menu: Translate, polish, or translate page from any webpage
+• Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary), Alt+P (page), Alt+S (screenshot), Alt+B (block translate)
+• Right-click menu: Translate, polish, dictionary, translate page, or screenshot translate from any webpage
 
 💾 Data Backup
 Export and import your favorites, history, and cache to JSON for easy backup or device migration.
+
+📊 Analytics Dashboard
+Track your API usage and estimated cost per provider, broken down by action type, with usage trends over 7 days, 30 days, or all time. Export the data as JSON whenever you want it.
 
 🌙 Dark Mode
 Beautiful dark theme that syncs with your system preferences.
