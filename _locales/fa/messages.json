@@ -3,7 +3,7 @@
     "message": "ParsiPad - مترجم فارسی انگلیسی"
   },
   "extensionDescription": {
-    "message": "همزمان با ترجمه، فارسی یاد بگیرید. ترجمه با اسکرین‌شات، درس‌های گرامر، فلش‌کارت. انتخاب بین Claude، Gemini یا ChatGPT"
+    "message": "نشانگر را روی هر پاراگراف ببرید تا ترجمه شود. ترجمه با اسکرین‌شات، درس‌های گرامر، فلش‌کارت. Claude، Gemini یا ChatGPT"
   },
   "cmdTranslateSelection": {
     "message": "ترجمه متن انتخاب‌شده"

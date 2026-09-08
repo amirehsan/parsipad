@@ -2,6 +2,13 @@ ParsiPad is an AI-powered Persian-English translator that lives in your browser.
 
 You bring your own API key from Claude, Gemini, or ChatGPT. Your text goes to the provider you chose and nowhere else. There is no ParsiPad account, no server of ours in the middle, and nothing is stored outside your own browser.
 
+Version 3.1.0:
+- Block translate: rest the pointer on any paragraph, post, or heading for about half a second and a small icon appears at its corner. Click it and the Persian is inserted directly underneath, leaving the original in place so both can be read together.
+- The icon appears only once the pointer rests, not while it is merely passing through, so ordinary browsing stays quiet, and it is never offered on text already in your own language.
+- Hovering a heading translates the whole section beneath it, with each paragraph's Persian interleaved under that paragraph rather than gathered into one block at the end.
+- The translation's colours are drawn from the page behind it, so it stays legible on dark sites and light ones alike.
+- Works on any site with no setup. Alt+B translates the block at the keyboard focus, for anyone not using a pointer, and the feature can be switched off in Settings, where it is on by default.
+
 Version 3.0.0:
 - New Tab, rebuilt: one saved word fills the page in large Persian or English type, with the time and a greeting in both languages above it. Click it to reveal the original.
 - Most visited sites are now on the New Tab page as a row of site tiles. Icons come from your browser's own cache, so no list of the sites you visit is ever sent anywhere. This uses an optional permission that is only requested if you switch the panel on.
@@ -83,6 +90,17 @@ Switch providers anytime in Settings.
 Instant Translation
 Select any text on any webpage and get accurate Persian to English or English to Persian translations instantly. ParsiPad automatically detects the language and translates accordingly.
 
+Block Translate
+Read a page in Persian without selecting a word of it:
+- Rest the pointer on any paragraph, post, or heading for about half a second and a small icon appears at its corner
+- Click the icon and the Persian is inserted directly underneath, leaving the original text in place so both can be read together
+- The icon appears only when the pointer rests, not when it merely crosses a block, so ordinary browsing stays quiet
+- Never offered on text already in your own language
+- Hovering a heading translates the whole section, with each paragraph's Persian interleaved beneath it rather than one block of text at the end
+- Colours are drawn from the page behind the translation, so it stays legible on dark and light sites alike
+- Alt+B translates the block at the keyboard focus, for anyone not using a pointer
+- Works on any site with no setup, and can be switched off in Settings, where it is on by default
+
 Smart Text Polishing
 Not just translation. Polish your text in three styles:
 - Professional: formal, business-ready text
@@ -137,7 +155,7 @@ Track your API usage and estimated costs:
 Multiple Ways to Use
 - Select text and use the floating popup
 - Right-click context menu for translation, polish, dictionary, page, or screenshot translate
-- Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary), Alt+P (page), Alt+S (screenshot)
+- Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary), Alt+P (page), Alt+S (screenshot), Alt+B (block translate)
 - Popup interface with 4 tabs: Text, Dictionary, Document, Image
 
 Favorites and Flashcards

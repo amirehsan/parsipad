@@ -4,16 +4,26 @@
 ParsiPad - Persian English Translator
 
 ## Short Description (132 chars max)
-Learn Persian while you translate. Screenshot translate, grammar lessons, flashcards. Choose Claude, Gemini, or ChatGPT
+Hover any paragraph to translate it. Screenshot translate, grammar lessons, flashcards. Claude, Gemini, or ChatGPT
 
 ## Detailed Description
 
 ParsiPad is a powerful AI-powered translation extension that makes Persian-English translation seamless and intelligent.
 
-Version 2.8.0:
-• Screenshot Region Translate - Select any area on a webpage to translate text from images (Alt+S)
-• Screenshot button in Image tab for quick access
-• Save all API keys at once from Settings
+Version 3.1.0:
+• Block Translate - Rest the pointer on any paragraph, post, or heading and a small icon appears at its corner; click it to insert the Persian directly underneath
+• The original is never touched - the translation is inserted beside it, so both can be read together
+• Works on any site with no setup, and can be switched off in Settings, where it is on by default (Alt+B)
+
+🖱️ **Block Translate** (NEW!)
+Read a page in Persian without leaving it:
+• Rest the pointer on any paragraph, post, or heading for about half a second and a small icon appears at its corner
+• Click the icon and the Persian is inserted directly underneath, leaving the original in place so both can be read together
+• Only appears when the pointer rests, not when it merely crosses a block, so ordinary browsing stays quiet
+• Never offered on text already in your own language
+• Hovering a heading translates the whole section, with each paragraph's Persian interleaved beneath it rather than one block of text at the end
+• Colors are drawn from the page behind the translation, so it stays legible on dark and light sites alike
+• Alt+B translates the block at the keyboard focus, for anyone not using a pointer
 
 🤖 **Choose Your AI**
 Pick your preferred AI provider:
@@ -88,7 +98,7 @@ Save your best translations and learn vocabulary:
 🎯 **Multiple Ways to Use**
 • Select text and use the floating popup
 • Right-click context menu for translation, polish, dictionary, page, or screenshot translate
-• Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary), Alt+P (page), Alt+S (screenshot)
+• Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary), Alt+P (page), Alt+S (screenshot), Alt+B (block translate)
 • Popup interface with 4 tabs: Text, Dictionary, Document, Image
 
 📚 **Translation History**
