@@ -1,6 +1,6 @@
 # Privacy Policy for ParsiPad - Persian Translator
 
-Last updated: February 2026
+Last updated: August 2026
 
 ## Overview
 
@@ -29,7 +29,7 @@ All data is stored locally on your device using Chrome's storage API:
 
 ### Text Sent to AI Provider APIs
 
-When you request a translation, the selected text is sent to your chosen AI provider's API for processing. This is necessary for the translation functionality to work.
+When you request a translation, the text you asked to translate is sent to your chosen AI provider's API for processing. This is necessary for the translation functionality to work. Depending on which action you use, that text is a selection you made, a block or section you pointed at, or the visible text of the page.
 
 **Supported providers:**
 - **Claude (Anthropic)**: api.anthropic.com
@@ -39,6 +39,10 @@ When you request a translation, the selected text is sent to your chosen AI prov
 - Text is sent directly from your browser to your selected provider's servers
 - We do not intercept or store the transmitted data
 - Each provider's privacy policy applies to data sent to their API
+
+### Reading Page Content
+
+To decide where to offer a translate icon, ParsiPad reads the text of the page you are viewing. This happens entirely inside your browser, only while you are pointing at something, and that text is never sent anywhere. Text leaves your browser only when you click to translate it, and then only the passage you clicked.
 
 ### Your API Keys
 

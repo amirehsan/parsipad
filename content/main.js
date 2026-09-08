@@ -20,6 +20,8 @@ import { renderCard, injectCardStyles } from '../shared/card/index.js';
 import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils/batch.js';
+import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
+import { initBlockTranslate, translateFocusedBlock, hideBlockIcon, isBlockTranslateEnabled } from './blocks/index.js';
 
 // Re-injection guard: skip if the script has already run in this isolated world.
 // Without this, chrome.scripting.executeScript on an already-injected tab throws
@@ -80,68 +82,6 @@ let pageToggleShadow = null;
 let pageTranslationCancelled = false;
 let pageTranslationAbortController = null;
 
-// Set of every Shadow DOM host we own. The theme observer iterates over this
-// to re-apply data-theme when the host page toggles between dark and light.
-const themedHosts = new Set();
-let hostThemeObserver = null;
-
-/**
- * Read the host page's effective background color and pick "dark" or "light".
- * Uses Y luminance > 0.5 = light, otherwise dark. Transparent backgrounds
- * fall back to "light" (most pages without an explicit background are white).
- *
- * @returns {'light' | 'dark'}
- */
-function detectHostTheme() {
-  try {
-    const target = document.body || document.documentElement;
-    if (!target) return 'light';
-    const bg = getComputedStyle(target).backgroundColor;
-    const match = bg.match(/(\d+(?:\.\d+)?)/g);
-    if (!match || match.length < 3) return 'light';
-    const [r, g, b, a = '1'] = match.map(Number);
-    if (a < 0.1) return 'light';
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return luminance < 0.5 ? 'dark' : 'light';
-  } catch {
-    return 'light';
-  }
-}
-
-/**
- * Stamp data-theme on a Shadow DOM host (or any element). Tracks the host so
- * future runtime theme changes on the page propagate automatically.
- */
-function applyHostTheme(host) {
-  if (!host) return;
-  host.setAttribute('data-theme', detectHostTheme());
-  themedHosts.add(host);
-  ensureHostThemeObserver();
-}
-
-/**
- * Start one MutationObserver that watches the page's <html> and <body> for
- * class/style mutations (Twitter, YouTube, GitHub toggle dark mode by adding
- * classes here). On any change, refresh every known host's data-theme.
- */
-function ensureHostThemeObserver() {
-  if (hostThemeObserver) return;
-  hostThemeObserver = new MutationObserver(() => {
-    const theme = detectHostTheme();
-    for (const host of themedHosts) {
-      // host may have been removed from the DOM; drop dangling refs.
-      if (!host.isConnected) {
-        themedHosts.delete(host);
-        continue;
-      }
-      host.setAttribute('data-theme', theme);
-    }
-  });
-  const opts = { attributes: true, attributeFilter: ['class', 'style', 'data-theme', 'data-mode'] };
-  if (document.documentElement) hostThemeObserver.observe(document.documentElement, opts);
-  if (document.body) hostThemeObserver.observe(document.body, opts);
-}
-
 
 /**
  * Initialize the content script
@@ -173,6 +113,10 @@ function init() {
       userLang = changes.ui_language.newValue || 'en';
     }
   });
+
+  // Block translate owns its own hover, storage and observer wiring; it needs
+  // only the toast, which lives here.
+  initBlockTranslate({ onMissingApiKey: showMissingApiKeyToast });
 
   // Reset page translation state on SPA navigation. SPAs swap content via
   // pushState/replaceState without firing a full page load, so the old
@@ -2331,33 +2275,6 @@ function detectPageLanguage(textNodes) {
 }
 
 /**
- * Register the bundled Vazirmatn faces on the host document.
- *
- * Font faces resolve against the document's font set, so a @font-face
- * declared only inside the floating box's shadow root is not a reliable
- * way to load Persian type. Everything that renders Persian on a host
- * page therefore depends on this running first: the floating box, the
- * polish and dictionary boxes, and full-page translation.
- *
- * Idempotent, and loads the woff2 from the extension's own bundle via
- * chrome.runtime.getURL so no third-party request is made.
- */
-function ensurePersianFontLoaded() {
-  const styleId = 'parsipad-persian-font';
-  if (document.getElementById(styleId)) return;
-
-  const face = (weight) => {
-    const url = chrome.runtime.getURL(`fonts/vazirmatn-arabic-${weight}-normal.woff2`);
-    return `@font-face { font-family: 'Vazirmatn'; font-weight: ${weight}; font-display: swap; src: url('${url}') format('woff2'); }`;
-  };
-
-  const style = document.createElement('style');
-  style.id = styleId;
-  style.textContent = [400, 500, 600, 700].map(face).join('\n');
-  document.head.appendChild(style);
-}
-
-/**
  * Inject the utility class used to style translated Persian content on the
  * host page during full-page translation. The font itself is registered by
  * ensurePersianFontLoaded.
@@ -2614,7 +2531,37 @@ function handleDocumentClick(event) {
  * Handle keyboard events
  */
 function handleKeyDown(event) {
+  // The non-pointer path into block translate. Kept here rather than in
+  // manifest.commands because Chrome allows only four suggested keys and all
+  // four are already assigned.
+  //
+  // event.code, not just event.key: on macOS Option composes, so Option+B
+  // reports the character it produces rather than "b". Both are accepted so
+  // the shortcut works regardless of platform or keyboard layout.
+  //
+  // Narrowed beyond the raw key match because this content script runs at
+  // <all_urls>: ctrlKey/metaKey are excluded so AltGr (which reports
+  // ctrlKey && altKey) and any site's own Ctrl+Alt+B pass through untouched;
+  // editable regions are excluded so typing "b" while holding Option on macOS
+  // does not eat the compose character for a resolution that would fail
+  // anyway, since resolveBlock hard-rejects editable regions; and the enabled
+  // check runs before preventDefault so a user who turned the feature off
+  // keeps the shortcut everywhere else.
+  const keyTarget = event.target;
+  const isEditableTarget = keyTarget instanceof HTMLElement &&
+    (keyTarget.isContentEditable || keyTarget.tagName === 'INPUT' ||
+     keyTarget.tagName === 'TEXTAREA' || keyTarget.tagName === 'SELECT');
+
+  if (event.altKey && !event.ctrlKey && !event.metaKey && !isEditableTarget &&
+      isBlockTranslateEnabled() &&
+      (event.code === 'KeyB' || event.key === 'b' || event.key === 'B')) {
+    event.preventDefault();
+    translateFocusedBlock();
+    return;
+  }
+
   if (event.key === 'Escape') {
+    hideBlockIcon();
     if (screenshotOverlay) {
       cancelScreenshotMode();
       return;
