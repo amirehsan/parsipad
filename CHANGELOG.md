@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-08-27
+
+### Added
+- **Block translate: hover a paragraph or heading to read it in Persian underneath.** Resting the pointer on a paragraph, post, or heading for about half a second surfaces a small icon at its corner; clicking it inserts the Persian translation directly beneath the block, leaving the original in place so both can be read together. The icon appears only once the pointer rests, not while it is merely passing through, so ordinary browsing stays quiet, and it is never offered on text already in the reader's own language. Hovering a heading translates the section beneath it, interleaving each paragraph's Persian under that paragraph rather than gathering it into one block at the end. The translation takes its colours from the background behind it, so it stays legible on dark pages and light ones alike, and it works on any site with no setup.
+- **Alt+B translates the block at the keyboard focus**, for anyone not using a pointer. It is handled in the content script rather than registered as a browser command, because Chrome allows only four suggested-key commands and all four (translate, dictionary, page, screenshot) were already assigned.
+- **A Settings toggle for block translate, on by default.** Anyone who would rather not see the hover icon while reading can switch it off in one place.
+
+### Changed
+- **The translation's colours are solved against the background actually behind it, not read off a fixed palette.** Earlier builds made one light-or-dark call for the whole page and painted every block with a palette tuned for that single guess, so a block sitting on a card of a different shade could get the wrong palette outright, and a border tuned for near-black could still fail against a medium grey page. Each block now measures its own ancestor background and solves its border and text colours against it, stepping an alpha overlay until the composited result clears WCAG's 3:1 bar for non-text elements and 4.5:1 for text, since contrast does not move linearly with alpha and a value safe on one background is not safe on all of them.
+
 ## [3.0.0] - 2026-08-22
 
 ### Added
