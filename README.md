@@ -93,7 +93,7 @@
 
 1. **Get an API Key** from your preferred AI provider:
    - **Claude (Anthropic)**: Visit [console.anthropic.com](https://console.anthropic.com/) - Key starts with `sk-ant-`
-   - **Gemini (Google)**: Visit [aistudio.google.com/apikey](https://aistudio.google.com/apikey) - Key starts with `AIza`
+   - **Gemini (Google)**: Visit [aistudio.google.com/apikey](https://aistudio.google.com/apikey) - Key starts with `AIza` or `AQ.`
    - **ChatGPT (OpenAI)**: Visit [platform.openai.com/api-keys](https://platform.openai.com/api-keys) - Key starts with `sk-`
 
 2. **Configure the Extension**
