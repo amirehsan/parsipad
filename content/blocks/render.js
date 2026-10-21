@@ -189,8 +189,10 @@ export function renderedTextFor(blockId, index) {
  * @param {number} index
  * @param {string} message
  * @param {() => void} onRetry
+ * @param {{reload?: boolean}} [options] - reload offers the page a refresh
+ *   instead of a retry, for a failure that retrying cannot clear.
  */
-export function setPartError(blockId, index, message, onRetry) {
+export function setPartError(blockId, index, message, onRetry, { reload = false } = {}) {
   const record = rendered.get(blockId)?.parts[index];
   if (!record) return;
 
@@ -205,15 +207,21 @@ export function setPartError(blockId, index, message, onRetry) {
 
   const footer = document.createElement('div');
   footer.className = 'pp-block-footer';
-  const retry = document.createElement('button');
-  retry.type = 'button';
-  retry.className = 'pp-block-retry';
-  retry.textContent = label('blockTranslateRetry');
-  retry.addEventListener('click', (event) => {
+  const action = document.createElement('button');
+  action.type = 'button';
+  action.className = 'pp-block-retry';
+  action.textContent = label(reload ? 'blockTranslateReload' : 'blockTranslateRetry');
+  action.addEventListener('click', (event) => {
     event.stopPropagation();
+    // A content script cut off from its extension cannot reach the background
+    // at all, so a retry here would raise the same error every time.
+    if (reload) {
+      window.location.reload();
+      return;
+    }
     if (onRetry) onRetry();
   });
-  footer.appendChild(retry);
+  footer.appendChild(action);
   wrapper.appendChild(footer);
 }
 
