@@ -25,8 +25,10 @@ describe('GeminiProvider', () => {
     const { url, body } = requests[0];
     expect(url).toContain(':generateContent');
     expect(body.generationConfig.temperature).toBe(0.2);
-    expect(body.generationConfig.maxOutputTokens).toBe(900);
-    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 });
+    // Thinking cannot be switched off and its tokens come out of this cap, so
+    // the caller's budget is sent with headroom added.
+    expect(body.generationConfig.maxOutputTokens).toBe(900 + PROVIDER_CONFIGS.gemini.thinkingHeadroomTokens);
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'minimal' });
     expect(body.generationConfig.responseMimeType).toBe('application/json');
     expect(body.generationConfig.responseSchema.propertyOrdering[0]).toBe('translation');
     expect(JSON.stringify(body.generationConfig.responseSchema)).not.toContain('additionalProperties');
@@ -74,7 +76,8 @@ describe('GeminiProvider', () => {
     });
     expect(requests[0].generationConfig.temperature).toBe(0.2);
     expect(requests[0].generationConfig.responseMimeType).toBe('application/json');
-    expect(requests[0].generationConfig.maxOutputTokens).toBe(4096);
+    expect(requests[0].generationConfig.maxOutputTokens).toBe(4096 + PROVIDER_CONFIGS.gemini.thinkingHeadroomTokens);
+    expect(requests[0].generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'minimal' });
     expect(result.truncated).toBe(true);
   });
 });

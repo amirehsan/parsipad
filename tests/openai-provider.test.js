@@ -15,7 +15,7 @@ describe('OpenAIProvider', () => {
     requests = [];
   });
 
-  it('sends temperature and a strict json_schema response format, reports truncation', async () => {
+  it('sends temperature, no reasoning and a strict json_schema response format', async () => {
     globalThis.fetch = vi.fn(async (_url, init) => {
       requests.push(JSON.parse(init.body));
       return jsonResponse({ choices: [{ message: { content: '{"translation":"x"}' }, finish_reason: 'length' }], usage: { prompt_tokens: 8, completion_tokens: 3 } });
@@ -24,7 +24,11 @@ describe('OpenAIProvider', () => {
     expect(result).toEqual({ text: '{"translation":"x"}', inputTokens: 8, outputTokens: 3, truncated: true });
     const body = requests[0];
     expect(body.temperature).toBe(0.2);
-    expect(body.max_tokens).toBe(700);
+    // max_tokens is deprecated on Chat Completions and reasoning is off, so
+    // the whole completion cap is available to the answer.
+    expect(body.max_completion_tokens).toBe(700);
+    expect(body.max_tokens).toBeUndefined();
+    expect(body.reasoning_effort).toBe('none');
     expect(body.response_format.type).toBe('json_schema');
     expect(body.response_format.json_schema.strict).toBe(true);
     expect(body.response_format.json_schema.name).toBe('parsipad_result');
@@ -76,7 +80,8 @@ describe('OpenAIProvider', () => {
     });
     expect(requests[0].temperature).toBe(0.2);
     expect(requests[0].response_format.type).toBe('json_schema');
-    expect(requests[0].max_tokens).toBe(4096);
+    expect(requests[0].max_completion_tokens).toBe(4096);
+    expect(requests[0].reasoning_effort).toBe('none');
     // complete() has always surfaced this; vision() used to drop it, so a
     // reply cut off mid-JSON looked like a parse failure instead.
     expect(result.truncated).toBe(true);
