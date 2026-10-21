@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **A newly created Gemini API key could not translate anything.** Two separate problems stacked on top of each other. Google AI Studio now hands out keys beginning `AQ.` instead of `AIza`, and the key screen turned those away as malformed before any request was made, so the key was never actually tried. Underneath that, the pinned `models/gemini-2.5-flash` has been closed to new users, which means even an older `AIza` key came back with "this model is no longer available". Both key formats are now accepted and the model has moved on, so either kind of key works.
+- **A key pasted with its surrounding quotes was refused.** Keys copied out of a `.env` file or a code sample arrive wrapped in `"` or `'`, which the format check counted as part of the key. The wrapping is now removed, along with stray whitespace, before the key is checked and stored.
+- **The cost estimate was wrong for all three providers.** Claude was being priced at Sonnet's rate rather than the Haiku rate it actually billed, and the Gemini and ChatGPT figures predated their current models. All three now match what the models charge.
+
+### Changed
+- **Each provider moved to its current model, and to the request shape that model requires.** Gemini runs `gemini-3.5-flash-lite`, ChatGPT runs `gpt-6-luna` (`gpt-4o-mini` is deprecated and leaves the API on 14 January 2027), and Claude runs `claude-haiku-5-5`, which costs a tenth of Haiku 4.5 for the same work. None of the three accepts the old request unchanged: Gemini replaced `thinkingConfig.thinkingBudget` with `thinkingLevel`, Claude rejects any non-default `temperature` outright, and ChatGPT deprecated `max_tokens` in favour of `max_completion_tokens`.
+- **Thinking is held down on every provider, because its tokens come out of the same budget as the answer.** A translation is given a tight output budget - 700 tokens for a word, 900 for a sentence - and a model that reasons first spends that budget on reasoning and returns an empty translation. Claude and ChatGPT can still turn reasoning off and now do. Gemini cannot turn it off at all any more, so it runs at `minimal`, the lowest level its model accepts, and its cap carries a little headroom beyond what the caller asked for so thought tokens cannot crowd out the answer.
+- **Gemini is the Flash-Lite model rather than Flash, chosen for its free allowance.** Readers bring their own Google AI Studio key, and Google has moved its free tier down-market: the free allowance on 3.8 Flash is reported at around 20 requests a day, which a translation extension exhausts in one sitting, while Flash-Lite is in the hundreds. Google recommends either for new projects; this is the one a free key can actually use.
+- **Gemini is no longer the cheapest of the three providers.** 2.5 Flash billed $0.075 per million input tokens and 3.5 Flash-Lite bills $0.30, against $0.10 for both Claude Haiku 5.5 and GPT-6 Luna. On paid keys Gemini now costs around three times either one per translation.
+
 ## [3.1.0] - 2026-08-27
 
 ### Added

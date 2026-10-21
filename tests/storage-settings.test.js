@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { STORAGE_KEYS } from '../lib/constants.js';
+import { STORAGE_KEYS, PROVIDERS } from '../lib/constants.js';
 
 function installChromeStub() {
   const data = new Map();
@@ -82,5 +82,46 @@ describe('New Tab panel switches', () => {
 describe('block translate setting', () => {
   it('registers a storage key', () => {
     expect(STORAGE_KEYS.blockTranslate).toBe('block_translate_enabled');
+  });
+});
+
+describe('provider API key formats', () => {
+  let storage;
+  beforeEach(async () => {
+    installChromeStub();
+    vi.resetModules();
+    storage = await import('../lib/storage.js');
+  });
+
+  // Google AI Studio has moved from "AIza" keys to newer "AQ." authentication
+  // keys, and issues either one depending on the account, so a key of either
+  // shape has to save rather than being turned away as malformed.
+  it('accepts both shapes of Gemini key', async () => {
+    await storage.setProviderApiKey(PROVIDERS.GEMINI, 'AIzaSyPlaceholderValue');
+    expect(await storage.getProviderApiKey(PROVIDERS.GEMINI)).toBe('AIzaSyPlaceholderValue');
+
+    await storage.setProviderApiKey(PROVIDERS.GEMINI, 'AQ.AbPlaceholderValue');
+    expect(await storage.getProviderApiKey(PROVIDERS.GEMINI)).toBe('AQ.AbPlaceholderValue');
+  });
+
+  it('names every accepted prefix when a key matches none of them', async () => {
+    await expect(storage.setProviderApiKey(PROVIDERS.GEMINI, 'not-a-key'))
+      .rejects.toThrow(/"AIza" or "AQ\."/);
+  });
+
+  // Keys get pasted out of .env files and code samples, quotes and all.
+  it('tidies a pasted key before validating and storing it', async () => {
+    await storage.setProviderApiKey(PROVIDERS.GEMINI, '  "AQ.AbPlaceholderValue"  ');
+    expect(await storage.getProviderApiKey(PROVIDERS.GEMINI)).toBe('AQ.AbPlaceholderValue');
+
+    await storage.setProviderApiKey(PROVIDERS.CLAUDE, "'sk-ant-placeholder'");
+    expect(await storage.getProviderApiKey(PROVIDERS.CLAUDE)).toBe('sk-ant-placeholder');
+  });
+
+  it('still holds the other providers to their own prefix', async () => {
+    await expect(storage.setProviderApiKey(PROVIDERS.CLAUDE, 'AIzaSyPlaceholderValue'))
+      .rejects.toThrow(/"sk-ant-"/);
+    await expect(storage.setProviderApiKey(PROVIDERS.OPENAI, 'AQ.AbPlaceholderValue'))
+      .rejects.toThrow(/"sk-"/);
   });
 });

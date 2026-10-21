@@ -20,7 +20,7 @@ describe('ClaudeProvider', () => {
     requests = [];
   });
 
-  it('sends temperature and structured output config, reports truncation', async () => {
+  it('drops temperature, turns thinking off and sends structured output config', async () => {
     globalThis.fetch = vi.fn(async (_url, init) => {
       requests.push(JSON.parse(init.body));
       return jsonResponse({ content: [{ type: 'text', text: '{"translation":"x"}' }], stop_reason: 'max_tokens', usage: { input_tokens: 11, output_tokens: 7 } });
@@ -28,7 +28,10 @@ describe('ClaudeProvider', () => {
     const result = await provider.complete({ systemPrompt: 'sys', userPrompt: 'user', maxTokens: 700, temperature: 0.2, responseSchema: WORD_SCHEMA, apiKey: 'sk-ant-test' });
     expect(result).toEqual({ text: '{"translation":"x"}', inputTokens: 11, outputTokens: 7, truncated: true });
     const body = requests[0];
-    expect(body.temperature).toBe(0.2);
+    // Haiku 5.5 400s on a non-default temperature, so the caller's 0.2 is
+     // deliberately not forwarded.
+    expect(body.temperature).toBeUndefined();
+    expect(body.thinking).toEqual({ type: 'disabled' });
     expect(body.max_tokens).toBe(700);
     expect(body.output_config.format.type).toBe('json_schema');
     expect(body.output_config.format.schema.additionalProperties).toBe(false);
@@ -70,7 +73,7 @@ describe('ClaudeProvider', () => {
     expect(deltas).toEqual(['سلام ', 'دنیا']);
     expect(result).toEqual({ text: 'سلام دنیا', inputTokens: 5, outputTokens: 3, truncated: false });
   });
-  it('vision() forwards temperature and schema, and reports truncation', async () => {
+  it('vision() drops temperature, turns thinking off, and reports truncation', async () => {
     globalThis.fetch = vi.fn(async (_url, init) => {
       requests.push(JSON.parse(init.body));
       return jsonResponse({ content: [{ text: '{}' }], stop_reason: 'max_tokens', usage: {} });
@@ -79,7 +82,8 @@ describe('ClaudeProvider', () => {
       systemPrompt: 's', userPrompt: 'u', imageBase64: 'x', mimeType: 'image/png',
       maxTokens: 4096, temperature: 0.2, responseSchema: WORD_SCHEMA, apiKey: 'k'
     });
-    expect(requests[0].temperature).toBe(0.2);
+    expect(requests[0].temperature).toBeUndefined();
+    expect(requests[0].thinking).toEqual({ type: 'disabled' });
     expect(requests[0].output_config.format.type).toBe('json_schema');
     expect(requests[0].max_tokens).toBe(4096);
     expect(result.truncated).toBe(true);
