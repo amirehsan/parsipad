@@ -29,6 +29,41 @@ describe('withRetry', () => {
     expect(fetchFn).toHaveBeenCalledTimes(2);
   });
 
+  // Each attempt was capped but the call as a whole was not, so a provider
+  // that is both slow and failing could hold one translation for minutes.
+  it('stops retrying once the overall deadline is spent', async () => {
+    const fetchFn = vi.fn(async () => {
+      await new Promise(r => setTimeout(r, 30));
+      return jsonResponse({ e: 1 }, { status: 503 });
+    });
+    const startedAt = Date.now();
+    const res = await withRetry(fetchFn, { maxRetries: 5, baseDelay: 1, maxDelay: 1, timeoutMs: 50, deadlineMs: 70 });
+    // The provider's own error, not our abort, so the caller still maps it to
+    // "service unavailable" rather than a timeout.
+    expect(res.status).toBe(503);
+    expect(fetchFn.mock.calls.length).toBeLessThanOrEqual(3);
+    expect(Date.now() - startedAt).toBeLessThan(140);
+  });
+
+  it('does not wait out a backoff that would outlast the deadline', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(jsonResponse({ e: 1 }, { status: 429 }));
+    const startedAt = Date.now();
+    const res = await withRetry(fetchFn, { maxRetries: 5, baseDelay: 400, maxDelay: 400, timeoutMs: 50, deadlineMs: 60 });
+    expect(res.status).toBe(429);
+    expect(Date.now() - startedAt).toBeLessThan(200);
+  });
+
+  // Vision and grammar lessons ask for a long single attempt on purpose; the
+  // budget must not quietly cut one of those short.
+  it('never shortens a single attempt below the caller timeout', async () => {
+    const fetchFn = vi.fn(async () => {
+      await new Promise(r => setTimeout(r, 40));
+      return jsonResponse({ ok: true });
+    });
+    const res = await withRetry(fetchFn, { timeoutMs: 120, deadlineMs: 10 });
+    expect(res.ok).toBe(true);
+  });
+
   it('aborts immediately when the external signal is already aborted', async () => {
     const controller = new AbortController();
     controller.abort();
