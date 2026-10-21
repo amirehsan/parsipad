@@ -193,6 +193,17 @@ describe('setPartError', () => {
     expect(activeBlockIds()).toEqual(['pp-b1']);
   });
 
+  it('takes the reload option without throwing', () => {
+    document.body.innerHTML = `<p id="p">${LONG}</p>`;
+    renderSkeleton(blockOf(['p']));
+    // The closed shadow root hides the button here too, so this asserts only
+    // that the reload path renders and that a null onRetry is safe.
+    setPartError('pp-b1', 0, 'ParsiPad was updated.', null, { reload: true });
+
+    expect(document.querySelector('[data-parsipad-translation]')).not.toBeNull();
+    expect(activeBlockIds()).toEqual(['pp-b1']);
+  });
+
   it('ignores an unknown block id without throwing', () => {
     expect(() => setPartError('pp-nope', 0, 'x', vi.fn())).not.toThrow();
   });
