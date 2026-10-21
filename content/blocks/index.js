@@ -9,6 +9,7 @@
  */
 
 import { requestTranslation } from '../../lib/translation/client.js';
+import { isContextInvalidated } from '../../lib/translation/errors.js';
 import { isMissingApiKeyResponse } from '../utils/text.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from '../utils/batch.js';
 import { detectLanguage } from '../../lib/language-detect.js';
@@ -361,6 +362,15 @@ export async function translateBlock(block) {
   } catch (error) {
     if (controller.signal.aborted) {
       dismissBlock(block.id);
+      return;
+    }
+    // Reloading the extension orphans the content scripts already in the
+    // page. Chrome's own wording for that is unreadable and the retry it sits
+    // next to can never succeed, so say what happened and offer the one thing
+    // that fixes it.
+    if (isContextInvalidated(error)) {
+      setPartError(block.id, failedAt, label('errorContextInvalidated'), null, { reload: true });
+      clearPartsFrom(block.id, failedAt + 1);
       return;
     }
     setPartError(block.id, failedAt, error?.message || 'Translation failed.', () => {

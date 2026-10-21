@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ERROR_CODES, TranslationError, toTranslationError, errorI18nKey } from '../lib/translation/errors.js';
+import { ERROR_CODES, TranslationError, toTranslationError, errorI18nKey, isContextInvalidated } from '../lib/translation/errors.js';
 
 describe('TranslationError', () => {
   it('keeps a known code and a default message', () => {
@@ -27,6 +27,22 @@ describe('TranslationError', () => {
 
   it('maps aborts to ABORTED', () => {
     expect(toTranslationError(new DOMException('Aborted', 'AbortError')).code).toBe('ABORTED');
+  });
+
+  // Chrome's exact wording, as a content script left behind by an extension
+  // reload sees it. Retrying cannot clear this one, so it needs its own code
+  // rather than landing in UNKNOWN with the raw string on display.
+  it('maps an invalidated extension context to its own code', () => {
+    const err = new Error('Extension context invalidated.');
+    expect(isContextInvalidated(err)).toBe(true);
+    expect(toTranslationError(err).code).toBe('CONTEXT_INVALIDATED');
+  });
+
+  it('does not mistake other failures for an invalidated context', () => {
+    expect(isContextInvalidated(new Error('Failed to fetch'))).toBe(false);
+    expect(isContextInvalidated(null)).toBe(false);
+    expect(isContextInvalidated(undefined)).toBe(false);
+    expect(toTranslationError(new Error('Failed to fetch')).code).toBe('NETWORK');
   });
 
   it('passes TranslationError through unchanged', () => {
