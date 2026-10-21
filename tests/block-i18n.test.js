@@ -10,6 +10,7 @@ const KEYS = [
   'blockTranslateIconLabel',
   'blockTranslateDismiss',
   'blockTranslateRetry',
+  'blockTranslateReload',
   'blockTranslateTruncated'
 ];
 
@@ -41,6 +42,7 @@ describe('block translate copy is wired up', () => {
     'blockTranslateIconLabel',
     'blockTranslateDismiss',
     'blockTranslateRetry',
+    'blockTranslateReload',
     'blockTranslateTruncated'
   ])('%s is read by the block UI, not just defined', (key) => {
     expect(sources).toContain(key);
