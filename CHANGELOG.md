@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.1] - 2026-10-21
+
 ### Fixed
 - **A newly created Gemini API key could not translate anything.** Two separate problems stacked on top of each other. Google AI Studio now hands out keys beginning `AQ.` instead of `AIza`, and the key screen turned those away as malformed before any request was made, so the key was never actually tried. Underneath that, the pinned `models/gemini-2.5-flash` has been closed to new users, which means even an older `AIza` key came back with "this model is no longer available". Both key formats are now accepted and the model has moved on, so either kind of key works.
 - **A key pasted with its surrounding quotes was refused.** Keys copied out of a `.env` file or a code sample arrive wrapped in `"` or `'`, which the format check counted as part of the key. The wrapping is now removed, along with stray whitespace, before the key is checked and stored.
