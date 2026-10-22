@@ -89,3 +89,39 @@ describe('parseGeminiSseEvent', () => {
     expect(parseGeminiSseEvent({ data: 'garbage' })).toEqual({});
   });
 });
+
+// Thinking is on at `minimal` on every Gemini 3.x model and cannot be switched
+// off, and Google enforces maxOutputTokens as a hard cutoff that counts thought
+// tokens alongside the answer. A cap sized for the answer alone is spent
+// thinking, and the translation comes back truncated or empty after a long wait.
+describe('GeminiProvider thinking allowance', () => {
+  // Enough for a `minimal` pass to finish and still write the answer. 2.5 ran
+  // with thinking off, where the whole cap was the answer's to spend.
+  const MINIMAL_THINKING_ALLOWANCE = 2048;
+  let provider;
+
+  beforeEach(() => {
+    provider = new GeminiProvider(PROVIDER_CONFIGS.gemini);
+  });
+
+  it.each([['word', 700], ['sentence', 900]])('leaves a thinking pass room beyond the %s budget', (_mode, budget) => {
+    const { generationConfig } = provider.buildBody({ systemPrompt: 's', userPrompt: 'u', maxTokens: budget });
+    expect(generationConfig.maxOutputTokens - budget).toBeGreaterThanOrEqual(MINIMAL_THINKING_ALLOWANCE);
+  });
+
+  // Thought parts could not appear while thinking was off. Now that it is on,
+  // one must never be mistaken for the translation.
+  it('never returns a thought part as the translation', async () => {
+    globalThis.fetch = vi.fn(async () => jsonResponse({
+      candidates: [{ content: { parts: [{ text: 'Let me consider this word.', thought: true }, { text: '{"translation":"سلام"}' }] }, finishReason: 'STOP' }],
+      usageMetadata: { promptTokenCount: 4, candidatesTokenCount: 9 }
+    }));
+    const result = await provider.complete({ systemPrompt: 's', userPrompt: 'u', apiKey: 'k' });
+    expect(result.text).toBe('{"translation":"سلام"}');
+  });
+
+  it('never streams a thought part as a delta', () => {
+    expect(parseGeminiSseEvent({ data: '{"candidates":[{"content":{"parts":[{"text":"thinking out loud","thought":true}]}}]}' }))
+      .toEqual({});
+  });
+});

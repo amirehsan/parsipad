@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.2] - 2026-10-22
+
+### Fixed
+- **Gemini translations became slow and then failed outright, where they used to be close to instant.** 3.1.1 moved Gemini to `gemini-3.5-flash-lite`, and no Gemini 3.x model can turn thinking off the way `thinkingBudget: 0` did on 2.5. `maxOutputTokens` is a hard cutoff that counts thought tokens as well as the answer, so the tight budget a translation is given, 700 tokens for a word and 900 for a sentence, was being spent on reasoning. The model generated a thousand-odd tokens of thought, the infrastructure cut it off mid-thought, and the reply came back truncated or empty, which the extension reported as a failed translation. The long wait and the failure were the same thing: the whole request was spent thinking and then thrown away. The thinking allowance on top of the caller's budget was 512 tokens, which a `minimal` pass does not fit in; it is now 3072. The cap is a ceiling rather than a target and billing follows the tokens actually generated, so the extra room costs nothing when it goes unused.
+- **A Gemini reasoning summary could have been shown as the translation.** Thought parts are flagged `thought` and are not the answer, but every part's text was concatenated regardless. This could not happen while thinking was off, and became possible the moment it was turned on. Thought parts are now dropped from both one-shot and streamed replies, and from image results, which previously read only the first part and would have returned the reasoning instead of the text.
+
 ## [3.1.1] - 2026-10-21
 
 ### Fixed
