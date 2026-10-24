@@ -239,78 +239,28 @@
       <section id="reading" class="settings-section" aria-labelledby="reading-title">
         <h2 id="reading-title" class="settings-section-title" data-i18n="sectionReading">Reading on web pages</h2>
         <div class="settings-card">
-          <div class="card-header">
-            <div class="card-icon" aria-hidden="true">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-              </svg>
-            </div>
-            <div>
-              <h3 class="card-title" data-i18n="blockTranslate">Block translate</h3>
-              <p class="card-subtitle" data-i18n="blockTranslateHint">Point at a paragraph, post, or heading to show a translate icon beside it.</p>
-            </div>
-          </div>
           <div class="card-content">
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-label-text" data-i18n="blockTranslate">Block translate</span>
+            <div class="setting-row">
+              <div class="setting-text">
+                <label for="block-translate-toggle" data-i18n="hoverTranslateLabel">Translate paragraphs on hover</label>
+                <p id="block-translate-hint" class="setting-hint" data-i18n="hoverTranslateHint">Point at a paragraph, post or heading to show a translate button beside it.</p>
               </div>
-              <div class="toggle-switch">
-                <input type="checkbox" id="block-translate-toggle" checked>
-                <span class="toggle-slider"></span>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <div class="settings-card">
-          <div class="card-header">
-            <div class="card-icon" aria-hidden="true">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/>
-              </svg>
+              <input type="checkbox" role="switch" class="pp-switch" id="block-translate-toggle" aria-describedby="block-translate-hint" checked>
             </div>
-            <div>
-              <h3 class="card-title" data-i18n="selectionPopup">Selection popup</h3>
-              <p class="card-subtitle" data-i18n="selectionPopupSubtitle">Show quick action icons when selecting text</p>
+            <div class="setting-row">
+              <div class="setting-text">
+                <label for="selection-popup-toggle" data-i18n="selectionToolbarLabel">Selection toolbar</label>
+                <p id="selection-popup-hint" class="setting-hint" data-i18n="selectionToolbarHint">Shows Translate, Polish and Dictionary buttons when you select text.</p>
+              </div>
+              <input type="checkbox" role="switch" class="pp-switch" id="selection-popup-toggle" aria-describedby="selection-popup-hint">
             </div>
-          </div>
-          <div class="card-content">
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-label-text" data-i18n="enableSelectionPopup">Enable selection popup</span>
-                <span class="toggle-hint" data-i18n="selectionPopupHint">Show translate, polish, and dictionary icons when you select text on any webpage</span>
+            <div class="setting-row">
+              <div class="setting-text">
+                <label for="translate-other-languages-toggle" data-i18n="translateOtherLabel">Translate other languages into Persian</label>
+                <p id="translate-other-languages-hint" class="setting-hint" data-i18n="translateOtherHint">When off, ParsiPad only translates between Persian and English.</p>
               </div>
-              <div class="toggle-switch">
-                <input type="checkbox" id="selection-popup-toggle">
-                <span class="toggle-slider"></span>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <div class="settings-card">
-          <div class="card-header">
-            <div class="card-icon" aria-hidden="true">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
-              </svg>
+              <input type="checkbox" role="switch" class="pp-switch" id="translate-other-languages-toggle" aria-describedby="translate-other-languages-hint">
             </div>
-            <div>
-              <h3 class="card-title" data-i18n="translateOtherLanguages">Other languages</h3>
-              <p class="card-subtitle" data-i18n="translateOtherLanguagesHint">When off, text that is neither Persian nor English is rejected instead of translated.</p>
-            </div>
-          </div>
-          <div class="card-content">
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-label-text" data-i18n="enableTranslateOtherLanguages">Translate other languages into Persian</span>
-              </div>
-              <div class="toggle-switch">
-                <input type="checkbox" id="translate-other-languages-toggle">
-                <span class="toggle-slider"></span>
-              </div>
-            </label>
           </div>
         </div>
 
@@ -327,26 +277,20 @@
             </div>
           </div>
           <div class="card-content">
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-label-text" data-i18n="translateEnToFa">Show Persian translation for English words</span>
-                <span class="toggle-hint" data-i18n="translateEnToFaHint">Dictionary entries for English words include the Persian meaning.</span>
+            <div class="setting-row">
+              <div class="setting-text">
+                <label for="dict-en-to-fa" data-i18n="translateEnToFa">Show Persian translation for English words</label>
+                <p id="dict-en-to-fa-hint" class="setting-hint" data-i18n="translateEnToFaHint">Dictionary entries for English words include the Persian meaning.</p>
               </div>
-              <div class="toggle-switch">
-                <input type="checkbox" id="dict-en-to-fa" checked>
-                <span class="toggle-slider"></span>
+              <input type="checkbox" role="switch" class="pp-switch" id="dict-en-to-fa" aria-describedby="dict-en-to-fa-hint" checked>
+            </div>
+            <div class="setting-row">
+              <div class="setting-text">
+                <label for="dict-fa-to-en" data-i18n="translateFaToEn">Show English translation for Persian words</label>
+                <p id="dict-fa-to-en-hint" class="setting-hint" data-i18n="translateFaToEnHint">Dictionary entries for Persian words include the English meaning.</p>
               </div>
-            </label>
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-label-text" data-i18n="translateFaToEn">Show English translation for Persian words</span>
-                <span class="toggle-hint" data-i18n="translateFaToEnHint">Dictionary entries for Persian words include the English meaning.</span>
-              </div>
-              <div class="toggle-switch">
-                <input type="checkbox" id="dict-fa-to-en" checked>
-                <span class="toggle-slider"></span>
-              </div>
-            </label>
+              <input type="checkbox" role="switch" class="pp-switch" id="dict-fa-to-en" aria-describedby="dict-fa-to-en-hint" checked>
+            </div>
           </div>
         </div>
       </section>
