@@ -50,6 +50,15 @@ describe('library delete and undo', () => {
     return Object.fromEntries(all.map(entry => [entry.key, entry]));
   }
 
+  async function storedOrder() {
+    return {
+      translations: (await history.getHistory()).map(item => item.id),
+      polishes: (await history.getPolishHistory()).map(item => item.id),
+      dictionaries: (await history.getDictionaryHistory()).map(item => item.id),
+      favorites: (await storage.getFavorites()).map(item => item.id)
+    };
+  }
+
   async function collidingFixture() {
     await seed({
       translations: [translation(1, 400), translation(2, 300)],
@@ -85,12 +94,14 @@ describe('library delete and undo', () => {
     it(`undoing ${key} puts back only that entry, in its place`, async () => {
       await collidingFixture();
       const before = await entries();
+      const order = await storedOrder();
       queue.remove(before[key]);
       await queue.flushWrites();
       expect(queue.undo(key)).toBe(true);
       await queue.flushWrites();
 
       expect(await entries()).toEqual(before);
+      expect(await storedOrder()).toEqual(order);
     });
   }
 
@@ -115,18 +126,51 @@ describe('library delete and undo', () => {
     expect(await storage.getFavorites()).toEqual(raw.favorites);
   });
 
-  it('puts an entry back by timestamp when the list changed during the window', async () => {
+  it('puts a polish entry back at its original index even though the list is not timestamp sorted', async () => {
+    // updatePolishVariant stamps an edited entry with Date.now() in place, so the list is not sorted.
     await seed({
-      translations: [translation(3, 300), translation(2, 200), translation(1, 100)],
-      polishes: [], dictionaries: [], favorites: []
+      translations: [],
+      polishes: [polish(1, 300), polish(2, 200), polish(3, 500)],
+      dictionaries: [], favorites: []
     });
     const before = await entries();
-    queue.remove(before['translation:2']);
+    queue.remove(before['polish:2']);
     await queue.flushWrites();
-    await chrome.storage.local.set({ [STORAGE_KEYS.translationHistory]: [translation(9, 900), translation(3, 300), translation(1, 100)] });
-    queue.undo('translation:2');
+    expect((await history.getPolishHistory()).map(item => item.id)).toEqual([1, 3]);
+    queue.undo('polish:2');
     await queue.flushWrites();
+    expect((await history.getPolishHistory()).map(item => item.id)).toEqual([1, 2, 3]);
+  });
 
+  it('puts a favorite back at its original index in an out-of-order list', async () => {
+    await seed({
+      translations: [], polishes: [], dictionaries: [],
+      favorites: [favorite('a', 100), favorite('b', 400), favorite('c', 400), favorite('d', 50)]
+    });
+    const before = await entries();
+    for (const id of ['a', 'c', 'd', 'b']) {
+      queue.remove(before[`favorite:${id}`]);
+      await queue.flushWrites();
+      queue.undo(`favorite:${id}`);
+      await queue.flushWrites();
+      expect((await storage.getFavorites()).map(item => item.id), id).toEqual(['a', 'b', 'c', 'd']);
+    }
+  });
+
+  it('clamps the original index to the end of a list that got shorter', async () => {
+    await seed({ translations: [translation(3, 300), translation(2, 200), translation(1, 100)], polishes: [], dictionaries: [], favorites: [] });
+    const before = await entries();
+    queue.remove(before['translation:1']);
+    await queue.flushWrites();
+    await chrome.storage.local.set({ [STORAGE_KEYS.translationHistory]: [translation(3, 300)] });
+    queue.undo('translation:1');
+    await queue.flushWrites();
+    expect((await history.getHistory()).map(item => item.id)).toEqual([3, 1]);
+  });
+
+  it('falls back to the timestamp when no index is known', async () => {
+    await seed({ translations: [translation(9, 900), translation(3, 300), translation(1, 100)], polishes: [], dictionaries: [], favorites: [] });
+    await history.restoreHistoryEntry('translation', translation(2, 200));
     expect((await history.getHistory()).map(item => item.id)).toEqual([9, 3, 2, 1]);
   });
 
