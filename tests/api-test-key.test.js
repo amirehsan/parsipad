@@ -122,12 +122,8 @@ describe('key test status text', () => {
     expect(keyTestOkText({ model: 'claude-haiku-5-5', ms: 420 }, 'en')).toBe('Key works. claude-haiku-5-5 replied in 420 ms.');
   });
 
-  it('adds the retry advice after the reason', () => {
-    expect(keyTestFailedText('Invalid API key. Please check settings.', 'en')).toBe('Test failed: Invalid API key. Please check settings. Check the key and try again.');
-  });
-
-  it('ends a reason that has no full stop so the advice reads as its own sentence', () => {
-    expect(keyTestFailedText('Invalid Claude API key format', 'en')).toContain('Invalid Claude API key format. Check the key');
+  it('prefixes the localized reason without repeating its advice', () => {
+    expect(keyTestFailedText('Invalid API key. Please check settings.', 'en')).toBe('Test failed. Invalid API key. Please check settings.');
   });
 
   it('falls back to the unknown error text when there is no reason', () => {
