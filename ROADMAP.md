@@ -1,123 +1,62 @@
 # ParsiPad Roadmap
 
-This document outlines planned features and improvements for ParsiPad. Contributions are welcome!
+Where ParsiPad is today and where it is heading. Plans change, so treat everything beyond "Next" as a direction rather than a promise. For what has already shipped, release by release, see the [changelog](CHANGELOG.md). Contributions are welcome!
 
-## Current Version (v2.1)
+## Shipped
 
-- [x] AI-powered Persian ↔ English translation
-- [x] Text polishing (Professional, Conversational, Concise)
-- [x] Right-click context menu translation
-- [x] Keyboard shortcut (Alt+T)
-- [x] Dark mode support
-- [x] Translation history
-- [x] Usage statistics
-- [x] Offline caching
-- [x] Bilingual UI (English/Persian)
-- [x] Dictionary lookup with definitions, synonyms, antonyms
-- [x] Document translation with progress tracking
-- [x] Dictionary translation settings (EN→FA / FA→EN toggles)
-- [x] Cancel button for document translation
-- [x] Selection Popup - floating icons when selecting text (NEW)
-- [x] SVG flag images in language settings (NEW)
+As of 3.8.1, ParsiPad has:
 
----
+- [x] Persian ↔ English translation with automatic direction detection, and other languages into Persian
+- [x] A choice of AI provider: Claude (Anthropic), Gemini (Google) and ChatGPT (OpenAI), with your own key
+- [x] Point to translate: the translation of a paragraph or section appears under the original (`Alt+B` from the keyboard)
+- [x] Selection toolbar for mouse, touch and keyboard, plus the right-click menu and keyboard shortcuts
+- [x] Whole-page translation with a cost estimate, progress, a toggle back to the original and Retry for failed sections
+- [x] Screenshot region, image (OCR) and `.txt` document translation
+- [x] Dictionary with definitions, IPA, examples, synonyms and antonyms
+- [x] Polish in Professional, Conversational and Concise registers
+- [x] Grammar explanations and full lessons with examples, common mistakes and quizzes, plus English pronunciation
+- [x] Library with History, Favorites and Lessons, and Practice flashcards
+- [x] New Tab with a saved word, bookmarks and optional Most visited tiles
+- [x] Side panel that stays open while you browse
+- [x] Settings on one page, muted sites, light and dark themes, an English and Persian interface
+- [x] Local cache, JSON backup and restore, and a cost Analytics page
 
-## Planned Features
+## Next
 
-### v2.2 - Quality of Life Improvements
+The next minor release is planned around lessons and polish. The task list lives in [docs/remaining-work.md](docs/remaining-work.md).
 
-#### 1. Multiple AI Provider Support
+- **Lessons in your language.** Persian explanations with English examples by default, with an English toggle per lesson
+- **Better lesson requests.** Cancel a lesson while it loads, and errors that say what to do next
+- **Accessible quizzes.** Quiz answers as a keyboard-friendly radio group with live feedback
+- **Analytics in local days.** Dates and currency formatted for your locale
+- **Interface consistency.** Shared page controls and one theme mechanism across every page
+- **Practice and Library fixes.** A "Deal again" button at the end of a session, and the smaller fixes listed in the remaining-work file
 
-**Status:** Planned
-**Priority:** Medium
+## Later
 
-Add support for multiple AI providers beyond Claude:
+- **Persian interface layout.** A right-to-left pass using CSS logical properties, so the Persian interface lays out natively rather than by mirroring
+- **More document types.** PDF and DOCX translation, and larger files
+- **Personal glossary.** Remember preferred translations of terms and reuse them
+- **Spaced repetition.** Schedule Practice cards by how well you know them
+- **Video subtitles.** Translate captions on sites such as YouTube
 
-- OpenAI GPT-4
-- Google Gemini
-- DeepL API
-- Local models (Ollama)
+## Ideas under consideration
 
-Users can choose their preferred provider in settings.
+These are not planned yet. Comment on an issue if one of them matters to you.
 
----
+- More providers, such as DeepL, or local models through Ollama
+- Voice input
+- Translation inside built-in PDF viewers
 
-#### 2. Saved Vocabulary / Flashcards
+## How to contribute
 
-**Status:** Planned
-**Priority:** Medium
+1. Check [open issues](https://github.com/amirehsan/parsipad/issues) for work in progress
+2. Comment on an issue to claim it before you start
+3. Follow the [contributing guide](CONTRIBUTING.md)
+4. Open a pull request with your changes
 
-Build a personal vocabulary list:
+## Feature requests
 
-- Save words from dictionary lookups
-- Spaced repetition flashcard system
-- Export vocabulary lists
-- Track learning progress
+Have an idea? [Open an issue](https://github.com/amirehsan/parsipad/issues/new/choose) with the Feature request template.
 
----
-
-### v3.0 - Advanced Features
-
-#### 1. Voice Input/Output
-
-**Status:** Planned
-**Priority:** Low
-
-- Speech-to-text input
-- Text-to-speech for translations
-- Pronunciation practice
-- Uses Web Speech API
-
----
-
-#### 2. Extended Document Support
-
-**Status:** Planned
-**Priority:** Medium
-
-- PDF document translation
-- DOCX document translation
-- Larger file support (up to 1MB)
-
----
-
-#### 3. Translation Memory
-
-**Status:** Planned
-**Priority:** Medium
-
-Learn from user corrections:
-
-- Remember preferred translations
-- Suggest based on context
-- Personal translation glossary
-- Import/export memory
-
----
-
-#### 4. Browser Integration Enhancements
-
-**Status:** Planned
-**Priority:** Medium
-
-- Inline translation (replace text on page)
-- Full page translation
-- YouTube subtitle translation
-- PDF viewer integration
-
----
-
-## How to Contribute
-
-1. Check [open issues](https://github.com/amirehsan/parsipad/issues) for features being worked on
-2. Comment on an issue to claim it
-3. Follow the [Contributing Guide](CONTRIBUTING.md)
-4. Submit a PR with your changes
-
-## Feature Requests
-
-Have an idea? [Open an issue](https://github.com/amirehsan/parsipad/issues/new) with the "feature request" label.
-
----
-
-_Last updated: January 2026 (v2.1.0)_
+Last updated: October 2026 (v3.8.1)
