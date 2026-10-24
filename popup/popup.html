@@ -386,14 +386,16 @@
     <!-- Review Prompt Banner -->
     <section id="review-prompt-banner" class="review-prompt-banner" hidden>
       <div class="review-prompt-content">
-        <span class="review-prompt-icon">⭐</span>
-        <span class="review-prompt-text" data-i18n="enjoyingParsipad">Enjoying ParsiPad?</span>
+        <span class="review-prompt-text" data-i18n="enjoyingParsipad">Enjoying ParsiPad? A rating helps other readers find it.</span>
+        <button id="review-dismiss-btn" type="button" class="review-btn-icon" data-i18n-aria-label="later" aria-label="Later">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
       <div class="review-prompt-actions">
         <a href="https://chromewebstore.google.com/detail/parsipad/kmifhjlofnblfogkjjcmhlmcecghhfbp/reviews"
-           target="_blank" id="review-rate-btn" class="review-btn review-btn-primary" data-i18n="rateNow">Rate Now</a>
-        <button id="review-later-btn" class="review-btn review-btn-secondary" data-i18n="maybeLater">Maybe Later</button>
-        <button id="review-dismiss-btn" class="review-btn-icon" aria-label="Dismiss">✕</button>
+           target="_blank" rel="noopener" id="review-rate-btn" class="review-btn review-btn-primary" data-i18n="rateNow">Rate ParsiPad</a>
+        <button id="review-later-btn" type="button" class="review-btn review-btn-secondary" data-i18n="maybeLater">Later</button>
+        <button id="review-never-btn" type="button" class="review-btn review-btn-secondary" data-i18n="dontAskAgain">Don't ask again</button>
       </div>
     </section>
 

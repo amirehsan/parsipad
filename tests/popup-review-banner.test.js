@@ -32,3 +32,30 @@ describe('review banner buttons', () => {
     expect(body).toMatch(/background:\s*var\(--color-warning-100\)/);
   });
 });
+
+describe('review banner timing and answers', () => {
+  const html = fs.readFileSync(path.resolve(__dirname, '../popup/popup.html'), 'utf8');
+  const js = fs.readFileSync(path.resolve(__dirname, '../popup/popup.js'), 'utf8');
+
+  it('offers rate, later and never, with no emoji', () => {
+    expect(html).toMatch(/id="review-rate-btn"/);
+    expect(html).toMatch(/id="review-later-btn"/);
+    expect(html).toMatch(/id="review-never-btn"[^>]*data-i18n="dontAskAgain"/);
+    expect(html).not.toMatch(/review-prompt-icon">⭐/);
+  });
+
+  it('asks after a result renders, not when the popup opens', () => {
+    const init = js.slice(js.indexOf('async function init()'), js.indexOf('\n}\n', js.indexOf('async function init()')));
+    expect(init).not.toMatch(/checkReviewPrompt\(\)/);
+    expect(js).toMatch(/cardSlot\.replaceChildren\(currentCardEl\);\s*\n\s*checkReviewPrompt\(\);/);
+    expect(js).toMatch(/polishSection\.hidden = false;\s*\n\s*checkReviewPrompt\(\);/);
+  });
+
+  it('claims the prompt through storage so one show is counted once', () => {
+    expect(js).toMatch(/await claimReviewPrompt\(\)/);
+    expect(js).toMatch(/await respondToReviewPrompt\(response\)/);
+    for (const answer of ['never', 'later', 'rated']) {
+      expect(js, answer).toMatch(new RegExp(`answerReviewPrompt\\('${answer}'\\)`));
+    }
+  });
+});

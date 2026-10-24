@@ -1709,18 +1709,19 @@ body {
 
 .review-prompt-banner {
   background: var(--color-warning-100);
-  border-top: 1px solid var(--color-warning-500);
-  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  padding: var(--space-stack-group);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: var(--space-md);
+  gap: var(--space-stack-item);
+  margin-top: var(--space-stack-group);
 }
 
 .review-prompt-content {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-stack-item);
   font-weight: 500;
   color: var(--color-warning-500);
 }
@@ -1735,12 +1736,14 @@ body {
 
 .review-prompt-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-inline-actions);
 }
 
 .review-btn {
-  padding: 6px 12px;
+  white-space: nowrap;
+  padding: 8px 14px;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
@@ -1777,14 +1780,18 @@ body {
 }
 
 .review-btn-icon {
-  margin-left: auto;
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   background: transparent;
   border: none;
+  border-radius: 6px;
   cursor: pointer;
-  opacity: 0.6;
-  font-size: 14px;
+  opacity: 0.7;
   color: var(--color-warning-500);
-  padding: 4px;
 }
 
 .review-btn-icon:hover {
