@@ -352,6 +352,11 @@ body.dark {
   cursor: not-allowed;
 }
 
+/* Busy: running, not refused */
+.btn[aria-busy="true"] {
+  cursor: progress;
+}
+
 .btn-icon {
   width: 1rem;
   height: 1rem;
@@ -383,7 +388,7 @@ body.dark {
   border: 1px solid var(--color-border-strong);
 }
 
-.btn-secondary:hover:not(:disabled) {
+.btn-secondary:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--button-secondary-bg-hover);
 }
 
