@@ -8,7 +8,7 @@ import { getSelectionPopupStyles } from '../content/styles/index.js';
 const js = fs.readFileSync(path.resolve(__dirname, '../content/main.js'), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../manifest.json'), 'utf8'));
 
-const TOOLBAR_KEYS = ['toolbarTranslate', 'toolbarPolish', 'toolbarDictionary', 'toolbarDictionarySingleWord', 'toolbarLabel'];
+const TOOLBAR_KEYS = ['toolbarTranslate', 'toolbarPolish', 'toolbarDictionary', 'toolbarDictionarySingleWord', 'toolbarMute', 'toolbarLabel'];
 
 describe('selection toolbar', () => {
   it('is placed from its measured size, not constants', () => {
