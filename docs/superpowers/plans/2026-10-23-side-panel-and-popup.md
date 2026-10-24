@@ -308,7 +308,7 @@ git commit -m "feat(sidepanel): show the page selection as a one-click chip"
 
 **Interfaces:**
 - Consumes: `recordProviderHealth` from Task 3; `getProvider(provider)` and `PROVIDER_CONFIGS` from `lib/providers/index.js` and `lib/constants.js`.
-- Produces in `lib/key-help.js`: `export const KEY_HELP = { claude: { url: 'https://console.anthropic.com/settings/keys', prefix: 'sk-ant-', steps: ['keyHelpClaudeStep1','keyHelpClaudeStep2','keyHelpClaudeStep3'], cost: 'keyHelpClaudeCost' }, gemini: { url: 'https://aistudio.google.com/apikey', prefix: 'AIza or AQ.', … }, openai: { url: 'https://platform.openai.com/api-keys', prefix: 'sk-', … } }` and `export function renderKeyHelp(provider: string, lang: string): HTMLElement` returning a `<details class="key-help">` with `<summary>` = `t('keyHelpTitle')`, an `<ol>` of the three steps (step 1 contains the link as `<a target="_blank" rel="noopener">`), and a `<p>` with the prefix and cost note.
+- Produces in `lib/key-help.js`: `export const KEY_HELP = { claude: { url: 'https://console.anthropic.com/settings/keys', prefix: 'sk-ant-', steps: ['keyHelpClaudeStep1','keyHelpClaudeStep2','keyHelpClaudeStep3'], cost: 'keyHelpClaudeCost' }, gemini: { url: 'https://aistudio.google.com/apikey', prefix: 'AIza or AQ.', … }, openai: { url: 'https://platform.openai.com/api-keys', prefix: 'sk-', … } }` and `export function renderKeyHelp(provider: string, lang: string): HTMLElement` returning a `<div class="key-help">` that holds a `<details>` with `<summary>` = `t('keyHelpTitle', lang)`, an `<ol>` of the three steps (step 1 contains the link as `<a target="_blank" rel="noopener">`, the key prefix in `<code dir="ltr">`), and a `<p>` with the cost note. The `<details>` carries `lang` and `dir` for `lang` (`fa` → `rtl`). Beside it, outside the `<summary>` so it stays its own keyboard stop, a small pill button `.key-help-lang` toggles only this block's language: it reads `فارسی` (`lang="fa"`, `aria-label` `نمایش راهنما به فارسی`) when the block is English and `English` (`lang="en"`, `aria-label` `Show these steps in English`) when it is Persian, and clicking it replaces the block with `renderKeyHelp(provider, otherLang)` and moves focus to the new pill. The initial `lang` is the UI language; the toggle never changes the UI language. Mockup: ParsiPad UI Proposals canvas, Settings (Persian state) and Popup first run (English state).
 - `testApiKey` calls `provider.complete({ systemPrompt: 'Reply with the single word OK.', userPrompt: 'OK', maxTokens: 5, apiKey: key, timeoutMs: 15000 })` and measures `performance.now()` around it. Failures map through the provider's existing `handleError` to a `TranslationError` code.
 
 - [ ] **Step 1: Write the failing tests**
@@ -377,6 +377,22 @@ it('every provider has three localized steps and a cost note', () => {
       expect(translations.fa[key], key).toBeTruthy();
     }
   }
+});
+it('the language pill switches only the how-to', async () => {
+  const { Window } = await import('happy-dom');
+  const window = new Window(); globalThis.document = window.document;
+  const { renderKeyHelp } = await import('../lib/key-help.js');
+  const en = renderKeyHelp('claude', 'en');
+  document.body.append(en);
+  expect(en.querySelector('details').getAttribute('dir')).toBe('ltr');
+  const pill = en.querySelector('.key-help-lang');
+  expect(pill.textContent).toBe('فارسی');
+  pill.click();
+  const fa = document.querySelector('.key-help');
+  expect(fa.querySelector('details').getAttribute('lang')).toBe('fa');
+  expect(fa.querySelector('details').getAttribute('dir')).toBe('rtl');
+  expect(fa.querySelector('.key-help-lang').textContent).toBe('English');
+  expect(document.activeElement).toBe(fa.querySelector('.key-help-lang'));
 });
 ```
 
