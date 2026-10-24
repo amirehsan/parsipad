@@ -22,6 +22,7 @@ import { applySourceOverride } from '../shared/source-override.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils/batch.js';
 import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
 import { selectionToReport, createSelectionReporter } from './selection-report.js';
+import { MUTED_SITES_KEY, isHostMuted } from '../lib/muted-sites.js';
 import { initBlockTranslate, translateFocusedBlock, hideBlockIcon, isBlockTranslateEnabled } from './blocks/index.js';
 
 // Re-injection guard: skip if the script has already run in this isolated world.
@@ -38,6 +39,9 @@ let shadowRoot = null;
 let selectionPopup = null;
 let selectionPopupShadow = null;
 let selectionPopupEnabled = false;
+// True when this page's host is on the muted-sites list. Loaded on init and
+// kept current by the chrome.storage.onChanged listener below.
+let siteMuted = false;
 // Cached user-language preference for translating floating-box copy. Read once
 // on init and kept fresh by the chrome.storage.onChanged listener below.
 let userLang = 'en';
@@ -120,6 +124,7 @@ function init() {
 
   // Load selection popup setting
   loadSelectionPopupSetting();
+  loadMutedSites();
   loadUserLang();
 
   // Listen for storage changes to update settings + UI language
@@ -130,6 +135,10 @@ function init() {
     }
     if (changes.ui_language) {
       userLang = changes.ui_language.newValue || 'en';
+    }
+    if (changes[MUTED_SITES_KEY]) {
+      siteMuted = isHostMuted(changes[MUTED_SITES_KEY].newValue, location.hostname);
+      if (siteMuted) removeSelectionPopup();
     }
   });
 
@@ -2960,10 +2969,22 @@ async function loadSelectionPopupSetting() {
   }
 }
 
+async function loadMutedSites() {
+  try {
+    const result = await chrome.storage.local.get(MUTED_SITES_KEY);
+    siteMuted = isHostMuted(result[MUTED_SITES_KEY], location.hostname);
+  } catch (error) {
+    siteMuted = false;
+  }
+}
+
 /**
  * Handle text selection on mouseup
  */
 function handleTextSelection(event) {
+  // Quiet on sites the user muted
+  if (siteMuted) return;
+
   // Don't show popup if disabled
   if (!selectionPopupEnabled) return;
 
@@ -2982,6 +3003,9 @@ function handleTextSelection(event) {
 
   // Debounce: wait 200ms before showing popup to avoid flickering
   selectionDebounceTimer = setTimeout(() => {
+    // A mute that arrived during the debounce wins
+    if (siteMuted) return;
+
     const selection = window.getSelection();
     const selectedText = selection?.toString().trim();
 

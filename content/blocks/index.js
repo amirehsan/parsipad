@@ -13,6 +13,7 @@ import { isContextInvalidated } from '../../lib/translation/errors.js';
 import { isMissingApiKeyResponse } from '../utils/text.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from '../utils/batch.js';
 import { detectLanguage } from '../../lib/language-detect.js';
+import { MUTED_SITES_KEY, isHostMuted } from '../../lib/muted-sites.js';
 import { resolveBlock } from './resolve.js';
 import { elementText } from './describe.js';
 import { showIconFor, hideIcon, repositionIcon, destroyIcon, currentIconBlock, isIconElement } from './icon.js';
@@ -41,12 +42,16 @@ const MAX_CONCURRENT = 3;
 const MAX_LEAF_VIEWPORT_FRACTION = 0.6;
 
 let deps = { onMissingApiKey: () => {} };
+// What is live right now: the stored setting, unless this site is muted.
 let enabled = true;
+let storedEnabled = true;
+let mutedSites = [];
 let started = false;
 // The stored setting is read asynchronously, so a toggle arriving before that
 // read resolves would otherwise be clobbered by the stale stored value. Whoever
 // sets the flag first wins.
 let settingLoaded = false;
+let mutedLoaded = false;
 // Held so teardown can remove exactly the listener init added, rather than
 // leaking one more live listener on every init/teardown cycle.
 let storageListener = null;
@@ -409,7 +414,13 @@ export function isBlockTranslateEnabled() {
 /** @param {boolean} value */
 export function setEnabled(value) {
   settingLoaded = true;
-  enabled = Boolean(value);
+  storedEnabled = Boolean(value);
+  applyEnabled();
+}
+
+/** Recompute the live state from the stored setting and the muted list. */
+function applyEnabled() {
+  enabled = storedEnabled && !isHostMuted(mutedSites, location.hostname);
   if (enabled) return;
   hideIcon();
   for (const controller of inFlight.values()) controller.abort();
@@ -451,17 +462,29 @@ export function initBlockTranslate(dependencies = {}) {
   window.addEventListener('parsipad:locationchange', resetForNavigation);
   window.addEventListener('popstate', resetForNavigation);
 
-  chrome.storage.local.get(['block_translate_enabled', 'ui_language']).then((stored) => {
+  chrome.storage.local.get(['block_translate_enabled', MUTED_SITES_KEY, 'ui_language']).then((stored) => {
     setUiLang(stored.ui_language || 'en');
-    if (settingLoaded) return;
-    settingLoaded = true;
-    enabled = stored.block_translate_enabled ?? true;
-  }).catch(() => { settingLoaded = true; });
+    // Each key yields to a change that already arrived for it.
+    if (!settingLoaded) {
+      settingLoaded = true;
+      storedEnabled = stored.block_translate_enabled ?? true;
+    }
+    if (!mutedLoaded) {
+      mutedLoaded = true;
+      mutedSites = Array.isArray(stored[MUTED_SITES_KEY]) ? stored[MUTED_SITES_KEY] : [];
+    }
+    applyEnabled();
+  }).catch(() => { settingLoaded = true; mutedLoaded = true; });
 
   storageListener = (changes, namespace) => {
     if (namespace !== 'local') return;
     if (changes.block_translate_enabled) {
       setEnabled(changes.block_translate_enabled.newValue ?? true);
+    }
+    if (changes[MUTED_SITES_KEY]) {
+      mutedLoaded = true;
+      mutedSites = Array.isArray(changes[MUTED_SITES_KEY].newValue) ? changes[MUTED_SITES_KEY].newValue : [];
+      applyEnabled();
     }
     if (changes.ui_language) {
       setUiLang(changes.ui_language.newValue || 'en');
@@ -486,6 +509,9 @@ export function teardownBlockTranslate() {
   destroyIcon();
   started = false;
   enabled = true;
+  storedEnabled = true;
+  mutedSites = [];
   settingLoaded = false;
+  mutedLoaded = false;
   setUiLang('en');
 }

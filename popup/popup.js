@@ -1,7 +1,7 @@
 import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
 import { getHistory, getPolishHistory } from '../lib/history.js';
-import { getTheme, setTheme, updateUsageStats, getLanguage, getSelectedProvider, setSelectedProvider, getProviderApiKey, setProviderApiKey, normalizeApiKey, getFavorites, isFavorite, claimReviewPrompt, respondToReviewPrompt } from '../lib/storage.js';
+import { getTheme, setTheme, updateUsageStats, getLanguage, getSelectedProvider, setSelectedProvider, getProviderApiKey, setProviderApiKey, normalizeApiKey, checkKeyFormat, getFavorites, isFavorite, claimReviewPrompt, respondToReviewPrompt } from '../lib/storage.js';
 import { PROVIDER_CONFIGS, ACTIONS, STORE_REVIEWS_URL, STORAGE_KEYS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 import { renderCard, injectCardStyles } from '../shared/card/index.js';
@@ -273,7 +273,7 @@ const firstRun = createFirstRun({
     needsKey = needs;
     actionBtn.disabled = isProcessing || needsKey;
   },
-  storage: { getSelectedProvider, setSelectedProvider, getProviderApiKey, setProviderApiKey, normalizeApiKey },
+  storage: { getSelectedProvider, setSelectedProvider, getProviderApiKey, setProviderApiKey, normalizeApiKey, checkKeyFormat },
   testKey: (provider, key) => chrome.runtime.sendMessage({ action: ACTIONS.TEST_API_KEY, provider, key })
 });
 

@@ -53,9 +53,11 @@ describe('provider API key formats', () => {
     expect(await storage.getProviderApiKey(PROVIDERS.GEMINI)).toBe('AQ.AbPlaceholderValue');
   });
 
+  // The UI localizes this from the code and prefixes; the message is for logs.
   it('names every accepted prefix when a key matches none of them', async () => {
     await expect(storage.setProviderApiKey(PROVIDERS.GEMINI, 'not-a-key'))
-      .rejects.toThrow(/"AIza" or "AQ\."/);
+      .rejects.toMatchObject({ code: 'INVALID_KEY_FORMAT', prefixes: ['AIza', 'AQ.'] });
+    expect(await storage.getProviderApiKey(PROVIDERS.GEMINI)).toBeNull();
   });
 
   // Keys get pasted out of .env files and code samples, quotes and all.
@@ -67,11 +69,18 @@ describe('provider API key formats', () => {
     expect(await storage.getProviderApiKey(PROVIDERS.CLAUDE)).toBe('sk-ant-placeholder');
   });
 
+  it('checks a key format without storing anything, for Save & test to call before its request', async () => {
+    expect(storage.checkKeyFormat(PROVIDERS.CLAUDE, 'sk-ant-fine')).toBeNull();
+    expect(storage.checkKeyFormat(PROVIDERS.GEMINI, '"AQ.fine"')).toBeNull();
+    expect(storage.checkKeyFormat(PROVIDERS.GEMINI, 'nope')).toEqual({ ok: false, code: 'INVALID_KEY_FORMAT', prefixes: ['AIza', 'AQ.'] });
+    expect(await storage.getProviderApiKey(PROVIDERS.GEMINI)).toBeNull();
+  });
+
   it('still holds the other providers to their own prefix', async () => {
     await expect(storage.setProviderApiKey(PROVIDERS.CLAUDE, 'AIzaSyPlaceholderValue'))
-      .rejects.toThrow(/"sk-ant-"/);
+      .rejects.toMatchObject({ code: 'INVALID_KEY_FORMAT', prefixes: ['sk-ant-'] });
     await expect(storage.setProviderApiKey(PROVIDERS.OPENAI, 'AQ.AbPlaceholderValue'))
-      .rejects.toThrow(/"sk-"/);
+      .rejects.toMatchObject({ code: 'INVALID_KEY_FORMAT', prefixes: ['sk-'] });
   });
 });
 
