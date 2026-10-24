@@ -2,28 +2,24 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { functionBody as bodyOf } from './helpers/source.js';
 
 /**
  * Most readers never open the popup; they translate from the page. The
  * rating ask therefore also appears, as one quiet line, under a translation
  * in the floating box, when the service worker says it is time.
- * content/main.js has no DOM harness, so the wiring is read as source.
+ * The wiring is read as source here; tests/content-box-errors.test.js drives
+ * the line in the real content script.
  */
 const root = path.resolve(__dirname, '..');
 const js = fs.readFileSync(path.join(root, 'content/main.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'content/styles/index.js'), 'utf8');
 
-function functionBody(name) {
-  const start = js.search(new RegExp(`\\n(async )?function ${name}\\(`));
-  expect(start, name).toBeGreaterThan(-1);
-  const rest = js.slice(start + 1);
-  const next = rest.search(/\n(async )?function [A-Za-z]+\(/);
-  return next === -1 ? rest : rest.slice(0, next);
-}
+const functionBody = (name) => bodyOf(js, name);
 
 describe('floating box review line', () => {
   it('asks the service worker after a translation renders', () => {
-    expect(functionBody('showTranslation')).toMatch(/maybeShowReviewLine\(content\)/);
+    expect(functionBody('showTranslation')).toMatch(/maybeShowReviewLine\(currentCardEl\)/);
     expect(functionBody('maybeShowReviewLine')).toMatch(/action: 'REVIEW_PROMPT_STATE'/);
   });
 
@@ -35,6 +31,23 @@ describe('floating box review line', () => {
     expect(body).toMatch(/answer\('rated'\)/);
     expect(body).toMatch(/answer\('later'\)/);
     expect(body).toMatch(/document\.createElement\('button'\)/);
+  });
+
+  it('sits outside the live region and is not claimed under a skeleton', () => {
+    expect(js).toMatch(/class="parsipad-content"[^>]*aria-live="polite"[\s\S]*?<\/div>\s*<div class="parsipad-review-slot">/);
+    const body = functionBody('maybeShowReviewLine');
+    expect(body).toMatch(/parsipad-review-slot/);
+    expect(body).toMatch(/\.parsipad-loading/);
+  });
+
+  it('decides before it asks, because asking is what records the show', () => {
+    const body = functionBody('maybeShowReviewLine');
+    const ask = body.indexOf("action: 'REVIEW_PROMPT_STATE'");
+    expect(ask).toBeGreaterThan(-1);
+    expect(body.indexOf('.parsipad-loading')).toBeGreaterThan(-1);
+    expect(body.indexOf('.parsipad-loading')).toBeLessThan(ask);
+    expect(body.indexOf('currentCardEl')).toBeGreaterThan(-1);
+    expect(body.indexOf('currentCardEl')).toBeLessThan(ask);
   });
 
   it('styles the line in the box stylesheet', () => {

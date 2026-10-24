@@ -23,10 +23,18 @@ A word gives you its senses by part of speech, the one that fits your sentence f
 
 Text in other languages can be translated into Persian too, if you turn that on.
 
+Selecting text also brings up a small toolbar above it with Translate, Polish, and Dictionary buttons. It appears after a mouse drag, after a touch long-press, and for a selection made with the keyboard, where Tab moves into it, the arrow keys move between its buttons, and Escape closes it. It never appears inside text fields or editors, so it does not get in the way while you type, and it does not appear for page-sized selections. A last button mutes ParsiPad on the site you are on, with an Undo.
+
 
 Whole pages
 
-Translate an entire page in place with Alt+P or the right-click menu, then toggle between the original and the translation whenever you like. Progress shows as it goes, and you can stop it at any point.
+Translate an entire page in place with Alt+P or the right-click menu, then toggle between the original and the translation whenever you like.
+
+- It asks before it starts: how many paragraphs the page has and about what it will cost with your provider, so there are no surprises. Choose Translate page or Cancel, or tick "Don't ask again" (the "Ask before translating a whole page" switch in Settings turns the question back on)
+- Progress shows as it goes. Cancel, or Escape when you are not typing in a text field, stops it and keeps every section that already finished. With a box or the selection toolbar open, Escape closes that first
+- If some sections fail, a summary says how many were translated and how many failed, and Retry failed sends only those. Pressing Translate page again picks up where it stopped, without sending again a section that already failed twice
+- If ParsiPad is updated while the page is open, the translation stops, keeps what finished and asks you to reload the page
+- On a site that changes pages without reloading, the original text is put back when you move on
 
 
 Screenshots, images, and documents
@@ -104,9 +112,9 @@ The Analytics page, opened from Data & backup in Settings, shows estimated cost 
 
 Reach it however suits you
 
-- The floating popup when you select text, which you can switch off
+- The selection toolbar when you select text, which you can switch off
 - The right-click menu, for translating, polishing, dictionary lookups, whole pages, and screenshots
-- Keyboard shortcuts: Alt+T to translate, Alt+D for the dictionary, Alt+P for the page, Alt+S for a screenshot region, Alt+B for the block you are pointing at, all of them remappable
+- Keyboard shortcuts: Alt+T to translate, Alt+D for the dictionary, Alt+P for the page, Alt+S for a screenshot region, Alt+B for the block you are pointing at. The first four can be remapped in Chrome's keyboard shortcut settings; Alt+B and Escape (closes a box or stops a page translation) are fixed keys on web pages, listed in Settings under Shortcuts
 - The toolbar popup, which opens with the cursor in the text box and switches between Translate, Polish, and Doc & Image for documents and images, with page translation and screenshots a click away
 - The side panel, docked beside the page and open as long as you want it
 

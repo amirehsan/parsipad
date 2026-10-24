@@ -40,6 +40,8 @@ export function themeVars() {
       --pp-error-soft: #f7dde1;
       --pp-accent-soft: rgba(99, 102, 241, 0.10);
       --pp-on-accent: #fdfcff;
+      /* Behind a modal on the page: dims it without hiding it. */
+      --pp-scrim: rgba(27, 24, 38, 0.32);
     }
     :host([data-theme='dark']) {
       --pp-bg: #1c1930;
@@ -62,6 +64,7 @@ export function themeVars() {
       --pp-error-soft: #40202a;
       --pp-accent-soft: rgba(129, 140, 248, 0.16);
       --pp-on-accent: #131120;
+      --pp-scrim: rgba(0, 0, 0, 0.5);
     }
     @media (prefers-reduced-motion: reduce) {
       :host {
@@ -112,11 +115,23 @@ export function getPageProgressStyles() {
       margin-bottom: 8px;
     }
 
+    /* Filled by scaleX from updatePageProgress, from the start of the line. */
     .parsipad-progress-bar {
+      width: 100%;
       height: 100%;
       background: linear-gradient(90deg, var(--pp-accent), var(--pp-accent-strong));
       border-radius: 3px;
-      transition: width 0.3s ease;
+      transform-origin: left;
+    }
+
+    [dir='rtl'] .parsipad-progress-bar {
+      transform-origin: right;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .parsipad-progress-bar {
+        transition: transform 0.3s ease;
+      }
     }
 
     .parsipad-progress-text {
@@ -141,6 +156,128 @@ export function getPageProgressStyles() {
     .parsipad-progress-cancel:hover {
       background: var(--pp-border);
       border-color: var(--pp-border-strong);
+    }
+  `;
+}
+
+/**
+ * The question a whole-page translation asks first (content/page-confirm.js),
+ * rendered in the page-progress overlay's shadow root, so it relies on the
+ * theme variables getPageProgressStyles() already emits there. Spacing uses
+ * the literal card values: 20px inset, 12px between items, 8px between
+ * actions. The scrim fills the overlay host, which covers the viewport while
+ * the page asks; the status and the dialog sit above it.
+ */
+export function getPageConfirmStyles() {
+  return `
+    .parsipad-scrim {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      background: var(--pp-scrim);
+    }
+
+    .parsipad-page-status {
+      position: relative;
+      background: var(--pp-bg);
+      color: var(--pp-text-secondary);
+      border: 1px solid var(--pp-border);
+      border-radius: 16px;
+      box-shadow: var(--pp-shadow-card);
+      padding: 12px 20px;
+      font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+    }
+
+    .parsipad-confirm {
+      position: relative;
+      background: var(--pp-bg);
+      color: var(--pp-text);
+      border: 1px solid var(--pp-border);
+      border-radius: 16px;
+      box-shadow: var(--pp-shadow-card);
+      padding: 20px;
+      width: min(360px, calc(100vw - 48px));
+      box-sizing: border-box;
+      font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .parsipad-confirm-title {
+      margin: 0 0 12px;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--pp-text);
+    }
+
+    .parsipad-confirm-body {
+      margin: 0 0 12px;
+      color: var(--pp-text-secondary);
+    }
+
+    .parsipad-confirm-dontask {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      color: var(--pp-text-strong);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .parsipad-confirm-dontask input {
+      margin: 0;
+      width: 16px;
+      height: 16px;
+      accent-color: var(--pp-accent);
+      cursor: pointer;
+    }
+
+    .parsipad-confirm-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .parsipad-confirm-actions button {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .parsipad-confirm-cancel {
+      background: var(--pp-bg-hover);
+      border: 1px solid var(--pp-border);
+      color: var(--pp-text-strong);
+    }
+
+    .parsipad-confirm-cancel:hover {
+      background: var(--pp-border);
+      border-color: var(--pp-border-strong);
+    }
+
+    .parsipad-confirm-go {
+      background: var(--pp-accent);
+      border: 1px solid var(--pp-accent);
+      color: var(--pp-on-accent);
+      font-weight: 600;
+    }
+
+    .parsipad-confirm-go:hover {
+      background: var(--pp-accent-strong);
+      border-color: var(--pp-accent-strong);
+    }
+
+    .parsipad-confirm-actions button:focus-visible,
+    .parsipad-confirm-dontask input:focus-visible {
+      outline: 2px solid var(--pp-accent);
+      outline-offset: 2px;
     }
   `;
 }
@@ -174,7 +311,6 @@ export function getPageToggleStyles() {
 
     .parsipad-toggle-btn.showing-translated:hover {
       background: var(--pp-accent-strong);
-      transform: scale(1.08);
       box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4),
                   0 3px 8px rgba(27, 24, 38, 0.12);
     }
@@ -187,13 +323,18 @@ export function getPageToggleStyles() {
 
     .parsipad-toggle-btn.showing-original:hover {
       background: var(--pp-bg-secondary);
-      transform: scale(1.08);
       box-shadow: 0 6px 20px rgba(27, 24, 38, 0.15),
                   0 3px 8px rgba(27, 24, 38, 0.1);
     }
 
-    .parsipad-toggle-btn:active {
-      transform: scale(0.96);
+    @media (prefers-reduced-motion: no-preference) {
+      .parsipad-toggle-btn:hover {
+        transform: scale(1.08);
+      }
+
+      .parsipad-toggle-btn:active {
+        transform: scale(0.96);
+      }
     }
   `;
 }
@@ -267,9 +408,13 @@ export function getScreenshotStyles() {
   `;
 }
 
-export function getSelectionPopupStyles(showBelow = false) {
-  const animFrom = showBelow ? 'translateY(-8px)' : 'translateY(8px)';
-
+/**
+ * Styles for the selection toolbar. Its entry direction is not known until
+ * it has been measured and placed, so the animation hangs off the
+ * data-placement attribute createSelectionPopup sets afterwards: while it is
+ * measured nothing animates, and it then grows away from the selection.
+ */
+export function getSelectionPopupStyles() {
   return `
     ${themeVars()}
     :host {
@@ -294,13 +439,34 @@ export function getSelectionPopupStyles(showBelow = false) {
         0 1px 3px rgba(27, 24, 38, 0.08),
         0 0 0 1px rgba(27, 24, 38, 0.04);
       padding: 6px;
-      animation: popup-spring-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    @keyframes popup-spring-in {
+    /* Keyframes stay outside the guard; only their use is guarded. */
+    @media (prefers-reduced-motion: no-preference) {
+      .selection-popup[data-placement='above'] {
+        animation: popup-spring-in-above 200ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .selection-popup[data-placement='below'] {
+        animation: popup-spring-in-below 200ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
+    }
+
+    @keyframes popup-spring-in-above {
       from {
         opacity: 0;
-        transform: ${animFrom} scale(0.95);
+        transform: translateY(8px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes popup-spring-in-below {
+      from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.95);
       }
       to {
         opacity: 1;
@@ -328,7 +494,6 @@ export function getSelectionPopupStyles(showBelow = false) {
       /* Brand-tint background; brighter brand color in dark mode for legibility */
       background: rgba(99, 102, 241, 0.18);
       color: var(--pp-accent);
-      transform: scale(1.05);
     }
 
     :host([data-theme='dark']) .selection-btn:hover {
@@ -340,10 +505,6 @@ export function getSelectionPopupStyles(showBelow = false) {
       outline-offset: 2px;
     }
 
-    .selection-btn:active {
-      transform: scale(0.95);
-    }
-
     .selection-btn.disabled {
       opacity: 0.4;
       cursor: not-allowed;
@@ -352,7 +513,20 @@ export function getSelectionPopupStyles(showBelow = false) {
     .selection-btn.disabled:hover {
       background: transparent;
       color: var(--pp-text-secondary);
-      transform: none;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .selection-btn:hover {
+        transform: scale(1.05);
+      }
+
+      .selection-btn:active {
+        transform: scale(0.95);
+      }
+
+      .selection-btn.disabled:hover {
+        transform: none;
+      }
     }
 
     .selection-btn svg {
@@ -403,6 +577,19 @@ export function getSelectionPopupStyles(showBelow = false) {
       visibility: visible;
     }
 
+    /* Mute is the last button and its label is the longest: end the tooltip
+       at the button so it does not run past the toolbar's edge. */
+    .selection-btn[data-action='mute'] .pp-tooltip {
+      left: auto;
+      right: 0;
+      transform: none;
+    }
+
+    .selection-btn[data-action='mute'] .pp-tooltip::after {
+      left: auto;
+      right: 13px;
+      transform: none;
+    }
   `;
 }
 
@@ -427,7 +614,6 @@ export function getStyles() {
       border: 1px solid var(--pp-border);
       min-width: 280px;
       max-width: 450px;
-      animation: parsipad-fade-in 150ms ease-out;
       font-size: 14px;
       line-height: 1.5;
       color: var(--pp-text);
@@ -441,6 +627,12 @@ export function getStyles() {
       to {
         opacity: 1;
         transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .parsipad-box {
+        animation: parsipad-fade-in 150ms ease-out;
       }
     }
 
@@ -668,6 +860,21 @@ export function getStyles() {
       line-height: 1.75;
     }
 
+    /* Holds the rating line under a translation, outside the content area's
+       live region, so a later skeleton or result does not wipe it. */
+    .parsipad-review-slot {
+      padding: 0 16px;
+    }
+
+    .parsipad-review-slot:empty {
+      display: none;
+    }
+
+    .parsipad-review-slot .parsipad-review-line {
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+
     .parsipad-review-line {
       display: flex;
       align-items: center;
@@ -842,7 +1049,8 @@ export function getStyles() {
       color: var(--pp-error);
     }
 
-    .parsipad-open-settings {
+    .parsipad-open-settings,
+    .parsipad-reload-page {
       margin-top: 8px;
       padding: 6px 12px;
       background: var(--pp-accent);
@@ -854,8 +1062,15 @@ export function getStyles() {
       font-size: 12px;
     }
 
-    .parsipad-open-settings:hover {
+    .parsipad-open-settings:hover,
+    .parsipad-reload-page:hover {
       background: var(--pp-accent-strong);
+    }
+
+    .parsipad-open-settings:focus-visible,
+    .parsipad-reload-page:focus-visible {
+      outline: 2px solid var(--pp-accent);
+      outline-offset: 2px;
     }
 
     .parsipad-content::-webkit-scrollbar {
@@ -902,8 +1117,13 @@ export function getStyles() {
     }
 
     .parsipad-polish-card:hover {
-      transform: translateY(-1px);
       box-shadow: 0 4px 6px -1px rgba(27, 24, 38, 0.1);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .parsipad-polish-card:hover {
+        transform: translateY(-1px);
+      }
     }
 
     .parsipad-polish-card-header {
@@ -974,13 +1194,15 @@ export function getStyles() {
       color: var(--pp-accent);
     }
 
-    .parsipad-polish-regenerate.loading svg {
-      animation: parsipad-spin 1s linear infinite;
-    }
-
     @keyframes parsipad-spin {
       from { transform: rotate(0deg); }
       to { transform: rotate(360deg); }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .parsipad-polish-regenerate.loading svg {
+        animation: parsipad-spin 1s linear infinite;
+      }
     }
 
     .parsipad-polish-regenerate:disabled {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { selectionToReport, createSelectionReporter } from '../content/selection-report.js';
+import { selectionToReport, createSelectionReporter, isEditableSelection } from '../content/selection-report.js';
 
 const sel = (text) => ({ toString: () => text });
 
@@ -131,5 +131,104 @@ describe('selectionToReport inside shadow DOM', () => {
     p.focus();
     expect(selectionToReport(sel('hello'), doc.activeElement)).toBe('hello');
     expect(selectionToReport(sel('hello'), doc.body)).toBe('hello');
+  });
+});
+
+describe('isEditableSelection', () => {
+  it('treats a selection inside a contenteditable ancestor as editable', () => {
+    const editor = { closest: (s) => (s.startsWith('[contenteditable]') ? editor : null) };
+    const text = { nodeType: 3, parentElement: editor };
+    expect(isEditableSelection({ anchorNode: text }, { tagName: 'BODY' })).toBe(true);
+    expect(isEditableSelection({ anchorNode: { nodeType: 3, parentElement: { closest: () => null } } }, { tagName: 'BODY' })).toBe(false);
+    expect(isEditableSelection(null, { tagName: 'SELECT' })).toBe(true);
+  });
+
+  it('treats focus in an input, textarea, select or contenteditable element as editable', () => {
+    for (const tagName of ['INPUT', 'TEXTAREA', 'SELECT']) {
+      expect(isEditableSelection(null, { tagName }), tagName).toBe(true);
+    }
+    expect(isEditableSelection(null, { tagName: 'DIV', isContentEditable: true })).toBe(true);
+    expect(isEditableSelection(null, { tagName: 'DIV' })).toBe(false);
+  });
+
+  it('returns false for a selection without an anchor node', () => {
+    expect(isEditableSelection(sel('hello'), null)).toBe(false);
+    expect(isEditableSelection({ anchorNode: null }, { tagName: 'BODY' })).toBe(false);
+    expect(isEditableSelection(null, null)).toBe(false);
+  });
+
+  it('asks for an enabled contenteditable ancestor, not one set to false', () => {
+    const asked = [];
+    const element = { nodeType: 1, closest: (s) => { asked.push(s); return null; } };
+    isEditableSelection({ anchorNode: element }, null);
+    expect(asked).toEqual(['[contenteditable]:not([contenteditable="false"])']);
+  });
+});
+
+describe('rich editors', () => {
+  async function dom() {
+    const { Window } = await import('happy-dom');
+    const window = new Window();
+    return window.document;
+  }
+
+  function selectText(doc, node) {
+    const selection = doc.getSelection();
+    selection.removeAllRanges();
+    const range = doc.createRange();
+    range.selectNodeContents(node);
+    selection.addRange(range);
+    return selection;
+  }
+
+  it('skips a selection in an editor even when focus has moved elsewhere, and leaves focus alone', async () => {
+    const doc = await dom();
+    doc.body.innerHTML = '<div contenteditable="true"><p><b id="word">Draft text</b> in an editor</p></div><button id="other">Other</button>';
+    const other = doc.getElementById('other');
+    other.focus();
+    const selection = selectText(doc, doc.getElementById('word').firstChild);
+    expect(isEditableSelection(selection, doc.activeElement)).toBe(true);
+    expect(selectionToReport(selection, doc.activeElement)).toBeNull();
+    expect(doc.activeElement).toBe(other);
+  });
+
+  it('skips a selection in a focused editor without moving the caret out of it', async () => {
+    const doc = await dom();
+    doc.body.innerHTML = '<div id="editor" contenteditable="true">Draft text in an editor</div>';
+    const editor = doc.getElementById('editor');
+    editor.focus();
+    const selection = selectText(doc, editor.firstChild);
+    expect(isEditableSelection(selection, doc.activeElement)).toBe(true);
+    expect(doc.activeElement).toBe(editor);
+  });
+
+  it('still offers ordinary text, and a read-only island marked contenteditable="false"', async () => {
+    const doc = await dom();
+    doc.body.innerHTML = '<article><p id="plain">Ordinary page text</p></article><section contenteditable="false"><p id="island">Read only</p></section>';
+    let selection = selectText(doc, doc.getElementById('plain').firstChild);
+    expect(isEditableSelection(selection, doc.body)).toBe(false);
+    expect(selectionToReport(selection, doc.body)).toBe('Ordinary page text');
+    selection = selectText(doc, doc.getElementById('island').firstChild);
+    expect(isEditableSelection(selection, doc.body)).toBe(false);
+  });
+
+  it('counts a contenteditable="false" island nested in an editor as part of that editor', async () => {
+    const doc = await dom();
+    doc.body.innerHTML = '<div contenteditable="true"><p>Before</p><figure contenteditable="false"><figcaption id="cap">A caption in the editor</figcaption></figure></div>';
+    const selection = selectText(doc, doc.getElementById('cap').firstChild);
+    expect(isEditableSelection(selection, doc.body)).toBe(true);
+    expect(selectionToReport(selection, doc.body)).toBeNull();
+  });
+
+  it('agrees with selectionToReport, so the toolbar and the side panel skip the same selections', async () => {
+    const doc = await dom();
+    doc.body.innerHTML = '<select id="s"><option>One option</option></select><div contenteditable><span id="e">Editable words</span></div>';
+    doc.getElementById('s').focus();
+    expect(isEditableSelection(sel('One option'), doc.activeElement)).toBe(true);
+    expect(selectionToReport(sel('One option'), doc.activeElement)).toBeNull();
+    doc.body.focus();
+    const selection = selectText(doc, doc.getElementById('e').firstChild);
+    expect(isEditableSelection(selection, doc.body)).toBe(true);
+    expect(selectionToReport(selection, doc.body)).toBeNull();
   });
 });

@@ -7,6 +7,14 @@ beforeEach(() => { store.clear(); globalThis.chrome = { storage: { local: {
   get: async (k) => ({ [k]: store.get(k) }), set: async (o) => { for (const [k, v] of Object.entries(o)) store.set(k, v); } } } }; });
 const html = fs.readFileSync(path.resolve(__dirname, '../settings/settings.html'), 'utf8');
 describe('reading section', () => {
+  it('shows the English hints in the page itself, before the strings load', async () => {
+    const { translations } = await import('../lib/i18n.js');
+    for (const key of ['selectionToolbarHint', 'confirmPageTranslateHint']) {
+      const match = html.match(new RegExp(`data-i18n="${key}">([^<]*)<`));
+      expect(match, key).not.toBeNull();
+      expect(match[1], key).toBe(translations.en[key]);
+    }
+  });
   it('asks before a whole-page translation by default', async () => {
     expect(await storage.getConfirmPageTranslate()).toBe(true);
     await storage.setConfirmPageTranslate(false);
@@ -32,12 +40,12 @@ describe('reading section', () => {
     expect(reading).toMatch(/id="muted-sites-list"/);
     expect(reading).toMatch(/role="status"/);
   });
-  it('ships the confirmation row hidden until Plan E reads the preference', () => {
+  it('shows the confirmation row now that page translation asks first', () => {
     const reading = html.slice(html.indexOf('<section id="reading"'), html.indexOf('</section>', html.indexOf('<section id="reading"')));
     expect(reading.slice(1)).not.toMatch(/<section[\s>]/);
     const rowStart = reading.lastIndexOf('<div class="setting-row"', reading.indexOf('id="confirm-page-translate-toggle"'));
-    expect(reading.slice(rowStart, reading.indexOf('>', rowStart) + 1)).toBe('<div class="setting-row" hidden>');
-    expect(reading.slice(0, rowStart)).toMatch(/<!--[^>]*Plan E[^>]*-->\s*$/);
+    expect(reading.slice(rowStart, reading.indexOf('>', rowStart) + 1)).toBe('<div class="setting-row">');
+    expect(reading).not.toMatch(/Plan E/);
   });
   it('gives the add field a sample host, ltr direction and no spellcheck', () => {
     const input = html.match(/<input[^>]+id="muted-site-input"[^>]*>/)[0];
