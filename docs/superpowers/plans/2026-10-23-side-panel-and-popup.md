@@ -17,6 +17,7 @@
 - No em dashes or emoji in code or copy. Every string through `t()` with `en` and `fa`.
 - `chrome.sidePanel.open()` must run inside a user-gesture handler; never from a timer or a message handler that was not itself triggered by a click or command.
 - No request to a provider except on an explicit user action (Translate, Save and test key). The health badge never polls.
+- New markup uses the spacing tokens from Plan A Task 9 (`--space-inset-card`, `--space-stack-section`, `--space-stack-group`, `--space-stack-item`, `--space-inline-actions`); no literal spacing values in new CSS.
 - `npm test`, `npm run lint`, `npm run build` pass after every task. `landing/` untouched.
 
 ## Review Focus
