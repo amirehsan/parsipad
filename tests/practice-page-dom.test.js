@@ -73,7 +73,11 @@ const $ = (selector) => document.querySelector(selector);
 const front = () => $('#practice-front-text').textContent;
 const progress = () => $('#practice-progress').textContent;
 const status = () => $('#practice-status').textContent;
-const press = (key, target = document.body) => target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+const press = (key, target = document.body, init = {}) => {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
+  target.dispatchEvent(event);
+  return event;
+};
 
 beforeEach(() => {
   const addEventListener = document.addEventListener.bind(document);
@@ -93,18 +97,19 @@ afterEach(() => {
 });
 
 describe('practice page: the deck', () => {
-  it('deals favorites, not lessons, and shows the first card face up', async () => {
+  it('deals favorites, not lessons, and shows the saved side of the first card', async () => {
     await openPractice();
     expect(progress()).toBe('Card 1 of 2');
-    expect(front()).toBe('apple');
+    expect(front()).toBe('سیب');
+    expect($('#practice-back-text').textContent).toBe('apple');
     expect($('#practice-card').getAttribute('aria-pressed')).toBe('false');
-    expect($('#practice-face-front').getAttribute('lang')).toBe('en');
-    expect($('#practice-face-front').getAttribute('dir')).toBe('ltr');
-    expect($('#practice-face-back').getAttribute('lang')).toBe('fa');
-    expect($('#practice-face-back').getAttribute('dir')).toBe('rtl');
+    expect($('#practice-face-front').getAttribute('lang')).toBe('fa');
+    expect($('#practice-face-front').getAttribute('dir')).toBe('rtl');
+    expect($('#practice-face-back').getAttribute('lang')).toBe('en');
+    expect($('#practice-face-back').getAttribute('dir')).toBe('ltr');
     expect($('#practice-face-back').getAttribute('aria-hidden')).toBe('true');
-    // The hint under the Persian answer is English, like the rest of the page.
-    expect($('#practice-face-back .practice-hint').getAttribute('lang')).toBe('en');
+    // The hint on the Persian face is English, like the rest of the page.
+    expect($('#practice-face-front .practice-hint').getAttribute('lang')).toBe('en');
     expect($('#practice-empty').hidden).toBe(true);
   });
 
@@ -123,13 +128,13 @@ describe('practice page: the deck', () => {
     await openPractice();
     expect($('#practice-prev').getAttribute('aria-disabled')).toBe('true');
     $('#practice-next').click();
-    expect(front()).toBe('کتاب');
+    expect(front()).toBe('book');
     expect(progress()).toBe('Card 2 of 2');
     expect($('#practice-next').getAttribute('aria-disabled')).toBe('true');
     $('#practice-next').click();
     expect(progress()).toBe('Card 2 of 2');
     $('#practice-prev').click();
-    expect(front()).toBe('apple');
+    expect(front()).toBe('سیب');
     await vi.waitFor(() => expect(status()).toBe('Card 1 of 2'));
   });
 
@@ -147,22 +152,66 @@ describe('practice page: the deck', () => {
     expect(progress()).toBe('Card 1 of 2');
   });
 
-  it('flips with the card button, announces the answer, and a move turns it face up again', async () => {
-    await openPractice();
+  it('flips with the card button, announces the original, and a move turns it face up again', async () => {
+    await openPractice('', { favorites: [seed().favorites[2], seed().favorites[0]] });
+    expect(front()).toBe('book');
     $('#practice-card').click();
     expect($('#practice-card').getAttribute('aria-pressed')).toBe('true');
     expect($('#practice-face-back').getAttribute('aria-hidden')).toBe('false');
     expect($('#practice-face-front').getAttribute('aria-hidden')).toBe('true');
-    await vi.waitFor(() => expect(status()).toBe('سیب'));
+    await vi.waitFor(() => expect(status()).toBe('کتاب'));
     // A Persian answer is spoken with a Persian voice even in the English interface.
     const spoken = $('#practice-status [lang]');
     expect(spoken.getAttribute('lang')).toBe('fa');
     expect(spoken.getAttribute('dir')).toBe('rtl');
-    expect(spoken.textContent).toBe('سیب');
+    expect(spoken.textContent).toBe('کتاب');
 
     $('#practice-next').click();
     expect($('#practice-card').getAttribute('aria-pressed')).toBe('false');
     expect($('#practice-face-front').getAttribute('aria-hidden')).toBe('false');
+  });
+
+  it('flips with Space from the page, with nothing focused, and announces the original', async () => {
+    await openPractice();
+    expect(document.activeElement).toBe(document.body);
+    const event = press(' ');
+    expect(event.defaultPrevented).toBe(true);
+    expect($('#practice-card').getAttribute('aria-pressed')).toBe('true');
+    await vi.waitFor(() => expect(status()).toBe('apple'));
+  });
+
+  it('flips with Enter from the page', async () => {
+    await openPractice();
+    press('Enter');
+    expect($('#practice-card').getAttribute('aria-pressed')).toBe('true');
+    press('Enter');
+    expect($('#practice-card').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('leaves Space on a focused button to that button, so one press never flips twice', async () => {
+    await openPractice();
+    $('#practice-next').focus();
+    press(' ', $('#practice-next'));
+    expect($('#practice-card').getAttribute('aria-pressed')).toBe('false');
+
+    // On the card itself the button's own activation flips, once.
+    $('#practice-card').focus();
+    press(' ', $('#practice-card'));
+    press('Enter', $('#practice-card'));
+    expect($('#practice-card').getAttribute('aria-pressed')).toBe('false');
+    $('#practice-card').click();
+    expect($('#practice-card').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('leaves Space with a modifier, and Space in a form control, alone', async () => {
+    await openPractice();
+    press(' ', document.body, { shiftKey: true });
+    press('Enter', document.body, { ctrlKey: true });
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    press(' ', input);
+    expect($('#practice-card').getAttribute('aria-pressed')).toBe('false');
   });
 });
 
@@ -170,16 +219,28 @@ describe('practice page: copy', () => {
   it('copies the face that is showing, from the button and the c key', async () => {
     await openPractice();
     $('#practice-copy').click();
-    await vi.waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('apple'));
+    await vi.waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('سیب'));
     await vi.waitFor(() => expect(status()).toBe(en.libraryCopied));
     // Interface messages carry no language of their own.
     expect($('#practice-status [lang]')).toBeNull();
 
     $('#practice-card').click();
     press('c');
-    await vi.waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith('سیب'));
+    await vi.waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith('apple'));
     press('C');
     expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(3);
+  });
+
+  it('copies with the c key on a Persian keyboard layout, where the key is ز', async () => {
+    await openPractice();
+    press('ز', document.body, { code: 'KeyC' });
+    await vi.waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('سیب'));
+    press('ز', document.body, { code: 'KeyC', metaKey: true });
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    press('ز', input, { code: 'KeyC' });
+    expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1);
   });
 
   it('leaves Ctrl+C and Cmd+C to the browser', async () => {
@@ -226,9 +287,9 @@ describe('practice page: empty deck and surfaces', () => {
   it('mirrors the arrow keys in the Persian interface: ArrowLeft is the next card', async () => {
     await openPractice('', { ...seed(), ui_language: 'fa' });
     press('ArrowLeft');
-    expect(front()).toBe('کتاب');
+    expect(front()).toBe('book');
     press('ArrowRight');
-    expect(front()).toBe('apple');
+    expect(front()).toBe('سیب');
   });
 
   it('speaks Persian with Latin digits in the counter', async () => {
