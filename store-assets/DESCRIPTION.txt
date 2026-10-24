@@ -23,7 +23,7 @@ A word gives you its senses by part of speech, the one that fits your sentence f
 
 Text in other languages can be translated into Persian too, if you turn that on.
 
-Selecting text also brings up a small toolbar above it with Translate, Polish, and Dictionary buttons. It appears after a mouse drag, after a touch long-press, and for a selection made with the keyboard, where Tab moves into it, the arrow keys move between its buttons, and Escape closes it. It never appears inside text fields or editors, so it does not get in the way while you type, and it does not appear for page-sized selections. A last button mutes ParsiPad on the site you are on, with an Undo.
+Selecting text also brings up a small toolbar above it with Translate, Polish, and Dictionary buttons. It appears after a mouse drag, after a touch long-press, and for a selection made with the keyboard, where Tab moves into it, the arrow keys move between its buttons, and Escape closes it. It never appears inside text fields or editors, so it does not get in the way while you type, and it does not appear for page-sized selections. A last button mutes ParsiPad on the site you are on, with an Undo and a shortcut to the Muted sites list in Settings.
 
 
 Whole pages
