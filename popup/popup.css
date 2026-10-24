@@ -897,48 +897,62 @@ body {
    Document Section Styles
    ============================================ */
 
-.upload-area {
+/* Doc & Image: one drop zone for a text file or an image. It is a real
+   button, so click, Enter and Space open the file picker; a file dragged
+   anywhere over Doc & Image lights it up. */
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-inset-card);
+  font: inherit;
+  text-align: center;
+  color: var(--color-text);
+  background: transparent;
   border: 2px dashed var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-lg);
-  text-align: center;
-  transition: border-color 0.15s, background-color 0.15s;
   cursor: pointer;
 }
 
-.upload-area:hover {
+@media (prefers-reduced-motion: no-preference) {
+  .drop-zone {
+    transition: border-color var(--motion-fast), background-color var(--motion-fast);
+  }
+}
+
+.drop-zone:hover {
   border-color: var(--color-primary);
-  background: rgba(99, 102, 241, 0.05);
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+
+.drop-zone.is-dragover {
+  border-style: solid;
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .upload-icon {
   width: 40px;
   height: 40px;
   color: var(--color-text-secondary);
-  margin: 0 auto var(--space-sm);
+  margin-bottom: var(--space-1);
 }
 
-.upload-text {
+.drop-zone-title {
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-text);
-  margin-bottom: var(--space-xs);
 }
 
-.upload-hint {
+.drop-zone-hint {
   font-size: 12px;
+  line-height: 1.5;
   color: var(--color-text-secondary);
-  margin-bottom: var(--space-md);
 }
 
-/* Subtle "Ctrl+V" tip below the image upload buttons. Lower weight than the
-   button labels so it doesn't compete for attention. */
-.upload-paste-hint {
-  margin-top: var(--space-3);
-  font-size: 11px;
-  color: var(--color-text-secondary);
-  line-height: 1.5;
-  text-align: center;
+.doc-image-part[hidden] {
+  display: none;
 }
 
 /* Same tertiary treatment as Translate Page, so every non-primary button in
@@ -1234,19 +1248,6 @@ body {
 /* ============================================
    Image Translation Styles
    ============================================ */
-
-.image-upload-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-  justify-content: center;
-  margin-top: var(--space-sm);
-}
-
-.image-upload-actions .action-btn {
-  flex: 1 1 calc(33% - var(--space-sm));
-  min-width: 90px;
-}
 
 /* Ensure hidden elements in image section don't display */
 .image-section [hidden] {
@@ -1674,6 +1675,9 @@ body {
 
 /* The platform's submit key, quiet inside the primary button */
 .action-kbd {
+  /* "⌥P" stays "⌥P" on a Persian page */
+  direction: ltr;
+  unicode-bidi: isolate;
   padding: 0 calc(var(--space-inline-actions) / 2);
   font-family: inherit;
   font-weight: var(--weight-medium);
@@ -1760,6 +1764,9 @@ body {
 }
 
 .page-action-kbd {
+  /* "⌥P" stays "⌥P" on a Persian page */
+  direction: ltr;
+  unicode-bidi: isolate;
   flex-shrink: 0;
   padding: 0 calc(var(--space-inline-actions) / 2);
   font-family: inherit;

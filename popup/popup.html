@@ -123,19 +123,19 @@
 
     <!-- Doc & Image: the document and image areas, stacked -->
     <section id="doc-image-section" class="section doc-image-section" role="tabpanel" aria-labelledby="mode-doc-image" hidden>
-      <div class="doc-image-part document-section" role="group" aria-labelledby="document-heading">
+      <!-- One way in for both: drop, choose or paste a file; its type picks the translator -->
+      <button type="button" id="drop-zone" class="drop-zone" aria-labelledby="drop-zone-title" aria-describedby="drop-zone-hint">
+        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span id="drop-zone-title" class="drop-zone-title" data-i18n="dropZoneTitle">Drop a file here, or choose one</span>
+        <span id="drop-zone-hint" class="drop-zone-hint" data-i18n="dropZoneHint">A .txt file up to 100 KB, or a JPG, PNG or WebP image up to 5 MB. You can also paste an image.</span>
+      </button>
+      <input type="file" id="file-input" accept=".txt,text/plain,image/jpeg,image/png,image/webp" hidden>
+      <div class="doc-image-part document-section" role="group" hidden aria-labelledby="document-heading">
         <h2 id="document-heading" class="popup-subhead" data-i18n="document">Document</h2>
-        <div class="upload-area" id="upload-area">
-          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-          <p class="upload-text" data-i18n="uploadDocument">Upload Document</p>
-          <p class="upload-hint" data-i18n="supportedFormats">Supported: TXT files</p>
-          <input type="file" id="file-input" accept=".txt" hidden>
-          <button id="select-file-btn" class="action-btn secondary" data-i18n="selectFile">Select File</button>
-        </div>
         <div id="document-info" class="document-info" hidden>
           <div class="doc-details">
             <span class="doc-name" id="doc-name"></span>
@@ -181,22 +181,8 @@
         </div>
       </div>
 
-      <div class="doc-image-part image-section" role="group" aria-labelledby="image-heading">
+      <div class="doc-image-part image-section" role="group" hidden aria-labelledby="image-heading">
         <h2 id="image-heading" class="popup-subhead" data-i18n="image">Image</h2>
-        <div class="upload-area" id="image-upload-area">
-          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <circle cx="8.5" cy="8.5" r="1.5"/>
-            <polyline points="21 15 16 10 5 21"/>
-          </svg>
-          <p class="upload-text" data-i18n="uploadImage">Upload Image</p>
-          <p class="upload-hint" data-i18n="imageFormats">JPG, PNG, WebP</p>
-          <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp" hidden>
-          <div class="image-upload-actions">
-            <button id="select-image-btn" class="action-btn secondary" data-i18n="selectFile">Select File</button>
-          </div>
-          <p class="upload-paste-hint" data-i18n="pasteFromClipboardHint">Tip: copy any image and paste it here with Ctrl+V (or ⌘V on Mac).</p>
-        </div>
 
         <!-- Image Preview -->
         <div id="image-preview" class="image-preview" hidden>
