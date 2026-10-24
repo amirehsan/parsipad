@@ -51,6 +51,10 @@ do all of the following in the same branch, without being asked:
    plain-prose style. If the short description changes, also update
    `extensionDescription` in `_locales/en/messages.json` (132 characters
    max) and the matching text in `store-assets/STORE_LISTING.md`.
+   `store-assets/` is git-ignored as a folder while these three files are
+   tracked, so stage them with `git add -f store-assets/DESCRIPTION.txt`
+   (and the other two). That exception is for these tracked files only; it
+   never applies to `landing/`.
 2. **Changelog.** Add the change under `## [Unreleased]` in `CHANGELOG.md`,
    in the existing style: what the user saw, why it happened, what changed.
 3. **Version bump.** Move the version in every place it lives, together:
