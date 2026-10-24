@@ -17,9 +17,11 @@ export function lessonFromFavorite(favorite) {
     lessonTitle: lesson.title,
     originalText: favorite.originalText,
     translation: favorite.savedText || '',
-    direction: favorite.direction,
-    grammarPoints: lesson.points || [],
-    relatedPatterns: lesson.relatedPatterns || [],
+    direction: favorite.direction || 'en-to-fa',
+    grammarPoints: Array.isArray(lesson.points)
+      ? lesson.points.filter(point => point && typeof point === 'object')
+      : [],
+    relatedPatterns: Array.isArray(lesson.relatedPatterns) ? lesson.relatedPatterns : [],
     lang: lesson.lang ?? 'en'
   };
 }
