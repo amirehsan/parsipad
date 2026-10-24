@@ -16,6 +16,17 @@ describe('practice', () => {
     const c = deck.find(x => x.id === 'c');
     expect(c).toMatchObject({ front: 'کتاب', back: 'book', frontLang: 'fa', backLang: 'en' });
   });
+  it('deals a legacy favorite with no type and an old direction label as a translation', () => {
+    const legacy = [
+      { id: 'l1', original: 'water', saved: 'آب', direction: 'EN -> FA' },
+      { id: 'l2', original: 'fire', saved: 'آتش', direction: 'EN → FA' }
+    ];
+    const deck = buildDeck(legacy, { size: 10, rng: () => 0 });
+    expect(deck.map(c => c.id).sort()).toEqual(['l1', 'l2']);
+    for (const card of deck) {
+      expect(card).toMatchObject({ kind: 'translation', frontLang: 'en', backLang: 'fa' });
+    }
+  });
   it('respects the session size', () => {
     const many = Array.from({ length: 40 }, (_, i) => ({ id: String(i), type: 'translation', originalText: `w${i}`, savedText: `t${i}` }));
     expect(buildDeck(many, { size: 12 })).toHaveLength(12);
@@ -28,6 +39,19 @@ describe('practice', () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)[\s\S]*transform:\s*none/);
     expect(css).toMatch(/transition:[^;]*var\(--motion-/);
     expect(css).not.toMatch(/transition:\s*all/);
+  });
+  it('styles Copy as a secondary button, like Previous', () => {
+    const html = read('practice/practice.html');
+    expect(html).toMatch(/<button id="practice-prev"[^>]+class="pp-btn pp-btn-secondary /);
+    expect(html).toMatch(/<button id="practice-copy"[^>]+class="pp-btn pp-btn-secondary /);
+    expect(html).toMatch(/<button id="practice-next"[^>]+class="pp-btn pp-btn-primary /);
+  });
+  it('keeps storage free of the deck code: the size rules live in a module with no imports', () => {
+    const size = read('lib/practice-size.js');
+    expect(size).not.toMatch(/^import /m);
+    const storage = read('lib/storage.js');
+    expect(storage).toMatch(/from '\.\/practice-size\.js'/);
+    expect(storage).not.toMatch(/from '\.\/practice\.js'/);
   });
   it('is reachable from the side panel and the Library', () => {
     expect(read('sidepanel/sidepanel.html')).toMatch(/href="\.\.\/practice\/practice\.html\?surface=panel"/);

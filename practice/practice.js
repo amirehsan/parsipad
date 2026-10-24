@@ -5,7 +5,8 @@
  * no key handling of our own and aria-pressed says which face is up. The
  * arrow keys move between cards and c copies the face that is showing,
  * unless focus is in a form control. One role="status" region announces the
- * counter, the revealed answer and copies; it shows itself only for copies.
+ * counter, the revealed answer (in its own language) and copies; it shows
+ * itself only for copies.
  *
  * Opened from the side panel the URL carries ?surface=panel: the page then
  * fits the panel and offers a way back to it.
@@ -59,8 +60,9 @@ async function init() {
   applyThemeToRoot(await getTheme());
   deck = await loadDeck();
   setupEventListeners();
+  // Nothing takes focus on load: the arrow keys and c work from the page,
+  // and a screen reader starts at the heading and the counter.
   render();
-  if (deck.length) cardButton.focus({ preventScroll: true });
 }
 
 /** Inside the side panel: fit it, offer the way back, and open the Library in a tab. */
@@ -143,20 +145,29 @@ function progressLabel() {
 
 /**
  * @param {string} message
- * @param {{ visible?: boolean }} [options] - Show the message on screen as
- *   well; otherwise only screen readers hear it
+ * @param {{ visible?: boolean, lang?: 'en'|'fa' }} [options] - Show the message
+ *   on screen as well (otherwise only screen readers hear it), and the language
+ *   of card text, so a Persian answer is spoken with a Persian voice
  */
-function announce(message, { visible = false } = {}) {
+function announce(message, { visible = false, lang = null } = {}) {
   clearTimeout(statusTimer);
   clearTimeout(statusTextTimer);
   statusRegion.textContent = '';
   statusTextTimer = setTimeout(() => {
-    statusRegion.textContent = message;
+    statusRegion.replaceChildren(lang ? inLanguage(message, lang) : message);
   }, ANNOUNCE_DELAY_MS);
   statusRegion.classList.toggle('practice-toast-open', visible);
   if (visible) {
     statusTimer = setTimeout(() => statusRegion.classList.remove('practice-toast-open'), TOAST_MS);
   }
+}
+
+function inLanguage(text, lang) {
+  const span = document.createElement('span');
+  span.lang = lang;
+  span.dir = lang === 'fa' ? 'rtl' : 'ltr';
+  span.textContent = text;
+  return span;
 }
 
 // ---------------------------------------------------------------------------
@@ -177,7 +188,7 @@ function move(step) {
 function flip() {
   flipped = !flipped;
   render();
-  if (flipped) announce(deck[index].back);
+  if (flipped) announce(deck[index].back, { lang: deck[index].backLang });
 }
 
 async function copyShownFace() {
