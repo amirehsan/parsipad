@@ -21,7 +21,7 @@ import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils/batch.js';
 import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
-import { selectionToReport, createSelectionReporter, isEditableSelection } from './selection-report.js';
+import { selectionToReport, createSelectionReporter, isEditableSelection, MAX_REPORT_LENGTH } from './selection-report.js';
 import { createToolbarTrigger, selectionAnchor, isSameAnchor } from './toolbar-trigger.js';
 import { MUTED_SITES_KEY, isHostMuted } from '../lib/muted-sites.js';
 import { initBlockTranslate, translateFocusedBlock, hideBlockIcon, isBlockTranslateEnabled } from './blocks/index.js';
@@ -108,23 +108,23 @@ function init() {
   document.addEventListener('keydown', handleKeyDown);
 
   // Selection toolbar: one trigger for mouse, touch and keyboard selection.
-  // Pointer events on the toolbar or the floating box are ignored, so a
-  // toolbar button is not hidden before its click lands. A touch long-press
-  // ends in pointercancel rather than pointerup, so both end the gesture.
+  // A gesture that starts on the toolbar or the floating box does not hide
+  // the toolbar, so a toolbar button is not removed before its click lands.
+  // A touch long-press ends in pointercancel rather than pointerup, so both
+  // end the gesture. The capture phase sees the pointer lift even on a page
+  // that stops its propagation, so the trigger is never left waiting.
   const toolbarTrigger = createToolbarTrigger({
     evaluate: evaluateSelection,
     hide: removeSelectionPopup
   });
   document.addEventListener('pointerdown', (event) => {
-    if (isPointerOnOwnUi(event)) return;
-    toolbarTrigger.onPointerDown();
-  });
-  const onPointerEnd = (event) => {
-    if (isPointerOnOwnUi(event)) return;
-    toolbarTrigger.onPointerUp();
-  };
-  document.addEventListener('pointerup', onPointerEnd);
-  document.addEventListener('pointercancel', onPointerEnd);
+    // Only the primary button selects text. A right-click opens a menu, and
+    // on macOS its release goes to the menu rather than the page.
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    toolbarTrigger.onPointerDown(isPointerOnOwnUi(event));
+  }, { capture: true });
+  document.addEventListener('pointerup', toolbarTrigger.onPointerUp, { capture: true });
+  document.addEventListener('pointercancel', toolbarTrigger.onPointerUp, { capture: true });
   document.addEventListener('selectionchange', toolbarTrigger.onSelectionChange);
 
   // Tell the side panel what is selected so it can offer a one-click translate
@@ -3056,8 +3056,10 @@ function evaluateSelection() {
     return;
   }
 
+  // A page-sized selection (Ctrl+A) gets no toolbar: Translate would send the
+  // whole page in one request. Same cap as the side-panel report.
   const selectedText = selection.toString().trim();
-  if (selectedText.length < 2) {
+  if (selectedText.length < 2 || selectedText.length > MAX_REPORT_LENGTH) {
     removeSelectionPopup();
     return;
   }

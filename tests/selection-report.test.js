@@ -212,6 +212,14 @@ describe('rich editors', () => {
     expect(isEditableSelection(selection, doc.body)).toBe(false);
   });
 
+  it('counts a contenteditable="false" island nested in an editor as part of that editor', async () => {
+    const doc = await dom();
+    doc.body.innerHTML = '<div contenteditable="true"><p>Before</p><figure contenteditable="false"><figcaption id="cap">A caption in the editor</figcaption></figure></div>';
+    const selection = selectText(doc, doc.getElementById('cap').firstChild);
+    expect(isEditableSelection(selection, doc.body)).toBe(true);
+    expect(selectionToReport(selection, doc.body)).toBeNull();
+  });
+
   it('agrees with selectionToReport, so the toolbar and the side panel skip the same selections', async () => {
     const doc = await dom();
     doc.body.innerHTML = '<select id="s"><option>One option</option></select><div contenteditable><span id="e">Editable words</span></div>';
