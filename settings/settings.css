@@ -1514,8 +1514,10 @@ a.btn {
   color: var(--color-text-secondary);
 }
 
+/* An empty status line stays rendered, so the live region exists before
+   its first message; only its spacing goes */
 .muted-status:empty {
-  display: none;
+  margin-top: 0;
 }
 
 .muted-status[data-state="ok"] {

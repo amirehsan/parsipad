@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { ACTIONS, STORAGE_KEYS } from '../lib/constants.js';
 import { translations } from '../lib/i18n.js';
+import { WELCOME_SAMPLE } from '../welcome/finish.js';
 
 /**
  * The Welcome page driven through its own markup and welcome.js, with
@@ -14,7 +15,16 @@ import { translations } from '../lib/i18n.js';
  * provider rejects is never stored, a pass stores it and sets keyWorks, and a
  * test that reaches no verdict stores it and says it is untested. keyWorks
  * starts true when a key is already stored, and nothing is sent without a
- * click. Task 7 extends this file with the sample translation and Done.
+ * click. After a rejection keyWorks follows whether a key is stored, since the
+ * background translates with the stored key.
+ *
+ * The try-it step translates one English sample through the worker, only on
+ * a click and only while keyWorks holds, and writes the Persian result rtl. A
+ * failed sample shows the localized error and a next step. Done is the one
+ * finishing control: it stores a typed but unsaved key through the same
+ * test-before-store path, always marks onboarding complete, then returns to
+ * Settings at About when Settings opened the page, and closes the tab
+ * otherwise.
  */
 const root = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'welcome/welcome.html'), 'utf8');
@@ -75,6 +85,23 @@ const saveButton = () => document.getElementById('save-key-btn');
 const revealButton = () => document.getElementById('toggle-visibility');
 const radio = (provider) => document.querySelector(`input[name="provider"][value="${provider}"]`);
 const testCalls = () => chrome.runtime.sendMessage.mock.calls.filter(([msg]) => msg?.action === ACTIONS.TEST_API_KEY);
+const translateCalls = () => chrome.runtime.sendMessage.mock.calls.filter(([msg]) => msg?.action === ACTIONS.TRANSLATE);
+const tryButton = () => document.getElementById('try-it-btn');
+const tryResult = () => document.getElementById('try-it-result');
+const doneButton = () => document.getElementById('done-btn');
+
+/**
+ * Answer TRANSLATE with translateResponse (or let it reject) and every other
+ * message with testResult.
+ * @param {object|Error|Promise} translateResponse
+ */
+function answerTranslate(translateResponse) {
+  chrome.runtime.sendMessage.mockImplementation(async (msg) => {
+    if (msg?.action !== ACTIONS.TRANSLATE) return testResult;
+    if (translateResponse instanceof Error) throw translateResponse;
+    return translateResponse;
+  });
+}
 
 beforeEach(() => {
   const addEventListener = document.addEventListener.bind(document);
@@ -86,6 +113,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  history.replaceState(null, '', '/welcome/welcome.html');
   detachPage();
   vi.restoreAllMocks();
   delete globalThis.chrome;
@@ -118,6 +146,22 @@ describe('welcome setup markup', () => {
       expect(translations.en[key], `en.${key}`).toBeTruthy();
       expect(translations.fa[key], `fa.${key}`).toBeTruthy();
     }
+  });
+
+  it('orders the page hero, setup, try-it, features, with Done as the one finishing control', () => {
+    const order = ['class="hero-section"', 'id="setup"', 'id="try-it"', 'id="features"'].map((m) => html.indexOf(m));
+    for (const index of order) expect(index).toBeGreaterThan(-1);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    const tryIt = html.slice(html.indexOf('<section id="try-it"'), html.indexOf('<section id="features"'));
+    expect(tryIt).toMatch(/<h2[^>]*data-i18n="welcomeTryTitle"/);
+    expect(tryIt).toMatch(/<p id="try-it-source"[^>]*lang="en"[^>]*dir="ltr"/);
+    expect(tryIt).toMatch(/<button type="button" id="try-it-btn"[^>]*disabled/);
+    expect(tryIt).toMatch(/<p id="try-it-result"[^>]*lang="fa"[^>]*dir="rtl"[^>]*aria-live="polite"/);
+    expect(tryIt).toMatch(/<button type="button" id="done-btn"/);
+    expect(html).not.toMatch(/id="start-btn"|startUsing|welcomeSkip/);
+    expect(translations.en.welcomeTryAgainHint).toBe('Check the key above, then try again.');
+    expect(translations.en.welcomeSkip).toBeUndefined();
+    expect(translations.en.startUsing).toBeUndefined();
   });
 
   it('hides every decorative icon from assistive technology', () => {
@@ -170,7 +214,7 @@ describe.each(['en', 'fa'])('welcome setup in %s', (lang) => {
     expect(document.activeElement).toBe(keyInput());
   });
 
-  it('a rejected replacement leaves the stored key alone and turns keyWorks off', async () => {
+  it('a rejected replacement leaves the stored key alone, and keyWorks stays on for it', async () => {
     await loadWelcome(lang, { [STORAGE_KEYS.apiKey]: 'sk-ant-stored' });
     expect(page.keyWorks).toBe(true);
     testResult = { ok: false, code: 'INVALID_API_KEY' };
@@ -179,7 +223,9 @@ describe.each(['en', 'fa'])('welcome setup in %s', (lang) => {
 
     await vi.waitFor(() => expect(status().dataset.state).toBe('error'));
     expect(store.get(STORAGE_KEYS.apiKey)).toBe('sk-ant-stored');
-    expect(page.keyWorks).toBe(false);
+    // The background translates with the stored key, so the sample still can
+    expect(page.keyWorks).toBe(true);
+    expect(tryButton().disabled).toBe(false);
   });
 
   it('a good key: tested before it is stored, then stored with the provider, keyWorks on', async () => {
@@ -296,5 +342,169 @@ describe.each(['en', 'fa'])('welcome setup in %s', (lang) => {
     expect(document.querySelector('.privacy-note').textContent).toBe(tr.welcomePrivacyNote);
     expect(document.querySelector('[data-i18n="featureScreenshot"]').textContent).toBe(tr.featureScreenshot);
     expect(keyInput().getAttribute('dir')).toBe('ltr');
+  });
+});
+
+describe.each(['en', 'fa'])('welcome try-it and Done in %s', (lang) => {
+  const tr = translations[lang];
+  const uiDir = lang === 'fa' ? 'rtl' : 'ltr';
+
+  it('shows the English sample, keeps Translate off without a working key, and sends nothing on load', async () => {
+    await loadWelcome(lang);
+    const source = document.getElementById('try-it-source');
+    expect(source.textContent).toBe(WELCOME_SAMPLE);
+    expect(source.getAttribute('lang')).toBe('en');
+    expect(source.getAttribute('dir')).toBe('ltr');
+    expect(tryButton().disabled).toBe(true);
+    expect(tryButton().textContent.trim()).toBe(tr.welcomeTryTranslate);
+    expect(doneButton().textContent.trim()).toBe(tr.welcomeDone);
+
+    testResult = { ok: false, code: 'INVALID_API_KEY' };
+    keyInput().value = 'sk-ant-wrong';
+    saveButton().click();
+    await vi.waitFor(() => expect(status().dataset.state).toBe('error'));
+    expect(tryButton().disabled).toBe(true);
+
+    testResult = { ok: true, model: 'claude-haiku-5-5', ms: 300 };
+    keyInput().value = 'sk-ant-good';
+    saveButton().click();
+    await vi.waitFor(() => expect(tryButton().disabled).toBe(false));
+    expect(translateCalls()).toHaveLength(0);
+  });
+
+  it('a successful Translate writes the Persian result rtl, busy while it runs', async () => {
+    await loadWelcome(lang, { [STORAGE_KEYS.apiKey]: 'sk-ant-stored' });
+    expect(tryButton().disabled).toBe(false);
+    expect(translateCalls()).toHaveLength(0);
+    let finish;
+    chrome.runtime.sendMessage.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    tryButton().click();
+
+    await vi.waitFor(() => expect(translateCalls()).toHaveLength(1));
+    expect(translateCalls()[0]).toEqual([{ action: ACTIONS.TRANSLATE, text: WELCOME_SAMPLE }]);
+    // Busy, yet still focusable so keyboard focus is not dropped
+    expect(tryButton().disabled).toBe(false);
+    expect(tryButton().getAttribute('aria-disabled')).toBe('true');
+    expect(tryButton().getAttribute('aria-busy')).toBe('true');
+    expect(tryButton().textContent.trim()).toBe(tr.translating);
+    tryButton().click();
+    expect(translateCalls()).toHaveLength(1);
+
+    finish({ translation: 'جلسه به بعدازظهر پنجشنبه منتقل شد.', direction: 'en-fa' });
+    await vi.waitFor(() => expect(tryResult().textContent).toBe('جلسه به بعدازظهر پنجشنبه منتقل شد.'));
+    expect(tryResult().getAttribute('lang')).toBe('fa');
+    expect(tryResult().getAttribute('dir')).toBe('rtl');
+    expect(tryResult().getAttribute('aria-live')).toBe('polite');
+    expect(tryResult().dataset.state).toBe('ok');
+    expect(tryButton().disabled).toBe(false);
+    expect(tryButton().hasAttribute('aria-busy')).toBe(false);
+    expect(tryButton().hasAttribute('aria-disabled')).toBe(false);
+    expect(tryButton().textContent.trim()).toBe(tr.welcomeTryTranslate);
+  });
+
+  it('a rejected sample shows the localized error and the next step, in the UI language', async () => {
+    await loadWelcome(lang, { [STORAGE_KEYS.apiKey]: 'sk-ant-revoked' });
+    answerTranslate({ error: 'Invalid API key. Please check settings.', errorCode: 'INVALID_API_KEY' });
+    tryButton().click();
+
+    await vi.waitFor(() => expect(tryResult().dataset.state).toBe('error'));
+    expect(tryResult().textContent).toBe(`${tr.errorInvalidApiKey} ${tr.welcomeTryAgainHint}`);
+    expect(tryResult().getAttribute('lang')).toBe(lang);
+    expect(tryResult().getAttribute('dir')).toBe(uiDir);
+    expect(tryButton().disabled).toBe(false);
+  });
+
+  it('an UNKNOWN error shows the worker message, and a failed send still names a next step', async () => {
+    await loadWelcome(lang, { [STORAGE_KEYS.apiKey]: 'sk-ant-stored' });
+    answerTranslate({ error: 'Provider said no.', errorCode: 'UNKNOWN' });
+    tryButton().click();
+    await vi.waitFor(() => expect(tryResult().dataset.state).toBe('error'));
+    expect(tryResult().textContent).toBe(`Provider said no. ${tr.welcomeTryAgainHint}`);
+
+    answerTranslate(new Error('Could not establish connection. Receiving end does not exist.'));
+    tryButton().click();
+    await vi.waitFor(() => expect(tryResult().textContent).toBe(`${tr.errorUnknown} ${tr.welcomeTryAgainHint}`));
+
+    answerTranslate(new Error('Failed to fetch'));
+    tryButton().click();
+    await vi.waitFor(() => expect(tryResult().textContent).toBe(`${tr.errorNetwork} ${tr.welcomeTryAgainHint}`));
+  });
+
+  it('Done from Settings marks onboarding complete and returns to Settings at About', async () => {
+    history.replaceState(null, '', '/welcome/welcome.html?from=settings');
+    await loadWelcome(lang, { [STORAGE_KEYS.apiKey]: 'sk-ant-stored' });
+    const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
+    const close = vi.spyOn(window, 'close').mockImplementation(() => {});
+    doneButton().click();
+
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('../settings/settings.html#about'));
+    expect(store.get(STORAGE_KEYS.onboardingComplete)).toBe(true);
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it('Done from anywhere else marks onboarding complete and closes the tab, even after a failed sample', async () => {
+    await loadWelcome(lang, { [STORAGE_KEYS.apiKey]: 'sk-ant-revoked' });
+    const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
+    const close = vi.spyOn(window, 'close').mockImplementation(() => {});
+    answerTranslate({ error: 'Invalid API key. Please check settings.', errorCode: 'INVALID_API_KEY' });
+    tryButton().click();
+    await vi.waitFor(() => expect(tryResult().dataset.state).toBe('error'));
+
+    doneButton().click();
+    await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(store.get(STORAGE_KEYS.onboardingComplete)).toBe(true);
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it('Done tests a typed but unsaved key before storing it, then finishes', async () => {
+    await loadWelcome(lang);
+    const close = vi.spyOn(window, 'close').mockImplementation(() => {});
+    let storedAtTest = 'unset';
+    chrome.runtime.sendMessage.mockImplementation(async () => {
+      storedAtTest = store.get(STORAGE_KEYS.apiKey);
+      return testResult;
+    });
+    keyInput().value = 'sk-ant-typed';
+    doneButton().click();
+
+    await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(testCalls()).toEqual([[{ action: ACTIONS.TEST_API_KEY, provider: 'claude', key: 'sk-ant-typed' }]]);
+    expect(storedAtTest).toBeUndefined();
+    expect(store.get(STORAGE_KEYS.apiKey)).toBe('sk-ant-typed');
+    expect(store.get(STORAGE_KEYS.selectedProvider)).toBe('claude');
+    expect(store.get(STORAGE_KEYS.onboardingComplete)).toBe(true);
+    expect(translateCalls()).toHaveLength(0);
+  });
+
+  it('Done never stores a rejected or malformed typed key, and still finishes', async () => {
+    await loadWelcome(lang);
+    const close = vi.spyOn(window, 'close').mockImplementation(() => {});
+    testResult = { ok: false, code: 'INVALID_API_KEY' };
+    keyInput().value = 'sk-ant-rejected';
+    doneButton().click();
+    await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(store.has(STORAGE_KEYS.apiKey)).toBe(false);
+    expect(store.get(STORAGE_KEYS.onboardingComplete)).toBe(true);
+
+    await loadWelcome(lang);
+    const closeAgain = vi.spyOn(window, 'close').mockImplementation(() => {});
+    keyInput().value = 'not-a-key';
+    doneButton().click();
+    await vi.waitFor(() => expect(closeAgain).toHaveBeenCalledTimes(1));
+    expect(testCalls()).toHaveLength(0);
+    expect(store.has(STORAGE_KEYS.apiKey)).toBe(false);
+    expect(store.get(STORAGE_KEYS.onboardingComplete)).toBe(true);
+  });
+
+  it('Done still leaves the page when storage fails', async () => {
+    await loadWelcome(lang);
+    const close = vi.spyOn(window, 'close').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    chrome.storage.local.set.mockRejectedValue(new Error('QUOTA_BYTES quota exceeded'));
+    keyInput().value = 'sk-ant-typed';
+    doneButton().click();
+
+    await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(warn).toHaveBeenCalled();
   });
 });

@@ -597,7 +597,9 @@ function setupEventListeners() {
   mutedSitesList.addEventListener('click', handleUnmuteClick);
   // A mute made elsewhere, such as from the page itself, shows up live
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes[STORAGE_KEYS.mutedSites]) loadMutedSites();
+    if (area === 'local' && changes[STORAGE_KEYS.mutedSites]) {
+      loadMutedSites().catch((error) => console.warn('Could not reload the muted sites:', error));
+    }
   });
 
   // Practice session size: the label follows the thumb, storage waits for release
@@ -652,13 +654,12 @@ function setupEventListeners() {
     });
   }
 
-  // Welcome Guide button
+  // Welcome Guide button: the guide opens in this tab, and its Done brings
+  // the user back here, to About
   const welcomeGuideBtn = document.getElementById('welcome-guide-btn');
   if (welcomeGuideBtn) {
     welcomeGuideBtn.addEventListener('click', () => {
-      chrome.tabs.create({
-        url: chrome.runtime.getURL('welcome/welcome.html')
-      });
+      location.href = '../welcome/welcome.html?from=settings';
     });
   }
 }

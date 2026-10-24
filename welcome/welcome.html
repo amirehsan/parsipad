@@ -87,9 +87,20 @@
         </div>
 
         <p class="privacy-note" data-i18n="welcomePrivacyNote">Your key stays in this browser. What you translate goes straight to the provider you choose, who bills you for it. ParsiPad has no server.</p>
+      </section>
 
-        <button type="button" id="start-btn" class="btn btn-secondary btn-large">
-          <span data-i18n="startUsing">Start Using ParsiPad</span>
+      <!-- Try it: one English sentence through the user's own key, then Done -->
+      <section id="try-it" class="try-section" aria-labelledby="try-it-title">
+        <h2 class="try-title" id="try-it-title" data-i18n="welcomeTryTitle">Try your first translation</h2>
+        <p class="try-intro" data-i18n="welcomeTryIntro">Translate this sentence with your key to see ParsiPad at work.</p>
+        <p id="try-it-source" class="try-source" lang="en" dir="ltr">The meeting was moved to Thursday afternoon.</p>
+        <button type="button" id="try-it-btn" class="btn btn-primary" disabled>
+          <span class="try-btn-label" data-i18n="welcomeTryTranslate">Translate</span>
+        </button>
+        <p id="try-it-result" class="try-result" lang="fa" dir="rtl" aria-live="polite"></p>
+
+        <button type="button" id="done-btn" class="btn btn-secondary btn-large">
+          <span data-i18n="welcomeDone">Done</span>
           <svg class="btn-icon btn-icon-end" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
           </svg>
@@ -111,14 +122,14 @@
             <p class="feature-desc" data-i18n="featureTranslationDesc">Seamlessly translate between Persian and English</p>
           </article>
 
-          <!-- Text Polish -->
+          <!-- Text polish -->
           <article class="feature-card">
             <div class="feature-icon bg-purple-100 dark:bg-purple-900/30">
               <svg aria-hidden="true" focusable="false" class="text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
               </svg>
             </div>
-            <h3 class="feature-title" data-i18n="featurePolish">Text Polish</h3>
+            <h3 class="feature-title" data-i18n="featurePolish">Text polish</h3>
             <p class="feature-desc" data-i18n="featurePolishDesc">Refine your English text in 3 different styles</p>
           </article>
 
@@ -144,14 +155,14 @@
             <p class="feature-desc" data-i18n="featureFavoritesDesc">Save and organize your best translations</p>
           </article>
 
-          <!-- Selection Popup -->
+          <!-- Selection toolbar -->
           <article class="feature-card">
             <div class="feature-icon bg-indigo-100 dark:bg-indigo-900/30">
               <svg aria-hidden="true" focusable="false" class="text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/>
               </svg>
             </div>
-            <h3 class="feature-title" data-i18n="featureSelection">Selection Popup</h3>
+            <h3 class="feature-title" data-i18n="featureSelection">Selection toolbar</h3>
             <p class="feature-desc" data-i18n="featureSelectionDesc">Quick translate by selecting text on any page</p>
           </article>
 
@@ -166,7 +177,7 @@
             <p class="feature-desc" data-i18n="featureLibraryDesc">Keep your favorites and history in one place, then practice them as flashcards</p>
           </article>
 
-          <!-- Screenshot Translate -->
+          <!-- Screenshot translate -->
           <article class="feature-card">
             <div class="feature-icon bg-orange-100 dark:bg-orange-900/30">
               <svg aria-hidden="true" focusable="false" class="text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -174,29 +185,29 @@
                 <circle cx="12" cy="13" r="4"/>
               </svg>
             </div>
-            <h3 class="feature-title" data-i18n="featureScreenshot">Screenshot Translate</h3>
+            <h3 class="feature-title" data-i18n="featureScreenshot">Screenshot translate</h3>
             <p class="feature-desc" data-i18n="featureScreenshotDesc">Select any area on a page to translate the text in it (Alt+S)</p>
           </article>
 
-          <!-- Image Translation -->
+          <!-- Image translation -->
           <article class="feature-card">
             <div class="feature-icon bg-cyan-100 dark:bg-cyan-900/30">
               <svg aria-hidden="true" focusable="false" class="text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
               </svg>
             </div>
-            <h3 class="feature-title" data-i18n="featureImage">Image Translation</h3>
+            <h3 class="feature-title" data-i18n="featureImage">Image translation</h3>
             <p class="feature-desc" data-i18n="featureImageDesc">Extract and translate text from images</p>
           </article>
 
-          <!-- Document Translation -->
+          <!-- Document translation -->
           <article class="feature-card">
             <div class="feature-icon bg-teal-100 dark:bg-teal-900/30">
               <svg aria-hidden="true" focusable="false" class="text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
             </div>
-            <h3 class="feature-title" data-i18n="featureDocument">Document Translation</h3>
+            <h3 class="feature-title" data-i18n="featureDocument">Document translation</h3>
             <p class="feature-desc" data-i18n="featureDocumentDesc">Translate entire text documents</p>
           </article>
         </div>

@@ -15,6 +15,8 @@ import { PROVIDER_CONFIGS, ACTIONS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 import { renderKeyHelp, describeKeyTest, keyTestErrorResult, isKeyRejected, renderKeyTest, setKeyRevealed } from '../lib/key-help.js';
 import { applyThemeToRoot } from '../lib/theme.js';
+import { ERROR_CODES, errorI18nKey, toTranslationError } from '../lib/translation/errors.js';
+import { WELCOME_SAMPLE, finishTarget } from './finish.js';
 
 // The label of the key field for each provider
 const KEY_LABELS = {
@@ -32,24 +34,49 @@ const toggleVisibilityBtn = document.getElementById('toggle-visibility');
 const saveKeyBtn = document.getElementById('save-key-btn');
 const apiStatusEl = document.getElementById('api-status');
 const keyHelpEl = document.getElementById('key-help');
-const startBtn = document.getElementById('start-btn');
+const trySourceEl = document.getElementById('try-it-source');
+const tryBtn = document.getElementById('try-it-btn');
+const tryLabelEl = tryBtn.querySelector('.try-btn-label');
+const tryResultEl = document.getElementById('try-it-result');
+const doneBtn = document.getElementById('done-btn');
 
 // State
 let currentLang = 'en';
 let currentProvider = 'claude';
 let testing = false;
-// The last key the provider rejected, so Start does not store it either.
+let translating = false;
+let finishing = false;
+// The last key the provider rejected, so Done does not store it either.
 let rejectedKey = null;
+// The Save & test in flight, so Done waits for it instead of cutting it off.
+let pendingSave = null;
 
 /**
- * Whether the selected provider has a key worth using. It starts true when a
- * key is already stored for that provider (and is recomputed when the
- * provider changes), so nothing is sent until a click. A Save & test then
- * overrides it: true once a key is stored, false when the provider rejected
- * the typed key. Task 7's sample translation reads it.
+ * Whether the selected provider has a key worth using, which is when the
+ * sample can be translated. It starts true when a key is already stored for
+ * that provider (and is recomputed when the provider changes), so nothing is
+ * sent until a click. A Save & test then overrides it: true once a key is
+ * stored; after a rejection, whether a key is still stored, since the
+ * background translates with the stored key and not the rejected one.
  * @type {boolean}
  */
 export let keyWorks = false;
+
+/**
+ * @param {boolean} value
+ */
+function setKeyWorks(value) {
+  keyWorks = value;
+  updateTryButton();
+}
+
+/**
+ * Translate is off until a key works. While the sample runs it stays
+ * focusable and says it is busy instead (see handleTryTranslate).
+ */
+function updateTryButton() {
+  tryBtn.disabled = !keyWorks;
+}
 
 /**
  * Initialize the welcome page
@@ -61,6 +88,7 @@ async function init() {
   const radio = [...providerRadios].find(r => r.value === currentProvider);
   if (radio) radio.checked = true;
   setKeyRevealed(apiKeyInput, toggleVisibilityBtn, false, currentLang);
+  trySourceEl.textContent = WELCOME_SAMPLE;
   await updateProviderUI(currentProvider);
   setupEventListeners();
 }
@@ -132,7 +160,7 @@ async function updateProviderUI(provider) {
   // A later switch may have finished first.
   if (provider !== currentProvider) return;
   apiKeyInput.value = savedKey || '';
-  keyWorks = Boolean(savedKey);
+  setKeyWorks(Boolean(savedKey));
 }
 
 /**
@@ -182,8 +210,11 @@ function setupEventListeners() {
     }
   });
 
-  // Start button
-  startBtn.addEventListener('click', handleStart);
+  // Try it: translate the sample, only on this click
+  tryBtn.addEventListener('click', handleTryTranslate);
+
+  // Done
+  doneBtn.addEventListener('click', handleDone);
 }
 
 /**
@@ -216,6 +247,46 @@ async function handleSaveApiKey() {
   testing = true;
   saveKeyBtn.disabled = true;
   showStatus({ tone: 'pending', text: t('keyTesting', currentLang) });
+  const run = testAndStore(provider, key);
+  pendingSave = run;
+  let outcome;
+  try {
+    outcome = await run;
+  } finally {
+    pendingSave = null;
+    testing = false;
+    saveKeyBtn.disabled = false;
+  }
+  const { result, stored } = outcome;
+
+  // The provider may have changed while the test ran; the result belongs to
+  // the provider it was for.
+  if (provider !== currentProvider) return;
+
+  if (stored) {
+    rejectedKey = null;
+    setKeyWorks(true);
+  } else if (isKeyRejected(result)) {
+    rejectedKey = key;
+    const stillStored = await hasStoredKey(provider);
+    if (provider !== currentProvider) return;
+    setKeyWorks(stillStored);
+  }
+
+  const untested = stored && !result?.ok;
+  showStatus(describeKeyTest(result, currentLang, provider, { stored: untested }));
+  if (!stored) apiKeyInput.focus();
+}
+
+/**
+ * Test a key with one real request, then store it with the provider choice
+ * unless the provider rejected it. A test that reaches no verdict (offline,
+ * timeout, rate limit, outage, unknown) still stores it. Never rejects.
+ * @param {string} provider
+ * @param {string} key - normalized, with the right prefix
+ * @returns {Promise<{result: object, stored: boolean}>}
+ */
+async function testAndStore(provider, key) {
   let result;
   let stored = false;
   try {
@@ -231,50 +302,131 @@ async function handleSaveApiKey() {
     }
   } catch (error) {
     result = keyTestErrorResult(error);
-  } finally {
-    testing = false;
-    saveKeyBtn.disabled = false;
   }
-
-  // The provider may have changed while the test ran; the result belongs to
-  // the provider it was for.
-  if (provider !== currentProvider) return;
-
-  if (stored) {
-    keyWorks = true;
-    rejectedKey = null;
-  } else if (isKeyRejected(result)) {
-    keyWorks = false;
-    rejectedKey = key;
-  }
-
-  const untested = stored && !result?.ok;
-  showStatus(describeKeyTest(result, currentLang, provider, { stored: untested }));
-  if (!stored) apiKeyInput.focus();
+  return { result, stored };
 }
 
 /**
- * Finish onboarding. A key typed but never saved is stored on the way out,
- * unless it has the wrong shape or the provider already rejected it; nothing
- * here can keep the page from finishing.
+ * @param {string} provider
+ * @returns {Promise<boolean>} false when storage cannot be read
  */
-async function handleStart() {
+async function hasStoredKey(provider) {
   try {
-    const typed = normalizeApiKey(apiKeyInput.value);
-    const hasKey = await hasProviderApiKey(currentProvider);
-    if (!hasKey && typed && typed !== rejectedKey && !checkKeyFormat(currentProvider, typed)) {
-      await setProviderApiKey(currentProvider, typed);
-      await setSelectedProvider(currentProvider);
-    }
+    return await hasProviderApiKey(provider);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Translate the English sample through the background, exactly as any
+ * translation runs, with the stored key of the selected provider. Only on a
+ * click. The Persian result is written rtl; a failure shows the localized
+ * error and a next step in the UI language. While it runs the button stays
+ * focusable, marked busy and disabled for assistive technology, and further
+ * clicks are ignored.
+ */
+async function handleTryTranslate() {
+  if (translating || !keyWorks) return;
+  translating = true;
+  tryBtn.setAttribute('aria-busy', 'true');
+  tryBtn.setAttribute('aria-disabled', 'true');
+  tryLabelEl.textContent = t('translating', currentLang);
+
+  let response;
+  try {
+    response = await chrome.runtime.sendMessage({ action: ACTIONS.TRANSLATE, text: WELCOME_SAMPLE });
+  } catch (error) {
+    response = { errorCode: toTranslationError(error).code };
+  } finally {
+    translating = false;
+    tryBtn.removeAttribute('aria-busy');
+    tryBtn.removeAttribute('aria-disabled');
+    tryLabelEl.textContent = t('welcomeTryTranslate', currentLang);
+  }
+
+  if (!response?.error && typeof response?.translation === 'string' && response.translation) {
+    showTryResult(response.translation);
+  } else {
+    showTryError(response);
+  }
+}
+
+/**
+ * @param {string} translation - Persian
+ */
+function showTryResult(translation) {
+  tryResultEl.setAttribute('lang', 'fa');
+  tryResultEl.setAttribute('dir', 'rtl');
+  tryResultEl.dataset.state = 'ok';
+  tryResultEl.textContent = translation;
+}
+
+/**
+ * The service worker answers a failure with { error, errorCode }. A known
+ * code is shown in the UI language; an UNKNOWN or missing one shows the
+ * worker's own message when there is one.
+ * @param {{error?: string, errorCode?: string}|undefined} response
+ */
+function showTryError(response) {
+  const code = response?.errorCode;
+  const useWorkerMessage = (!code || code === ERROR_CODES.UNKNOWN) && response?.error;
+  const message = useWorkerMessage ? response.error : t(errorI18nKey(code), currentLang);
+  tryResultEl.setAttribute('lang', currentLang);
+  tryResultEl.setAttribute('dir', document.documentElement.dir || 'ltr');
+  tryResultEl.dataset.state = 'error';
+  tryResultEl.textContent = `${message} ${t('welcomeTryAgainHint', currentLang)}`;
+}
+
+/**
+ * A key typed but never saved goes through the same test-before-store path
+ * as Save & test on the way out, when the provider has no key stored yet and
+ * the typed key has the right shape and was not already rejected. A Save &
+ * test still running is waited for first.
+ */
+async function saveTypedKey() {
+  if (pendingSave) await pendingSave;
+  const provider = currentProvider;
+  const typed = normalizeApiKey(apiKeyInput.value);
+  if (!typed || typed === rejectedKey || checkKeyFormat(provider, typed)) return;
+  if (await hasProviderApiKey(provider)) return;
+  showStatus({ tone: 'pending', text: t('keyTesting', currentLang) });
+  await testAndStore(provider, typed);
+}
+
+/**
+ * Finish onboarding: Done never strands the user. The typed key is saved
+ * when it can be, onboarding is marked complete whatever happened before,
+ * then the page returns to Settings when Settings opened it, and closes
+ * otherwise. Done does not wait for the sample translation.
+ */
+async function handleDone() {
+  if (finishing) return;
+  finishing = true;
+  doneBtn.setAttribute('aria-busy', 'true');
+
+  try {
+    await saveTypedKey();
   } catch (error) {
     console.warn('[ParsiPad] Could not store the typed key:', error);
   }
 
-  // Mark onboarding as complete
-  await setOnboardingComplete();
+  try {
+    await setOnboardingComplete();
+  } catch (error) {
+    console.warn('[ParsiPad] Could not mark onboarding complete:', error);
+  }
 
-  // Close this tab
-  window.close();
+  const target = finishTarget(location.search);
+  if (target.type === 'navigate') {
+    location.assign(target.url);
+  } else {
+    window.close();
+  }
+
+  // Should the tab refuse to close, Done can be pressed again.
+  finishing = false;
+  doneBtn.removeAttribute('aria-busy');
 }
 
 // Initialize when DOM is ready
