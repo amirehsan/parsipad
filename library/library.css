@@ -15,7 +15,7 @@
 
 .lib-card:hover {
   border-color: var(--color-border-strong);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-card-hover);
 }
 
 /* Meta row: kind badge, direction, relative time */
@@ -35,6 +35,10 @@
   color: var(--cat-on);
   font-size: var(--text-xs);
   font-weight: 600;
+}
+
+.lib-badge:lang(en),
+.lib-variant-label:lang(en) {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -122,8 +126,6 @@
   font-size: var(--text-xs);
   font-weight: 600;
   color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 /* Actions */
