@@ -2,6 +2,7 @@ import { getHistory, clearHistory, removeFromHistory, getPolishHistory, clearPol
 import { getTheme, setTheme, getLanguage } from '../lib/storage.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 import { applyThemeToRoot } from '../lib/theme.js';
+import { directionLabel } from '../lib/direction-label.js';
 
 // DOM Elements
 const backBtn = document.getElementById('back-btn');
@@ -204,14 +205,14 @@ function renderHistory() {
 function renderTranslationCard(item) {
   const targetLang = item.direction.split('-')[1] || 'fa';
   const textDir = ['fa', 'ar', 'he'].includes(targetLang) ? 'rtl' : 'ltr';
-  const badgeText = formatDirectionBadge(item.direction);
+  const badgeText = directionLabel(item.direction);
   const timeAgo = formatTimeAgo(item.timestamp);
 
   return `
     <div class="history-card" data-type="translation" data-id="${item.id}">
       <div class="history-card-header">
         <div class="history-card-meta">
-          <span class="history-badge translation">${badgeText}</span>
+          ${badgeText ? `<span class="history-badge translation" dir="ltr">${badgeText}</span>` : ''}
           <span class="history-time">${timeAgo}</span>
         </div>
         <div class="history-card-actions">
@@ -397,16 +398,6 @@ async function handleClearAll() {
   }
 }
 
-/**
- * Format direction badge (e.g., 'en-fa' -> 'EN → FA')
- */
-function formatDirectionBadge(direction) {
-  const parts = direction.split('-');
-  if (parts.length === 2) {
-    return `${parts[0].toUpperCase()} → ${parts[1].toUpperCase()}`;
-  }
-  return direction.toUpperCase();
-}
 
 /**
  * Format timestamp as relative time

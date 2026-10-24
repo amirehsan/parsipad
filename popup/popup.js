@@ -10,6 +10,7 @@ import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
 import { getBoundShortcuts } from '../shared/shortcuts.js';
 import { applyThemeToRoot } from '../lib/theme.js';
+import { directionLabel } from '../lib/direction-label.js';
 
 // DOM Elements
 const settingsBtn = document.getElementById('settings-btn');
@@ -295,19 +296,6 @@ async function loadHistory() {
 }
 
 /**
- * Format direction for display (e.g., 'ru-fa' -> 'RU→FA')
- * @param {string} direction - Direction string like 'en-fa' or 'fa-en'
- * @returns {string} - Formatted display string
- */
-function formatDirectionBadge(direction) {
-  const parts = direction.split('-');
-  if (parts.length === 2) {
-    return `${parts[0].toUpperCase()}→${parts[1].toUpperCase()}`;
-  }
-  return direction.toUpperCase();
-}
-
-/**
  * Render history items
  * @param {Array} history - History entries
  */
@@ -315,7 +303,7 @@ function renderHistory(history) {
   historyList.innerHTML = history.map(entry => {
     const targetLang = entry.direction.split('-')[1] || 'fa';
     const translationDir = ['fa', 'ar', 'he'].includes(targetLang) ? 'rtl' : 'ltr';
-    const badgeText = formatDirectionBadge(entry.direction);
+    const badgeText = directionLabel(entry.direction);
 
     return `
       <div class="history-item" data-original="${escapeAttr(entry.original)}" data-translation="${escapeAttr(entry.translation)}" data-direction="${entry.direction}">
@@ -323,7 +311,7 @@ function renderHistory(history) {
           <div class="history-item-original">${escapeHtml(entry.original)}</div>
           <div class="history-item-translation" dir="${translationDir}">${escapeHtml(entry.translation)}</div>
         </div>
-        <span class="history-item-badge">${badgeText}</span>
+        <span class="history-item-badge" dir="ltr">${badgeText}</span>
       </div>
     `;
   }).join('');
@@ -1942,7 +1930,8 @@ async function displayImageResult(result) {
   imageTranslation.dir = ['fa', 'ar', 'he'].includes(targetLang) ? 'rtl' : 'ltr';
 
   // Display direction badge
-  imageDirectionBadge.textContent = formatDirectionBadge(direction);
+  imageDirectionBadge.textContent = directionLabel(direction);
+  imageDirectionBadge.hidden = !imageDirectionBadge.textContent;
 
   // Show provider badge
   await updateProviderBadge(imageProviderBadge);

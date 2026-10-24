@@ -4,6 +4,7 @@ import { t, applyTranslations } from '../lib/i18n.js';
 import { greetingKeyForHour, formatClock, msUntilNextMinute } from './glance.js';
 import { heroSizeStep, stepBelow } from './hero-scale.js';
 import { applyThemeToRoot } from '../lib/theme.js';
+import { directionLabel } from '../lib/direction-label.js';
 
 // DOM Elements - Bookmarks (now inside the drawer)
 const bookmarkSearch = document.getElementById('bookmark-search');
@@ -260,8 +261,7 @@ function renderCurrentCard() {
  */
 function getBadgeInfo(item) {
   if (item.type === 'translation') {
-    const direction = item.direction || 'EN → FA';
-    return { text: direction, type: 'translation' };
+    return { text: directionLabel(item.direction) || t('favorites', currentLang), type: 'translation' };
   } else if (item.type === 'polish') {
     const variantKey = item.variant || 'polish';
     const variantLabel = t(variantKey, currentLang) || item.variant?.charAt(0).toUpperCase() + item.variant?.slice(1) || t('polish', currentLang);
