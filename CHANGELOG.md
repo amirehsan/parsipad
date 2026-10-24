@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-10-24
+
 ### Added
 - **A Library page with History, Favorites and Lessons in tabs.** History and Favorites were two separate pages that showed the same kind of card with different controls, and finding something old meant scrolling. The Library puts them side by side. Search matches the original, the result and the polished versions, type chips narrow the list to translations, dictionary lookups or polished text, a direction filter narrows it further, and results are grouped under Today, Yesterday, This week and Earlier. Each card can be starred, copied (one button per style on a polished text), opened in the side panel (a polished text opens in Polish, everything else in Translate) or deleted. The tab, search and filters are kept in the page address, so a reload lands you in the same place. The Library links in the popup and the side panel open it.
 - **Deleting an entry can be undone for five seconds.** A delete used to be final the moment you clicked it. The Library now shows an Undo button for five seconds after each delete and puts the entry back. Clear all is scoped to the tab and the type chip you are looking at, so clearing translations no longer touches anything else. It asks first, and the question names exactly what goes, such as all translations in your history or all saved grammar lessons. The search and the direction filter do not narrow it, so when they hide part of what will be cleared, the question says that too.
