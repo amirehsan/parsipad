@@ -59,3 +59,47 @@ describe('review banner timing and answers', () => {
     }
   });
 });
+
+describe('review banner in dark mode', () => {
+  const tokens = fs.readFileSync(path.resolve(__dirname, '../lib/design-tokens.css'), 'utf8');
+  const darkBlock = tokens.slice(tokens.indexOf(":root[data-theme='dark'] {"));
+  const darkHex = (name) => darkBlock.match(new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})`))[1];
+
+  function luminance(hex) {
+    const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map(c => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+  const contrast = (a, b) => {
+    const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+
+  it('never paints banner text in the banner background colour', () => {
+    expect(css).not.toMatch(/\[data-theme="dark"\] \.review-prompt-content\s*\{[^}]*color:\s*var\(--color-warning-100\)/);
+    expect(css).not.toMatch(/\[data-theme="dark"\] \.review-btn-secondary:hover\s*\{[^}]*color:\s*var\(--color-warning-100\)/);
+  });
+
+  it('message and secondary buttons read at 4.5:1 on the dark banner', () => {
+    expect(contrast(darkHex('--color-warning-500'), darkHex('--color-warning-100'))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('the primary button uses a dark label on its light amber fill', () => {
+    const body = (css.match(/\[data-theme="dark"\] \.review-btn-primary\s*\{([^}]*)\}/) || [, ''])[1];
+    expect(body).toMatch(/color:\s*var\(--color-bg\)/);
+    expect(contrast(darkHex('--color-bg'), darkHex('--color-warning-500'))).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe('rating from the popup', () => {
+  const js = fs.readFileSync(path.resolve(__dirname, '../popup/popup.js'), 'utf8');
+  const body = js.slice(js.indexOf('function handleReviewRateClick'), js.indexOf('\n}\n', js.indexOf('function handleReviewRateClick')));
+
+  it('records the answer before opening the store, so a closing popup cannot lose it', () => {
+    expect(body).toMatch(/event\.preventDefault\(\)/);
+    const recordAt = body.indexOf("await answerReviewPrompt('rated')");
+    const openAt = body.indexOf('chrome.tabs.create({ url: STORE_REVIEWS_URL })');
+    expect(recordAt).toBeGreaterThan(-1);
+    expect(openAt).toBeGreaterThan(recordAt);
+  });
+});

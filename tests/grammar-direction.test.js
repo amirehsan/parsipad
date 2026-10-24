@@ -31,3 +31,24 @@ describe('grammar lesson direction', () => {
     expect(css).not.toMatch(/#lesson-content\[dir="rtl"\]/);
   });
 });
+
+describe('grammar lesson under the Persian interface', () => {
+  const html = fs.readFileSync(path.join(rootDir, 'grammar/grammar.html'), 'utf8');
+  // Page chrome follows the interface language; everything else is lesson content.
+  const CHROME = ['.loading-text', '.error-section', '.error-text'];
+
+  it('marks the lesson itself as English, left-to-right', () => {
+    expect(html).toMatch(/<main id="lesson-content" class="lesson-content" dir="ltr" lang="en"/);
+  });
+
+  it('lesson RTL rules cannot match through <html dir="rtl">', () => {
+    const selectors = [...css.matchAll(/(^|\n)(\[dir="rtl"\][^{,\n]*)\s*[{,]/g)].map(m => m[2].trim());
+    const lessonRules = selectors.filter(sel => sel !== '[dir="rtl"]' && !CHROME.some(c => sel.endsWith(c)));
+    expect(lessonRules.length).toBeGreaterThan(0);
+    for (const sel of lessonRules) expect(sel, sel).toMatch(/^\[dir="rtl"\]:not\(html\) /);
+  });
+
+  it('English lesson text gets the Latin font even when the page is Persian', () => {
+    expect(css).toMatch(/\[lang="en"\]\s*\{[^}]*font-family:\s*var\(--font-sans\)/);
+  });
+});
