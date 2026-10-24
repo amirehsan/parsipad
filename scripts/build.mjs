@@ -35,6 +35,7 @@ const MODULE_ENTRIES = [
   { in: 'welcome/welcome.js',            out: 'welcome/welcome.js' },
   { in: 'grammar/grammar.js',            out: 'grammar/grammar.js' },
   { in: 'library/library.js',            out: 'library/library.js' },
+  { in: 'practice/practice.js',          out: 'practice/practice.js' },
   { in: 'analytics/analytics.js',        out: 'analytics/analytics.js' }
 ];
 const IIFE_ENTRIES = [
@@ -54,6 +55,7 @@ const STATIC = [
   'welcome/welcome.html', 'welcome/welcome.css',
   'grammar/grammar.html', 'grammar/grammar.css',
   'library/library.html', 'library/library.css',
+  'practice/practice.html', 'practice/practice.css',
   // Redirect stubs: old links and bookmarks land on the matching Library tab.
   'history/history.html',
   'favorites/favorites.html',

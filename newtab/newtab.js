@@ -2,7 +2,7 @@ import { getRandomFavorites, getNewTabEnabled, getTheme, setTheme, getNewTabPhra
 import { getTopSites, faviconUrl, hasTopSitesPermission, requestTopSitesPermission } from '../lib/top-sites.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 import { greetingKeyForHour, formatClock, msUntilNextMinute } from './glance.js';
-import { heroSizeStep, stepBelow } from './hero-scale.js';
+import { textSizeStep, stepBelow } from '../lib/text-size.js';
 import { applyThemeToRoot } from '../lib/theme.js';
 import { directionLabel } from '../lib/direction-label.js';
 
@@ -251,9 +251,9 @@ function renderCurrentCard() {
   // to overflow into, so the length picks the display size. The flipped side
   // sits a step below its own so the original and its translation read as a
   // hierarchy rather than competing.
-  const frontStep = heroSizeStep(savedText);
+  const frontStep = textSizeStep(savedText);
   cardSaved.dataset.size = frontStep;
-  cardOriginal.dataset.size = stepBelow(heroSizeStep(originalText));
+  cardOriginal.dataset.size = stepBelow(textSizeStep(originalText));
 }
 
 /**
