@@ -171,6 +171,84 @@ describe('selection toolbar keyboard path', () => {
     }
   });
 
+  it('never swallows Tab when focus cannot move into the toolbar (an inert page behind a modal)', () => {
+    $('before').focus();
+    selectWords();
+    const focus = HTMLButtonElement.prototype.focus;
+    HTMLButtonElement.prototype.focus = () => {};
+    try {
+      expect(key($('before'), 'Tab').defaultPrevented).toBe(false);
+      expect(document.activeElement).toBe($('before'));
+    } finally {
+      HTMLButtonElement.prototype.focus = focus;
+    }
+    // Not a trap: later Tabs are the page's own too.
+    expect(key($('before'), 'Tab').defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe($('before'));
+  });
+
+  it('leaves Tab alone in a text field inside a closed shadow root', () => {
+    const widget = document.createElement('x-field');
+    const closed = widget.attachShadow({ mode: 'closed' });
+    const input = document.createElement('input');
+    closed.appendChild(input);
+    document.body.appendChild(widget);
+    try {
+      selectWords();
+      input.focus();
+      expect(host()).not.toBeNull();
+      // Chrome reports the keydown to the document from the host, since the
+      // root is closed (happy-dom would expose the input), so send it from there.
+      expect(key(widget, 'Tab').defaultPrevented).toBe(false);
+    } finally {
+      widget.remove();
+    }
+  });
+
+  it('does not take Tab once the selection is gone, before the toolbar is cleared away', () => {
+    $('before').focus();
+    selectWords();
+    document.getSelection().removeAllRanges();
+    document.dispatchEvent(new Event('selectionchange'));
+    expect(host()).not.toBeNull();
+    expect(key($('before'), 'Tab').defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe($('before'));
+  });
+
+  it('does not take Tab for a different selection than the one it was built for', () => {
+    $('before').focus();
+    selectWords();
+    const node = $('text').firstChild;
+    const range = document.createRange();
+    range.setStart(node, 8);
+    range.setEnd(node, 23);
+    document.getSelection().removeAllRanges();
+    document.getSelection().addRange(range);
+    expect(host()).not.toBeNull();
+    expect(key($('before'), 'Tab').defaultPrevented).toBe(false);
+  });
+
+  it('on Escape with the box also open, returns focus to where Tab took it from', () => {
+    // A box opened from a one-word selection, through the toolbar.
+    $('after').focus();
+    selectWords(0, 7);
+    key($('after'), 'Tab');
+    key(focusedButton(), 'End');
+    focusedButton().click();
+    const box = $('parsipad-host');
+    expect(box).not.toBeNull();
+    // Back on the page, a new selection and its toolbar, entered from #before.
+    $('before').focus();
+    selectWords();
+    expect($('parsipad-host')).not.toBeNull();
+    key($('before'), 'Tab');
+    expect(document.activeElement).toBe(host());
+    key(focusedButton(), 'Escape');
+    expect(host()).toBeNull();
+    expect($('parsipad-host')).toBeNull();
+    expect(document.activeElement).toBe($('before'));
+  });
+
   it('labels the toolbar in Persian when the interface language is Persian', () => {
     for (const listener of storageListeners) listener({ ui_language: { newValue: 'fa' } }, 'local');
     try {

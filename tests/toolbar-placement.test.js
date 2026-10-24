@@ -109,7 +109,8 @@ describe('selection toolbar keyboard path', () => {
 
     expect(keyDown).toMatch(/if \(shouldTabIntoSelectionPopup\(event\)\)/);
     const branch = keyDown.slice(keyDown.indexOf('shouldTabIntoSelectionPopup(event'));
-    expect(branch).toMatch(/^[^}]*selectionPopupReturnFocus = document\.activeElement;[^}]*event\.preventDefault\(\);[^}]*focusSelectionPopup\(\);/);
+    // Focus first; Tab is cancelled only once focus really moved in.
+    expect(branch).toMatch(/^[^}]*const returnTo = document\.activeElement;\s*focusSelectionPopup\(\);\s*if \(document\.activeElement === selectionPopup\) \{\s*selectionPopupReturnFocus = returnTo;\s*event\.preventDefault\(\);\s*\} else \{\s*selectionPopupFocusLeft = true;/);
   });
 
   it('focuses the active button without scrolling, from inside the closed root', () => {

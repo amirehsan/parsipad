@@ -2644,11 +2644,19 @@ function handleDocumentClick(event) {
  */
 function handleKeyDown(event) {
   // The keyboard path into the selection toolbar, which never takes focus on
-  // its own. Remembers where focus was so it can go back there.
+  // its own. Remembers where focus was so it can go back there. Tab is only
+  // taken once focus has really moved: where the toolbar cannot take focus
+  // (an inert page behind a modal dialog), cancelling it would trap the
+  // keyboard, so the browser keeps this Tab and the toolbar is passed by.
   if (shouldTabIntoSelectionPopup(event)) {
-    selectionPopupReturnFocus = document.activeElement;
-    event.preventDefault();
+    const returnTo = document.activeElement;
     focusSelectionPopup();
+    if (document.activeElement === selectionPopup) {
+      selectionPopupReturnFocus = returnTo;
+      event.preventDefault();
+    } else {
+      selectionPopupFocusLeft = true;
+    }
     return;
   }
 
@@ -2684,11 +2692,17 @@ function handleKeyDown(event) {
       cancelScreenshotMode();
       return;
     }
+    // Focus in the toolbar: it closes first and hands focus back to where Tab
+    // took it from. A box still open behind it then closes without moving
+    // focus again to the element it was opened from.
+    if (selectionPopup && document.activeElement === selectionPopup) {
+      removeSelectionPopup();
+      previouslyFocused = null;
+    }
     if (floatingBox) {
       removeFloatingBox();
     }
     if (selectionPopup) {
-      // Hands focus back to where it was when Tab moved it into the toolbar.
       removeSelectionPopup();
     }
   }
@@ -2707,13 +2721,17 @@ function isEditableKeyTarget(target) {
 
 /**
  * Whether this keydown should move focus into the selection toolbar: a plain
- * Tab while the toolbar is up, from anywhere but a text field, the toolbar
- * itself or the floating box. keydown from inside a closed shadow root
- * reaches the document retargeted to its host, so the composed path, not the
- * target, says where it came from; without that check Tab could never leave
- * the toolbar. Once focus has left the toolbar, Tab passes it by, or every
- * Tab on the page would pull focus back into it. A page that handled Tab
- * itself (a dialog's focus trap) keeps it.
+ * Tab while the toolbar is up for the current selection, from anywhere but a
+ * text field, the toolbar itself or the floating box. keydown from inside a
+ * closed shadow root reaches the document retargeted to its host, so the
+ * composed path, not the target, says where it came from; without that check
+ * Tab could never leave the toolbar. For the same reason a text field in a
+ * page's own closed root shows up only as its host, so focus is also checked
+ * with the rule that keeps the toolbar out of text fields. Once focus has
+ * left the toolbar, Tab passes it by, or every Tab on the page would pull
+ * focus back into it. A page that handled Tab itself (a dialog's focus trap)
+ * keeps it, and so does a selection that has gone or changed while the
+ * toolbar waits to be cleared away.
  * @param {KeyboardEvent} event
  * @returns {boolean}
  */
@@ -2722,7 +2740,11 @@ function shouldTabIntoSelectionPopup(event) {
   if (!selectionPopup || selectionPopupFocusLeft || event.defaultPrevented) return false;
   const path = event.composedPath();
   if (isEditableKeyTarget(path[0])) return false;
-  return !path.includes(selectionPopup) && !(floatingBox && path.includes(floatingBox));
+  if (path.includes(selectionPopup) || (floatingBox && path.includes(floatingBox))) return false;
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return false;
+  if (isEditableSelection(selection, document.activeElement)) return false;
+  return Boolean(selectionPopupAnchor) && selection.toString().trim() === selectionPopupAnchor.text;
 }
 
 /**
