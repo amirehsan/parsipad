@@ -14,6 +14,8 @@ import {
   setSelectionPopupEnabled,
   getTranslateOtherLanguages,
   setTranslateOtherLanguages,
+  getConfirmPageTranslate,
+  setConfirmPageTranslate,
   getPracticeSessionSize,
   setPracticeSessionSize,
   getFavorites,
@@ -33,6 +35,7 @@ import {
 import { applyThemeToRoot } from '../lib/theme.js';
 import { formatNumber } from '../lib/format.js';
 import { setupSectionNav } from './sections.js';
+import { getMutedSites, addMutedSite, removeMutedSite } from '../lib/muted-sites.js';
 
 // DOM Elements - Language
 const aboutVersionEl = document.getElementById('about-version');
@@ -49,6 +52,15 @@ const translateOtherLanguagesToggle = document.getElementById('translate-other-l
 
 // DOM Elements - Block Translate
 const blockTranslateToggle = document.getElementById('block-translate-toggle');
+
+// DOM Elements - Whole-page confirmation (row hidden until Plan E) and muted sites
+const confirmPageTranslateToggle = document.getElementById('confirm-page-translate-toggle');
+const mutedSitesList = document.getElementById('muted-sites-list');
+const mutedSitesEmpty = document.getElementById('muted-sites-empty');
+const mutedSiteForm = document.getElementById('muted-site-form');
+const mutedSiteInput = document.getElementById('muted-site-input');
+const mutedSiteStatus = document.getElementById('muted-site-status');
+const SVG_NS = 'http://www.w3.org/2000/svg';
 
 // DOM Elements - Practice
 const practiceSizeSlider = document.getElementById('practice-size-slider');
@@ -101,6 +113,10 @@ const keySaved = {};
 const keyTestMessages = {};
 // Providers whose Save & test is running; their card's buttons stay locked.
 const testingProviders = new Set();
+// The hosts the muted-sites chips show, and that card's status line as an
+// i18n key with its values, so a language change rewords both in place.
+let mutedSites = [];
+let mutedSiteMessage = null;
 
 /**
  * Initialize the settings page
@@ -112,6 +128,8 @@ async function init() {
   await loadSelectionPopupSetting();
   await loadTranslateOtherLanguagesSetting();
   await loadBlockTranslateSetting();
+  await loadConfirmPageTranslateSetting();
+  await loadMutedSites();
   await loadPracticeSetting();
   await loadProviderSettings();
   await loadAllApiKeyStatuses();
@@ -249,6 +267,138 @@ async function loadTranslateOtherLanguagesSetting() {
 async function loadBlockTranslateSetting() {
   const stored = await chrome.storage.local.get(STORAGE_KEYS.blockTranslate);
   blockTranslateToggle.checked = stored[STORAGE_KEYS.blockTranslate] ?? true;
+}
+
+/**
+ * Load the "ask before translating a whole page" setting. Its row ships
+ * hidden until Plan E's confirmation reads the preference.
+ */
+async function loadConfirmPageTranslateSetting() {
+  confirmPageTranslateToggle.checked = await getConfirmPageTranslate();
+}
+
+/**
+ * Read the muted hosts into their chips
+ */
+async function loadMutedSites() {
+  renderMutedSites(await getMutedSites());
+}
+
+/**
+ * Show the muted hosts as chips, or the empty line when there are none.
+ * A chip that had keyboard focus keeps it when its host is still listed;
+ * when its host went away (unmuted here or elsewhere), focus moves on by
+ * the same rule as unmuting.
+ * @param {string[]} list
+ */
+function renderMutedSites(list) {
+  const active = document.activeElement;
+  const focusedHost = mutedSitesList.contains(active) ? active.dataset.host : undefined;
+  const focusedIndex = mutedSites.indexOf(focusedHost);
+
+  mutedSites = [...list];
+  mutedSitesList.replaceChildren(...mutedSites.map(createMutedChip));
+  mutedSitesList.hidden = mutedSites.length === 0;
+  mutedSitesEmpty.hidden = mutedSites.length > 0;
+
+  if (focusedHost === undefined) return;
+  const sameChip = [...mutedSitesList.querySelectorAll('.muted-chip-remove')]
+    .find((button) => button.dataset.host === focusedHost);
+  if (sameChip) {
+    sameChip.focus();
+  } else {
+    focusAfterUnmute(focusedIndex);
+  }
+}
+
+/**
+ * One chip: the host as an ltr run, then its unmute button. Built from
+ * nodes, never markup, since the host is user input.
+ * @param {string} host
+ * @returns {HTMLLIElement}
+ */
+function createMutedChip(host) {
+  const item = document.createElement('li');
+  item.className = 'muted-chip';
+
+  const name = document.createElement('bdi');
+  name.className = 'muted-chip-host';
+  name.setAttribute('dir', 'ltr');
+  name.textContent = host;
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'muted-chip-remove';
+  button.dataset.host = host;
+  button.setAttribute('aria-label', t('unmuteSite', currentLang).replace('{host}', host));
+  button.append(createCloseIcon());
+
+  item.append(name, button);
+  return item;
+}
+
+/**
+ * The unmute button's cross
+ * @returns {SVGSVGElement}
+ */
+function createCloseIcon() {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '2');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', 'M6 6l12 12M18 6L6 18');
+  svg.append(path);
+  return svg;
+}
+
+/**
+ * After a chip goes, focus the chip that took its place, else the one
+ * before it, else the add field.
+ * @param {number} index The removed chip's position
+ */
+function focusAfterUnmute(index) {
+  const buttons = mutedSitesList.querySelectorAll('.muted-chip-remove');
+  const target = buttons.length > 0 ? buttons[Math.min(Math.max(index, 0), buttons.length - 1)] : mutedSiteInput;
+  target.focus();
+}
+
+/**
+ * Show a message in the muted-sites status line, or clear it with null
+ * @param {string | null} key
+ * @param {Record<string, string>} [values] Placeholder values, shown as ltr runs
+ * @param {'ok'|'error'|'info'} [tone]
+ */
+function setMutedSiteMessage(key, values = {}, tone = 'info') {
+  mutedSiteMessage = key ? { key, values, tone } : null;
+  renderMutedSiteMessage();
+}
+
+/**
+ * Write the status line in the UI language. Each {placeholder} becomes a
+ * <bdi dir="ltr">, so a host keeps its own order inside Persian text.
+ */
+function renderMutedSiteMessage() {
+  if (!mutedSiteMessage) {
+    mutedSiteStatus.replaceChildren();
+    mutedSiteStatus.dataset.state = '';
+    return;
+  }
+  const { key, values, tone } = mutedSiteMessage;
+  const parts = t(key, currentLang).split(/(\{\w+\})/).filter(Boolean);
+  mutedSiteStatus.replaceChildren(...parts.map((part) => {
+    const name = part.match(/^\{(\w+)\}$/)?.[1];
+    if (!name || !(name in values)) return document.createTextNode(part);
+    const run = document.createElement('bdi');
+    run.setAttribute('dir', 'ltr');
+    run.textContent = values[name];
+    return run;
+  }));
+  mutedSiteStatus.dataset.state = tone;
 }
 
 /**
@@ -440,6 +590,16 @@ function setupEventListeners() {
   // Block translate setting
   blockTranslateToggle.addEventListener('change', handleBlockTranslateChange);
 
+  // Whole-page confirmation and muted sites
+  confirmPageTranslateToggle.addEventListener('change', handleConfirmPageTranslateChange);
+  mutedSiteForm.addEventListener('submit', handleMutedSiteSubmit);
+  mutedSiteInput.addEventListener('input', handleMutedSiteInput);
+  mutedSitesList.addEventListener('click', handleUnmuteClick);
+  // A mute made elsewhere, such as from the page itself, shows up live
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes[STORAGE_KEYS.mutedSites]) loadMutedSites();
+  });
+
   // Practice session size: the label follows the thumb, storage waits for release
   practiceSizeSlider.addEventListener('input', () => showPracticeSize(Number(practiceSizeSlider.value)));
   practiceSizeSlider.addEventListener('change', handlePracticeSizeChange);
@@ -512,6 +672,8 @@ async function handleLanguageChange(lang) {
   applyTranslations(lang);
   mountKeyHelp();
   refreshProviderCards();
+  renderMutedSites(mutedSites);
+  renderMutedSiteMessage();
   showPracticeSize(Number(practiceSizeSlider.value));
   await loadCacheStats();
 }
@@ -545,6 +707,62 @@ async function handleTranslateOtherLanguagesChange() {
  */
 async function handleBlockTranslateChange() {
   await chrome.storage.local.set({ [STORAGE_KEYS.blockTranslate]: blockTranslateToggle.checked });
+}
+
+/**
+ * Handle the "ask before translating a whole page" change
+ */
+async function handleConfirmPageTranslateChange() {
+  await setConfirmPageTranslate(confirmPageTranslateToggle.checked);
+}
+
+/**
+ * Mute the site in the add field. Invalid input and a site already muted
+ * are reported in the status line; focus stays in the field either way.
+ * @param {SubmitEvent} event
+ */
+async function handleMutedSiteSubmit(event) {
+  event.preventDefault();
+  const before = await getMutedSites();
+  const host = await addMutedSite(mutedSiteInput.value);
+
+  if (!host) {
+    mutedSiteInput.setAttribute('aria-invalid', 'true');
+    setMutedSiteMessage('mutedSiteInvalid', { example: 'example.com' }, 'error');
+  } else if (before.includes(host)) {
+    mutedSiteInput.removeAttribute('aria-invalid');
+    setMutedSiteMessage('mutedSiteDuplicate', { host });
+  } else {
+    mutedSiteInput.removeAttribute('aria-invalid');
+    mutedSiteInput.value = '';
+    renderMutedSites(await getMutedSites());
+    setMutedSiteMessage('mutedSiteAdded', { host }, 'ok');
+  }
+  mutedSiteInput.focus();
+}
+
+/**
+ * Editing the field withdraws an invalid-input report
+ */
+function handleMutedSiteInput() {
+  if (!mutedSiteInput.hasAttribute('aria-invalid')) return;
+  mutedSiteInput.removeAttribute('aria-invalid');
+  setMutedSiteMessage(null);
+}
+
+/**
+ * Unmute the chip whose button was pressed, then move focus on
+ * @param {MouseEvent} event
+ */
+async function handleUnmuteClick(event) {
+  const button = event.target.closest('.muted-chip-remove');
+  if (!button) return;
+  const host = button.dataset.host;
+  const index = mutedSites.indexOf(host);
+  await removeMutedSite(host);
+  renderMutedSites(await getMutedSites());
+  focusAfterUnmute(index);
+  setMutedSiteMessage('mutedSiteRemoved', { host }, 'ok');
 }
 
 /**

@@ -203,6 +203,16 @@
               </div>
               <input type="checkbox" role="switch" class="pp-switch" id="block-translate-toggle" aria-describedby="block-translate-hint" checked>
             </div>
+            <!-- Hidden in 3.5.0: nothing asks yet. Plan E removes hidden when page
+                 translation shows its confirmation; settings.js already loads
+                 and saves the switch. -->
+            <div class="setting-row" hidden>
+              <div class="setting-text">
+                <label for="confirm-page-translate-toggle" data-i18n="confirmPageTranslateLabel">Ask before translating a whole page</label>
+                <p id="confirm-page-translate-hint" class="setting-hint" data-i18n="confirmPageTranslateHint">Shows how many paragraphs and the estimated cost first.</p>
+              </div>
+              <input type="checkbox" role="switch" class="pp-switch" id="confirm-page-translate-toggle" aria-describedby="confirm-page-translate-hint" checked>
+            </div>
             <div class="setting-row">
               <div class="setting-text">
                 <label for="selection-popup-toggle" data-i18n="selectionToolbarLabel">Selection toolbar</label>
@@ -217,6 +227,39 @@
               </div>
               <input type="checkbox" role="switch" class="pp-switch" id="translate-other-languages-toggle" aria-describedby="translate-other-languages-hint">
             </div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="card-header">
+            <div class="card-icon" aria-hidden="true">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5L6 9H3v6h3l5 4V5z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 9l-6 6m0-6l6 6"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="card-title" id="muted-sites-title" data-i18n="mutedSitesTitle">Muted sites</h3>
+              <p class="card-subtitle" id="muted-sites-hint" data-i18n="mutedSitesHint">ParsiPad shows no hover translate button and no selection toolbar on these sites. Muting a site also mutes its subdomains.</p>
+            </div>
+          </div>
+          <div class="card-content">
+            <!-- One chip per muted host, built by renderMutedSites in settings.js -->
+            <ul id="muted-sites-list" class="muted-chips" aria-labelledby="muted-sites-title" hidden></ul>
+            <p id="muted-sites-empty" class="muted-empty" data-i18n="mutedSitesEmpty">No muted sites. ParsiPad works on every site.</p>
+            <form id="muted-site-form" class="muted-add">
+              <label for="muted-site-input" class="input-label" data-i18n="mutedSiteInputLabel">Site address</label>
+              <div class="muted-add-row">
+                <input id="muted-site-input" class="text-input" type="text" inputmode="url" autocomplete="off" spellcheck="false" dir="ltr" placeholder="example.com" aria-describedby="muted-sites-hint muted-site-status">
+                <button type="submit" class="btn btn-primary">
+                  <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m-7-7h14"/>
+                  </svg>
+                  <span data-i18n="mutedSiteAdd">Mute</span>
+                </button>
+              </div>
+              <p id="muted-site-status" class="muted-status" role="status" aria-live="polite"></p>
+            </form>
           </div>
         </div>
 

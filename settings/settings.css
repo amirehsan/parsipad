@@ -1416,6 +1416,117 @@ a.btn {
 }
 
 /* ============================================
+   Muted sites: chips that wrap, then the add field and its button on one
+   line, then the status line. Declared after the [dir="rtl"] .text-input
+   rule so the field keeps even padding (it has no icon button inside).
+   ============================================ */
+
+.muted-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-inline-actions);
+  margin-bottom: var(--space-stack-group);
+  list-style: none;
+}
+
+.muted-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  padding-block: var(--space-1);
+  padding-inline: var(--space-3) var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+}
+
+.muted-chip-host {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.muted-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--space-6);
+  height: var(--space-6);
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) ease, color var(--motion-fast) ease;
+}
+
+.muted-chip-remove svg {
+  width: var(--space-4);
+  height: var(--space-4);
+}
+
+.muted-chip-remove:hover {
+  color: var(--color-text);
+  background: var(--color-bg-hover);
+}
+
+.muted-chip-remove:focus-visible {
+  outline: var(--ring-width) solid var(--ring-color);
+  outline-offset: var(--ring-offset);
+}
+
+.muted-empty {
+  margin-bottom: var(--space-stack-group);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.muted-add .input-label {
+  margin-bottom: var(--space-inline-actions);
+}
+
+.muted-add-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-inline-actions);
+}
+
+.muted-add .text-input {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+}
+
+.muted-add .text-input[aria-invalid="true"] {
+  border-color: var(--color-error-500);
+}
+
+.muted-add-row .btn {
+  flex-shrink: 0;
+}
+
+.muted-status {
+  margin-top: var(--space-inline-actions);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.muted-status:empty {
+  display: none;
+}
+
+.muted-status[data-state="ok"] {
+  color: var(--color-success-500);
+}
+
+.muted-status[data-state="error"] {
+  color: var(--color-error-500);
+}
+
+/* ============================================
    Data Backup Section Styles
    ============================================ */
 

@@ -3003,6 +3003,9 @@ function handleTextSelection(event) {
 
   // Debounce: wait 200ms before showing popup to avoid flickering
   selectionDebounceTimer = setTimeout(() => {
+    // A mute that arrived during the debounce wins
+    if (siteMuted) return;
+
     const selection = window.getSelection();
     const selectedText = selection?.toString().trim();
 
