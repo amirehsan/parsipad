@@ -98,8 +98,8 @@ describe('this page', () => {
 });
 
 describe('recent row', () => {
-  it.each(pages)('%s: Library is a real link to the history page', (_, source) => {
-    expect(source).toMatch(/<a id="library-link" class="recent-library" href="\.\.\/history\/history\.html" target="_blank" rel="noopener" data-i18n="library">/);
+  it.each(pages)('%s: Library is a real link to the Library page', (_, source) => {
+    expect(source).toMatch(/<a id="library-link" class="recent-library" href="\.\.\/library\/library\.html" target="_blank" rel="noopener" data-i18n="library">/);
   });
 
   it.each(pages)('%s: the collapsible history lists are gone', (_, source) => {
@@ -157,5 +157,17 @@ describe('popup spacing', () => {
     expect(block).toMatch(/var\(--space-stack-group\)/);
     expect(block).not.toMatch(/(padding|margin|gap)(-[a-z-]+)?:\s*[^;]*\d+(px|rem)/);
     expect(block).toMatch(/\.page-action\s*\{[^}]*min-height:\s*40px/);
+  });
+});
+
+describe('popup dates and links', () => {
+  it('formats the provider badge time through the shared formatter', () => {
+    expect(js).toMatch(/import \{[^}]*\bformatRelativeTime\b[^}]*\} from '\.\.\/lib\/format\.js'/);
+    expect(js).toMatch(/formatRelativeTime\(record\.at, currentLang\)/);
+    expect(js).not.toMatch(/function formatAgo|new Intl\.RelativeTimeFormat/);
+  });
+
+  it('opens favorites on the Library page', () => {
+    expect(js).toMatch(/chrome\.runtime\.getURL\('library\/library\.html\?tab=favorites'\)/);
   });
 });

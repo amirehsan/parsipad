@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Library - ParsiPad</title>
+  <link rel="stylesheet" href="library.css">
+  <script src="../lib/theme-boot.js"></script>
+</head>
+<body>
+  <div class="lib-page">
+    <header class="lib-header">
+      <div class="lib-brand">
+        <span class="lib-logo" aria-hidden="true">P</span>
+        <span class="lib-brand-name">ParsiPad</span>
+      </div>
+      <h1 class="lib-title" data-i18n="libraryTitle">Library</h1>
+      <div class="lib-header-actions">
+        <a id="library-practice" class="pp-btn pp-btn-secondary" href="../practice/practice.html" data-i18n="libraryPractice">Practice</a>
+        <button id="theme-btn" type="button" class="pp-btn-icon lib-theme-btn" data-i18n-title="toggleTheme" title="Toggle theme">
+          <svg id="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="pp-tablist lib-tabs" role="tablist" data-i18n-aria-label="libraryTitle" aria-label="Library">
+      <button type="button" role="tab" id="library-tab-history" class="pp-tab" data-tab="history" aria-controls="library-panel" aria-selected="true" tabindex="0" data-i18n="libraryTabHistory">History</button>
+      <button type="button" role="tab" id="library-tab-favorites" class="pp-tab" data-tab="favorites" aria-controls="library-panel" aria-selected="false" tabindex="-1" data-i18n="libraryTabFavorites">Favorites</button>
+      <button type="button" role="tab" id="library-tab-lessons" class="pp-tab" data-tab="lessons" aria-controls="library-panel" aria-selected="false" tabindex="-1" data-i18n="libraryTabLessons">Lessons</button>
+    </div>
+
+    <main id="library-panel" class="lib-panel" role="tabpanel" aria-labelledby="library-tab-history">
+      <div class="lib-filters">
+        <div class="lib-field lib-field-search">
+          <label class="lib-label" for="library-search" data-i18n="librarySearchLabel">Search the library</label>
+          <input type="search" id="library-search" class="pp-input" autocomplete="off" data-i18n-placeholder="librarySearchPlaceholder" placeholder="Search…">
+        </div>
+        <div class="lib-field">
+          <label class="lib-label" for="library-direction" data-i18n="libraryDirectionLabel">Direction</label>
+          <select id="library-direction" class="pp-input lib-select">
+            <option value="all" data-i18n="libraryDirectionAll">All directions</option>
+          </select>
+        </div>
+        <div id="library-types" class="lib-types" role="group" data-i18n-aria-label="libraryTypeLabel" aria-label="Type">
+          <button type="button" class="lib-chip" data-type="all" aria-pressed="true" data-i18n="libraryTypeAll">All</button>
+          <button type="button" class="lib-chip" data-type="translation" aria-pressed="false" data-i18n="libraryKindTranslation">Translation</button>
+          <button type="button" class="lib-chip" data-type="dictionary" aria-pressed="false" data-i18n="libraryKindDictionary">Dictionary</button>
+          <button type="button" class="lib-chip" data-type="polish" aria-pressed="false" data-i18n="libraryKindPolish">Polish</button>
+        </div>
+        <button id="library-clear" type="button" class="pp-btn pp-btn-secondary pp-btn-sm lib-clear" data-i18n="clearAll" hidden>Clear All</button>
+      </div>
+
+      <p id="library-empty" class="lib-empty" hidden></p>
+      <div id="library-list" class="lib-list"></div>
+    </main>
+
+    <div id="library-status" class="lib-toast" role="status">
+      <span id="library-status-text" class="lib-toast-text"></span>
+      <button id="library-undo" type="button" class="pp-btn pp-btn-ghost pp-btn-sm lib-toast-undo" data-i18n="libraryUndo" hidden>Undo</button>
+    </div>
+  </div>
+
+  <script type="module" src="library.js"></script>
+</body>
+</html>
