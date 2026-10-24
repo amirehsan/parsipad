@@ -108,6 +108,11 @@ describe('practice page: the deck', () => {
     expect($('#practice-empty').hidden).toBe(true);
   });
 
+  it('focuses nothing on load, so no ring sits on the card and reading starts at the top', async () => {
+    await openPractice();
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it('deals no more cards than the session size', async () => {
     const favorites = Array.from({ length: 8 }, (_, i) => ({ id: `f${i}`, type: 'translation', originalText: `w${i}`, savedText: `t${i}` }));
     await openPractice('', { favorites, practice_session_size: 5 });
@@ -149,6 +154,11 @@ describe('practice page: the deck', () => {
     expect($('#practice-face-back').getAttribute('aria-hidden')).toBe('false');
     expect($('#practice-face-front').getAttribute('aria-hidden')).toBe('true');
     await vi.waitFor(() => expect(status()).toBe('سیب'));
+    // A Persian answer is spoken with a Persian voice even in the English interface.
+    const spoken = $('#practice-status [lang]');
+    expect(spoken.getAttribute('lang')).toBe('fa');
+    expect(spoken.getAttribute('dir')).toBe('rtl');
+    expect(spoken.textContent).toBe('سیب');
 
     $('#practice-next').click();
     expect($('#practice-card').getAttribute('aria-pressed')).toBe('false');
@@ -162,6 +172,8 @@ describe('practice page: copy', () => {
     $('#practice-copy').click();
     await vi.waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('apple'));
     await vi.waitFor(() => expect(status()).toBe(en.libraryCopied));
+    // Interface messages carry no language of their own.
+    expect($('#practice-status [lang]')).toBeNull();
 
     $('#practice-card').click();
     press('c');
@@ -209,6 +221,14 @@ describe('practice page: empty deck and surfaces', () => {
   it('opens the Library in a tab from the panel rather than inside it', async () => {
     await openPractice('?surface=panel', { favorites: [] });
     expect($('#practice-empty-link').getAttribute('target')).toBe('_blank');
+  });
+
+  it('mirrors the arrow keys in the Persian interface: ArrowLeft is the next card', async () => {
+    await openPractice('', { ...seed(), ui_language: 'fa' });
+    press('ArrowLeft');
+    expect(front()).toBe('کتاب');
+    press('ArrowRight');
+    expect(front()).toBe('apple');
   });
 
   it('speaks Persian with Latin digits in the counter', async () => {
