@@ -168,6 +168,20 @@ describe('retiring the New Tab settings', () => {
     expect(store.has('newtab_panels')).toBe(false);
     expect(store.get('favorites')).toEqual([{ id: 'keep' }]);
   });
+
+  it('still sets up the context menus when the cleanup fails', async () => {
+    const remove = vi.spyOn(chrome.storage.local, 'remove').mockRejectedValueOnce(new Error('storage unavailable'));
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Other tests read the menus registered at startup, so count rather than clear.
+    const before = chrome.contextMenus.create.mock.calls.length;
+
+    await expect(captured.onInstalled({ reason: 'update' })).resolves.toBeUndefined();
+
+    expect(chrome.contextMenus.create.mock.calls.length).toBeGreaterThan(before);
+    expect(logged).toHaveBeenCalled();
+    remove.mockRestore();
+    logged.mockRestore();
+  });
 });
 
 describe('batch mode keeps its markers intact (the regression that shipped)', () => {

@@ -758,8 +758,14 @@ chrome.runtime.onStartup.addListener(() => { runCacheMigrations(); });
 chrome.runtime.onInstalled.addListener(async (details) => {
   // The New Tab page was removed; its settings are dead weight. Removal is
   // idempotent, and favorites are a separate key that this never touches.
+  // A failure here must not stop the setup below, so it is logged and the
+  // leftover keys are simply tried again on the next update.
   if (details.reason === 'update') {
-    await chrome.storage.local.remove(['newtab_enabled', 'newtab_phrase_count', 'newtab_panels']);
+    try {
+      await chrome.storage.local.remove(['newtab_enabled', 'newtab_phrase_count', 'newtab_panels']);
+    } catch (error) {
+      console.error('Could not remove the retired New Tab settings:', error);
+    }
   }
 
   // Drop any legacy v1 cache entries that pre-date the SHA-256 keying fix.
