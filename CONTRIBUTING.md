@@ -23,7 +23,7 @@ Never paste your API key into an issue. To report a security vulnerability, foll
 
 ## Development setup
 
-Requires [Node.js](https://nodejs.org/) 18 or later (CI uses Node 20).
+Requires [Node.js](https://nodejs.org/) 20 or later (CI uses Node 20).
 
 ```bash
 git clone https://github.com/<your-username>/parsipad.git
@@ -34,7 +34,20 @@ npm run build:watch
 
 Then open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and select the `dist/` folder. `build:watch` rebuilds on every change; press the reload icon on ParsiPad's card in `chrome://extensions` to pick up the new build, and reload any open web page to get the new content script.
 
+For Firefox, run `npm run build:firefox` and then `npm run start:firefox`. It opens Firefox with a clean profile and ParsiPad loaded from `dist-firefox/`, and reloads it when the build changes. `npm run build:watch -- --browser=firefox` keeps that build current.
+
 To use the extension you need an API key from Anthropic, Google or OpenAI. See the [README](README.md#quick-start).
+
+## Building from source
+
+The same source builds both packages, with the same steps on macOS and Linux. They need Node 20 or later and the `zip` command line tool only for `npm run package`, so the default Firefox Add-ons review setup (Ubuntu 24.04, Node 24, npm 11) can follow them as written.
+
+```bash
+npm ci
+npm run build
+```
+
+`npm run build` writes the Chrome package to `dist/` and the Firefox package to `dist-firefox/`. The Firefox manifest is generated from `manifest.json` by `scripts/manifest-targets.mjs`. The bundles are made with esbuild, from the exact versions pinned in `package-lock.json`. `npm run lint:firefox` runs Mozilla's `web-ext lint` on the Firefox package.
 
 ## Submitting code
 
@@ -99,7 +112,7 @@ Unit tests live in `tests/` and run with [Vitest](https://vitest.dev/) and happy
 
 Before opening a pull request, also try your change by hand:
 
-1. In Chrome, and in one other Chromium browser such as Edge or Brave if you can
+1. In Chrome, and in Firefox (`npm run start:firefox`), plus one other Chromium browser such as Edge or Brave if you can
 2. In both light and dark themes
 3. In both the English and Persian interface, with Persian and English text
 4. With no errors in the console of the popup, the service worker or the page

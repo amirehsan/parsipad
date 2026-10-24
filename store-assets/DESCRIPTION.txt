@@ -83,7 +83,7 @@ Star any translation, polished passage, or grammar lesson, and it goes to your f
 
 Practice turns your saved words into flashcards. Each session deals a handful of cards, one at a time. A card shows the saved translation, and flipping it reveals the original. Space or Enter flips it, the arrow keys move between cards, and C copies what is showing. Choose how many cards a session holds, from 5 to 30, in Settings. Open Practice from the side panel or from the Library. Grammar lessons stay in the Library for reading and are not dealt as cards. Flipping stays still if your system is set to reduce motion.
 
-Your saved words also come to every new tab. Each new tab shows one of them in large Persian or English type, under the time, the date and a greeting in both languages. Click it, or press Space or Enter, to reveal the original, and C copies it. Your bookmarks open in a searchable drawer with the "/" key and stay out of the way otherwise. Your most visited sites can appear as tiles, but only if you switch that on; Chrome asks first, and switching it off gives the permission back. Site icons come from your browser's own cache, so the sites you visit are never sent anywhere. Prefer Chrome's own New Tab? Turn ParsiPad's off in Settings, and the page offers a button back to Chrome's.
+Your saved words also come to every new tab. Each new tab shows one of them in large Persian or English type, under the time, the date and a greeting in both languages. Click it, or press Space or Enter, to reveal the original, and C copies it. Your bookmarks open in a searchable drawer with the "/" key and stay out of the way otherwise. Your most visited sites can appear as tiles, but only if you switch that on; your browser asks first, and switching it off gives the permission back. Site icons come from your browser's own cache, so the sites you visit are never sent anywhere. Prefer your browser's own New Tab? Turn ParsiPad's off in Settings, and the page offers a button back to it.
 
 
 Library
@@ -117,7 +117,7 @@ Reach it however suits you
 
 - The selection toolbar when you select text, which you can switch off
 - The right-click menu, for translating, polishing, dictionary lookups, whole pages, and screenshots
-- Keyboard shortcuts: Alt+T to translate, Alt+D for the dictionary, Alt+P for the page, Alt+S for a screenshot region, Alt+B for the block you are pointing at. The first four can be remapped in Chrome's keyboard shortcut settings; Alt+B and Escape (closes a box or stops a page translation) are fixed keys on web pages, listed in Settings under Shortcuts
+- Keyboard shortcuts: Alt+T to translate, Alt+D for the dictionary, Alt+P for the page, Alt+S for a screenshot region, Alt+B for the block you are pointing at. The first four can be remapped in your browser's extension shortcut settings; Alt+B and Escape (closes a box or stops a page translation) are fixed keys on web pages, listed in Settings under Shortcuts
 - The toolbar popup, which opens with the cursor in the text box and switches between Translate, Polish, and Doc & Image for documents and images, with page translation and screenshots a click away
 - The side panel, docked beside the page and open as long as you want it
 
