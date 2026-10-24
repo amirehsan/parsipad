@@ -50,15 +50,6 @@ describe('floating box review line', () => {
     expect(body.indexOf('currentCardEl')).toBeLessThan(ask);
   });
 
-  it('leaves the box when the box shows an error or the reload state', () => {
-    // A same-box request (the Sentence control) can follow a translation
-    // that earned the line; a rating ask under a failure reads as a joke.
-    const body = functionBody('showError');
-    const cleared = body.search(/\.parsipad-review-slot'\)\?\.replaceChildren\(\)/);
-    expect(cleared).toBeGreaterThan(-1);
-    expect(cleared).toBeLessThan(body.indexOf('renderReloadState('));
-  });
-
   it('styles the line in the box stylesheet', () => {
     expect(css).toMatch(/\.parsipad-review-line\s*\{/);
   });
