@@ -2,8 +2,8 @@
 // @vitest-environment-options {"url": "https://www.example.com/article"}
 // A whole-page translation asks first, in the real content script: nothing
 // reaches the provider until the user presses Translate, a missing key still
-// gets its toast instead of the dialog, and a navigation or a Cancel from the
-// popup closes the dialog without a request.
+// gets its toast instead of the dialog, and a route change or a Cancel from
+// the popup closes the dialog without a request.
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
@@ -28,13 +28,23 @@ beforeEach(() => {
   h.reset();
 });
 
-afterEach(() => {
-  // A navigation resets page translation, as an SPA route change does. Only
-  // a change of path or query counts, so go elsewhere and back.
-  history.pushState({}, '', '/reset');
-  history.pushState({}, '', '/article');
-  document.getElementById('parsipad-toast')?.remove();
-  document.getElementById('parsipad-page-toggle')?.remove();
+// How long the content script waits after an address change for the
+// router to draw, before it looks at what left the page.
+const ROUTE_SETTLE_MS = 250;
+
+afterEach(async () => {
+  // Leave for another page, as an SPA route does: the content goes, then
+  // the address changes, and the settle timer runs. That resets page
+  // translation between cases.
+  document.body.innerHTML = '';
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  try {
+    history.pushState({}, '', '/reset');
+    history.pushState({}, '', '/article');
+    await vi.advanceTimersByTimeAsync(ROUTE_SETTLE_MS + 50);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 const overlayHost = () => document.getElementById('parsipad-page-progress');
@@ -230,10 +240,14 @@ describe('confirming a whole-page translation', () => {
     expect(body).toMatch(/if \(discard\) pageTranslationState = null;/);
   });
 
-  it('a navigation while the dialog is up closes it quietly, with no request', async () => {
+  it('a route change while the dialog is up closes it quietly, with no request', async () => {
     translatePage();
     await dialogShown();
+    // The router swaps the page's content; ParsiPad's overlay stays in body.
+    for (const el of document.querySelectorAll('button, h1, p')) el.remove();
+    document.body.insertAdjacentHTML('afterbegin', '<p>Another page.</p>');
     history.pushState({}, '', '/elsewhere');
+    await vi.waitFor(() => expect(overlayHost()).toBeNull());
     await settle();
     expect(overlayHost()).toBeNull();
     expect(h.ports).toEqual([]);
