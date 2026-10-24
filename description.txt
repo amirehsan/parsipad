@@ -30,11 +30,11 @@ Get 3 versions of your text: Professional, Conversational, and Concise. Regenera
 📖 Dictionary Lookup
 Look up words with definitions, phonetics, synonyms, and antonyms. Press Alt+D or right-click any word.
 
-⭐ Favorites & Flashcards
-Star your best translations to save them. Review favorites as interactive flashcards every time you open a new tab.
+⭐ Favorites & Practice
+Star your best translations to save them. Practice deals your favorites as flashcards, a few at a time: each card shows the saved translation, and flipping it reveals the original. Flip with Space or Enter, move with the arrow keys, and choose 5 to 30 cards per session in Settings. Open it from the side panel or the Library.
 
-🕐 New Tab, Redesigned
-Every new tab shows one saved word in large Persian or English type, with the time and a greeting in both languages above it. Click it to reveal the original. Your most visited sites can appear as a row of tiles, read straight from your browser's own cache and never sent anywhere, and your bookmarks live in a searchable drawer that opens with "/".
+🗂️ Library
+Everything you translate, polish, or look up lives in one searchable Library with History, Favorites, and Lessons tabs. Filter by type or direction, delete an entry and bring it back with Undo, and reopen a saved grammar lesson with no new request to your provider.
 
 📄 Document Translation
 Upload TXT files and translate entire documents with progress tracking.

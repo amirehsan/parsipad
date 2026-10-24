@@ -13,10 +13,8 @@ import {
   setSelectionPopupEnabled,
   getTranslateOtherLanguages,
   setTranslateOtherLanguages,
-  getNewTabEnabled,
-  setNewTabEnabled,
-  getNewTabPhraseCount,
-  setNewTabPhraseCount,
+  getPracticeSessionSize,
+  setPracticeSessionSize,
   getFavorites,
   getTheme,
   setTheme
@@ -32,6 +30,7 @@ import {
   getDictionaryHistory
 } from '../lib/history.js';
 import { applyThemeToRoot } from '../lib/theme.js';
+import { formatNumber } from '../lib/format.js';
 
 // DOM Elements - Language
 const aboutVersionEl = document.getElementById('about-version');
@@ -49,11 +48,9 @@ const translateOtherLanguagesToggle = document.getElementById('translate-other-l
 // DOM Elements - Block Translate
 const blockTranslateToggle = document.getElementById('block-translate-toggle');
 
-// DOM Elements - New Tab
-const newtabToggle = document.getElementById('newtab-toggle');
-const phraseCountSlider = document.getElementById('phrase-count-slider');
-const phraseCountValue = document.getElementById('phrase-count-value');
-const phraseCountSection = document.getElementById('phrase-count-section');
+// DOM Elements - Practice
+const practiceSizeSlider = document.getElementById('practice-size-slider');
+const practiceSizeValue = document.getElementById('practice-size-value');
 
 // DOM Elements - Theme
 const themeToggle = document.getElementById('theme-toggle');
@@ -122,7 +119,7 @@ async function init() {
   await loadSelectionPopupSetting();
   await loadTranslateOtherLanguagesSetting();
   await loadBlockTranslateSetting();
-  await loadNewTabSetting();
+  await loadPracticeSetting();
   await loadProviderSettings();
   await loadAllApiKeyStatuses();
   mountKeyHelp();
@@ -146,7 +143,7 @@ async function initTheme() {
 }
 
 /**
- * Toggle dark/light theme; persisted to chrome.storage so popup/newtab/grammar stay in sync.
+ * Toggle dark/light theme; persisted to chrome.storage so popup/grammar stay in sync.
  */
 async function toggleTheme() {
   const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
@@ -250,28 +247,19 @@ async function loadBlockTranslateSetting() {
 }
 
 /**
- * Load new tab setting
+ * Load the practice session size
  */
-async function loadNewTabSetting() {
-  const enabled = await getNewTabEnabled();
-  newtabToggle.checked = enabled;
-
-  // Load phrase count
-  const count = await getNewTabPhraseCount();
-  phraseCountSlider.value = count;
-  phraseCountValue.textContent = count;
-
-  // Show/hide phrase count section based on toggle state
-  updatePhraseCountVisibility(enabled);
+async function loadPracticeSetting() {
+  const size = await getPracticeSessionSize();
+  practiceSizeSlider.value = size;
+  showPracticeSize(size);
 }
 
 /**
- * Update phrase count section visibility
+ * Show the slider's value in the page language's numerals
  */
-function updatePhraseCountVisibility(enabled) {
-  if (phraseCountSection) {
-    phraseCountSection.style.display = enabled ? 'flex' : 'none';
-  }
+function showPracticeSize(size) {
+  practiceSizeValue.textContent = formatNumber(size, currentLang);
 }
 
 /**
@@ -494,13 +482,9 @@ function setupEventListeners() {
   // Block translate setting
   blockTranslateToggle.addEventListener('change', handleBlockTranslateChange);
 
-  // New tab setting
-  newtabToggle.addEventListener('change', handleNewTabChange);
-
-  // Phrase count slider
-  if (phraseCountSlider) {
-    phraseCountSlider.addEventListener('input', handlePhraseCountChange);
-  }
+  // Practice session size: the label follows the thumb, storage waits for release
+  practiceSizeSlider.addEventListener('input', () => showPracticeSize(Number(practiceSizeSlider.value)));
+  practiceSizeSlider.addEventListener('change', handlePracticeSizeChange);
 
   // Provider selection
   providerRadios.forEach(radio => {
@@ -591,6 +575,7 @@ async function handleLanguageChange(lang) {
   await setLanguage(lang);
   applyTranslations(lang);
   mountKeyHelp();
+  showPracticeSize(Number(practiceSizeSlider.value));
   await loadCacheStats();
 }
 
@@ -626,21 +611,12 @@ async function handleBlockTranslateChange() {
 }
 
 /**
- * Handle new tab setting change
+ * Handle practice session size change
  */
-async function handleNewTabChange() {
-  const enabled = newtabToggle.checked;
-  await setNewTabEnabled(enabled);
-  updatePhraseCountVisibility(enabled);
-}
-
-/**
- * Handle phrase count slider change
- */
-async function handlePhraseCountChange() {
-  const count = parseInt(phraseCountSlider.value, 10);
-  phraseCountValue.textContent = count;
-  await setNewTabPhraseCount(count);
+async function handlePracticeSizeChange() {
+  const size = await setPracticeSessionSize(practiceSizeSlider.value);
+  practiceSizeSlider.value = size;
+  showPracticeSize(size);
 }
 
 /**

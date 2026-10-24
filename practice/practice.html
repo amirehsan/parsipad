@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Practice - ParsiPad</title>
+  <link rel="stylesheet" href="practice.css">
+  <script src="../lib/theme-boot.js"></script>
+</head>
+<body>
+  <div class="practice-page">
+    <header class="practice-header">
+      <a id="practice-back" class="pp-btn pp-btn-ghost pp-btn-sm practice-back" href="../sidepanel/sidepanel.html" data-i18n="practiceBack" hidden>Back</a>
+      <div class="practice-brand">
+        <span class="practice-logo" aria-hidden="true">P</span>
+        <span class="practice-brand-name">ParsiPad</span>
+      </div>
+      <h1 class="practice-title" data-i18n="practiceTitle">Practice</h1>
+      <button id="theme-btn" type="button" class="pp-btn-icon practice-theme-btn" data-i18n-title="toggleTheme" title="Toggle theme">
+        <svg id="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/>
+          <line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/>
+          <line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+    </header>
+
+    <main class="practice-main">
+      <div id="practice-deck" class="practice-deck" hidden>
+        <p id="practice-progress" class="practice-progress"></p>
+
+        <!-- One button holds both faces: Space and Enter flip it natively -->
+        <button id="practice-card" type="button" class="practice-card" aria-pressed="false">
+          <span class="practice-card-inner">
+            <span id="practice-face-front" class="practice-face practice-face-front" aria-hidden="false">
+              <span id="practice-front-text" class="practice-text"></span>
+              <span class="practice-hint" data-i18n="practiceShowAnswer">Show answer</span>
+            </span>
+            <span id="practice-face-back" class="practice-face practice-face-back" aria-hidden="true">
+              <span id="practice-back-text" class="practice-text"></span>
+              <span class="practice-hint" data-i18n="practiceHideAnswer">Hide answer</span>
+            </span>
+          </span>
+        </button>
+
+        <div class="practice-controls">
+          <button id="practice-prev" type="button" class="pp-btn pp-btn-secondary practice-prev" data-i18n="practicePrev">Previous</button>
+          <button id="practice-copy" type="button" class="pp-btn pp-btn-secondary practice-copy" data-i18n="practiceCopy">Copy</button>
+          <button id="practice-next" type="button" class="pp-btn pp-btn-primary practice-next" data-i18n="practiceNext">Next</button>
+        </div>
+      </div>
+
+      <div id="practice-empty" class="practice-empty" hidden>
+        <p id="practice-empty-text" class="practice-empty-text" data-i18n="practiceEmpty">Nothing to practice yet.</p>
+        <a id="practice-empty-link" class="pp-btn pp-btn-secondary practice-empty-link" href="../library/library.html?tab=favorites" data-i18n="practiceEmptyLink">Go to your favorites</a>
+      </div>
+    </main>
+
+    <p id="practice-status" class="practice-toast" role="status"></p>
+  </div>
+
+  <script type="module" src="practice.js"></script>
+</body>
+</html>

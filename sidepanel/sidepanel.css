@@ -12,6 +12,12 @@ body[data-surface="panel"] {
   max-width: none;
 }
 
+/* Practice sits right after the Library link, which already takes the
+   free space before it. */
+.recent-practice {
+  margin-inline-start: 0;
+}
+
 /* The page selection offered by the content script: a tinted box with a small
    label above the first line of the text and a compact Translate button. */
 .selection-chip {

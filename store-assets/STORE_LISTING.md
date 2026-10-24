@@ -10,10 +10,11 @@ Hover any paragraph to translate it. Screenshot translate, grammar lessons, flas
 
 ParsiPad is a powerful AI-powered translation extension that makes Persian-English translation seamless and intelligent.
 
-Version 3.1.0:
-• Block Translate - Rest the pointer on any paragraph, post, or heading and a small icon appears at its corner; click it to insert the Persian directly underneath
-• The original is never touched - the translation is inserted beside it, so both can be read together
-• Works on any site with no setup, and can be switched off in Settings, where it is on by default (Alt+B)
+Version 3.4.0:
+• Library - History, Favorites and saved grammar Lessons in one page, with search, filters, and Undo on delete
+• Practice - flashcards from your favorites, in the side panel or a tab
+• Saved grammar lessons reopen with no new request to your provider
+• The New Tab page is gone, along with the bookmarks and most-visited permissions it needed
 
 🖱️ **Block Translate** (NEW!)
 Read a page in Persian without leaving it:
@@ -87,24 +88,26 @@ Translate entire documents with ease:
 • Cancel anytime during long translations
 • Download translated file when complete
 
-⭐ **Favorites & Flashcards**
+⭐ **Favorites & Practice**
 Save your best translations and learn vocabulary:
 • Star any translation, polished text, or grammar lesson
-• Access all favorites from dedicated page
-• New tab flashcards for vocabulary learning
-• Flip cards to reveal original text
-• Navigate with keyboard shortcuts
+• Practice deals your favorites as flashcards, from the side panel or the Library
+• Each card shows the saved translation; flip it to reveal the original text
+• Navigate with keyboard shortcuts: arrows to move, Space or Enter to flip, C to copy
+• Choose 5 to 30 cards per session in Settings
 
 🎯 **Multiple Ways to Use**
 • Select text and use the floating popup
 • Right-click context menu for translation, polish, dictionary, page, or screenshot translate
 • Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary), Alt+P (page), Alt+S (screenshot), Alt+B (block translate)
-• Popup interface with 4 tabs: Text, Dictionary, Document, Image
+• Popup and side panel with three modes: Translate, Polish, and Doc & Image
 
-📚 **Translation History**
-• View past translations, polish operations, and dictionary lookups
-• Click any history item to quickly reuse
-• Organized by date with easy navigation
+📚 **Library**
+• One place for History, Favorites, and saved grammar Lessons, in tabs
+• Search, filter by translation, dictionary, or polish, and filter by direction
+• Grouped by Today, Yesterday, This week, and Earlier
+• Delete an entry and bring it back with Undo
+• Reopen a saved grammar lesson with no new request to your provider
 
 💾 **Data Backup**
 Keep your data safe and portable:
@@ -122,7 +125,7 @@ Keep your data safe and portable:
 
 ⚙️ **Customizable Settings**
 • Choose your AI provider (Claude, Gemini, ChatGPT)
-• Enable/disable new tab flashcards
+• Set how many flashcards a Practice session holds (5 to 30)
 • Export and import your data
 • Control dictionary translation directions (EN→FA, FA→EN)
 • Choose UI language
@@ -174,7 +177,7 @@ You'll need to create these screenshots (1280x800 or 640x400):
 5. **Dictionary lookup** - Show dictionary results with definitions and synonyms
 6. **Image translation** - Show OCR extraction and translation
 7. **Document translation** - Show progress bar during document translation
-8. **New tab flashcards** - Show vocabulary learning flashcards
+8. **Practice flashcards** - Show vocabulary learning flashcards
 9. **Popup interface** - Show the main popup with translation
 10. **Settings page** - Show AI provider selection and settings
 11. **Dark mode** - Show any view in dark mode

@@ -4,6 +4,7 @@ import { t, applyTranslations } from '../lib/i18n.js';
 import { setSafeInnerHTML } from '../lib/sanitize.js';
 import { speak, cancelSpeech } from '../shared/speech.js';
 import { applyThemeToRoot } from '../lib/theme.js';
+import { lessonFromFavorite } from './saved-lesson.js';
 
 // DOM Elements
 const themeToggle = document.getElementById('theme-toggle');
@@ -13,6 +14,7 @@ const loadingSection = document.getElementById('loading-section');
 const errorSection = document.getElementById('error-section');
 const errorMessage = document.getElementById('error-message');
 const retryBtn = document.getElementById('retry-btn');
+const errorLibraryLink = document.getElementById('error-library-link');
 const lessonContent = document.getElementById('lesson-content');
 const originalTextEl = document.getElementById('original-text');
 const translationTextEl = document.getElementById('translation-text');
@@ -28,6 +30,11 @@ let lessonData = null;
 let originalText = '';
 let translation = '';
 let direction = '';
+let savedId = '';
+// Id of the stored record behind the lesson when it was reopened from the
+// Library. It can differ from the hash id (empty translation, older ids), so
+// removal goes by this one.
+let savedRecordId = '';
 let isSaved = false;
 let isSpeaking = false;
 
@@ -63,7 +70,7 @@ async function initTheme() {
 }
 
 /**
- * Toggle dark/light theme; persisted to chrome.storage so popup/newtab/settings stay in sync.
+ * Toggle dark/light theme; persisted to chrome.storage so popup/settings stay in sync.
  */
 async function toggleTheme() {
   const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
@@ -87,6 +94,7 @@ function parseUrlParams() {
   originalText = params.get('original') || '';
   translation = params.get('translation') || '';
   direction = params.get('direction') || 'en-to-fa';
+  savedId = params.get('saved') || '';
 }
 
 /**
@@ -188,6 +196,31 @@ function updateTTSButtonState(button, speaking) {
  */
 async function loadLesson() {
   showLoading();
+
+  // A lesson opened from the Library comes from storage, not a new request.
+  // This runs before the empty-text guard: with only ?saved= in the URL the
+  // texts are empty until the stored lesson fills them in.
+  if (savedId) {
+    try {
+      const saved = lessonFromFavorite(await isFavorite(savedId));
+      if (!saved) {
+        showError(t('savedLessonMissing', currentLang), { retry: false });
+        return;
+      }
+      ({ originalText, translation, direction } = saved);
+      lessonData = saved;
+      isSaved = true;
+      savedRecordId = savedId;
+      updateSaveButton();
+      renderLesson();
+    } catch (error) {
+      // Unreadable storage or a malformed stored lesson: there is nothing to
+      // retry, so leave the spinner with the same way back to the Library.
+      console.error('Failed to open saved lesson:', error);
+      showError(t('savedLessonMissing', currentLang), { retry: false });
+    }
+    return;
+  }
 
   if (!originalText || !translation) {
     showError(t('enterTextTranslate', currentLang));
@@ -310,13 +343,17 @@ function showLoading() {
 /**
  * Show error state
  */
-function showError(message) {
+function showError(message, { retry = true } = {}) {
   stopLoadingProgress();
   if (loadingSection) loadingSection.hidden = true;
   if (errorSection) errorSection.hidden = false;
   if (lessonContent) lessonContent.hidden = true;
   if (saveNotification) saveNotification.hidden = true;
   if (errorMessage) errorMessage.textContent = message;
+  // A missing saved lesson has nothing to retry (the request would be empty),
+  // so it offers the way back to the Library instead.
+  if (retryBtn) retryBtn.hidden = !retry;
+  if (errorLibraryLink) errorLibraryLink.hidden = retry;
 }
 
 /**
@@ -728,7 +765,8 @@ async function handleSave() {
 
   try {
     if (isSaved) {
-      await removeFavorite(favoriteId);
+      await removeFavorite(savedRecordId || favoriteId);
+      savedRecordId = '';
       isSaved = false;
     } else {
       await addFavorite({

@@ -49,7 +49,7 @@ async function initTheme() {
 }
 
 /**
- * Toggle dark/light theme; persisted to chrome.storage so popup/newtab/settings stay in sync.
+ * Toggle dark/light theme; persisted to chrome.storage so popup/settings stay in sync.
  */
 async function toggleTheme() {
   const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';

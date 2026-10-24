@@ -32,6 +32,13 @@ async function setup({ selectionInTab = null } = {}) {
       onActivated: { addListener: (fn) => { onActivated = fn; } },
       query: tabsQuery,
       sendMessage
+    },
+    storage: {
+      session: {
+        get: vi.fn().mockResolvedValue({}),
+        remove: vi.fn().mockResolvedValue(undefined),
+        onChanged: { addListener: () => {} }
+      }
     }
   };
   vi.resetModules();
