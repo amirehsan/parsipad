@@ -593,3 +593,20 @@ describe('side panel', () => {
     await pending;
   });
 });
+
+describe('OPEN_OPTIONS', () => {
+  it('opens Settings at a named section in a new tab', async () => {
+    await sendMessage({ action: 'OPEN_OPTIONS', section: 'reading' });
+    expect(chrome.tabs.create).toHaveBeenCalledWith({ url: 'chrome-extension://test-extension-id/settings/settings.html#reading' });
+    expect(chrome.runtime.openOptionsPage).not.toHaveBeenCalled();
+  });
+
+  it('opens the options page when no section, or an unknown one, is named', async () => {
+    chrome.tabs.create.mockClear();
+    chrome.runtime.openOptionsPage.mockClear();
+    await sendMessage({ action: 'OPEN_OPTIONS' });
+    await sendMessage({ action: 'OPEN_OPTIONS', section: 'javascript:alert(1)' });
+    expect(chrome.runtime.openOptionsPage).toHaveBeenCalledTimes(2);
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
+  });
+});

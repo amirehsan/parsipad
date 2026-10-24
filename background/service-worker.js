@@ -12,6 +12,7 @@ import { buildCacheKeyParts, hashContext } from '../lib/translation/cache-key.js
 import { TranslationError, ERROR_CODES, toTranslationError, errorI18nKey } from '../lib/translation/errors.js';
 import { t } from '../lib/i18n.js';
 import { recordProviderHealth } from '../lib/provider-health.js';
+import { SETTINGS_SECTIONS as SETTINGS_SECTION_IDS } from '../settings/sections.js';
 
 /**
  * Localized error payload for UI consumers.
@@ -121,7 +122,13 @@ async function handleMessage(message, sender) {
       return { action: 'forward_to_content' };
 
     case ACTIONS.OPEN_OPTIONS:
-      await chrome.runtime.openOptionsPage();
+      // A named Settings section (for example "reading" from the mute toast)
+      // opens there; anything else opens the options page as before.
+      if (SETTINGS_SECTION_IDS.includes(message.section)) {
+        await chrome.tabs.create({ url: chrome.runtime.getURL(`settings/settings.html#${message.section}`) });
+      } else {
+        await chrome.runtime.openOptionsPage();
+      }
       return { success: true };
 
     case ACTIONS.REVIEW_PROMPT_STATE:

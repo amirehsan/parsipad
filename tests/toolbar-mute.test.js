@@ -196,7 +196,12 @@ describe('mute from the toolbar', () => {
     const bdi = message.querySelector('bdi');
     expect(bdi.getAttribute('dir')).toBe('ltr');
     expect(bdi.textContent).toBe('example.com');
-    expect(toast().querySelector('.open').hidden).toBe(true);
+    // Besides Undo, the toast points to the Muted sites list in Settings.
+    const manage = toast().querySelector('.open');
+    expect(manage.hidden).toBe(false);
+    expect(manage.textContent).toBe(translations.en.manageMutedSites);
+    // Undo stays the primary action; Manage is the quieter one beside it.
+    expect(manage.classList.contains('secondary')).toBe(true);
     expect(toast().querySelector('.action').textContent).toBe(translations.en.libraryUndo);
     expect(toast().querySelector('.close').getAttribute('aria-label')).toBe(translations.en.cardClose);
     // themeVars() defines the accent the action button uses.
@@ -205,6 +210,15 @@ describe('mute from the toolbar', () => {
     // Muted: a new selection gets no toolbar.
     selectWords();
     expect(toolbar()).toBeNull();
+  });
+
+  it('opens Settings at the Muted sites list from the toast', async () => {
+    selectWords();
+    press(muteButton());
+    await shown();
+    toast().querySelector('.open').click();
+    expect(sent.at(-1)).toEqual({ action: 'OPEN_OPTIONS', section: 'reading' });
+    expect(toastHost()).toBeNull();
   });
 
   it('Undo removes the host it stored, and the toolbar comes back', async () => {

@@ -1410,7 +1410,7 @@ let activeToast = null;
  *
  * @param {Object} [options]
  * @param {string|Node} [options.message] - what to say
- * @param {boolean} [options.withSettings] - offer the settings shortcut
+ * @param {boolean|{section: string, label: string}} [options.withSettings] - offer the settings shortcut
  * @param {{label: string, onClick: () => void, focus?: boolean}} [options.action] -
  *   one button that closes the toast and runs onClick; it is described by
  *   the message, and with focus, focus moves to it (for a keyboard user)
@@ -1460,7 +1460,7 @@ function showToast({
         display: flex;
         align-items: center;
         gap: 12px;
-        max-width: 360px;
+        max-width: 460px;
       }
       .toast button {
         background: var(--pp-accent);
@@ -1478,6 +1478,16 @@ function showToast({
       .toast button:focus-visible {
         outline: 2px solid var(--pp-bg);
         outline-offset: 2px;
+      }
+      /* Beside a primary action (Undo), the settings button is the quieter one. */
+      .toast button.secondary {
+        background: transparent;
+        color: inherit;
+        box-shadow: inset 0 0 0 1px currentColor;
+      }
+      .toast button.secondary:hover {
+        background: transparent;
+        opacity: 0.85;
       }
       .toast button.close {
         background: transparent;
@@ -1571,12 +1581,18 @@ function showToast({
     });
   }
 
+  // withSettings is true for the general settings button, or { section,
+  // label } to open Settings at one section with a button named for it.
   const openBtn = root.querySelector('.open');
   if (withSettings) {
-    openBtn.textContent = t('openSettings', userLang);
+    const target = typeof withSettings === 'object' ? withSettings : {};
+    openBtn.textContent = target.label || t('openSettings', userLang);
     openBtn.hidden = false;
+    if (action) openBtn.classList.add('secondary');
     openBtn.addEventListener('click', () => {
-      notifyWorker({ action: 'OPEN_OPTIONS' });
+      notifyWorker(target.section
+        ? { action: 'OPEN_OPTIONS', section: target.section }
+        : { action: 'OPEN_OPTIONS' });
       close();
     });
   }
@@ -1668,7 +1684,8 @@ async function muteThisSite({ fromKeyboard }) {
   removeSelectionPopup();
   showToast({
     message: messageWithHost(t('mutedOnSite', userLang), mutedHost),
-    withSettings: false,
+    // The list lives in Settings > Reading on web pages.
+    withSettings: { section: 'reading', label: t('manageMutedSites', userLang) },
     // Undo only what this press added: a host that was already listed was
     // muted elsewhere (Settings, another tab), and Undo must not unmute it.
     action: added ? {
