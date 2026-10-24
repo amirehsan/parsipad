@@ -886,8 +886,12 @@ a.btn {
   color: var(--color-gray-50);
 }
 
-/* Keyboard Shortcuts Section */
+/* Keyboard Shortcuts Section. Every row in every group shares one grid:
+   a fixed keys column wide enough for a three-key binding, then the
+   description, left-aligned and wrapping under itself. The note under a
+   list starts where the descriptions start. */
 .shortcuts-section {
+  --shortcut-keys-width: 10rem;
   margin-bottom: 1.25rem;
 }
 
@@ -911,15 +915,15 @@ a.btn {
 .shortcuts-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .shortcut-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: var(--shortcut-keys-width) minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-inline-actions);
-  padding: 0.5rem 0.75rem;
+  column-gap: var(--space-stack-item);
+  padding: var(--space-2) var(--space-stack-item);
   background: var(--gray-50);
   border-radius: 0.5rem;
 }
@@ -937,7 +941,7 @@ a.btn {
 
 .shortcut-keys {
   display: flex;
-  flex-shrink: 0;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem;
 }
@@ -952,6 +956,10 @@ a.btn {
   font-family: inherit;
   font-size: 0.75rem;
   font-weight: 500;
+  /* A key name reads left to right even on a Persian page: "⌥T" must not
+     turn into "T⌥". */
+  direction: ltr;
+  unicode-bidi: isolate;
   color: var(--gray-700);
   background: var(--color-bg-elevated);
   border: 1px solid var(--gray-300);
@@ -977,6 +985,7 @@ a.btn {
 /* The note under a list: what the keys above it are not. */
 .shortcuts-note {
   margin-top: var(--space-stack-item);
+  padding-inline-start: calc(var(--shortcut-keys-width) + 2 * var(--space-stack-item));
 }
 
 /* The button under the shortcut lists sits clear of the last list. */
@@ -1276,6 +1285,19 @@ a.btn {
 
   .about-link {
     justify-content: center;
+  }
+}
+
+/* On a phone-width page the keys sit above their description instead of
+   squeezing it into a sliver, and the note lines up with both. */
+@media (max-width: 480px) {
+  .shortcut-item {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--space-1);
+  }
+
+  .shortcuts-note {
+    padding-inline-start: var(--space-stack-item);
   }
 }
 
