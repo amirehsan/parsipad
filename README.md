@@ -31,7 +31,7 @@
 - **Multi-AI Provider Support** - Choose between Claude, Gemini, or ChatGPT
 - **AI-Powered Translation** - Accurate, context-aware translations using your preferred AI
 - **Screenshot Region Translate** - Select any area on a webpage and translate text from images (NEW in v2.8)
-- **Full Page Translation** - Translate entire webpages with one click (NEW in v2.7)
+- **Full Page Translation** - Translate entire webpages with one click; it asks first with the paragraph count and an estimated cost, and reports any sections that failed so you can retry just those
 - **Image Translation** - Extract and translate text from images using OCR
 - **Document Translation** - Upload and translate TXT files with progress tracking
 - **Text Polishing** - Get 3 versions: Professional, Conversational, and Concise
@@ -54,14 +54,14 @@
 - **Side Panel** - Keep ParsiPad open beside the page while you browse
 
 ### Quick Access
-- **Selection Popup** - Quick action icons when selecting text on webpages
+- **Selection Toolbar** - Translate, Polish, Dictionary and Mute buttons when you select text on a webpage, by mouse, touch or keyboard; never inside text fields
 - **Keyboard Shortcuts** - `Alt+T` to translate, `Alt+D` for dictionary, `Alt+P` to translate page, `Alt+S` to screenshot translate
 - **Right-Click Menu** - Translate, polish, look up, translate page, or screenshot translate from any webpage
 
 ### Settings & Data
 - **Data Backup & Restore** - Export and import favorites, history, and cache
 - **Settings** - One page with a section nav: AI provider & key, Reading on web pages, Language & appearance, Flashcards, Data & backup, Shortcuts, About. Each provider has its own key field with Save & test
-- **Muted Sites** - Turn off the hover translate button and the selection toolbar on sites you choose, subdomains included
+- **Muted Sites** - Turn off the hover translate button and the selection toolbar on sites you choose, subdomains included; the toolbar's Mute button adds the current site for you
 - **Welcome/Onboarding Page** - First-time setup that starts with your key, tests it, and ends on a first translation
 - **Dark Mode** - Beautiful dark theme that syncs with system preferences
 - **Bilingual Support** - Full English and Persian (فارسی) interface
@@ -114,6 +114,14 @@
 ### Side Panel
 
 Click the sidebar button in the popup header, or right-click a page and choose "Open ParsiPad in side panel", to open ParsiPad in Chrome's side panel. It stays open while you switch tabs and scroll, and long jobs such as documents and whole-page translations keep running. Text you select on the page shows up as a "Selected on this page" chip with a one-click Translate button; it never reads inside text fields, and the text stays in your browser until you translate it. The provider name in the header has a dot showing how the last real request went (green working, amber rate-limited or slow, red key rejected or network error, grey no requests yet), and clicking it opens the provider settings.
+
+### Selection Toolbar
+
+Select text on a page and a small toolbar appears above it with Translate, Polish and Dictionary buttons, and a button to mute ParsiPad on that site (a message offers Undo, and the button is hidden on addresses such as localhost):
+- It works after a mouse drag, after a touch long-press (and follows the selection handles), and for a selection made with the keyboard
+- It never appears for a selection inside a text field, an editor such as Gmail compose, or one of ParsiPad's own boxes, and it skips very long selections such as Ctrl+A
+- It never takes focus on its own. Press `Tab` to move into it, the arrow keys to move between its buttons and `Escape` to close it and return to where you were
+- Turn it off, or mute sites, in Settings under Reading on web pages
 
 ### Translation Mode
 
@@ -232,10 +240,15 @@ Review your favorites as flashcards:
 Translate entire webpages:
 1. Right-click on any webpage and select "Translate this page"
    - Or press `Alt+P`
-2. Watch the progress as text chunks are translated
-3. Use the floating toggle button to switch between original and translated text
-4. Persian content uses Vazirmatn font for optimal readability
-5. Cancel at any time with the cancel button
+2. ParsiPad asks first: the dialog shows how many paragraphs the page has and about what it will cost with your provider. Choose Translate page or Cancel. Tick "Don't ask again" to skip the question next time; the "Ask before translating a whole page" switch in Settings turns it back on
+3. Watch the progress as text chunks are translated
+4. Use the floating toggle button to switch between original and translated text
+5. Persian content uses Vazirmatn font for optimal readability
+6. Stop at any time with the Cancel button or `Escape` (not while typing in a text field). Sections that already finished stay translated
+7. If some sections failed, a summary says how many were translated and how many failed, with a Retry failed button that sends only those. Pressing Translate page again also picks up sections that failed or were never sent
+8. On a site that changes pages without reloading, the original text is put back when you move to another page
+
+Two keys work on web pages and are fixed (they do not appear in `chrome://extensions/shortcuts`): `Alt+B` translates the paragraph at the pointer or keyboard focus, and `Escape` closes a box or stops a page translation. They are listed in Settings > Shortcuts > On web pages. If ParsiPad is updated while a page is open, its boxes say so and offer a Reload page button.
 
 ### Data Backup & Restore (NEW in v2.5)
 
