@@ -3,26 +3,42 @@
  * Handles text selection detection and floating translation box
  */
 
-import { escapeHtml, isMissingApiKeyResponse } from './utils/text.js';
+import { escapeHtml, isMissingApiKeyError, isMissingApiKeyResponse } from './utils/text.js';
 import {
+  getPageConfirmStyles,
   getPageProgressStyles,
   getPageToggleStyles,
   getScreenshotStyles,
   getSelectionPopupStyles,
-  getStyles
+  getStyles,
+  themeVars
 } from './styles/index.js';
 import { t } from '../lib/i18n.js';
 import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
+import { ERROR_CODES, errorI18nKey, isContextInvalidated, toTranslationError } from '../lib/translation/errors.js';
+import { renderReloadState } from './reload-state.js';
+import { isContextAlive, extensionUrl, notifyWorker } from './utils/extension.js';
 import { captureSelectionContext, sentenceAround } from './context.js';
 import { computeBoxPosition } from './placement.js';
 import { renderCard, injectCardStyles } from '../shared/card/index.js';
 import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils/batch.js';
+import { createPageRun, markBatch, failedIndexes, resumableIndexes, summarizeRun, summaryMessageKey } from './utils/page-run.js';
 import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
-import { selectionToReport, createSelectionReporter } from './selection-report.js';
-import { MUTED_SITES_KEY, isHostMuted } from '../lib/muted-sites.js';
+import { selectionToReport, createSelectionReporter, isEditableSelection, MAX_REPORT_LENGTH } from './selection-report.js';
+import { createToolbarTrigger, selectionAnchor, isSameAnchor } from './toolbar-trigger.js';
+import { MUTED_SITES_KEY, isHostMuted, normalizeHost, addMutedSite, removeMutedSite } from '../lib/muted-sites.js';
+import { rovingIndex, applyRovingTabindex } from '../lib/roving.js';
+import { confirmPageTranslation, countParagraphs, CONFIRM_PAGE_TRANSLATE_KEY } from './page-confirm.js';
+import {
+  estimateTranslationCost,
+  formatEstimateUsd,
+  PROVIDER_NAMES,
+  SELECTED_PROVIDER_KEY,
+  DEFAULT_PROVIDER_ID
+} from '../lib/cost-estimate.js';
 import { initBlockTranslate, translateFocusedBlock, hideBlockIcon, isBlockTranslateEnabled } from './blocks/index.js';
 
 // Re-injection guard: skip if the script has already run in this isolated world.
@@ -40,12 +56,22 @@ let selectionPopup = null;
 let selectionPopupShadow = null;
 let selectionPopupEnabled = false;
 // True when this page's host is on the muted-sites list. Loaded on init and
-// kept current by the chrome.storage.onChanged listener below.
+// kept current by the chrome.storage.onChanged listener below. mutedLoaded
+// turns true at the first write (a change, a mute from the toolbar, or the
+// initial load), so the initial load never overwrites a newer value.
 let siteMuted = false;
+let mutedLoaded = false;
 // Cached user-language preference for translating floating-box copy. Read once
 // on init and kept fresh by the chrome.storage.onChanged listener below.
 let userLang = 'en';
-let selectionDebounceTimer = null;
+// What the selection toolbar on screen was built for (text and range
+// rectangle), so a selectionchange that moves nothing does not rebuild it.
+let selectionPopupAnchor = null;
+// The keyboard path through the toolbar: the element focused when Tab moved
+// focus in, which gets it back when the toolbar closes or Tab leaves it, and
+// whether focus has already left this toolbar, after which Tab passes it by.
+let selectionPopupReturnFocus = null;
+let selectionPopupFocusLeft = false;
 let currentPolishOriginalText = null; // Store original text for regeneration
 let currentTranslationData = null; // Store current translation for favorites
 let currentDictionaryData = null; // Store current dictionary result for favorites
@@ -84,8 +110,10 @@ let pageProgressOverlay = null;
 let pageProgressShadow = null;
 let pageToggleButton = null;
 let pageToggleShadow = null;
-let pageTranslationCancelled = false;
 let pageTranslationAbortController = null;
+// The pending look at the page after an address change (see
+// installSpaNavigationListener).
+let routeCheckTimer = null;
 // Aborted when the floating box closes, so a translation nobody will see
 // stops streaming, and stops being billed, at once.
 let boxAbortController = null;
@@ -104,8 +132,25 @@ function init() {
   // Listen for Escape key to close the box
   document.addEventListener('keydown', handleKeyDown);
 
-  // Listen for text selection (mouseup)
-  document.addEventListener('mouseup', handleTextSelection);
+  // Selection toolbar: one trigger for mouse, touch and keyboard selection.
+  // A gesture that starts on the toolbar or the floating box does not hide
+  // the toolbar, so a toolbar button is not removed before its click lands.
+  // A touch long-press ends in pointercancel rather than pointerup, so both
+  // end the gesture. The capture phase sees the pointer lift even on a page
+  // that stops its propagation, so the trigger is never left waiting.
+  const toolbarTrigger = createToolbarTrigger({
+    evaluate: evaluateSelection,
+    hide: removeSelectionPopup
+  });
+  document.addEventListener('pointerdown', (event) => {
+    // Only the primary button selects text. A right-click opens a menu, and
+    // on macOS its release goes to the menu rather than the page.
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    toolbarTrigger.onPointerDown(isPointerOnOwnUi(event));
+  }, { capture: true });
+  document.addEventListener('pointerup', toolbarTrigger.onPointerUp, { capture: true });
+  document.addEventListener('pointercancel', toolbarTrigger.onPointerUp, { capture: true });
+  document.addEventListener('selectionchange', toolbarTrigger.onSelectionChange);
 
   // Tell the side panel what is selected so it can offer a one-click translate
   const reportSelection = createSelectionReporter((text) => {
@@ -137,6 +182,7 @@ function init() {
       userLang = changes.ui_language.newValue || 'en';
     }
     if (changes[MUTED_SITES_KEY]) {
+      mutedLoaded = true;
       siteMuted = isHostMuted(changes[MUTED_SITES_KEY].newValue, location.hostname);
       if (siteMuted) removeSelectionPopup();
     }
@@ -152,27 +198,34 @@ function init() {
   installSpaNavigationListener();
 }
 
+// How long a router gets to draw the new view after the address changes
+// before ParsiPad looks at what left the page. Most routers render within a
+// frame or two of the address change, before or after it.
+const ROUTE_SETTLE_MS = 250;
+// The share of the text nodes a page translation took that must have left
+// the page for an address change to count as a new page. A third rather
+// than half: on a site with a large header, menu and footer, the content a
+// route swaps can be well under half of the text ParsiPad translated, while
+// a feed rewriting its address as it scrolls rarely drops that much at once.
+const ROUTE_LEFT_SHARE = 1 / 3;
+
 /**
  * Patch history pushState/replaceState to emit a navigation event and listen
- * for popstate; on any URL change reset stale page-translation state.
+ * for popstate and the Navigation API. Any change of address, the hash
+ * included, is only a trigger: what decides a new page is the page itself,
+ * looked at once the router has had time to draw (see hasLeftPage).
  */
 function installSpaNavigationListener() {
-  const handleNav = () => {
-    if (pageTranslationAbortController) {
-      pageTranslationAbortController.abort();
-      pageTranslationAbortController = null;
-    }
-    pageTranslationCancelled = false;
+  let lastHref = location.href;
 
-    if (pageProgressOverlay) {
-      hidePageProgressOverlay();
-    }
-    if (pageToggleButton) {
-      pageToggleButton.remove();
-      pageToggleButton = null;
-      pageToggleShadow = null;
-    }
-    pageTranslationState = null;
+  const handleNav = () => {
+    // The same-URL replaceState many sites call as the reader scrolls is no
+    // change at all.
+    if (location.href === lastHref) return;
+    lastHref = location.href;
+    if (!pageTranslationState) return;
+    clearTimeout(routeCheckTimer);
+    routeCheckTimer = setTimeout(checkRouteChange, ROUTE_SETTLE_MS);
   };
 
   window.addEventListener('popstate', handleNav);
@@ -191,6 +244,82 @@ function installSpaNavigationListener() {
   wrap('pushState');
   wrap('replaceState');
   window.addEventListener('parsipad:locationchange', handleNav);
+
+  // The Navigation API is shared DOM state, so it reports a pushState the
+  // page makes in its own world, which the patch above (in this isolated
+  // world) never sees. The patch and popstate stay for browsers without it;
+  // handleNav's address comparison ignores the duplicate events.
+  if (typeof window.navigation?.addEventListener === 'function') {
+    window.navigation.addEventListener('currententrychange', handleNav);
+  }
+}
+
+/**
+ * The look at the page an address change scheduled, run when its timer
+ * fires or at once when Translate Page is pressed before then. Resets page
+ * translation only when the page translated is no longer there.
+ */
+function checkRouteChange() {
+  clearTimeout(routeCheckTimer);
+  routeCheckTimer = null;
+  if (pageTranslationState && hasLeftPage(pageTranslationState)) {
+    resetPageTranslation();
+  }
+}
+
+/**
+ * Whether the page a translation was made on has gone: at least
+ * ROUTE_LEFT_SHARE of its text nodes are out of the document, or now hold
+ * text that is neither what ParsiPad read nor what it wrote (a router that
+ * redraws the new view into the same nodes). A hash link, a scroll-driven
+ * address rewrite or a live counter leaves most of them in place.
+ * @param {object} state - a pageTranslationState
+ * @returns {boolean}
+ */
+function hasLeftPage(state) {
+  const nodes = state.textNodes;
+  if (nodes.length === 0) return false;
+  let left = 0;
+  for (const { node } of nodes) {
+    const current = node.textContent;
+    if (!node.isConnected ||
+        (current !== state.originalTexts.get(node) && current !== state.translatedTexts.get(node))) {
+      left++;
+    }
+  }
+  return left >= nodes.length * ROUTE_LEFT_SHARE;
+}
+
+/**
+ * Drop page translation for a page that has gone: stop a running
+ * translation, put back the original text where ParsiPad's translation still
+ * shows, and remove the overlay, the summary and the toggle.
+ */
+function resetPageTranslation() {
+  // A running translation is discarded: its run sees it no longer owns
+  // pageTranslationState and stops without applying or saying anything.
+  if (pageTranslationAbortController) {
+    pageTranslationAbortController.abort();
+    pageTranslationAbortController = null;
+  }
+
+  // Put back the text of nodes the SPA kept; restorePageOriginals skips
+  // the ones it took away or wrote over.
+  if (pageTranslationState?.isShowingTranslated) {
+    restorePageOriginals();
+  }
+  // A summary's Retry failed would act on the page that is gone.
+  pageTranslationState?.closeSummary?.();
+
+  if (pageProgressOverlay) {
+    hidePageProgressOverlay();
+  }
+  if (pageToggleButton) {
+    pageToggleButton.remove();
+    pageToggleButton = null;
+    pageToggleShadow = null;
+  }
+  pageTranslationState = null;
 }
 
 /**
@@ -254,9 +383,8 @@ function handleMessage(message, sender, sendResponse) {
       break;
 
     case 'CANCEL_PAGE_TRANSLATION':
-      // Cancel page translation
-      pageTranslationCancelled = true;
-      pageTranslationAbortController?.abort();
+      // Stop page translation, keeping what finished
+      stopPageTranslation();
       break;
 
     case 'TOGGLE_PAGE_TRANSLATION':
@@ -303,11 +431,18 @@ async function translateAndShow(text, { sourceLang } = {}) {
   // selection, and neither the rectangle nor the context survives that.
   const selectionRect = captureSelectionRect(selection);
   const context = captureSelectionContext(selection);
-  currentSelectionContext = context;
 
   createFloatingBox(selectionRect);
+  // Only now: opening the box closes the old one, which clears the context.
+  currentSelectionContext = context;
   showLoading();
   placeFloatingBox();
+
+  // Cut off from the extension, every request would throw; say so instead.
+  if (!isContextAlive()) {
+    showError({ errorCode: ERROR_CODES.CONTEXT_INVALIDATED });
+    return;
+  }
 
   boxAbortController?.abort();
   boxAbortController = new AbortController();
@@ -334,7 +469,7 @@ async function translateAndShow(text, { sourceLang } = {}) {
       showTranslation(response, text);
     }
   } catch (error) {
-    showError(error.message || 'Translation failed');
+    showError(error);
   }
 }
 
@@ -376,6 +511,11 @@ async function polishAndShow(text) {
   showPolishLoading();
   placeFloatingBox();
 
+  if (!isContextAlive()) {
+    showPolishError({ errorCode: ERROR_CODES.CONTEXT_INVALIDATED });
+    return;
+  }
+
   try {
     // Send polish request to background script
     const response = await chrome.runtime.sendMessage({
@@ -389,7 +529,7 @@ async function polishAndShow(text) {
       showPolishResults(response);
     }
   } catch (error) {
-    showPolishError(error.message || 'Polish failed');
+    showPolishError(error);
   }
 }
 
@@ -510,6 +650,86 @@ function createBoxHost(selectionRect) {
   return host;
 }
 
+// The boxes' icons. Every one is decorative: the control around it carries
+// the name, so the icon is hidden from assistive technology and never takes
+// focus of its own (focusable="false" for the SVG focus quirk in old engines).
+const PP_COPY_ICON = `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+  </svg>
+`;
+const PP_CHECK_ICON = `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+`;
+const PP_REGENERATE_ICON = `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+    <path d="M23 4v6h-6"/>
+    <path d="M1 20v-6h6"/>
+    <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+  </svg>
+`;
+
+/**
+ * The star on a favourite control, filled while the item is saved.
+ * @param {boolean} filled
+ * @returns {string}
+ */
+function starIcon(filled) {
+  return `
+    <svg viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </svg>
+  `;
+}
+
+/**
+ * Name a control in the reader's language: one string for its tooltip and
+ * its accessible name. Set on the element, not written into markup, so no
+ * translation has to be escaped for an attribute.
+ * @param {HTMLElement} el
+ * @param {string} key - i18n key
+ */
+function nameControl(el, key) {
+  const label = t(key, userLang);
+  el.title = label;
+  el.setAttribute('aria-label', label);
+}
+
+/**
+ * Tell a screen reader what a box's content area holds. It is a polite live
+ * region, so what changes in it is read out. While a skeleton or streamed
+ * text fills it the region is busy, and nothing is read until the result is
+ * in; the busy flag is cleared before the result is written, so the result
+ * is announced once, as an ordinary change. The reload state carries its
+ * own role="alert", so the region stops being live while it shows rather
+ * than announcing the same words twice.
+ * @param {HTMLElement} content
+ * @param {'loading'|'ready'|'alert'} state
+ */
+function setContentLiveState(content, state) {
+  content.setAttribute('aria-live', state === 'alert' ? 'off' : 'polite');
+  if (state === 'loading') {
+    content.setAttribute('aria-busy', 'true');
+  } else {
+    content.removeAttribute('aria-busy');
+  }
+}
+
+/**
+ * The ParsiPad logo for a box header, or nothing once the extension was
+ * reloaded under the page: a box without its logo can still say what
+ * happened, a box that failed to build cannot.
+ * @param {string} attributes - static attribute markup for the img
+ * @returns {string}
+ */
+function logoImg(attributes) {
+  const src = extensionUrl('icons/icon-48.png');
+  return src ? `<img src="${escapeHtml(src)}" ${attributes}>` : '';
+}
+
 /**
  * Create the floating translation box with Shadow DOM
  */
@@ -534,43 +754,39 @@ function createFloatingBox(selectionRect) {
   const box = document.createElement('div');
   box.className = 'parsipad-box';
   box.setAttribute('role', 'dialog');
-  box.setAttribute('aria-label', 'ParsiPad translation');
+  box.setAttribute('aria-label', t('boxTranslationLabel', userLang));
   // Focusable by script but not in the tab order: focus is moved here when
   // the box opens and handed back when it closes.
   box.setAttribute('tabindex', '-1');
   box.innerHTML = `
     <div class="parsipad-header">
       <div class="parsipad-logo">
-        <img src="${chrome.runtime.getURL('icons/icon-48.png')}" alt="" class="parsipad-logo-icon" aria-hidden="true">
+        ${logoImg('class="parsipad-logo-icon" alt="" aria-hidden="true"')}
         <span class="parsipad-logo-text">ParsiPad</span>
       </div>
       <div class="parsipad-badges">
         <span class="parsipad-badge"></span>
         <span class="parsipad-provider-badge"></span>
       </div>
-      <button class="parsipad-close" type="button" title="Close" aria-label="Close translation">×</button>
+      <button class="parsipad-close" type="button">×</button>
     </div>
-    <div class="parsipad-content" aria-live="polite" aria-atomic="true">
+    <div class="parsipad-content" aria-live="polite">
       <div class="parsipad-text"></div>
     </div>
+    <div class="parsipad-review-slot"></div>
     <div class="parsipad-footer">
       <span class="parsipad-cache-badge"></span>
       <div class="parsipad-footer-actions">
-        <button class="parsipad-favorite" type="button" title="Add to favorites" aria-label="Add to favorites" aria-pressed="false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
-        </button>
-        <button class="parsipad-copy" type="button" aria-label="Copy translation">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>
-          Copy
-        </button>
+        <button class="parsipad-favorite" type="button" aria-pressed="false">${starIcon(false)}</button>
+        <button class="parsipad-copy" type="button"></button>
       </div>
     </div>
   `;
+
+  nameControl(box.querySelector('.parsipad-close'), 'cardClose');
+  nameControl(box.querySelector('.parsipad-favorite'), 'addToFavorites');
+  nameControl(box.querySelector('.parsipad-copy'), 'copyTranslation');
+  setCopyLabel(box.querySelector('.parsipad-copy'), false);
 
   shadowRoot.appendChild(box);
   document.body.appendChild(host);
@@ -653,13 +869,15 @@ function showLoading() {
   if (!shadowRoot) return;
 
   const content = shadowRoot.querySelector('.parsipad-content');
+  setContentLiveState(content, 'loading');
   content.innerHTML = `
-    <div class="parsipad-loading" role="status" aria-label="Translating">
+    <div class="parsipad-loading" role="status">
       <div class="parsipad-skeleton"></div>
       <div class="parsipad-skeleton"></div>
       <div class="parsipad-skeleton"></div>
     </div>
   `;
+  content.querySelector('.parsipad-loading').setAttribute('aria-label', t('translating', userLang));
 
   // Hide footer during loading
   const footer = shadowRoot.querySelector('.parsipad-footer');
@@ -749,7 +967,7 @@ function buildSentenceHandler(result, originalText) {
       showTranslation(response, sentence);
       highlightInSource(originalText);
     } catch (error) {
-      showError(error.message || 'Translation failed');
+      showError(error);
     }
   };
 }
@@ -840,7 +1058,7 @@ function buildGrammarHandler(result, originalText) {
     const loading = document.createElement('div');
     loading.className = 'parsipad-grammar-empty';
     loading.setAttribute('role', 'status');
-    loading.textContent = t('loadingLesson', userLang) || 'Loading...';
+    loading.textContent = t('loadingLesson', userLang);
     slot.replaceChildren(loading);
     keepFloatingBoxInViewport();
 
@@ -860,6 +1078,11 @@ function buildGrammarHandler(result, originalText) {
       renderInlineGrammar(slot, (response && response.grammar) || [], source, result.translation, result.direction);
       keepFloatingBoxInViewport();
     } catch (error) {
+      // Cut off from the extension, the whole box has one thing left to say.
+      if (isContextInvalidated(error)) {
+        showError(error);
+        return;
+      }
       showGrammarError(slot, (error && error.message) || 'Failed to load grammar.');
     }
   };
@@ -899,6 +1122,7 @@ function showTranslation(result, originalText) {
   badge.textContent = '';
 
   const content = shadowRoot.querySelector('.parsipad-content');
+  setContentLiveState(content, 'ready');
   currentCardEl = renderCard(result, {
     lang: userLang,
     doc: document,
@@ -912,7 +1136,7 @@ function showTranslation(result, originalText) {
     onTranslateSentence: buildSentenceHandler(result, originalText),
     onExplainGrammar: buildGrammarHandler(result, originalText),
     onSwapDirection: (nextSourceLang) => translateAndShow(originalText, { sourceLang: nextSourceLang }),
-    onOpenSettings: () => chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' })
+    onOpenSettings: () => notifyWorker({ action: 'OPEN_OPTIONS' })
   });
   content.replaceChildren(currentCardEl);
 
@@ -926,24 +1150,35 @@ function showTranslation(result, originalText) {
 
   // Check if already favorited
   checkTranslationFavoriteStatus();
-  maybeShowReviewLine(content);
+  maybeShowReviewLine(currentCardEl);
 }
 
 /**
  * One quiet rating ask under a translation, when the service worker says it
- * is time. The worker records the show, so a second box in the same window
- * does not ask again. "Rate" opens the store in a new tab from the worker;
- * "Later" snoozes.
- * @param {HTMLElement} content - the floating box's content area
+ * is time. The worker records the show when it answers, so a second box in
+ * the same window does not ask again, and so every check that could skip
+ * the line runs before the question is sent: a skeleton on screen or a card
+ * that has been replaced means no ask at all. The line goes in its own slot
+ * below the content area, outside the live region, so a later skeleton or
+ * result does not wipe it. "Rate" opens the store in a new tab from the
+ * worker; "Later" snoozes.
+ * @param {HTMLElement} card - the translation card the line is for
  */
-async function maybeShowReviewLine(content) {
+async function maybeShowReviewLine(card) {
+  if (!shadowRoot || !card || card !== currentCardEl) return;
+  const content = shadowRoot.querySelector('.parsipad-content');
+  const slot = shadowRoot.querySelector('.parsipad-review-slot');
+  if (!content || !slot) return;
+  if (content.querySelector('.parsipad-loading')) return;
+  if (slot.querySelector('.parsipad-review-line')) return;
+
   let show = false;
   try {
     ({ show } = await chrome.runtime.sendMessage({ action: 'REVIEW_PROMPT_STATE' }));
   } catch (error) {
     return;
   }
-  if (!show || !content.isConnected) return;
+  if (!show || !slot.isConnected) return;
 
   const line = document.createElement('div');
   line.className = 'parsipad-review-line';
@@ -960,13 +1195,13 @@ async function maybeShowReviewLine(content) {
 
   const answer = (response) => {
     line.remove();
-    chrome.runtime.sendMessage({ action: 'REVIEW_PROMPT_RESPONSE', response }).catch(() => {});
+    notifyWorker({ action: 'REVIEW_PROMPT_RESPONSE', response });
   };
   rate.addEventListener('click', () => answer('rated'));
   later.addEventListener('click', () => answer('later'));
 
   line.append(rate, later);
-  content.appendChild(line);
+  slot.appendChild(line);
   placeFloatingBox();
 }
 
@@ -1016,7 +1251,7 @@ function renderInlineGrammar(slot, points, originalText, translation, direction)
   learnMore.className = 'parsipad-grammar-learn-more';
   learnMore.textContent = t('learnMore', userLang) || 'Learn More with Examples';
   learnMore.addEventListener('click', () => {
-    chrome.runtime.sendMessage({
+    notifyWorker({
       action: 'OPEN_GRAMMAR_PAGE',
       original: originalText,
       translation,
@@ -1026,55 +1261,117 @@ function renderInlineGrammar(slot, points, originalText, translation, direction)
   slot.appendChild(learnMore);
 }
 
-// Errors that warrant the alarming red tone vs. the friendly amber default.
-// Misspellings / unsupported language / "please enter text" stay informational.
-const PP_DESTRUCTIVE_ERROR_PATTERN = /(network|invalid api key|api key|server|rate limit|failed to fetch|timeout)/i;
+// Failures the reader has to act on (the key, the connection, the provider)
+// take the red tone; the rest (nothing to translate, a language ParsiPad does
+// not cover, a reply that was cut off) stay the friendly amber. Chosen by
+// code, so a localized message is toned the same as its English original.
+const PP_DESTRUCTIVE_ERROR_CODES = new Set([
+  ERROR_CODES.INVALID_API_KEY,
+  ERROR_CODES.API_KEY_NOT_SET,
+  ERROR_CODES.NETWORK,
+  ERROR_CODES.TIMEOUT,
+  ERROR_CODES.RATE_LIMITED,
+  ERROR_CODES.SERVER_ERROR
+]);
+
+// The info icon every box error carries; decorative, the text says it all.
+const PP_ERROR_ICON = `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="12"/>
+    <line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+`;
+
+/**
+ * What a box says about a failure. Every known code is said in the reader's
+ * language. Only a service worker response that reports UNKNOWN (or no code)
+ * shows its own message as it came, since that is the provider's own words;
+ * a thrown error or an unrecognized code says errorUnknown instead, so
+ * Chrome's and JavaScript's internals never reach the reader. An extension
+ * reloaded under the page is recognized by its code or, when it arrives
+ * without one, by Chrome's message.
+ * @param {unknown} errorOrResponse - a service worker or stream response
+ *   ({ error, errorCode }), or what a catch caught
+ * @returns {{code: string, message: string, untranslated: boolean}}
+ */
+function describeBoxError(errorOrResponse) {
+  const isResponse = errorOrResponse !== null && typeof errorOrResponse === 'object' && !(errorOrResponse instanceof Error);
+  const raw = isResponse ? errorOrResponse.error : errorOrResponse;
+  const rawMessage = typeof raw === 'string' ? raw : (typeof raw?.message === 'string' ? raw.message : '');
+  const reported = isResponse && Object.hasOwn(ERROR_CODES, errorOrResponse.errorCode) ? errorOrResponse.errorCode : ERROR_CODES.UNKNOWN;
+
+  let code = reported === ERROR_CODES.UNKNOWN ? toTranslationError(raw ?? '').code : reported;
+  if (reported === ERROR_CODES.CONTEXT_INVALIDATED || isContextInvalidated(rawMessage)) {
+    code = ERROR_CODES.CONTEXT_INVALIDATED;
+  } else if (code === ERROR_CODES.UNKNOWN && isMissingApiKeyError(rawMessage)) {
+    code = ERROR_CODES.API_KEY_NOT_SET;
+  }
+
+  const reportsUnknown = isResponse && [undefined, null, ERROR_CODES.UNKNOWN].includes(errorOrResponse.errorCode);
+  if (code === ERROR_CODES.UNKNOWN && reportsUnknown && rawMessage.trim()) {
+    return { code, message: rawMessage, untranslated: true };
+  }
+  return { code, message: t(errorI18nKey(code), userLang), untranslated: false };
+}
+
+/**
+ * Put a failure into a box's content area: the icon, the message as text,
+ * and for a missing key a button to Settings. Text the reader's language
+ * did not produce carries dir="auto", so English inside a Persian box keeps
+ * its own direction.
+ * Every box's content area is a polite live region, which reads the failure
+ * out; the error needs no role of its own.
+ * @param {HTMLElement} content
+ * @param {{code: string, message: string, untranslated: boolean}} error
+ */
+function renderBoxError(content, { code, message, untranslated }) {
+  const errorEl = document.createElement('div');
+  errorEl.className = PP_DESTRUCTIVE_ERROR_CODES.has(code) ? 'parsipad-error is-destructive' : 'parsipad-error';
+  errorEl.setAttribute('dir', userLang === 'fa' ? 'rtl' : 'ltr');
+  errorEl.innerHTML = PP_ERROR_ICON;
+
+  const body = document.createElement('div');
+  const text = document.createElement('div');
+  if (untranslated) text.setAttribute('dir', 'auto');
+  text.textContent = message;
+  body.appendChild(text);
+
+  if (code === ERROR_CODES.API_KEY_NOT_SET) {
+    const settings = document.createElement('button');
+    settings.type = 'button';
+    settings.className = 'parsipad-open-settings';
+    settings.textContent = t('openSettings', userLang);
+    settings.addEventListener('click', () => {
+      notifyWorker({ action: 'OPEN_OPTIONS' });
+    });
+    body.appendChild(settings);
+  }
+
+  errorEl.appendChild(body);
+  content.replaceChildren(errorEl);
+}
 
 /**
  * Show error state inside the floating box. Default tone is informational
- * (amber); real failures (network/invalid key/etc) upgrade to destructive
- * (red). Missing-API-key shows an extra "Open Settings" CTA.
- * @param {string|{error?: string, errorCode?: string}} errorOrResponse - A
- *   plain message string (thrown JS errors) or a service worker response
- *   object, which carries errorCode for reliable missing-key detection
- *   even when the message itself is localized.
+ * (amber); real failures (network, key, provider) upgrade to destructive
+ * (red). A missing key adds an "Open Settings" button, and an extension
+ * reloaded under the page offers to reload it instead.
+ * @param {unknown} errorOrResponse - a service worker or stream response
+ *   ({ error, errorCode }), or what a catch caught
  */
 function showError(errorOrResponse) {
   if (!shadowRoot) return;
-  const response = typeof errorOrResponse === 'string' ? { error: errorOrResponse } : (errorOrResponse || {});
-  const message = response.error || '';
+  // The rating ask belongs under a translation, never under a failure.
+  shadowRoot.querySelector('.parsipad-review-slot')?.replaceChildren();
   const content = shadowRoot.querySelector('.parsipad-content');
-  const destructive = PP_DESTRUCTIVE_ERROR_PATTERN.test(String(message || ''));
-  const errorClass = destructive ? 'parsipad-error is-destructive' : 'parsipad-error';
-
-  if (isMissingApiKeyResponse(response)) {
-    content.innerHTML = `
-      <div class="${errorClass}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <div>
-          <div>${escapeHtml(message)}</div>
-          <button class="parsipad-open-settings" type="button">Open Settings</button>
-        </div>
-      </div>
-    `;
-    content.querySelector('.parsipad-open-settings')?.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' });
-    });
+  const error = describeBoxError(errorOrResponse);
+  if (error.code === ERROR_CODES.CONTEXT_INVALIDATED) {
+    setContentLiveState(content, 'alert');
+    renderReloadState(content, userLang);
   } else {
-    content.innerHTML = `
-      <div class="${errorClass}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        ${escapeHtml(message)}
-      </div>
-    `;
+    setContentLiveState(content, 'ready');
+    renderBoxError(content, error);
   }
 
   // Hide footer on error
@@ -1084,80 +1381,318 @@ function showError(errorOrResponse) {
   placeFloatingBox();
 }
 
+// The one in-page toast. A new toast replaces the one on screen.
+const TOAST_ID = 'parsipad-toast';
+// How long a toast stays when the pointer and focus are elsewhere.
+const TOAST_DURATION_MS = 10000;
+// A live region is announced when its text changes, not when it arrives
+// already holding text, so the toast enters the page empty and says its
+// message this long after. Long enough for the browser to have put the empty
+// region in the accessibility tree first.
+const TOAST_LIVE_REGION_DELAY_MS = 100;
+// The toast on screen: its host, where focus goes back to, and how to take it
+// away without moving focus (when a new toast replaces it).
+let activeToast = null;
+
 /**
- * Floating toast used when no floating box is on-screen (e.g. during page
- * translation).
+ * The toast, for news when no floating box is on screen (page translation,
+ * block translate, a mute from the toolbar).
+ *
+ * Its message is a live region: role="status" for news, role="alert" for a
+ * problem the user has to fix. It enters the page empty and the message is
+ * filled in after TOAST_LIVE_REGION_DELAY_MS, so it is announced. It closes
+ * itself after TOAST_DURATION_MS of being shown, a timer that pauses while
+ * the pointer or focus is inside it and resumes with what was left, so an
+ * Undo does not vanish under the user's hand. Escape closes it. When it
+ * closes or is replaced while holding focus, focus goes back to where it was
+ * before the toast took it. Text is set with textContent; a message that
+ * needs markup is passed as DOM nodes.
  *
  * @param {Object} [options]
- * @param {string} [options.message] - what to say
+ * @param {string|Node} [options.message] - what to say
  * @param {boolean} [options.withSettings] - offer the settings shortcut
+ * @param {{label: string, onClick: () => void, focus?: boolean}} [options.action] -
+ *   one button that closes the toast and runs onClick; it is described by
+ *   the message, and with focus, focus moves to it (for a keyboard user)
+ *   once the message is in
+ * @param {'status'|'alert'} [options.role]
+ * @param {boolean} [options.persist] - never close on a timer: stays until
+ *   the user acts on it or closes it, for an action that would otherwise
+ *   be lost (Retry failed)
+ * @returns {() => void} closes this toast, if it is still the one on screen
  */
-function showToast({ message = 'API key not configured.', withSettings = true } = {}) {
-  const existing = document.getElementById('parsipad-missing-key-toast');
-  if (existing) existing.remove();
+function showToast({
+  message = t('apiKeyNotConfigured', userLang),
+  withSettings = true,
+  action = null,
+  role = 'status',
+  persist = false
+} = {}) {
+  // Where focus goes back to: if the toast being replaced holds focus, where
+  // that one would have sent it; otherwise wherever focus is now.
+  const previous = activeToast;
+  const previousHadFocus = Boolean(previous && document.activeElement === previous.host);
+  const returnFocus = previousHadFocus ? previous.returnFocus : document.activeElement;
+  previous?.dispose();
+  document.getElementById(TOAST_ID)?.remove();
 
   const host = document.createElement('div');
-  host.id = 'parsipad-missing-key-toast';
+  host.id = TOAST_ID;
   host.style.cssText = 'position:fixed;top:20px;right:20px;z-index:2147483647;';
   const root = host.attachShadow({ mode: 'closed' });
   applyHostTheme(host);
+  if (userLang === 'fa') ensurePersianFontLoaded();
+  // Static markup only; every piece of text is set below with textContent.
   root.innerHTML = `
     <style>
+      ${themeVars()}
       :host { all: initial; }
       .toast {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        background: #1f2937;
-        color: #fff;
+        font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 14px;
+        line-height: 1.4;
+        /* The inverse of the page surfaces, as the toolbar tooltips are. */
+        background: var(--pp-text);
+        color: var(--pp-bg);
         padding: 12px 16px;
         border-radius: 8px;
-        box-shadow: 0 10px 25px rgba(0,0,0,.2);
+        box-shadow: var(--pp-shadow-card);
         display: flex;
         align-items: center;
         gap: 12px;
         max-width: 360px;
       }
       .toast button {
-        background: var(--pp-accent, #ff4f00);
-        color: #fff;
+        background: var(--pp-accent);
+        color: var(--pp-on-accent);
         border: 0;
         padding: 6px 10px;
         border-radius: 6px;
         cursor: pointer;
         font: inherit;
+        white-space: nowrap;
+      }
+      .toast button:hover {
+        background: var(--pp-accent-strong);
+      }
+      .toast button:focus-visible {
+        outline: 2px solid var(--pp-bg);
+        outline-offset: 2px;
       }
       .toast button.close {
         background: transparent;
         padding: 4px;
-        color: #9ca3af;
+        color: inherit;
+        opacity: 0.75;
+      }
+      .toast button.close:hover {
+        opacity: 1;
       }
     </style>
-    <div class="toast" role="alert">
-      <span class="message"></span>
-      <button class="open" type="button" hidden>Open Settings</button>
-      <button class="close" type="button" aria-label="Dismiss">×</button>
+    <div class="toast">
+      <span class="message" id="parsipad-toast-message"></span>
+      <button class="action" type="button" hidden></button>
+      <button class="open" type="button" hidden></button>
+      <button class="close" type="button">×</button>
     </div>
   `;
-  root.querySelector('.message').textContent = message;
-  document.body.appendChild(host);
+
+  const box = root.querySelector('.toast');
+  const messageEl = root.querySelector('.message');
+  messageEl.setAttribute('role', role);
+  // In-page UI is not mirrored, but Persian text still reads right to left.
+  messageEl.setAttribute('dir', userLang === 'fa' ? 'rtl' : 'ltr');
+  const closeBtn = root.querySelector('.close');
+  closeBtn.setAttribute('aria-label', t('cardClose', userLang));
+
+  const restoreFocus = () => {
+    if (returnFocus && returnFocus !== document.body && returnFocus.isConnected) returnFocus.focus();
+  };
+
+  // The auto-close timer runs from the moment the message is shown, and
+  // only while neither the pointer nor focus is inside.
+  let shown = false;
+  let fillTimer = null;
+  let closeTimer = null;
+  let remaining = TOAST_DURATION_MS;
+  let runningSince = 0;
+  let pointerInside = false;
+  let focusInside = false;
+
+  const pause = () => {
+    if (closeTimer === null) return;
+    clearTimeout(closeTimer);
+    closeTimer = null;
+    remaining = Math.max(0, remaining - (Date.now() - runningSince));
+  };
+  const resume = () => {
+    if (persist || !shown || closeTimer !== null || pointerInside || focusInside) return;
+    runningSince = Date.now();
+    closeTimer = setTimeout(close, remaining);
+  };
+  const dispose = () => {
+    clearTimeout(fillTimer);
+    clearTimeout(closeTimer);
+    closeTimer = null;
+    host.remove();
+    if (activeToast?.host === host) activeToast = null;
+  };
+  const close = () => {
+    if (!host.isConnected) return;
+    const hadFocus = document.activeElement === host;
+    dispose();
+    if (hadFocus) restoreFocus();
+  };
+
+  box.addEventListener('pointerenter', () => { pointerInside = true; pause(); });
+  box.addEventListener('pointerleave', () => { pointerInside = false; resume(); });
+  box.addEventListener('focusin', () => { focusInside = true; pause(); });
+  box.addEventListener('focusout', (event) => {
+    if (box.contains(event.relatedTarget)) return;
+    focusInside = false;
+    resume();
+  });
+  box.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    // Handled: the page and the floating box should not also act on it.
+    event.stopPropagation();
+    close();
+  });
+
+  const actionBtn = root.querySelector('.action');
+  if (action) {
+    actionBtn.textContent = action.label;
+    actionBtn.hidden = false;
+    // Focus on Undo reads the sentence it undoes.
+    actionBtn.setAttribute('aria-describedby', messageEl.id);
+    actionBtn.addEventListener('click', () => {
+      close();
+      action.onClick();
+    });
+  }
 
   const openBtn = root.querySelector('.open');
   if (withSettings) {
+    openBtn.textContent = t('openSettings', userLang);
     openBtn.hidden = false;
     openBtn.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' });
-      host.remove();
+      notifyWorker({ action: 'OPEN_OPTIONS' });
+      close();
     });
   }
-  root.querySelector('.close').addEventListener('click', () => host.remove());
-  setTimeout(() => host.remove(), 10000);
+  closeBtn.addEventListener('click', close);
+
+  document.body.appendChild(host);
+  activeToast = { host, returnFocus, dispose };
+  // The toast it replaced held focus; give it back rather than leave it on
+  // <body> (this toast's action may take it once its message is in).
+  if (previousHadFocus) restoreFocus();
+
+  fillTimer = setTimeout(() => {
+    if (typeof message === 'string') {
+      messageEl.textContent = message;
+    } else {
+      messageEl.append(message);
+    }
+    shown = true;
+    resume();
+    if (action?.focus) actionBtn.focus();
+  }, TOAST_LIVE_REGION_DELAY_MS);
+
+  return close;
 }
 
 /**
  * The missing-API-key case, which is the toast's original and most common
- * caller. Kept as its own name so the call sites still read as intent.
+ * caller. Kept as its own name so the call sites still read as intent. An
+ * alert: nothing translates until the user fixes it.
  */
 function showMissingApiKeyToast() {
-  showToast({ message: 'API key not configured.', withSettings: true });
+  showToast({ message: t('apiKeyNotConfigured', userLang), withSettings: true, role: 'alert' });
+}
+
+/**
+ * ParsiPad was reloaded or updated under the page, which only a page reload
+ * fixes: the boxes' reload message, as an alert that stays until the user
+ * reloads or closes it.
+ */
+function showReloadToast() {
+  showToast({
+    message: t('errorContextInvalidated', userLang),
+    withSettings: false,
+    role: 'alert',
+    persist: true,
+    action: { label: t('blockTranslateReload', userLang), onClick: () => location.reload() }
+  });
+}
+
+/**
+ * The toast's message with the host as its own left-to-right run, so a
+ * Persian sentence does not reorder the dots of a domain. Built with DOM
+ * nodes: the host is never parsed as markup.
+ * @param {string} template - a translated string containing {host}
+ * @param {string} hostName
+ * @returns {DocumentFragment}
+ */
+function messageWithHost(template, hostName) {
+  const fragment = document.createDocumentFragment();
+  const [before, after = ''] = template.split('{host}');
+  const run = document.createElement('bdi');
+  run.setAttribute('dir', 'ltr');
+  run.textContent = hostName;
+  fragment.append(before, run, after);
+  return fragment;
+}
+
+/**
+ * Mute ParsiPad on this site, from the selection toolbar. The list stores a
+ * normalized host (example.com for www.example.com), and the toast names and
+ * Undo removes exactly that host. Undo is offered only when this press added
+ * it. Settings and block translate pick the
+ * change up through chrome.storage.onChanged.
+ * @param {{fromKeyboard: boolean}} options - focus moves to Undo when the
+ *   button was pressed from the keyboard
+ */
+async function muteThisSite({ fromKeyboard }) {
+  let result = null;
+  try {
+    result = await addMutedSite(location.hostname);
+  } catch {
+    // Extension context invalidated: nothing was stored, so nothing to undo.
+    return;
+  }
+  if (!result) return;
+  const { host: mutedHost, added } = result;
+  mutedLoaded = true;
+  siteMuted = true;
+  removeSelectionPopup();
+  showToast({
+    message: messageWithHost(t('mutedOnSite', userLang), mutedHost),
+    withSettings: false,
+    // Undo only what this press added: a host that was already listed was
+    // muted elsewhere (Settings, another tab), and Undo must not unmute it.
+    action: added ? {
+      label: t('libraryUndo', userLang),
+      focus: fromKeyboard,
+      onClick: () => {
+        removeMutedSite(mutedHost).catch(() => {});
+      }
+    } : null
+  });
+}
+
+/**
+ * The box footer's Copy button face: the copy icon and "Copy", or a check
+ * and "Copied" for a moment after it worked. Its accessible name stays
+ * "Copy translation" throughout.
+ * @param {HTMLElement} btn
+ * @param {boolean} copied
+ */
+function setCopyLabel(btn, copied) {
+  btn.innerHTML = copied ? PP_CHECK_ICON : PP_COPY_ICON;
+  const label = document.createElement('span');
+  label.textContent = t(copied ? 'copied' : 'copy', userLang);
+  btn.appendChild(label);
 }
 
 /**
@@ -1177,22 +1712,11 @@ async function handleCopy() {
     // Visual feedback
     const copyBtn = shadowRoot.querySelector('.parsipad-copy');
     copyBtn.classList.add('copied');
-    copyBtn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-      Copied!
-    `;
+    setCopyLabel(copyBtn, true);
 
     setTimeout(() => {
       copyBtn.classList.remove('copied');
-      copyBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-        </svg>
-        Copy
-      `;
+      setCopyLabel(copyBtn, false);
     }, 1500);
   } catch (error) {
     // Silently handle copy errors
@@ -1250,11 +1774,7 @@ function setFavoriteState(btn, favorited) {
   if (!btn.classList.contains('parsipad-favorite')) return;
 
   btn.classList.toggle('favorited', favorited);
-  btn.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="${favorited ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-    </svg>
-  `;
+  btn.innerHTML = starIcon(favorited);
 }
 
 /**
@@ -1337,6 +1857,10 @@ function removeFloatingBox() {
   currentDictionaryData = null;
 }
 
+// The polish box's three versions, in the order the cards show them; each
+// is also the i18n key of its title.
+const POLISH_VARIANTS = ['professional', 'conversational', 'concise'];
+
 /**
  * Create the floating polish box with Shadow DOM
  */
@@ -1356,24 +1880,26 @@ function createPolishBox(selectionRect) {
   const box = document.createElement('div');
   box.className = 'parsipad-box parsipad-polish-box';
   box.setAttribute('role', 'dialog');
-  box.setAttribute('aria-label', 'ParsiPad polish');
+  box.setAttribute('aria-label', t('boxPolishLabel', userLang));
   box.setAttribute('tabindex', '-1');
   box.innerHTML = `
     <div class="parsipad-header">
       <div class="parsipad-logo">
-        <img src="${chrome.runtime.getURL('icons/icon-48.png')}" alt="ParsiPad" class="parsipad-logo-icon">
+        ${logoImg('class="parsipad-logo-icon" alt="" aria-hidden="true"')}
         <span class="parsipad-logo-text">ParsiPad</span>
       </div>
       <div class="parsipad-badges">
-        <span class="parsipad-badge parsipad-badge-polish">Polish</span>
+        <span class="parsipad-badge parsipad-badge-polish"></span>
         <span class="parsipad-provider-badge"></span>
       </div>
-      <button class="parsipad-close" type="button" title="Close" aria-label="Close polish">×</button>
+      <button class="parsipad-close" type="button">×</button>
     </div>
-    <div class="parsipad-polish-content">
+    <div class="parsipad-polish-content" aria-live="polite">
       <!-- Polish cards will be inserted here -->
     </div>
   `;
+  box.querySelector('.parsipad-badge-polish').textContent = t('polish', userLang);
+  nameControl(box.querySelector('.parsipad-close'), 'cardClose');
 
   shadowRoot.appendChild(box);
   document.body.appendChild(host);
@@ -1399,34 +1925,18 @@ function showPolishLoading() {
   if (!shadowRoot) return;
 
   const content = shadowRoot.querySelector('.parsipad-polish-content');
-  content.innerHTML = `
+  setContentLiveState(content, 'loading');
+  content.innerHTML = POLISH_VARIANTS.map((variant, i) => `
     <div class="parsipad-polish-card">
       <div class="parsipad-polish-card-header">
-        <span class="parsipad-polish-title">Professional</span>
+        <span class="parsipad-polish-title">${escapeHtml(t(variant, userLang))}</span>
       </div>
       <div class="parsipad-loading">
         <div class="parsipad-skeleton"></div>
-        <div class="parsipad-skeleton"></div>
+        ${i < 2 ? '<div class="parsipad-skeleton"></div>' : ''}
       </div>
     </div>
-    <div class="parsipad-polish-card">
-      <div class="parsipad-polish-card-header">
-        <span class="parsipad-polish-title">Conversational</span>
-      </div>
-      <div class="parsipad-loading">
-        <div class="parsipad-skeleton"></div>
-        <div class="parsipad-skeleton"></div>
-      </div>
-    </div>
-    <div class="parsipad-polish-card">
-      <div class="parsipad-polish-card-header">
-        <span class="parsipad-polish-title">Concise</span>
-      </div>
-      <div class="parsipad-loading">
-        <div class="parsipad-skeleton"></div>
-      </div>
-    </div>
-  `;
+  `).join('');
 }
 
 /**
@@ -1452,86 +1962,23 @@ function showPolishResults(result) {
   };
 
   const content = shadowRoot.querySelector('.parsipad-polish-content');
-  content.innerHTML = `
-    <div class="parsipad-polish-card" data-variant="professional">
+  setContentLiveState(content, 'ready');
+  content.innerHTML = POLISH_VARIANTS.map((variant) => `
+    <div class="parsipad-polish-card" data-variant="${variant}">
       <div class="parsipad-polish-card-header">
-        <span class="parsipad-polish-title">Professional</span>
+        <span class="parsipad-polish-title">${escapeHtml(t(variant, userLang))}</span>
         <div class="parsipad-polish-actions">
-          <button class="parsipad-polish-favorite" data-version="professional" type="button" title="Add to favorites" aria-label="Add to favorites">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          </button>
-          <button class="parsipad-polish-regenerate" data-version="professional" type="button" title="Regenerate" aria-label="Regenerate">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 4v6h-6"/>
-              <path d="M1 20v-6h6"/>
-              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-            </svg>
-          </button>
-          <button class="parsipad-polish-copy" data-version="professional" type="button" title="Copy" aria-label="Copy">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-          </button>
+          <button class="parsipad-polish-favorite" data-version="${variant}" type="button" aria-pressed="false">${starIcon(false)}</button>
+          <button class="parsipad-polish-regenerate" data-version="${variant}" type="button">${PP_REGENERATE_ICON}</button>
+          <button class="parsipad-polish-copy" data-version="${variant}" type="button">${PP_COPY_ICON}</button>
         </div>
       </div>
-      <div class="parsipad-polish-text">${escapeHtml(professional)}</div>
+      <div class="parsipad-polish-text">${escapeHtml(result[variant])}</div>
     </div>
-    <div class="parsipad-polish-card" data-variant="conversational">
-      <div class="parsipad-polish-card-header">
-        <span class="parsipad-polish-title">Conversational</span>
-        <div class="parsipad-polish-actions">
-          <button class="parsipad-polish-favorite" data-version="conversational" type="button" title="Add to favorites" aria-label="Add to favorites">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          </button>
-          <button class="parsipad-polish-regenerate" data-version="conversational" type="button" title="Regenerate" aria-label="Regenerate">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 4v6h-6"/>
-              <path d="M1 20v-6h6"/>
-              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-            </svg>
-          </button>
-          <button class="parsipad-polish-copy" data-version="conversational" type="button" title="Copy" aria-label="Copy">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div class="parsipad-polish-text">${escapeHtml(conversational)}</div>
-    </div>
-    <div class="parsipad-polish-card" data-variant="concise">
-      <div class="parsipad-polish-card-header">
-        <span class="parsipad-polish-title">Concise</span>
-        <div class="parsipad-polish-actions">
-          <button class="parsipad-polish-favorite" data-version="concise" type="button" title="Add to favorites" aria-label="Add to favorites">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          </button>
-          <button class="parsipad-polish-regenerate" data-version="concise" type="button" title="Regenerate" aria-label="Regenerate">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 4v6h-6"/>
-              <path d="M1 20v-6h6"/>
-              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-            </svg>
-          </button>
-          <button class="parsipad-polish-copy" data-version="concise" type="button" title="Copy" aria-label="Copy">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div class="parsipad-polish-text">${escapeHtml(concise)}</div>
-    </div>
-  `;
+  `).join('');
+  content.querySelectorAll('.parsipad-polish-favorite').forEach((btn) => nameControl(btn, 'addToFavorites'));
+  content.querySelectorAll('.parsipad-polish-regenerate').forEach((btn) => nameControl(btn, 'regenerate'));
+  content.querySelectorAll('.parsipad-polish-copy').forEach((btn) => nameControl(btn, 'copy'));
 
   // Add copy handlers
   content.querySelectorAll('.parsipad-polish-copy').forEach(btn => {
@@ -1567,11 +2014,7 @@ async function handlePolishCopy(btn, result) {
     // Visual feedback
     btn.classList.add('copied');
     const originalSvg = btn.innerHTML;
-    btn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-    `;
+    btn.innerHTML = PP_CHECK_ICON;
 
     setTimeout(() => {
       btn.classList.remove('copied');
@@ -1592,13 +2035,17 @@ async function handlePolishRegenerate(btn) {
   const card = shadowRoot.querySelector(`.parsipad-polish-card[data-variant="${variant}"]`);
   if (!card) return;
 
-  // Show loading state on the button
+  // Show loading state on the button; its name says it is working, and the
+  // spinner turns only for readers who have not asked for less motion.
   btn.classList.add('loading');
   btn.disabled = true;
+  nameControl(btn, 'regenerating');
 
   // Show skeleton in the text area
   const textEl = card.querySelector('.parsipad-polish-text');
   const originalText = textEl.textContent;
+  // Busy while the skeleton shows, so only the new version is read out.
+  textEl.setAttribute('aria-busy', 'true');
   textEl.innerHTML = `
     <div class="parsipad-loading">
       <div class="parsipad-skeleton" style="width: 90%;"></div>
@@ -1614,6 +2061,8 @@ async function handlePolishRegenerate(btn) {
       variant: variant
     });
 
+    // No longer busy before the words go in, so the change is read out.
+    textEl.removeAttribute('aria-busy');
     if (response.error) {
       // Restore original text on error
       textEl.textContent = originalText;
@@ -1629,11 +2078,7 @@ async function handlePolishRegenerate(btn) {
             await navigator.clipboard.writeText(response.text);
             copyBtn.classList.add('copied');
             const originalSvg = copyBtn.innerHTML;
-            copyBtn.innerHTML = `
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-            `;
+            copyBtn.innerHTML = PP_CHECK_ICON;
             setTimeout(() => {
               copyBtn.classList.remove('copied');
               copyBtn.innerHTML = originalSvg;
@@ -1646,11 +2091,13 @@ async function handlePolishRegenerate(btn) {
     }
   } catch (error) {
     // Restore original text on error
+    textEl.removeAttribute('aria-busy');
     textEl.textContent = originalText;
   } finally {
     // Remove loading state
     btn.classList.remove('loading');
     btn.disabled = false;
+    nameControl(btn, 'regenerate');
   }
 }
 
@@ -1660,9 +2107,7 @@ async function handlePolishRegenerate(btn) {
 async function checkPolishFavoriteStatus(polishData) {
   if (!shadowRoot) return;
 
-  const variants = ['professional', 'conversational', 'concise'];
-
-  for (const variant of variants) {
+  for (const variant of POLISH_VARIANTS) {
     try {
       const response = await chrome.runtime.sendMessage({
         action: 'CHECK_FAVORITE',
@@ -1674,11 +2119,8 @@ async function checkPolishFavoriteStatus(polishData) {
         const favBtn = shadowRoot.querySelector(`.parsipad-polish-favorite[data-version="${variant}"]`);
         if (favBtn) {
           favBtn.classList.add('favorited');
-          favBtn.innerHTML = `
-            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          `;
+          favBtn.setAttribute('aria-pressed', 'true');
+          favBtn.innerHTML = starIcon(true);
         }
       }
     } catch (error) {
@@ -1707,11 +2149,8 @@ async function handlePolishFavorite(btn, polishData) {
       });
 
       btn.classList.remove('favorited');
-      btn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-        </svg>
-      `;
+      btn.setAttribute('aria-pressed', 'false');
+      btn.innerHTML = starIcon(false);
     } else {
       // Add to favorites
       await chrome.runtime.sendMessage({
@@ -1726,11 +2165,8 @@ async function handlePolishFavorite(btn, polishData) {
       });
 
       btn.classList.add('favorited');
-      btn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-        </svg>
-      `;
+      btn.setAttribute('aria-pressed', 'true');
+      btn.innerHTML = starIcon(true);
     }
   } catch (error) {
     // Silently handle errors
@@ -1738,46 +2174,22 @@ async function handlePolishFavorite(btn, polishData) {
 }
 
 /**
- * Show error in polish box. Missing-API-key errors get the same CTA as showError().
- * @param {string|{error?: string, errorCode?: string}} errorOrResponse - A
- *   plain message string (thrown JS errors) or a service worker response
- *   object, which carries errorCode for reliable missing-key detection
- *   even when the message itself is localized.
+ * Show error in polish box, the same way showError() does in the
+ * translation box.
+ * @param {unknown} errorOrResponse - a service worker response
+ *   ({ error, errorCode }), or what a catch caught
  */
 function showPolishError(errorOrResponse) {
   if (!shadowRoot) return;
 
-  const response = typeof errorOrResponse === 'string' ? { error: errorOrResponse } : (errorOrResponse || {});
-  const message = response.error || '';
   const content = shadowRoot.querySelector('.parsipad-polish-content');
-  if (isMissingApiKeyResponse(response)) {
-    content.innerHTML = `
-      <div class="parsipad-error">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <div>
-          <div>${escapeHtml(message)}</div>
-          <button class="parsipad-open-settings" type="button">Open Settings</button>
-        </div>
-      </div>
-    `;
-    content.querySelector('.parsipad-open-settings')?.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' });
-    });
+  const error = describeBoxError(errorOrResponse);
+  if (error.code === ERROR_CODES.CONTEXT_INVALIDATED) {
+    setContentLiveState(content, 'alert');
+    renderReloadState(content, userLang);
   } else {
-    content.innerHTML = `
-      <div class="parsipad-error">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        ${escapeHtml(message)}
-      </div>
-    `;
+    setContentLiveState(content, 'ready');
+    renderBoxError(content, error);
   }
 
   placeFloatingBox();
@@ -1809,6 +2221,11 @@ async function dictionaryAndShow(word) {
   showDictionaryLoading();
   placeFloatingBox();
 
+  if (!isContextAlive()) {
+    showDictionaryError({ errorCode: ERROR_CODES.CONTEXT_INVALIDATED });
+    return;
+  }
+
   try {
     // Send dictionary lookup request to background script
     const response = await chrome.runtime.sendMessage({
@@ -1818,12 +2235,12 @@ async function dictionaryAndShow(word) {
     });
 
     if (response.error) {
-      showDictionaryError(response.error);
+      showDictionaryError(response);
     } else {
       showDictionaryResult(response);
     }
   } catch (error) {
-    showDictionaryError(error.message || 'Lookup failed');
+    showDictionaryError(error);
   }
 }
 
@@ -1850,24 +2267,26 @@ function createDictionaryBox(selectionRect) {
   const box = document.createElement('div');
   box.className = 'parsipad-box parsipad-dictionary-box';
   box.setAttribute('role', 'dialog');
-  box.setAttribute('aria-label', 'ParsiPad dictionary');
+  box.setAttribute('aria-label', t('boxDictionaryLabel', userLang));
   box.setAttribute('tabindex', '-1');
   box.innerHTML = `
     <div class="parsipad-header">
       <div class="parsipad-logo">
-        <img src="${chrome.runtime.getURL('icons/icon-48.png')}" alt="ParsiPad" class="parsipad-logo-icon">
+        ${logoImg('class="parsipad-logo-icon" alt="" aria-hidden="true"')}
         <span class="parsipad-logo-text">ParsiPad</span>
       </div>
       <div class="parsipad-badges">
-        <span class="parsipad-badge parsipad-badge-dictionary">Dictionary</span>
+        <span class="parsipad-badge parsipad-badge-dictionary"></span>
         <span class="parsipad-provider-badge"></span>
       </div>
-      <button class="parsipad-close" type="button" title="Close" aria-label="Close dictionary">×</button>
+      <button class="parsipad-close" type="button">×</button>
     </div>
-    <div class="parsipad-dictionary-content">
+    <div class="parsipad-dictionary-content" aria-live="polite">
       <!-- Dictionary result will be inserted here -->
     </div>
   `;
+  box.querySelector('.parsipad-badge-dictionary').textContent = t('dictionary', userLang);
+  nameControl(box.querySelector('.parsipad-close'), 'cardClose');
 
   shadowRoot.appendChild(box);
   document.body.appendChild(host);
@@ -1893,6 +2312,7 @@ function showDictionaryLoading() {
   if (!shadowRoot) return;
 
   const content = shadowRoot.querySelector('.parsipad-dictionary-content');
+  setContentLiveState(content, 'loading');
   content.innerHTML = `
     <div class="parsipad-loading">
       <div class="parsipad-skeleton" style="width: 40%;"></div>
@@ -1944,7 +2364,7 @@ function showDictionaryResult(result) {
   if (synonyms && synonyms.length > 0) {
     synonymsHtml = `
       <div class="parsipad-dict-section">
-        <div class="parsipad-dict-section-title">Synonyms</div>
+        <div class="parsipad-dict-section-title">${escapeHtml(t('synonyms', userLang))}</div>
         <div class="parsipad-dict-tags">
           ${synonyms.slice(0, 5).map(s => `<span class="parsipad-dict-tag">${escapeHtml(s)}</span>`).join('')}
         </div>
@@ -1956,7 +2376,7 @@ function showDictionaryResult(result) {
   if (antonyms && antonyms.length > 0) {
     antonymsHtml = `
       <div class="parsipad-dict-section">
-        <div class="parsipad-dict-section-title">Antonyms</div>
+        <div class="parsipad-dict-section-title">${escapeHtml(t('antonyms', userLang))}</div>
         <div class="parsipad-dict-tags">
           ${antonyms.slice(0, 3).map(a => `<span class="parsipad-dict-tag parsipad-dict-tag-antonym">${escapeHtml(a)}</span>`).join('')}
         </div>
@@ -1965,6 +2385,7 @@ function showDictionaryResult(result) {
   }
 
   const content = shadowRoot.querySelector('.parsipad-dictionary-content');
+  setContentLiveState(content, 'ready');
   content.innerHTML = `
     <div class="parsipad-dict-header">
       <div class="parsipad-dict-word">${escapeHtml(word)}</div>
@@ -1974,7 +2395,7 @@ function showDictionaryResult(result) {
 
     ${definitionsHtml ? `
       <div class="parsipad-dict-section">
-        <div class="parsipad-dict-section-title">Definitions</div>
+        <div class="parsipad-dict-section-title">${escapeHtml(t('definitions', userLang))}</div>
         ${definitionsHtml}
       </div>
     ` : ''}
@@ -1984,20 +2405,11 @@ function showDictionaryResult(result) {
 
     ${translation ? `
       <div class="parsipad-dict-translation">
-        <div class="parsipad-dict-section-title">Translation</div>
+        <div class="parsipad-dict-section-title">${escapeHtml(t('translation', userLang))}</div>
         <div class="parsipad-dict-translation-text" ${isTargetRTL ? 'dir="rtl"' : ''}>${escapeHtml(translation)}</div>
         <div class="parsipad-dict-translation-actions">
-          <button class="parsipad-dict-favorite-translation" type="button" title="Add to favorites" aria-label="Add to favorites">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          </button>
-          <button class="parsipad-dict-copy-translation" type="button" title="Copy translation" aria-label="Copy translation">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-          </button>
+          <button class="parsipad-dict-favorite-translation" type="button" aria-pressed="false">${starIcon(false)}</button>
+          <button class="parsipad-dict-copy-translation" type="button">${PP_COPY_ICON}</button>
         </div>
       </div>
     ` : ''}
@@ -2006,12 +2418,14 @@ function showDictionaryResult(result) {
   // Add copy handler for translation
   const copyBtn = shadowRoot.querySelector('.parsipad-dict-copy-translation');
   if (copyBtn) {
+    nameControl(copyBtn, 'copyTranslation');
     copyBtn.addEventListener('click', () => handleDictionaryCopy(copyBtn, translation));
   }
 
   // Add favorite handler for translation
   const favBtn = shadowRoot.querySelector('.parsipad-dict-favorite-translation');
   if (favBtn) {
+    nameControl(favBtn, 'addToFavorites');
     favBtn.addEventListener('click', handleDictionaryFavorite);
     // Check if already favorited
     checkDictionaryFavoriteStatus();
@@ -2030,11 +2444,7 @@ async function handleDictionaryCopy(btn, text) {
     // Visual feedback
     btn.classList.add('copied');
     const originalSvg = btn.innerHTML;
-    btn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-    `;
+    btn.innerHTML = PP_CHECK_ICON;
 
     setTimeout(() => {
       btn.classList.remove('copied');
@@ -2062,11 +2472,8 @@ async function checkDictionaryFavoriteStatus() {
       const favBtn = shadowRoot.querySelector('.parsipad-dict-favorite-translation');
       if (favBtn) {
         favBtn.classList.add('favorited');
-        favBtn.innerHTML = `
-          <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
-        `;
+        favBtn.setAttribute('aria-pressed', 'true');
+        favBtn.innerHTML = starIcon(true);
       }
     }
   } catch (error) {
@@ -2095,11 +2502,8 @@ async function handleDictionaryFavorite() {
       });
 
       favBtn.classList.remove('favorited');
-      favBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-        </svg>
-      `;
+      favBtn.setAttribute('aria-pressed', 'false');
+      favBtn.innerHTML = starIcon(false);
     } else {
       // Add to favorites
       await chrome.runtime.sendMessage({
@@ -2108,11 +2512,8 @@ async function handleDictionaryFavorite() {
       });
 
       favBtn.classList.add('favorited');
-      favBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-        </svg>
-      `;
+      favBtn.setAttribute('aria-pressed', 'true');
+      favBtn.innerHTML = starIcon(true);
     }
   } catch (error) {
     // Silently handle errors
@@ -2120,22 +2521,23 @@ async function handleDictionaryFavorite() {
 }
 
 /**
- * Show error in dictionary box
+ * Show error in dictionary box, the same way showError() does in the
+ * translation box.
+ * @param {unknown} errorOrResponse - a service worker response
+ *   ({ error, errorCode }), or what a catch caught
  */
-function showDictionaryError(message) {
+function showDictionaryError(errorOrResponse) {
   if (!shadowRoot) return;
 
   const content = shadowRoot.querySelector('.parsipad-dictionary-content');
-  content.innerHTML = `
-    <div class="parsipad-error" role="alert">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="12" y1="8" x2="12" y2="12"/>
-        <line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      ${escapeHtml(message)}
-    </div>
-  `;
+  const error = describeBoxError(errorOrResponse);
+  if (error.code === ERROR_CODES.CONTEXT_INVALIDATED) {
+    setContentLiveState(content, 'alert');
+    renderReloadState(content, userLang);
+  } else {
+    setContentLiveState(content, 'ready');
+    renderBoxError(content, error);
+  }
 
   placeFloatingBox();
 }
@@ -2145,22 +2547,87 @@ function showDictionaryError(message) {
 // ============================================
 
 /**
- * Handle page translation request
+ * Whether the selected provider has a key, asked of the service worker
+ * without a request to the provider. An unanswered check counts as yes, so
+ * the batch request still reports a missing key through its own path.
+ * @returns {Promise<boolean>}
  */
-async function handleTranslatePage() {
+async function hasProviderKey() {
+  try {
+    // Action name literal: content modules cannot import ACTIONS (lib/constants.js)
+    const response = await chrome.runtime.sendMessage({ action: 'CHECK_API_KEY' });
+    return response?.hasApiKey !== false;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * The provider a page translation will use and whether it asks first. Same
+ * defaults as lib/storage.js: Claude, and asking unless the stored value is
+ * false.
+ * @returns {Promise<{provider: string, confirm: boolean}>}
+ */
+async function readPageTranslatePrefs() {
+  try {
+    const stored = await chrome.storage.local.get([SELECTED_PROVIDER_KEY, CONFIRM_PAGE_TRANSLATE_KEY]);
+    return {
+      provider: stored[SELECTED_PROVIDER_KEY] || DEFAULT_PROVIDER_ID,
+      confirm: stored[CONFIRM_PAGE_TRANSLATE_KEY] !== false
+    };
+  } catch {
+    return { provider: DEFAULT_PROVIDER_ID, confirm: true };
+  }
+}
+
+// Pause between batch requests, to stay clear of provider rate limits.
+const PAGE_BATCH_GAP_MS = 200;
+
+/**
+ * Handle page translation request. With `retry`, run again only the given
+ * batches of the run that owns the page, without the question: the user
+ * already agreed to translate this page. Retry failed and Translate Page on
+ * a page with unfinished sections both come this way.
+ * @param {{retry?: {state: object, indexes: number[]}}} [options]
+ */
+async function handleTranslatePage({ retry = null } = {}) {
+  // The address changed and the router may have drawn a new view: look now
+  // rather than toggle a page that is gone.
+  if (!retry && routeCheckTimer !== null) {
+    checkRouteChange();
+  }
+
   // If already translating, ignore
   if (pageTranslationState?.isTranslating) {
     return;
   }
 
+  if (!retry && pageTranslationState?.run) {
+    // Sections never sent (a stop) and sections that failed only once are
+    // picked up where the run left off: the user already agreed to
+    // translate this page. A section that failed again after a retry is
+    // left to Retry failed, so pressing Translate Page on a page with a
+    // section that keeps failing toggles instead of paying for it again.
+    const resumable = resumableIndexes(pageTranslationState.run);
+    if (resumable.length > 0) {
+      return handleTranslatePage({ retry: { state: pageTranslationState, indexes: resumable } });
+    }
+  }
+
   // If already translated, toggle instead
-  if (pageTranslationState?.isTranslated) {
+  if (!retry && pageTranslationState?.isTranslated) {
     handleTogglePageTranslation();
     return;
   }
 
-  // Initialize state
-  pageTranslationState = {
+  // Initialize state. phase is 'confirming' until the first request goes
+  // out, 'running' from then on. A navigation replaces pageTranslationState,
+  // so after every await this run checks it still owns the state and
+  // otherwise stops quietly: nothing applied, nothing said. stopReason says
+  // why a run ended early: 'user' (Cancel, Escape, the popup) or
+  // 'missingKey'. batches and run outlive the run, for Retry failed.
+  const state = retry ? retry.state : {
+    phase: 'confirming',
     isTranslated: false,
     isTranslating: true,
     isShowingTranslated: false,
@@ -2170,117 +2637,269 @@ async function handleTranslatePage() {
     sourceLanguage: null,
     targetLanguage: null,
     textNodes: [],
-    totalChunks: 0,
-    translatedChunks: 0
+    batches: [],
+    run: null,
+    stopReason: null,
+    closeSummary: null
   };
+  state.isTranslating = true;
+  state.stopReason = null;
+  // A summary from an earlier run would offer a Retry for work this run
+  // now owns.
+  pageTranslationState?.closeSummary?.();
+  pageTranslationState = state;
+  // Set when the run ends before any request (the user said no, or there is
+  // no key): it leaves no state, as if never asked.
+  let discard = false;
 
-  pageTranslationCancelled = false;
   pageTranslationAbortController = new AbortController();
   const abortSignal = pageTranslationAbortController.signal;
 
-  // Show progress overlay
-  showPageProgressOverlay();
+  // The overlay exists before extraction so its host is skipped as ParsiPad's
+  // own; it shows the confirmation first and the progress only after it.
+  mountPageOverlay();
 
   try {
-    // Extract text nodes
-    pageTranslationState.textNodes = extractVisibleTextNodes(document.body);
+    let indexes;
+    if (!retry) {
+      // Extract text nodes
+      state.textNodes = extractVisibleTextNodes(document.body);
 
-    if (pageTranslationState.textNodes.length === 0) {
-      hidePageProgressOverlay();
-      pageTranslationState.isTranslating = false;
-      // Page translation runs without a floating box, so there is nothing to
-      // render an error into; the toast is the surface that does not need one.
-      showToast({ message: 'No translatable text found on this page.', withSettings: false });
-      return;
+      if (state.textNodes.length === 0) {
+        discard = true;
+        hidePageProgressOverlay();
+        state.isTranslating = false;
+        // Page translation runs without a floating box, so there is nothing to
+        // render an error into; the toast is the surface that does not need one.
+        showToast({ message: t('noTextOnPage', userLang), withSettings: false });
+        return;
+      }
+
+      // Store original texts
+      for (const { node, text } of state.textNodes) {
+        state.originalTexts.set(node, text);
+      }
+
+      // Detect language
+      state.sourceLanguage = detectPageLanguage(state.textNodes);
+      state.targetLanguage = state.sourceLanguage === 'fa' ? 'en' : 'fa';
+
+      // Group text nodes into batches for translation
+      state.batches = batchTextNodesForTranslation(state.textNodes);
+      state.run = createPageRun(state.batches.length);
+
+      // A missing key gets its toast before any question about cost.
+      const [keySet, prefs] = await Promise.all([hasProviderKey(), readPageTranslatePrefs()]);
+      if (pageTranslationState !== state) return;
+      if (state.stopReason || abortSignal.aborted) {
+        discard = true;
+        return;
+      }
+      if (!keySet) {
+        discard = true;
+        hidePageProgressOverlay();
+        showMissingApiKeyToast();
+        return;
+      }
+
+      // Ask before the first request, unless the user turned that off.
+      if (prefs.confirm) {
+        const chars = state.textNodes.reduce((sum, { text }) => sum + text.length, 0);
+        const estimate = estimateTranslationCost({
+          chars,
+          batches: state.batches.length,
+          provider: prefs.provider,
+          targetLang: state.targetLanguage
+        });
+        clearPagePreparing();
+        coverPageForConfirm();
+        const answer = await confirmPageTranslation(pageProgressShadow, {
+          count: countParagraphs(state.textNodes),
+          costText: formatEstimateUsd(estimate.usd),
+          providerName: PROVIDER_NAMES[prefs.provider] || PROVIDER_NAMES[DEFAULT_PROVIDER_ID],
+          lang: userLang
+        });
+        if (pageTranslationState !== state) return;
+        if (!answer.go || state.stopReason || abortSignal.aborted) {
+          discard = true;
+          return;
+        }
+      }
+      indexes = state.batches.map((_, index) => index);
+    } else {
+      // The key may have gone since the first run. Without it the run keeps
+      // what it has and says only that.
+      const keyStillSet = await hasProviderKey();
+      if (pageTranslationState !== state) return;
+      if (!keyStillSet) state.stopReason = 'missingKey';
+      indexes = retry.indexes;
     }
 
-    // Store original texts
-    for (const { node, text } of pageTranslationState.textNodes) {
-      pageTranslationState.originalTexts.set(node, text);
+    state.phase = 'running';
+    if (!state.stopReason) {
+      showPageProgress();
+      updatePageProgress(0, indexes.length);
     }
 
-    // Detect language
-    pageTranslationState.sourceLanguage = detectPageLanguage(pageTranslationState.textNodes);
-    pageTranslationState.targetLanguage = pageTranslationState.sourceLanguage === 'fa' ? 'en' : 'fa';
+    // Each batch's outcome is recorded; a failed one does not stop the
+    // others, and a stop keeps the ones that finished.
+    for (let step = 0; step < indexes.length; step++) {
+      if (step > 0) {
+        await new Promise(resolve => setTimeout(resolve, PAGE_BATCH_GAP_MS));
+        if (pageTranslationState !== state) return;
+      }
+      // The address changed and the page this run translates has already
+      // gone: no more requests for it, without waiting out the settle time.
+      if (routeCheckTimer !== null && hasLeftPage(state)) {
+        checkRouteChange();
+        return;
+      }
+      if (state.stopReason || abortSignal.aborted) break;
 
-    // Group text nodes into batches for translation
-    const batches = batchTextNodesForTranslation(pageTranslationState.textNodes);
-    pageTranslationState.totalChunks = batches.length;
-
-    updatePageProgress(0, batches.length, 0);
-
-    // Translate each batch
-    for (let i = 0; i < batches.length; i++) {
-      if (pageTranslationCancelled || abortSignal.aborted) {
+      const index = indexes[step];
+      const outcome = await translatePageBatch(state, index, abortSignal);
+      if (pageTranslationState !== state) return;
+      if (outcome === 'stopped') break;
+      if (outcome === 'missingKey' || outcome === 'invalidated') {
+        state.stopReason = outcome;
         break;
       }
-
-      const batch = batches[i];
-
-      try {
-        // Build the batch text with numbered markers
-        const batchText = batch.map((item, idx) => `[${idx + 1}] ${item.text}`).join('\n');
-
-        const response = await requestTranslation({
-          text: batchText,
-          sourceLang: pageTranslationState.sourceLanguage,
-          mode: 'batch'
-        }, { signal: abortSignal });
-
-        if (response.errorCode === 'ABORTED') {
-          break;
-        }
-
-        if (response.error) {
-          if (isMissingApiKeyResponse(response)) {
-            showMissingApiKeyToast();
-            pageTranslationCancelled = true;
-            break;
-          }
-          console.error('Batch translation error:', response.error);
-          continue;
-        }
-
-        // Parse numbered translations back to individual nodes
-        const translations = parseNumberedTranslations(response.translation, batch.length);
-
-        for (let j = 0; j < batch.length; j++) {
-          const node = batch[j].node;
-          const translatedText = translations[j] || batch[j].text;
-          pageTranslationState.translatedTexts.set(node, translatedText);
-        }
-      } catch (error) {
-        if (error?.name === 'AbortError' || abortSignal.aborted) {
-          break;
-        }
-        console.error('Batch translation failed:', error);
-      }
-
-      pageTranslationState.translatedChunks = i + 1;
-      const percent = Math.round(((i + 1) / batches.length) * 100);
-      updatePageProgress(i + 1, batches.length, percent);
-
-      // Delay between batches
-      if (i < batches.length - 1 && !pageTranslationCancelled && !abortSignal.aborted) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
+      markBatch(state.run, index, outcome);
+      updatePageProgress(step + 1, indexes.length);
     }
 
-    // Apply translations to DOM
-    if (!pageTranslationCancelled && !abortSignal.aborted) {
-      applyPageTranslations();
-      pageTranslationState.isTranslated = true;
-      pageTranslationState.isShowingTranslated = true;
-      showPageToggleButton();
-    }
+    finishPageRun(state);
   } catch (error) {
     console.error('Page translation error:', error);
   } finally {
-    if (pageTranslationState) {
-      pageTranslationState.isTranslating = false;
+    state.isTranslating = false;
+    // A navigation already cleared the overlay and controller, and a later
+    // run may own them now.
+    if (pageTranslationState === state) {
+      hidePageProgressOverlay();
+      pageTranslationAbortController = null;
+      if (discard) pageTranslationState = null;
     }
+  }
+}
+
+/**
+ * Translate one batch of the page into state.translatedTexts. Nothing is
+ * written to the page here; finishPageRun applies every batch that came
+ * back at the end.
+ * @param {object} state - the run's pageTranslationState
+ * @param {number} index - which of state.batches
+ * @param {AbortSignal} abortSignal - aborted by a stop or a navigation
+ * @returns {Promise<'ok'|'failed'|'stopped'|'missingKey'|'invalidated'>}
+ *   'stopped' only when the signal was aborted
+ */
+async function translatePageBatch(state, index, abortSignal) {
+  const batch = state.batches[index];
+  // Build the batch text with numbered markers
+  const batchText = batch.map((item, idx) => `[${idx + 1}] ${item.text}`).join('\n');
+
+  let response;
+  try {
+    response = await requestTranslation({
+      text: batchText,
+      sourceLang: state.sourceLanguage,
+      mode: 'batch'
+    }, { signal: abortSignal });
+  } catch (error) {
+    if (error?.name === 'AbortError' || abortSignal.aborted) return 'stopped';
+    console.error('Batch translation failed:', error);
+    return 'failed';
+  }
+
+  // ABORTED without our signal is a dropped port (the service worker went
+  // away): a failure a retry can fix, not a stop.
+  if (abortSignal.aborted) return 'stopped';
+  if (response?.error) {
+    if (isMissingApiKeyResponse(response)) return 'missingKey';
+    // ParsiPad was reloaded or updated under the page: every later batch
+    // would fail the same way, and only a page reload helps.
+    if (response.errorCode === ERROR_CODES.CONTEXT_INVALIDATED) return 'invalidated';
+    console.error('Batch translation error:', response.error);
+    return 'failed';
+  }
+  if (typeof response?.translation !== 'string') return 'failed';
+
+  // Parse numbered translations back to individual nodes
+  const translations = parseNumberedTranslations(response.translation, batch.length);
+  batch.forEach((item, j) => {
+    state.translatedTexts.set(item.node, translations[j] || item.text);
+  });
+  return 'ok';
+}
+
+/**
+ * End a run that still owns the page: apply every batch that came back,
+ * show the toggle once anything is translated, and say how it went. A
+ * missing key or an extension updated under the page says only that, in
+ * its own alert, never under a summary.
+ * @param {object} state
+ */
+function finishPageRun(state) {
+  const summary = summarizeRun(state.run);
+  if (summary.done > 0) {
+    applyPageTranslations();
+    state.isTranslated = true;
+    state.isShowingTranslated = true;
+    showPageToggleButton();
+    updatePageToggleButton();
+  }
+
+  if (state.stopReason === 'missingKey') {
+    showMissingApiKeyToast();
+    return;
+  }
+  if (state.stopReason === 'invalidated') {
+    showReloadToast();
+    return;
+  }
+
+  const key = summaryMessageKey(summary, state.stopReason === 'user');
+  const message = t(key, userLang)
+    .replace('{done}', String(summary.done))
+    .replace('{total}', String(summary.total))
+    .replace('{failed}', String(summary.failed));
+  // A stop is the user's choice, so only a run that went to the end offers
+  // to send again what failed; Translate Page picks up a stopped run. The
+  // offer stays until the user acts on it, so it is never lost to a timer.
+  const action = key === 'pageTranslatePartial'
+    ? { label: t('pageTranslateRetryFailed', userLang), onClick: () => retryFailedBatches(state) }
+    : null;
+  state.closeSummary = showToast({ message, withSettings: false, action, persist: Boolean(action) });
+}
+
+/**
+ * Retry failed: send again only the batches of `state`'s run that failed.
+ * Does nothing once the page has moved on (a navigation or a newer run owns
+ * it) or while a run is going.
+ * @param {object} state
+ * @returns {Promise<void>|undefined}
+ */
+function retryFailedBatches(state) {
+  if (pageTranslationState !== state || state.isTranslating) return;
+  const indexes = failedIndexes(state.run);
+  if (indexes.length === 0) return;
+  return handleTranslatePage({ retry: { state, indexes } });
+}
+
+/**
+ * Stop the page translation: the Cancel button, Escape or the popup. While
+ * the page is still asking first, the question closes with nothing sent; a
+ * running translation keeps what finished and says it stopped.
+ */
+function stopPageTranslation() {
+  const state = pageTranslationState;
+  if (!state?.isTranslating) return;
+  state.stopReason = 'user';
+  pageTranslationAbortController?.abort();
+  // Nothing has been requested while the page asks first; removing the
+  // overlay closes the dialog, which answers Cancel.
+  if (state.phase === 'confirming') {
     hidePageProgressOverlay();
-    pageTranslationAbortController = null;
   }
 }
 
@@ -2382,56 +3001,67 @@ function injectPageTranslationStyles() {
 }
 
 /**
- * Apply translations to the DOM
+ * Apply translations to the DOM. A translation is written only over the text
+ * ParsiPad read, or the translation it wrote there before: a node the page
+ * has changed since (a live counter, a view redrawn in place) keeps the
+ * page's text.
  */
 function applyPageTranslations() {
-  if (!pageTranslationState) return;
+  const state = pageTranslationState;
+  if (!state) return;
 
   // Inject Vazir font styles for Persian text
   injectPageTranslationStyles();
 
   const rtlLangs = ['fa', 'ar', 'he'];
-  const targetDir = rtlLangs.includes(pageTranslationState.targetLanguage) ? 'rtl' : 'ltr';
+  const targetDir = rtlLangs.includes(state.targetLanguage) ? 'rtl' : 'ltr';
 
-  for (const { node, parent } of pageTranslationState.textNodes) {
-    const translatedText = pageTranslationState.translatedTexts.get(node);
-    if (translatedText) {
-      node.textContent = translatedText;
+  for (const { node, parent } of state.textNodes) {
+    const translatedText = state.translatedTexts.get(node);
+    if (!translatedText) continue;
+    const current = node.textContent;
+    if (current !== state.originalTexts.get(node) && current !== translatedText) continue;
+    node.textContent = translatedText;
 
-      if (parent) {
-        if (!pageTranslationState.originalDirections.has(parent)) {
-          pageTranslationState.originalDirections.set(parent, parent.getAttribute('dir'));
-        }
-        parent.setAttribute('dir', targetDir);
-        // Mark as translated for Vazir font styling
-        parent.setAttribute('data-parsipad-translated', 'true');
+    if (parent) {
+      if (!state.originalDirections.has(parent)) {
+        state.originalDirections.set(parent, parent.getAttribute('dir'));
       }
+      parent.setAttribute('dir', targetDir);
+      // Mark as translated for Vazir font styling
+      parent.setAttribute('data-parsipad-translated', 'true');
     }
   }
 }
 
 /**
- * Restore original text to the DOM
+ * Restore original text to the DOM, only where the page still shows the
+ * translation ParsiPad wrote. Text nodes no longer on the page (an SPA
+ * replaced them) or holding the page's own newer text are not written to;
+ * their element, if it is still on the page, loses the translated marker
+ * and gets its direction back.
  */
 function restorePageOriginals() {
-  if (!pageTranslationState) return;
+  const state = pageTranslationState;
+  if (!state) return;
 
-  for (const { node, parent } of pageTranslationState.textNodes) {
-    const originalText = pageTranslationState.originalTexts.get(node);
-    if (originalText) {
+  for (const { node, parent } of state.textNodes) {
+    const originalText = state.originalTexts.get(node);
+    if (!originalText) continue;
+    if (node.isConnected && node.textContent === state.translatedTexts.get(node)) {
       node.textContent = originalText;
+    }
 
-      if (parent) {
-        // Remove translated marker
-        parent.removeAttribute('data-parsipad-translated');
+    if (parent?.isConnected) {
+      // Remove translated marker
+      parent.removeAttribute('data-parsipad-translated');
 
-        if (pageTranslationState.originalDirections.has(parent)) {
-          const originalDir = pageTranslationState.originalDirections.get(parent);
-          if (originalDir) {
-            parent.setAttribute('dir', originalDir);
-          } else {
-            parent.removeAttribute('dir');
-          }
+      if (state.originalDirections.has(parent)) {
+        const originalDir = state.originalDirections.get(parent);
+        if (originalDir) {
+          parent.setAttribute('dir', originalDir);
+        } else {
+          parent.removeAttribute('dir');
         }
       }
     }
@@ -2455,72 +3085,166 @@ function handleTogglePageTranslation() {
   updatePageToggleButton();
 }
 
+// The overlay host while the page asks first: it covers the viewport so the
+// scrim keeps the page inert behind the modal dialog, which sits where the
+// progress card is. No transform, or the host would not span the viewport.
+const PAGE_OVERLAY_CONFIRM_STYLE = `
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 24px;
+  box-sizing: border-box;
+  z-index: 2147483647;
+`;
+
+// The overlay host while it prepares and once the requests run: a card at
+// the bottom centre that leaves the page usable.
+const PAGE_OVERLAY_PROGRESS_STYLE = `
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+`;
+
 /**
- * Show page progress overlay
+ * Create the page overlay as the bottom-centre card saying "Preparing": it
+ * holds the confirmation first, when there is one, and the progress after
+ * it. The scrim comes only with the question (coverPageForConfirm), so a
+ * run that does not ask never covers the page.
  */
-function showPageProgressOverlay() {
+function mountPageOverlay() {
   if (pageProgressOverlay) {
     hidePageProgressOverlay();
   }
 
   const host = document.createElement('div');
   host.id = 'parsipad-page-progress';
-  host.style.cssText = `
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 2147483647;
-  `;
+  host.style.cssText = PAGE_OVERLAY_PROGRESS_STYLE;
 
   pageProgressShadow = host.attachShadow({ mode: 'closed' });
 
 
   applyHostTheme(host);
+  if (userLang === 'fa') ensurePersianFontLoaded();
   const style = document.createElement('style');
-  style.textContent = getPageProgressStyles();
+  style.textContent = getPageProgressStyles() + getPageConfirmStyles();
   pageProgressShadow.appendChild(style);
 
-  const overlay = document.createElement('div');
-  overlay.className = 'parsipad-progress-overlay';
-  overlay.innerHTML = `
-    <div class="parsipad-progress-header">
-      <img src="${chrome.runtime.getURL('icons/icon-48.png')}" alt="ParsiPad" class="parsipad-progress-logo">
-      <span class="parsipad-progress-title">Translating page...</span>
-    </div>
-    <div class="parsipad-progress-bar-container">
-      <div class="parsipad-progress-bar" style="width: 0%"></div>
-    </div>
-    <div class="parsipad-progress-text">Preparing...</div>
-    <button class="parsipad-progress-cancel">Cancel</button>
-  `;
+  const status = document.createElement('div');
+  status.className = 'parsipad-page-status';
+  status.setAttribute('role', 'status');
+  status.setAttribute('lang', userLang);
+  // In-page UI is not mirrored, but Persian text still reads right to left.
+  status.setAttribute('dir', userLang === 'fa' ? 'rtl' : 'ltr');
+  status.textContent = t('pagePreparing', userLang);
 
-  pageProgressShadow.appendChild(overlay);
+  pageProgressShadow.append(status);
   document.body.appendChild(host);
   pageProgressOverlay = host;
-
-  // Cancel button handler
-  const cancelBtn = pageProgressShadow.querySelector('.parsipad-progress-cancel');
-  cancelBtn.addEventListener('click', () => {
-    pageTranslationCancelled = true;
-    pageTranslationAbortController?.abort();
-  });
 }
 
 /**
- * Update progress display
+ * Make the overlay modal for the question: the host spans the viewport and
+ * a scrim keeps the page inert behind the dialog. A click on the scrim
+ * answers the dialog's Cancel.
  */
-function updatePageProgress(current, total, percent) {
+function coverPageForConfirm() {
   if (!pageProgressShadow) return;
 
+  pageProgressOverlay.style.cssText = PAGE_OVERLAY_CONFIRM_STYLE;
+  const scrim = document.createElement('div');
+  scrim.className = 'parsipad-scrim';
+  scrim.addEventListener('click', (event) => {
+    if (event.target !== scrim) return;
+    pageProgressShadow?.querySelector('.parsipad-confirm [data-action="cancel"]')?.click();
+  });
+  pageProgressShadow.append(scrim);
+}
+
+/**
+ * Remove the "Preparing" status once the dialog or the progress replaces it.
+ */
+function clearPagePreparing() {
+  pageProgressShadow?.querySelector('.parsipad-page-status')?.remove();
+}
+
+/**
+ * Show the progress UI in the mounted overlay, once the requests start: the
+ * scrim goes and the host shrinks back to the bottom-centre card.
+ */
+function showPageProgress() {
+  if (!pageProgressShadow) return;
+
+  clearPagePreparing();
+  pageProgressShadow.querySelector('.parsipad-scrim')?.remove();
+  pageProgressOverlay.style.cssText = PAGE_OVERLAY_PROGRESS_STYLE;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'parsipad-progress-overlay';
+  overlay.setAttribute('lang', userLang);
+  // In-page UI is not mirrored, but Persian text still reads right to left.
+  overlay.setAttribute('dir', userLang === 'fa' ? 'rtl' : 'ltr');
+  // Static markup only; every piece of text is set below with textContent.
+  // The bar is named by the title and says its count in aria-valuetext; the
+  // line under it is the live region, since a progressbar is not one.
+  overlay.innerHTML = `
+    <div class="parsipad-progress-header">
+      ${logoImg('class="parsipad-progress-logo" alt="" aria-hidden="true"')}
+      <span class="parsipad-progress-title" id="parsipad-progress-title"></span>
+    </div>
+    <div class="parsipad-progress-bar-container" role="progressbar" aria-labelledby="parsipad-progress-title" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="parsipad-progress-bar" style="transform: scaleX(0)"></div>
+    </div>
+    <div class="parsipad-progress-text" role="status"></div>
+    <button class="parsipad-progress-cancel" type="button"></button>
+  `;
+  overlay.querySelector('.parsipad-progress-title').textContent = t('translatingPage', userLang);
+  overlay.querySelector('.parsipad-progress-text').textContent = t('pagePreparing', userLang);
+  overlay.querySelector('[role="progressbar"]').setAttribute('aria-valuetext', t('pagePreparing', userLang));
+
+  pageProgressShadow.appendChild(overlay);
+
+  // Cancel stops the run and keeps what finished.
+  const cancelBtn = pageProgressShadow.querySelector('.parsipad-progress-cancel');
+  cancelBtn.textContent = t('cancel', userLang);
+  cancelBtn.addEventListener('click', stopPageTranslation);
+}
+
+/**
+ * Update progress display: `current` of `total` sections done.
+ * @param {number} current
+ * @param {number} total
+ */
+function updatePageProgress(current, total) {
+  if (!pageProgressShadow) return;
+
+  const percent = total > 0 ? Math.round((Math.min(current, total) / total) * 100) : 0;
+  // The section being translated, so the count starts at 1, not 0.
+  const said = t('pageTranslateProgress', userLang)
+    .replace('{n}', String(Math.min(current + 1, total)))
+    .replace('{total}', String(total));
+
+  const meter = pageProgressShadow.querySelector('[role="progressbar"]');
   const progressBar = pageProgressShadow.querySelector('.parsipad-progress-bar');
   const progressText = pageProgressShadow.querySelector('.parsipad-progress-text');
 
+  if (meter) {
+    meter.setAttribute('aria-valuenow', String(percent));
+    meter.setAttribute('aria-valuetext', said);
+  }
   if (progressBar) {
-    progressBar.style.width = `${percent}%`;
+    // A transform, not a width: it is composited, and its transition sits
+    // in the stylesheet's no-preference motion guard.
+    progressBar.style.transform = `scaleX(${percent / 100})`;
   }
   if (progressText) {
-    progressText.textContent = `Processing chunk ${current} of ${total} (${percent}%)`;
+    progressText.textContent = said;
   }
 }
 
@@ -2560,12 +3284,16 @@ function showPageToggleButton() {
   style.textContent = getPageToggleStyles();
   pageToggleShadow.appendChild(style);
 
+  // A constant name and a pressed state: pressed while the original shows.
+  // Changing both the name and the state would announce the change twice.
   const button = document.createElement('button');
+  button.type = 'button';
   button.className = 'parsipad-toggle-btn showing-translated';
-  button.title = 'Show original';
-  button.setAttribute('aria-label', 'Toggle between original and translated text');
+  button.title = t('showOriginal', userLang);
+  button.setAttribute('aria-label', t('showOriginal', userLang));
+  button.setAttribute('aria-pressed', 'false');
   button.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
       <path d="M4.545 6.714 4.11 8H3l1.862-5h1.284L8 8H6.833l-.435-1.286zm1.634-.736L5.5 3.956h-.049l-.679 2.022z"/>
       <path d="M0 2a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v3h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm7.138 9.995q.289.451.63.846c-.748.575-1.673 1.001-2.768 1.292.178.217.451.635.555.867 1.125-.359 2.08-.844 2.886-1.494.777.665 1.739 1.165 2.93 1.472.133-.254.414-.673.629-.89-1.125-.253-2.057-.694-2.82-1.284.681-.747 1.222-1.651 1.621-2.757H14V8h-3v1.047h.765c-.318.844-.74 1.546-1.272 2.13a6 6 0 0 1-.415-.492 2 2 0 0 1-.94.31"/>
     </svg>
@@ -2586,15 +3314,11 @@ function updatePageToggleButton() {
 
   const button = pageToggleShadow.querySelector('.parsipad-toggle-btn');
   if (button) {
-    if (pageTranslationState?.isShowingTranslated) {
-      button.classList.add('showing-translated');
-      button.classList.remove('showing-original');
-      button.title = 'Show original';
-    } else {
-      button.classList.remove('showing-translated');
-      button.classList.add('showing-original');
-      button.title = 'Show translated';
-    }
+    const showingTranslated = Boolean(pageTranslationState?.isShowingTranslated);
+    button.classList.toggle('showing-translated', showingTranslated);
+    button.classList.toggle('showing-original', !showingTranslated);
+    button.setAttribute('aria-pressed', String(!showingTranslated));
+    button.title = t(showingTranslated ? 'showOriginal' : 'showTranslated', userLang);
   }
 }
 
@@ -2617,6 +3341,23 @@ function handleDocumentClick(event) {
  * Handle keyboard events
  */
 function handleKeyDown(event) {
+  // The keyboard path into the selection toolbar, which never takes focus on
+  // its own. Remembers where focus was so it can go back there. Tab is only
+  // taken once focus has really moved: where the toolbar cannot take focus
+  // (an inert page behind a modal dialog), cancelling it would trap the
+  // keyboard, so the browser keeps this Tab and the toolbar is passed by.
+  if (shouldTabIntoSelectionPopup(event)) {
+    const returnTo = document.activeElement;
+    focusSelectionPopup();
+    if (document.activeElement === selectionPopup) {
+      selectionPopupReturnFocus = returnTo;
+      event.preventDefault();
+    } else {
+      selectionPopupFocusLeft = true;
+    }
+    return;
+  }
+
   // The non-pointer path into block translate. Kept here rather than in
   // manifest.commands because Chrome allows only four suggested keys and all
   // four are already assigned.
@@ -2632,14 +3373,12 @@ function handleKeyDown(event) {
   // does not eat the compose character for a resolution that would fail
   // anyway, since resolveBlock hard-rejects editable regions; and the enabled
   // check runs before preventDefault so a user who turned the feature off
-  // keeps the shortcut everywhere else.
-  const keyTarget = event.target;
-  const isEditableTarget = keyTarget instanceof HTMLElement &&
-    (keyTarget.isContentEditable || keyTarget.tagName === 'INPUT' ||
-     keyTarget.tagName === 'TEXTAREA' || keyTarget.tagName === 'SELECT');
+  // keeps the shortcut everywhere else. A key a page script dispatched is
+  // never taken: it would send a request the user did not ask for.
+  const isEditableTarget = isEditableKeyTarget(event.target);
 
   if (event.altKey && !event.ctrlKey && !event.metaKey && !isEditableTarget &&
-      isBlockTranslateEnabled() &&
+      !isSyntheticKey(event) && isBlockTranslateEnabled() &&
       (event.code === 'KeyB' || event.key === 'b' || event.key === 'B')) {
     event.preventDefault();
     translateFocusedBlock();
@@ -2647,10 +3386,30 @@ function handleKeyDown(event) {
   }
 
   if (event.key === 'Escape') {
+    // Escape dismisses the topmost thing first: an open box, the selection
+    // toolbar or the screenshot overlay closes, and a running page
+    // translation stops only when none of them is open (the toast handles
+    // its own Escape). A stop keeps what finished. The key is not consumed:
+    // the page's own Escape handling still runs. In a text field Escape
+    // belongs to the field (clearing a search, say), so it is left alone
+    // there; Cancel stops the run from anywhere. The question before a run
+    // handles its own Escape, so this acts only once the requests are going.
+    const somethingOpen = Boolean(floatingBox || selectionPopup || screenshotOverlay);
+    if (!isEditableTarget && !somethingOpen &&
+        pageTranslationState?.isTranslating && pageTranslationState.phase === 'running') {
+      stopPageTranslation();
+    }
     hideBlockIcon();
     if (screenshotOverlay) {
       cancelScreenshotMode();
       return;
+    }
+    // Focus in the toolbar: it closes first and hands focus back to where Tab
+    // took it from. A box still open behind it then closes without moving
+    // focus again to the element it was opened from.
+    if (selectionPopup && document.activeElement === selectionPopup) {
+      removeSelectionPopup();
+      previouslyFocused = null;
     }
     if (floatingBox) {
       removeFloatingBox();
@@ -2659,6 +3418,85 @@ function handleKeyDown(event) {
       removeSelectionPopup();
     }
   }
+}
+
+/**
+ * Whether a page script dispatched this key event rather than the user
+ * pressing it. This content script runs on every page, so a page could
+ * otherwise start a provider request (Alt+B) or pull focus into the
+ * toolbar (Tab) on the user's behalf. Strictly false: only the browser sets
+ * isTrusted, and an environment that leaves it unset is not a page script.
+ * @param {Event} event
+ * @returns {boolean}
+ */
+function isSyntheticKey(event) {
+  return event.isTrusted === false;
+}
+
+/**
+ * Whether a key event's target takes typed text, where keys belong to it.
+ * @param {EventTarget|null} target
+ * @returns {boolean}
+ */
+function isEditableKeyTarget(target) {
+  return target instanceof HTMLElement &&
+    (target.isContentEditable || target.tagName === 'INPUT' ||
+     target.tagName === 'TEXTAREA' || target.tagName === 'SELECT');
+}
+
+/**
+ * Whether this keydown should move focus into the selection toolbar: a plain
+ * Tab while the toolbar is up for the current selection, from anywhere but a
+ * text field, the toolbar itself or the floating box. keydown from inside a
+ * closed shadow root reaches the document retargeted to its host, so the
+ * composed path, not the target, says where it came from; without that check
+ * Tab could never leave the toolbar. For the same reason a text field in a
+ * page's own closed root shows up only as its host, so focus is also checked
+ * with the rule that keeps the toolbar out of text fields. Once focus has
+ * left the toolbar, Tab passes it by, or every Tab on the page would pull
+ * focus back into it. A page that handled Tab itself (a dialog's focus trap)
+ * keeps it, and so does a selection that has gone or changed while the
+ * toolbar waits to be cleared away.
+ * @param {KeyboardEvent} event
+ * @returns {boolean}
+ */
+function shouldTabIntoSelectionPopup(event) {
+  if (event.key !== 'Tab' || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return false;
+  if (isSyntheticKey(event)) return false;
+  if (!selectionPopup || selectionPopupFocusLeft || event.defaultPrevented) return false;
+  const path = event.composedPath();
+  if (isEditableKeyTarget(path[0])) return false;
+  if (path.includes(selectionPopup) || (floatingBox && path.includes(floatingBox))) return false;
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return false;
+  if (isEditableSelection(selection, document.activeElement)) return false;
+  return Boolean(selectionPopupAnchor) && selection.toString().trim() === selectionPopupAnchor.text;
+}
+
+/**
+ * Focus the toolbar's current tab stop. Without scrolling: the toolbar was
+ * just placed beside the selection, which is already in view.
+ */
+function focusSelectionPopup() {
+  if (!selectionPopupShadow) return;
+  const active = selectionPopupShadow.querySelector('.selection-btn[tabindex="0"]');
+  if (active) active.focus({ preventScroll: true });
+}
+
+/**
+ * Give focus back to the element that had it when Tab moved it into the
+ * toolbar. Nothing to do when that was the page itself (the body) or the
+ * element has since left the document.
+ * @returns {boolean} whether focus moved
+ */
+function returnFocusFromSelectionPopup() {
+  const returnTo = selectionPopupReturnFocus;
+  if (!returnTo || returnTo === document.body || typeof returnTo.focus !== 'function' ||
+      !document.contains(returnTo)) {
+    return false;
+  }
+  returnTo.focus({ preventScroll: true });
+  return true;
 }
 
 
@@ -2857,12 +3695,12 @@ async function cropAndTranslate(rect, screenshotDataUrl) {
     });
 
     if (response.error) {
-      showError(response.error);
+      showError(response);
     } else {
       showImageTranslationResult(response);
     }
   } catch (error) {
-    showError(error.message || 'Screenshot translation failed');
+    showError(error);
   }
 }
 
@@ -2900,10 +3738,14 @@ function showImageTranslationResult(response) {
     html += `<div class="parsipad-text" dir="${isTranslationRTL ? 'rtl' : 'ltr'}">${escapeHtml(translation)}</div>`;
   }
   if (!extractedText && !translation) {
-    html = '<div class="parsipad-text" style="color:#6B7280;">No text found in selected region.</div>';
+    html = '<div class="parsipad-text" style="color:#6B7280;"></div>';
   }
 
+  setContentLiveState(content, 'ready');
   content.innerHTML = html;
+  if (!extractedText && !translation) {
+    content.querySelector('.parsipad-text').textContent = t('noTextFound', userLang);
+  }
 
   // Show footer
   const footer = shadowRoot.querySelector('.parsipad-footer');
@@ -2969,131 +3811,129 @@ async function loadSelectionPopupSetting() {
   }
 }
 
+/**
+ * Load whether this page's host is muted. Yields to a value written while the
+ * read was pending (a storage change or a mute from the toolbar), which is
+ * newer than what it read.
+ */
 async function loadMutedSites() {
+  let muted = false;
   try {
     const result = await chrome.storage.local.get(MUTED_SITES_KEY);
-    siteMuted = isHostMuted(result[MUTED_SITES_KEY], location.hostname);
-  } catch (error) {
-    siteMuted = false;
+    muted = isHostMuted(result[MUTED_SITES_KEY], location.hostname);
+  } catch {
+    muted = false;
   }
+  if (mutedLoaded) return;
+  mutedLoaded = true;
+  siteMuted = muted;
 }
 
 /**
- * Handle text selection on mouseup
+ * Whether a pointer event started on the selection toolbar or the floating
+ * box. Both live in closed shadow roots, so the composed path ends at their
+ * host elements.
+ * @param {Event} event
+ * @returns {boolean}
  */
-function handleTextSelection(event) {
-  // Quiet on sites the user muted
-  if (siteMuted) return;
+function isPointerOnOwnUi(event) {
+  const path = event.composedPath();
+  return Boolean((selectionPopup && path.includes(selectionPopup)) ||
+    (floatingBox && path.includes(floatingBox)));
+}
 
-  // Don't show popup if disabled
+// The hosts ParsiPad adds to a page: the floating box, toolbar, toast and
+// page-translation overlay and toggle carry a parsipad- id; block translate
+// marks its icon and its inline translations with data attributes.
+const OWN_UI_SELECTOR = '[id^="parsipad-"], [data-parsipad-icon], [data-parsipad-translation]';
+
+/**
+ * Whether the selection lies in ParsiPad's own UI (see OWN_UI_SELECTOR).
+ * @param {Selection} selection
+ * @returns {boolean}
+ */
+function isSelectionInOwnUi(selection) {
+  const inOwnUi = (node) => {
+    const element = node && (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement);
+    return Boolean(element && element.closest(OWN_UI_SELECTOR));
+  };
+  if (inOwnUi(selection.anchorNode) || inOwnUi(selection.focusNode)) return true;
+  // A selection inside a closed shadow root (the floating box) is reported
+  // at the host's own position in its parent, both ends at the same offset.
+  const { anchorNode, anchorOffset } = selection;
+  if (!anchorNode || anchorNode.nodeType !== Node.ELEMENT_NODE) return false;
+  if (selection.focusNode !== anchorNode || selection.focusOffset !== anchorOffset) return false;
+  const child = anchorNode.childNodes[anchorOffset];
+  return Boolean(child && child.nodeType === Node.ELEMENT_NODE && child.matches(OWN_UI_SELECTOR));
+}
+
+/**
+ * Look at the selection once it has settled (called by the toolbar trigger)
+ * and show the toolbar for it, move it to a new range, or hide it.
+ */
+function evaluateSelection() {
+  if (siteMuted) return;
   if (!selectionPopupEnabled) return;
 
-  // Don't show if clicking inside existing popup or floating box
-  if (selectionPopup && selectionPopup.contains(event.target)) return;
-  if (floatingBox && floatingBox.contains(event.target)) return;
+  // Focus inside the toolbar (a keyboard user on its buttons): leave it, or a
+  // rebuild would destroy the focused button.
+  if (selectionPopup && document.activeElement === selectionPopup) return;
 
-  // Clear any existing debounce timer
-  if (selectionDebounceTimer) {
-    clearTimeout(selectionDebounceTimer);
-    selectionDebounceTimer = null;
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 ||
+      isEditableSelection(selection, document.activeElement) ||
+      isSelectionInOwnUi(selection)) {
+    removeSelectionPopup();
+    return;
   }
 
-  // Remove existing popup immediately on new selection attempt
+  // A page-sized selection (Ctrl+A) gets no toolbar: Translate would send the
+  // whole page in one request. Same cap as the side-panel report.
+  const selectedText = selection.toString().trim();
+  if (selectedText.length < 2 || selectedText.length > MAX_REPORT_LENGTH) {
+    removeSelectionPopup();
+    return;
+  }
+
+  const rect = selection.getRangeAt(0).getBoundingClientRect();
+  const anchor = selectionAnchor(selectedText, rect);
+  if (selectionPopup && selectionPopup.isConnected && isSameAnchor(anchor, selectionPopupAnchor)) return;
+
   removeSelectionPopup();
-
-  // Debounce: wait 200ms before showing popup to avoid flickering
-  selectionDebounceTimer = setTimeout(() => {
-    // A mute that arrived during the debounce wins
-    if (siteMuted) return;
-
-    const selection = window.getSelection();
-    const selectedText = selection?.toString().trim();
-
-    // Only show popup if there's selected text (min 2 chars)
-    if (selectedText && selectedText.length >= 2) {
-      const position = getSelectionPopupPosition(selection);
-      createSelectionPopup(position, selectedText);
-    }
-  }, 200);
+  createSelectionPopup(rect, selectedText);
+  selectionPopupAnchor = anchor;
 }
 
 /**
- * Get position for selection popup (centered on selection)
- * Uses smart flip to position above or below based on available space
+ * Create the selection toolbar for the selected text.
+ *
+ * Laid out hidden and measured first, so it is placed from its real size:
+ * above the selection and centred on it, flipping below and clamping at the
+ * viewport edges. Its entry animation is chosen after that, from where it
+ * landed. It never takes focus on its own; Tab moves focus in (see
+ * handleKeyDown), the arrow keys move between its buttons, and Tab leaves.
+ *
+ * @param {{top: number, bottom: number, left: number, right: number}} selectionRect - viewport coordinates
+ * @param {string} selectedText
  */
-function getSelectionPopupPosition(selection) {
-  // Constants for popup dimensions
-  const POPUP_WIDTH = 120;
-  const POPUP_HEIGHT = 46;
-  const GAP = 8;
-  const VIEWPORT_PADDING = 12;
-
-  let top = 100;
-  let left = 100;
-  let showBelow = false;
-
-  if (selection && selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-
-    // Center popup horizontally on selection
-    const selectionCenterX = rect.left + (rect.width / 2);
-    left = selectionCenterX + window.scrollX - (POPUP_WIDTH / 2);
-
-    // Calculate space above and below selection
-    const spaceAbove = rect.top;
-    const spaceBelow = window.innerHeight - rect.bottom;
-
-    // Prefer above, but flip to below if not enough space above AND more space below
-    if (spaceAbove < POPUP_HEIGHT + GAP && spaceBelow > spaceAbove) {
-      // Show below selection
-      top = rect.bottom + window.scrollY + GAP;
-      showBelow = true;
-    } else {
-      // Show above selection
-      top = rect.top + window.scrollY - POPUP_HEIGHT - GAP;
-    }
-
-    // Ensure popup stays within horizontal viewport bounds
-    const maxLeft = window.innerWidth - POPUP_WIDTH - VIEWPORT_PADDING;
-    if (left > maxLeft) {
-      left = maxLeft > 0 ? maxLeft : VIEWPORT_PADDING;
-    }
-    if (left < VIEWPORT_PADDING) {
-      left = VIEWPORT_PADDING;
-    }
-
-    // Ensure popup stays within vertical viewport bounds
-    const scrollTop = window.scrollY;
-    if (top < scrollTop + VIEWPORT_PADDING) {
-      top = scrollTop + VIEWPORT_PADDING;
-    }
-  }
-
-  return { top, left, showBelow };
-}
-
-/**
- * Create the selection popup with action icons
- */
-function createSelectionPopup(position, selectedText) {
+function createSelectionPopup(selectionRect, selectedText) {
   // Create host element
   const host = document.createElement('div');
   host.id = 'parsipad-selection-popup';
   host.style.cssText = `
     position: absolute;
-    top: ${position.top}px;
-    left: ${position.left}px;
+    top: 0;
+    left: 0;
     z-index: 2147483647;
+    visibility: hidden;
   `;
 
   // Create shadow root for style isolation
   selectionPopupShadow = host.attachShadow({ mode: 'closed' });
 
   applyHostTheme(host);
-  // Inject styles with animation direction based on position
   const style = document.createElement('style');
-  style.textContent = getSelectionPopupStyles(position.showBelow);
+  style.textContent = getSelectionPopupStyles();
   selectionPopupShadow.appendChild(style);
 
   // Check if selected text is a single word (for dictionary)
@@ -3103,34 +3943,44 @@ function createSelectionPopup(position, selectedText) {
   const popup = document.createElement('div');
   popup.className = 'selection-popup';
   popup.setAttribute('role', 'toolbar');
-  popup.setAttribute('aria-label', 'Text actions');
-  // Build the three icon buttons via DOM API so we can safely append a real
+  popup.setAttribute('aria-label', t('toolbarLabel', userLang));
+  // Build the icon buttons via DOM API so we can safely append a real
   // <span class="pp-tooltip"> for each label without relying on innerHTML
   // interpolation. Tooltips use theme-aware tokens so they stay legible on
   // dark host pages (previous ::before approach was dark-on-dark).
-  const dictTooltipText = isSingleWord ? 'Dictionary' : 'Single word only';
-  const dictAria = 'Look up in dictionary' + (isSingleWord ? '' : ' (single word only)');
+  const dictionaryKey = isSingleWord ? 'toolbarDictionary' : 'toolbarDictionarySingleWord';
   const buttons = [
     {
       action: 'translate',
-      label: 'Translate',
-      ariaLabel: 'Translate selected text',
+      label: t('toolbarTranslate', userLang),
+      ariaLabel: t('toolbarTranslate', userLang),
       svgPath: 'M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129'
     },
     {
       action: 'polish',
-      label: 'Polish',
-      ariaLabel: 'Polish and improve text',
+      label: t('toolbarPolish', userLang),
+      ariaLabel: t('toolbarPolish', userLang),
       svgPath: 'M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z'
     },
     {
       action: 'dictionary',
-      label: dictTooltipText,
-      ariaLabel: dictAria,
+      label: t(dictionaryKey, userLang),
+      ariaLabel: t(dictionaryKey, userLang),
       disabled: !isSingleWord,
       svgPath: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253'
     }
   ];
+  // Only a host the muted-sites list can hold (not localhost or an intranet
+  // name without a dot) gets the button; anywhere else it would do nothing.
+  if (normalizeHost(location.hostname)) {
+    buttons.push({
+      action: 'mute',
+      label: t('toolbarMute', userLang),
+      ariaLabel: t('toolbarMute', userLang),
+      svgPath: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636'
+    });
+  }
+  const buttonEls = [];
   for (const cfg of buttons) {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -3146,6 +3996,7 @@ function createSelectionPopup(position, selectedText) {
     svg.setAttribute('stroke', 'currentColor');
     svg.setAttribute('stroke-width', '2');
     svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
     const path = document.createElementNS(ns, 'path');
     path.setAttribute('d', cfg.svgPath);
     svg.appendChild(path);
@@ -3158,15 +4009,34 @@ function createSelectionPopup(position, selectedText) {
     btn.appendChild(tooltip);
 
     popup.appendChild(btn);
+    buttonEls.push(btn);
   }
+  // One tab stop for the whole toolbar; the arrow keys move it.
+  applyRovingTabindex(buttonEls, 0);
 
   selectionPopupShadow.appendChild(popup);
   document.body.appendChild(host);
 
   selectionPopup = host;
 
+  // Laid out but not painted: measure, place, pick the entry direction, show.
+  const size = host.getBoundingClientRect();
+  const { top, left, placement } = computeBoxPosition({
+    selection: selectionRect,
+    box: { width: size.width, height: size.height },
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    scroll: { x: window.scrollX, y: window.scrollY },
+    gap: 8, padding: 12,
+    prefer: 'above',
+    align: 'center'
+  });
+  host.style.top = `${top}px`;
+  host.style.left = `${left}px`;
+  popup.dataset.placement = placement;
+  host.style.visibility = 'visible';
+
   // Set up event listeners
-  popup.querySelectorAll('.selection-btn').forEach(btn => {
+  buttonEls.forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const action = btn.dataset.action;
@@ -3181,8 +4051,36 @@ function createSelectionPopup(position, selectedText) {
         polishAndShow(selectedText);
       } else if (action === 'dictionary' && isSingleWord) {
         dictionaryAndShow(selectedText);
+      } else if (action === 'mute') {
+        // detail is the click count, 0 when Enter or Space pressed the button.
+        muteThisSite({ fromKeyboard: e.detail === 0 });
       }
     });
+  });
+
+  popup.addEventListener('keydown', (event) => {
+    if (event.key === 'Tab') {
+      // Focus is leaving, and Tab passes this toolbar by from now on. Back on
+      // the element focus came in from, Shift+Tab stays there and Tab lets
+      // the browser move on from it, as if the toolbar sat right after it.
+      selectionPopupFocusLeft = true;
+      if (returnFocusFromSelectionPopup()) {
+        if (event.shiftKey) event.preventDefault();
+      }
+      return;
+    }
+    // Plain arrows only: Alt+Left is the browser's Back.
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    const current = buttonEls.indexOf(event.target);
+    if (current === -1) return;
+    const next = rovingIndex(current, event.key, buttonEls.length);
+    if (next === null) return;
+    // Handled here: the arrows must not also scroll the page or reach its
+    // own shortcuts.
+    event.preventDefault();
+    event.stopPropagation();
+    applyRovingTabindex(buttonEls, next);
+    buttonEls[next].focus();
   });
 
   // Prevent clicks inside popup from triggering document click
@@ -3190,14 +4088,21 @@ function createSelectionPopup(position, selectedText) {
 }
 
 /**
- * Remove the selection popup
+ * Remove the selection toolbar. When focus was on one of its buttons, it
+ * goes back to the element that had it before Tab moved it in, rather than
+ * dropping to <body>.
  */
 function removeSelectionPopup() {
   if (selectionPopup) {
+    const hadFocus = document.activeElement === selectionPopup;
     selectionPopup.remove();
     selectionPopup = null;
     selectionPopupShadow = null;
+    if (hadFocus) returnFocusFromSelectionPopup();
   }
+  selectionPopupReturnFocus = null;
+  selectionPopupFocusLeft = false;
+  selectionPopupAnchor = null;
 }
 
 

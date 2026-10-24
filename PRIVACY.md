@@ -1,6 +1,6 @@
 # Privacy Policy for ParsiPad - Persian Translator
 
-Last updated: August 2026
+Last updated: October 2026
 
 ## Overview
 
@@ -15,6 +15,7 @@ All data is stored locally on your device using Chrome's storage API:
 - **API Keys**: Your API keys for supported providers (Anthropic, Google, OpenAI) are stored locally in Chrome's secure storage. They are never sent to any server other than their respective APIs.
 - **Provider Preference**: Your selected AI provider is stored locally.
 - **Muted Sites**: The list of sites where you muted the hover button, Alt+B and the selection toolbar is stored locally and never leaves your browser.
+- **Page Translation Preference**: Whether ParsiPad asks before translating a whole page (the "Ask before translating a whole page" setting, which "Don't ask again" turns off) is stored locally. The estimated cost shown in that question is worked out in your browser and sends nothing.
 - **Translation History**: Recent translations (up to 50 entries) are stored locally for your convenience.
 - **Translation Cache**: Recent translations are cached locally to reduce API calls and improve response times.
 

@@ -52,6 +52,7 @@ function build() {
   svg.setAttribute('stroke-linecap', 'round');
   svg.setAttribute('stroke-linejoin', 'round');
   svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
   const path = document.createElementNS(ns, 'path');
   path.setAttribute('d', TRANSLATE_PATH);
   svg.appendChild(path);

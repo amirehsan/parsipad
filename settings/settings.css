@@ -906,6 +906,7 @@ a.btn {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-inline-actions);
   padding: 0.5rem 0.75rem;
   background: var(--gray-50);
   border-radius: 0.5rem;
@@ -924,6 +925,7 @@ a.btn {
 
 .shortcut-keys {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 0.25rem;
 }
@@ -958,6 +960,11 @@ a.btn {
 
 .dark .shortcut-desc {
   color: var(--gray-400);
+}
+
+/* The note under a list: what the keys above it are not. */
+.shortcuts-note {
+  margin-top: var(--space-stack-item);
 }
 
 /* The button under the shortcut lists sits clear of the last list. */
