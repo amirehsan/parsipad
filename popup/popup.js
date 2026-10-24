@@ -520,7 +520,7 @@ function setupEventListeners() {
   });
 
   // Reset stats button
-  resetStatsBtn.addEventListener('click', async () => {
+  attachTwoStageConfirm(resetStatsBtn, async () => {
     await resetUsageStats();
     await loadStats();
   });
