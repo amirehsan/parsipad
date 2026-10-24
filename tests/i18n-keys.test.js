@@ -23,8 +23,8 @@ describe('settings dictionary card', () => {
     expectInBothLocales(['translateEnToFa', 'translateEnToFaHint', 'translateFaToEn', 'translateFaToEnHint']);
     expect(translations.en.translateEnToFa).not.toBe(translations.en.translateEnToFaHint);
     expect(translations.en.translateFaToEn).not.toBe(translations.en.translateFaToEnHint);
-    expect(settingsHtml).toMatch(/class="toggle-hint" data-i18n="translateEnToFaHint"/);
-    expect(settingsHtml).toMatch(/class="toggle-hint" data-i18n="translateFaToEnHint"/);
+    expect(settingsHtml).toMatch(/class="setting-hint" data-i18n="translateEnToFaHint"/);
+    expect(settingsHtml).toMatch(/class="setting-hint" data-i18n="translateFaToEnHint"/);
   });
 });
 

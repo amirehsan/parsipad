@@ -367,7 +367,7 @@ html {
   padding: 1rem 1.25rem;
   border: 2px solid var(--gray-200);
   border-radius: 0.75rem;
-  transition: all 0.2s ease;
+  transition: border-color var(--motion-fast) var(--ease-out), background-color var(--motion-fast) var(--ease-out);
 }
 
 .dark .option-content {
@@ -379,8 +379,8 @@ html {
 }
 
 /* The radio itself is invisible, so its card carries the focus ring. */
-.language-option input:focus-visible + .option-content,
-.theme-option input:focus-visible + .theme-option-content {
+.language-option:has(input:focus-visible) .option-content,
+.theme-option:has(input:focus-visible) .theme-option-content {
   outline: var(--ring-width) solid var(--ring-color);
   outline-offset: var(--ring-offset);
 }
@@ -476,103 +476,42 @@ html {
   flex-shrink: 0;
 }
 
-/* Toggle Rows */
-.toggle-row {
+/* Setting rows: a label and its hint on the leading side, the switch on the
+   trailing side (a flex row, so dir="rtl" swaps the sides by itself). */
+.setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
-  padding: 1.125rem 0;
-  border-bottom: 1px solid var(--gray-100);
-  cursor: pointer;
+  gap: var(--space-stack-group);
+  padding: var(--space-stack-group) 0;
+  border-bottom: 1px solid var(--color-divider);
 }
 
-.dark .toggle-row {
-  border-color: var(--gray-700);
-}
-
-.toggle-row:last-child {
+.setting-row:last-child {
   border-bottom: none;
   padding-bottom: 0;
 }
 
-.toggle-row:first-child {
+.setting-row:first-child {
   padding-top: 0;
 }
 
-.toggle-info {
+.setting-text {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
 }
 
-.toggle-label-text {
-  font-weight: 500;
-  color: var(--gray-800);
-}
-
-.dark .toggle-label-text {
-  color: var(--gray-200);
-}
-
-.toggle-hint {
-  font-size: 0.875rem;
-  color: var(--gray-500);
-}
-
-.dark .toggle-hint {
-  color: var(--gray-400);
-}
-
-/* Modern Toggle Switch */
-.toggle-switch {
-  position: relative;
-  width: 44px;
-  height: 24px;
-  flex-shrink: 0;
-}
-
-.toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.toggle-slider {
-  position: absolute;
+.setting-text label {
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
   cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--gray-300);
-  transition: 0.3s;
-  border-radius: 24px;
 }
 
-.dark .toggle-slider {
-  background-color: var(--gray-600);
-}
-
-.toggle-slider:before {
-  position: absolute;
-  content: "";
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
-  background-color: var(--color-gray-50);
-  transition: 0.3s;
-  border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(27, 24, 38, 0.2);
-}
-
-.toggle-switch input:checked + .toggle-slider {
-  background-color: var(--primary-500);
-}
-
-.toggle-switch input:checked + .toggle-slider:before {
-  transform: translateX(20px);
+.setting-hint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
 /* Slider Row */
@@ -594,7 +533,7 @@ html {
   padding-bottom: 0;
 }
 
-/* The first row sits flush under the card header, like .toggle-row. */
+/* The first row sits flush under the card header, like .setting-row. */
 .slider-row:first-child {
   padding-top: 0;
 }
@@ -1373,6 +1312,13 @@ a.btn {
 
 .provider-option:hover .provider-content {
   border-color: var(--primary-300);
+}
+
+/* Provider focus ring: the radio is invisible, so the provider card carries
+   the ring. Keep a ring like this when the provider cards are rewritten. */
+.provider-option:has(input:focus-visible) .provider-content {
+  outline: var(--ring-width) solid var(--ring-color);
+  outline-offset: var(--ring-offset);
 }
 
 .provider-option input:checked + .provider-content {

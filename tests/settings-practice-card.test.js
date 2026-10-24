@@ -17,8 +17,8 @@ function rule(selector) {
 }
 
 describe('settings Practice card spacing', () => {
-  it('a slider row that opens the card has no extra top padding, like a toggle row', () => {
-    expect(rule('.toggle-row:first-child')).toMatch(/padding-top:\s*0/);
+  it('a slider row that opens the card has no extra top padding, like a setting row', () => {
+    expect(rule('.setting-row:first-child')).toMatch(/padding-top:\s*0/);
     expect(rule('.slider-row:first-child')).toMatch(/padding-top:\s*0/);
   });
 
