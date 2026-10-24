@@ -12,15 +12,40 @@ const js = fs.readFileSync(path.resolve(__dirname, '../grammar/grammar.js'), 'ut
 const start = js.indexOf("checkBtn.addEventListener('click'");
 const handler = js.slice(start, js.indexOf('feedback.innerHTML', start));
 
+/** The text with every escapeHtml(...) call removed, parentheses balanced. */
+function withoutEscaped(text) {
+  let out = '';
+  let i = 0;
+  while (i < text.length) {
+    if (text.startsWith('escapeHtml(', i)) {
+      let depth = 0;
+      let j = i + 'escapeHtml'.length;
+      do {
+        if (text[j] === '(') depth++;
+        else if (text[j] === ')') depth--;
+        j++;
+      } while (depth > 0 && j < text.length);
+      i = j;
+    } else {
+      out += text[i++];
+    }
+  }
+  return out;
+}
+
 describe('quiz feedback', () => {
   it('escapes every model explanation it puts into markup', () => {
     expect(start).toBeGreaterThan(-1);
     const assignments = handler.match(/explanationText \+?= [^;]+;/g) || [];
     expect(assignments.length).toBeGreaterThan(0);
     for (const line of assignments) {
-      for (const source of ['selectedExplanation', 'correctExplanation', 'quiz.explanation']) {
-        if (line.includes(source)) expect(line, line).toMatch(new RegExp(`escapeHtml\\(${source.replace('.', '\\.')}`));
-      }
+      expect(withoutEscaped(line.replace(/^explanationText \+?= /, '')), line)
+        .not.toMatch(/selectedExplanation|correctExplanation|quiz\.explanation/);
     }
+  });
+
+  it('notices an explanation left unescaped', () => {
+    expect(withoutEscaped('escapeHtml(a || b) + c')).toBe(' + c');
+    expect(withoutEscaped('x(quiz.explanation)')).toContain('quiz.explanation');
   });
 });
