@@ -28,6 +28,63 @@ describe('translateOtherLanguages setting', () => {
   });
 });
 
+describe('New Tab settings', () => {
+  let storage;
+  beforeEach(async () => {
+    installChromeStub();
+    vi.resetModules();
+    storage = await import('../lib/storage.js');
+  });
+
+  it('registers its storage keys under the names earlier releases used', () => {
+    // Users who turned the page off in 3.3 or earlier keep that choice.
+    expect(STORAGE_KEYS.newTabEnabled).toBe('newtab_enabled');
+    expect(STORAGE_KEYS.newTabPanels).toBe('newtab_panels');
+  });
+
+  it('is on by default and remembers being turned off', async () => {
+    expect(await storage.getNewTabEnabled()).toBe(true);
+    await storage.setNewTabEnabled(false);
+    expect(await storage.getNewTabEnabled()).toBe(false);
+    await storage.setNewTabEnabled(true);
+    expect(await storage.getNewTabEnabled()).toBe(true);
+  });
+
+  it('treats anything but false as on, so a corrupt value never hides the page', async () => {
+    await chrome.storage.local.set({ newtab_enabled: 'nope' });
+    expect(await storage.getNewTabEnabled()).toBe(true);
+  });
+
+  it('defaults to the bookmarks button on and most visited off', async () => {
+    // Most visited is off by default because it needs the optional topSites
+    // permission, which is only asked for on an explicit click.
+    expect(await storage.getNewTabPanels()).toEqual({ bookmarks: true, recents: false });
+    expect(storage.NEWTAB_PANELS).toEqual(['bookmarks', 'recents']);
+  });
+
+  it('persists one switch without disturbing the other', async () => {
+    expect(await storage.setNewTabPanels({ recents: true })).toEqual({ bookmarks: true, recents: true });
+    expect(await storage.getNewTabPanels()).toEqual({ bookmarks: true, recents: true });
+    await storage.setNewTabPanels({ bookmarks: false });
+    expect(await storage.getNewTabPanels()).toEqual({ bookmarks: false, recents: true });
+  });
+
+  it('ignores a panel name the page cannot render, including the retired cards switch', async () => {
+    await storage.setNewTabPanels({ flashcard: false, weather: true });
+    const panels = await storage.getNewTabPanels();
+    expect(panels).toEqual({ bookmarks: true, recents: false });
+    await chrome.storage.local.set({ newtab_panels: { flashcard: false, bookmarks: false, recents: false } });
+    expect(await storage.getNewTabPanels()).toEqual({ bookmarks: false, recents: false });
+  });
+
+  it('falls back to defaults for a corrupt or half-written value', async () => {
+    await chrome.storage.local.set({ newtab_panels: 'not an object' });
+    expect(await storage.getNewTabPanels()).toEqual({ bookmarks: true, recents: false });
+    await chrome.storage.local.set({ newtab_panels: { bookmarks: 'yes' } });
+    expect(await storage.getNewTabPanels()).toEqual({ bookmarks: true, recents: false });
+  });
+});
+
 describe('block translate setting', () => {
   it('registers a storage key', () => {
     expect(STORAGE_KEYS.blockTranslate).toBe('block_translate_enabled');

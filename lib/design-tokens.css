@@ -5,7 +5,7 @@
  * Implements docs/superpowers/specs/parsipad-design-system.md: a warm cream
  * canvas, deep coffee ink, a 4px spacing base, and a 6/12/9999 radius scale.
  *
- * Every extension surface (popup/, settings/, welcome/, grammar/,
+ * Every extension surface (popup/, settings/, welcome/, newtab/, grammar/,
  * history/, favorites/, analytics/) imports this file. The content-script
  * Shadow DOM stylesheets reference the same custom property names so a single
  * `[data-theme="dark"]` toggle re-themes everything without rebuilding.
