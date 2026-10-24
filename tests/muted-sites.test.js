@@ -87,9 +87,11 @@ describe('muted sites', () => {
   });
 
   it('stores a unique sorted list', async () => {
-    expect(await addMutedSite('www.zeta.org')).toBe('zeta.org');
-    await addMutedSite('alpha.com');
-    await addMutedSite('https://alpha.com/x');
+    expect(await addMutedSite('www.zeta.org')).toEqual({ host: 'zeta.org', added: true });
+    expect(await addMutedSite('alpha.com')).toEqual({ host: 'alpha.com', added: true });
+    // Already there: the stored host, and nothing was added (an Undo would
+    // otherwise remove a mute set elsewhere).
+    expect(await addMutedSite('https://alpha.com/x')).toEqual({ host: 'alpha.com', added: false });
     expect(await addMutedSite('nope')).toBeNull();
     expect(await getMutedSites()).toEqual(['alpha.com', 'zeta.org']);
     await removeMutedSite('alpha.com');

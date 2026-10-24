@@ -1119,23 +1119,36 @@ function showError(errorOrResponse) {
 const TOAST_ID = 'parsipad-toast';
 // How long a toast stays when the pointer and focus are elsewhere.
 const TOAST_DURATION_MS = 10000;
+// A live region is announced when its text changes, not when it arrives
+// already holding text, so the toast enters the page empty and says its
+// message this long after. Long enough for the browser to have put the empty
+// region in the accessibility tree first.
+const TOAST_LIVE_REGION_DELAY_MS = 100;
+// The toast on screen: its host, where focus goes back to, and how to take it
+// away without moving focus (when a new toast replaces it).
+let activeToast = null;
 
 /**
  * The toast, for news when no floating box is on screen (page translation,
  * block translate, a mute from the toolbar).
  *
  * Its message is a live region: role="status" for news, role="alert" for a
- * problem the user has to fix. It closes itself after TOAST_DURATION_MS,
- * but never while the pointer or focus is inside it, so an Undo does not
- * vanish under the user's hand. Escape closes it. Text is set with
- * textContent; a message that needs markup is passed as DOM nodes.
+ * problem the user has to fix. It enters the page empty and the message is
+ * filled in after TOAST_LIVE_REGION_DELAY_MS, so it is announced. It closes
+ * itself after TOAST_DURATION_MS of being shown, a timer that pauses while
+ * the pointer or focus is inside it and resumes with what was left, so an
+ * Undo does not vanish under the user's hand. Escape closes it. When it
+ * closes or is replaced while holding focus, focus goes back to where it was
+ * before the toast took it. Text is set with textContent; a message that
+ * needs markup is passed as DOM nodes.
  *
  * @param {Object} [options]
  * @param {string|Node} [options.message] - what to say
  * @param {boolean} [options.withSettings] - offer the settings shortcut
  * @param {{label: string, onClick: () => void, focus?: boolean}} [options.action] -
- *   one button that closes the toast and runs onClick; with focus, focus
- *   moves to it (for a keyboard user) and returns when the toast closes
+ *   one button that closes the toast and runs onClick; it is described by
+ *   the message, and with focus, focus moves to it (for a keyboard user)
+ *   once the message is in
  * @param {'status'|'alert'} [options.role]
  */
 function showToast({
@@ -1144,6 +1157,12 @@ function showToast({
   action = null,
   role = 'status'
 } = {}) {
+  // Where focus goes back to: if the toast being replaced holds focus, where
+  // that one would have sent it; otherwise wherever focus is now.
+  const previous = activeToast;
+  const previousHadFocus = Boolean(previous && document.activeElement === previous.host);
+  const returnFocus = previousHadFocus ? previous.returnFocus : document.activeElement;
+  previous?.dispose();
   document.getElementById(TOAST_ID)?.remove();
 
   const host = document.createElement('div');
@@ -1200,7 +1219,7 @@ function showToast({
       }
     </style>
     <div class="toast">
-      <span class="message"></span>
+      <span class="message" id="parsipad-toast-message"></span>
       <button class="action" type="button" hidden></button>
       <button class="open" type="button" hidden></button>
       <button class="close" type="button">×</button>
@@ -1212,41 +1231,55 @@ function showToast({
   messageEl.setAttribute('role', role);
   // In-page UI is not mirrored, but Persian text still reads right to left.
   messageEl.setAttribute('dir', userLang === 'fa' ? 'rtl' : 'ltr');
-  if (typeof message === 'string') {
-    messageEl.textContent = message;
-  } else {
-    messageEl.append(message);
-  }
   const closeBtn = root.querySelector('.close');
   closeBtn.setAttribute('aria-label', t('cardClose', userLang));
 
-  // Where focus goes back to when the toast took it and then closes.
-  const returnFocus = action?.focus ? document.activeElement : null;
-  let timer = null;
+  const restoreFocus = () => {
+    if (returnFocus && returnFocus !== document.body && returnFocus.isConnected) returnFocus.focus();
+  };
+
+  // The auto-close timer runs from the moment the message is shown, and
+  // only while neither the pointer nor focus is inside.
+  let shown = false;
+  let fillTimer = null;
+  let closeTimer = null;
+  let remaining = TOAST_DURATION_MS;
+  let runningSince = 0;
   let pointerInside = false;
   let focusInside = false;
 
+  const pause = () => {
+    if (closeTimer === null) return;
+    clearTimeout(closeTimer);
+    closeTimer = null;
+    remaining = Math.max(0, remaining - (Date.now() - runningSince));
+  };
+  const resume = () => {
+    if (!shown || closeTimer !== null || pointerInside || focusInside) return;
+    runningSince = Date.now();
+    closeTimer = setTimeout(close, remaining);
+  };
+  const dispose = () => {
+    clearTimeout(fillTimer);
+    clearTimeout(closeTimer);
+    closeTimer = null;
+    host.remove();
+    if (activeToast?.host === host) activeToast = null;
+  };
   const close = () => {
-    clearTimeout(timer);
     if (!host.isConnected) return;
     const hadFocus = document.activeElement === host;
-    host.remove();
-    if (hadFocus && returnFocus && returnFocus !== document.body && returnFocus.isConnected) {
-      returnFocus.focus();
-    }
-  };
-  const schedule = () => {
-    clearTimeout(timer);
-    timer = pointerInside || focusInside ? null : setTimeout(close, TOAST_DURATION_MS);
+    dispose();
+    if (hadFocus) restoreFocus();
   };
 
-  box.addEventListener('pointerenter', () => { pointerInside = true; schedule(); });
-  box.addEventListener('pointerleave', () => { pointerInside = false; schedule(); });
-  box.addEventListener('focusin', () => { focusInside = true; schedule(); });
+  box.addEventListener('pointerenter', () => { pointerInside = true; pause(); });
+  box.addEventListener('pointerleave', () => { pointerInside = false; resume(); });
+  box.addEventListener('focusin', () => { focusInside = true; pause(); });
   box.addEventListener('focusout', (event) => {
     if (box.contains(event.relatedTarget)) return;
     focusInside = false;
-    schedule();
+    resume();
   });
   box.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
@@ -1259,6 +1292,8 @@ function showToast({
   if (action) {
     actionBtn.textContent = action.label;
     actionBtn.hidden = false;
+    // Focus on Undo reads the sentence it undoes.
+    actionBtn.setAttribute('aria-describedby', messageEl.id);
     actionBtn.addEventListener('click', () => {
       close();
       action.onClick();
@@ -1277,8 +1312,21 @@ function showToast({
   closeBtn.addEventListener('click', close);
 
   document.body.appendChild(host);
-  schedule();
-  if (action?.focus) actionBtn.focus();
+  activeToast = { host, returnFocus, dispose };
+  // The toast it replaced held focus; give it back rather than leave it on
+  // <body> (this toast's action may take it once its message is in).
+  if (previousHadFocus) restoreFocus();
+
+  fillTimer = setTimeout(() => {
+    if (typeof message === 'string') {
+      messageEl.textContent = message;
+    } else {
+      messageEl.append(message);
+    }
+    shown = true;
+    resume();
+    if (action?.focus) actionBtn.focus();
+  }, TOAST_LIVE_REGION_DELAY_MS);
 }
 
 /**
@@ -1311,33 +1359,37 @@ function messageWithHost(template, hostName) {
 /**
  * Mute ParsiPad on this site, from the selection toolbar. The list stores a
  * normalized host (example.com for www.example.com), and the toast names and
- * Undo removes exactly that host. Settings and block translate pick the
+ * Undo removes exactly that host. Undo is offered only when this press added
+ * it. Settings and block translate pick the
  * change up through chrome.storage.onChanged.
  * @param {{fromKeyboard: boolean}} options - focus moves to Undo when the
  *   button was pressed from the keyboard
  */
 async function muteThisSite({ fromKeyboard }) {
-  let mutedHost = null;
+  let result = null;
   try {
-    mutedHost = await addMutedSite(location.hostname);
+    result = await addMutedSite(location.hostname);
   } catch {
     // Extension context invalidated: nothing was stored, so nothing to undo.
     return;
   }
-  if (!mutedHost) return;
+  if (!result) return;
+  const { host: mutedHost, added } = result;
   mutedLoaded = true;
   siteMuted = true;
   removeSelectionPopup();
   showToast({
     message: messageWithHost(t('mutedOnSite', userLang), mutedHost),
     withSettings: false,
-    action: {
+    // Undo only what this press added: a host that was already listed was
+    // muted elsewhere (Settings, another tab), and Undo must not unmute it.
+    action: added ? {
       label: t('libraryUndo', userLang),
       focus: fromKeyboard,
       onClick: () => {
         removeMutedSite(mutedHost).catch(() => {});
       }
-    }
+    } : null
   });
 }
 
@@ -2371,7 +2423,7 @@ async function handleTranslatePage() {
       pageTranslationState.isTranslating = false;
       // Page translation runs without a floating box, so there is nothing to
       // render an error into; the toast is the surface that does not need one.
-      showToast({ message: 'No translatable text found on this page.', withSettings: false });
+      showToast({ message: t('noTextOnPage', userLang), withSettings: false });
       return;
     }
 

@@ -724,13 +724,13 @@ async function handleConfirmPageTranslateChange() {
  */
 async function handleMutedSiteSubmit(event) {
   event.preventDefault();
-  const before = await getMutedSites();
-  const host = await addMutedSite(mutedSiteInput.value);
+  const result = await addMutedSite(mutedSiteInput.value);
+  const host = result?.host;
 
-  if (!host) {
+  if (!result) {
     mutedSiteInput.setAttribute('aria-invalid', 'true');
     setMutedSiteMessage('mutedSiteInvalid', { example: 'example.com' }, 'error');
-  } else if (before.includes(host)) {
+  } else if (!result.added) {
     mutedSiteInput.removeAttribute('aria-invalid');
     setMutedSiteMessage('mutedSiteDuplicate', { host });
   } else {
