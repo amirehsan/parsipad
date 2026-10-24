@@ -80,6 +80,9 @@
 
     <!-- Text Mode Section (Translate/Polish with mode switcher) -->
     <section id="text-mode-section" class="section" role="tabpanel" aria-labelledby="tab-text">
+      <!-- Page selection offered by the content script; hidden until one arrives -->
+      <div id="selection-chip" class="selection-chip" hidden><span class="selection-chip-label" data-i18n="selectedOnPage"></span><span id="selection-chip-text" class="selection-chip-text" dir="auto"></span><button id="selection-chip-translate" type="button" data-i18n="translate"></button></div>
+
       <!-- Mode Switcher (replaces full-width segmented control: quieter pill above input) -->
       <div class="mode-switcher" role="tablist" aria-label="Text mode">
         <button id="mode-translate" class="mode-switcher-btn" role="tab" aria-selected="true" data-i18n="translate">Translate</button>

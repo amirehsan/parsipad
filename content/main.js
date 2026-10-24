@@ -21,6 +21,7 @@ import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils/batch.js';
 import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
+import { selectionToReport, createSelectionReporter } from './selection-report.js';
 import { initBlockTranslate, translateFocusedBlock, hideBlockIcon, isBlockTranslateEnabled } from './blocks/index.js';
 
 // Re-injection guard: skip if the script has already run in this isolated world.
@@ -101,6 +102,20 @@ function init() {
 
   // Listen for text selection (mouseup)
   document.addEventListener('mouseup', handleTextSelection);
+
+  // Tell the side panel what is selected so it can offer a one-click translate
+  const reportSelection = createSelectionReporter((text) => {
+    // Rejects when no panel is listening or the extension was reloaded under
+    // this page; neither is worth surfacing.
+    try {
+      chrome.runtime.sendMessage({ action: 'SELECTION_CHANGED', text }).catch(() => {});
+    } catch {
+      // Extension context invalidated
+    }
+  });
+  document.addEventListener('selectionchange', () => {
+    reportSelection(selectionToReport(document.getSelection(), document.activeElement));
+  }, { passive: true });
 
   // Load selection popup setting
   loadSelectionPopupSetting();

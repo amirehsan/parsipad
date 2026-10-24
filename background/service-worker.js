@@ -55,6 +55,11 @@ async function handleMessage(message, sender) {
     case ACTIONS.OPEN_SIDE_PANEL:
       return handleOpenSidePanel(message.tabId ?? sender?.tab?.id);
 
+    case ACTIONS.SELECTION_CHANGED:
+      // Meant for the side panel, which listens on its own. The worker only
+      // acknowledges it so the sender never sees an unknown action error.
+      return { ok: true };
+
     case ACTIONS.TRANSLATE_DOCUMENT:
       return handleDocumentTranslation(message.content);
 
