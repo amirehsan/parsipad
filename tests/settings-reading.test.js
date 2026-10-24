@@ -32,12 +32,12 @@ describe('reading section', () => {
     expect(reading).toMatch(/id="muted-sites-list"/);
     expect(reading).toMatch(/role="status"/);
   });
-  it('ships the confirmation row hidden until Plan E reads the preference', () => {
+  it('shows the confirmation row now that page translation asks first', () => {
     const reading = html.slice(html.indexOf('<section id="reading"'), html.indexOf('</section>', html.indexOf('<section id="reading"')));
     expect(reading.slice(1)).not.toMatch(/<section[\s>]/);
     const rowStart = reading.lastIndexOf('<div class="setting-row"', reading.indexOf('id="confirm-page-translate-toggle"'));
-    expect(reading.slice(rowStart, reading.indexOf('>', rowStart) + 1)).toBe('<div class="setting-row" hidden>');
-    expect(reading.slice(0, rowStart)).toMatch(/<!--[^>]*Plan E[^>]*-->\s*$/);
+    expect(reading.slice(rowStart, reading.indexOf('>', rowStart) + 1)).toBe('<div class="setting-row">');
+    expect(reading).not.toMatch(/Plan E/);
   });
   it('gives the add field a sample host, ltr direction and no spellcheck', () => {
     const input = html.match(/<input[^>]+id="muted-site-input"[^>]*>/)[0];
