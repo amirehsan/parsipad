@@ -894,6 +894,48 @@ function showTranslation(result, originalText) {
 
   // Check if already favorited
   checkTranslationFavoriteStatus();
+  maybeShowReviewLine(content);
+}
+
+/**
+ * One quiet rating ask under a translation, when the service worker says it
+ * is time. The worker records the show, so a second box in the same window
+ * does not ask again. "Rate" opens the store in a new tab from the worker;
+ * "Later" snoozes.
+ * @param {HTMLElement} content - the floating box's content area
+ */
+async function maybeShowReviewLine(content) {
+  let show = false;
+  try {
+    ({ show } = await chrome.runtime.sendMessage({ action: 'REVIEW_PROMPT_STATE' }));
+  } catch (error) {
+    return;
+  }
+  if (!show || !content.isConnected) return;
+
+  const line = document.createElement('div');
+  line.className = 'parsipad-review-line';
+
+  const rate = document.createElement('button');
+  rate.type = 'button';
+  rate.className = 'parsipad-review-rate';
+  rate.textContent = t('rateParsipad', userLang);
+
+  const later = document.createElement('button');
+  later.type = 'button';
+  later.className = 'parsipad-review-later';
+  later.textContent = t('later', userLang);
+
+  const answer = (response) => {
+    line.remove();
+    chrome.runtime.sendMessage({ action: 'REVIEW_PROMPT_RESPONSE', response }).catch(() => {});
+  };
+  rate.addEventListener('click', () => answer('rated'));
+  later.addEventListener('click', () => answer('later'));
+
+  line.append(rate, later);
+  content.appendChild(line);
+  placeFloatingBox();
 }
 
 /**

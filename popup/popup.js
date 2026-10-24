@@ -1,7 +1,7 @@
 import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
 import { getHistory, clearHistory, getPolishHistory, clearPolishHistory, getDictionaryHistory, clearDictionaryHistory } from '../lib/history.js';
-import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider, getFavorites, isFavorite, shouldShowReviewPrompt, dismissReviewPrompt, markReviewClicked } from '../lib/storage.js';
+import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider, getFavorites, isFavorite, claimReviewPrompt, respondToReviewPrompt } from '../lib/storage.js';
 import { PROVIDER_CONFIGS, ACTIONS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 import { setSafeInnerHTML } from '../lib/sanitize.js';
@@ -132,6 +132,7 @@ const reviewPromptBanner = document.getElementById('review-prompt-banner');
 const reviewRateBtn = document.getElementById('review-rate-btn');
 const reviewLaterBtn = document.getElementById('review-later-btn');
 const reviewDismissBtn = document.getElementById('review-dismiss-btn');
+const reviewNeverBtn = document.getElementById('review-never-btn');
 
 // State
 let isProcessing = false;
@@ -169,7 +170,6 @@ async function init() {
   await loadHistory();
   await loadStats();
   await loadFavoritesCount();
-  await checkReviewPrompt();
   setupEventListeners();
   updateCharCount();
   updateTab('text');
@@ -428,6 +428,9 @@ function setupEventListeners() {
   // Review prompt buttons
   if (reviewRateBtn) {
     reviewRateBtn.addEventListener('click', handleReviewRateClick);
+  }
+  if (reviewNeverBtn) {
+    reviewNeverBtn.addEventListener('click', () => answerReviewPrompt('never'));
   }
   if (reviewLaterBtn) {
     reviewLaterBtn.addEventListener('click', handleReviewDismiss);
@@ -1025,6 +1028,7 @@ async function displayTranslation(result) {
   // onTranslateSentence omits the control.
 
   cardSlot.replaceChildren(currentCardEl);
+  checkReviewPrompt();
   outputSection.hidden = false;
 
   // Update favorite button state
@@ -1049,6 +1053,7 @@ async function displayPolishResults(result, originalText = null, historyId = nul
   polishConversational.textContent = result.conversational;
   polishConcise.textContent = result.concise;
   polishSection.hidden = false;
+  checkReviewPrompt();
 
   // Update favorite button states
   await updatePolishFavoriteStates();
@@ -2081,7 +2086,6 @@ async function handleTranslationFavorite() {
       if (response.success) {
         setTranslationFavoriteState(true);
         // Check if we should show review prompt after adding favorite
-        await checkReviewPrompt();
       }
     }
 
@@ -2142,7 +2146,6 @@ async function handlePolishFavorite(btn) {
       if (response.success) {
         btn.classList.add('favorited');
         // Check if we should show review prompt after adding favorite
-        await checkReviewPrompt();
       }
     }
 
@@ -2265,46 +2268,46 @@ async function handlePolishRegenerate(btn) {
 // ============================================
 
 /**
- * Check if review prompt should be shown
+ * Show the rating banner when the rules say it is time. Called only after a
+ * result has rendered, so the ask follows something that just worked. Once
+ * shown it stays for the rest of this popup session; a later result does not
+ * hide it again.
  */
+let reviewPromptShown = false;
+
 async function checkReviewPrompt() {
-  if (!reviewPromptBanner) return;
-
+  if (!reviewPromptBanner || reviewPromptShown) return;
   try {
-    const shouldShow = await shouldShowReviewPrompt();
-    reviewPromptBanner.hidden = !shouldShow;
+    if (await claimReviewPrompt()) {
+      reviewPromptShown = true;
+      reviewPromptBanner.hidden = false;
+    }
   } catch (error) {
-    // Silently handle errors
-    reviewPromptBanner.hidden = true;
+    // A storage failure only means the banner is not shown this time.
   }
 }
 
 /**
- * Handle "Rate Now" button click
+ * Record the answer and take the banner away.
+ * @param {'rated' | 'later' | 'never'} response
  */
-async function handleReviewRateClick() {
+async function answerReviewPrompt(response) {
+  if (reviewPromptBanner) reviewPromptBanner.hidden = true;
   try {
-    await markReviewClicked();
-    if (reviewPromptBanner) {
-      reviewPromptBanner.hidden = true;
-    }
+    await respondToReviewPrompt(response);
   } catch (error) {
-    // Silently handle errors
+    // The banner is already gone; the next eligible result will ask again.
   }
 }
 
-/**
- * Handle "Maybe Later" or dismiss button click
- */
-async function handleReviewDismiss() {
-  try {
-    await dismissReviewPrompt();
-    if (reviewPromptBanner) {
-      reviewPromptBanner.hidden = true;
-    }
-  } catch (error) {
-    // Silently handle errors
-  }
+/** "Rate" follows the link itself; this only records the answer. */
+function handleReviewRateClick() {
+  answerReviewPrompt('rated');
+}
+
+/** "Later" and the close button both snooze; neither means never. */
+function handleReviewDismiss() {
+  answerReviewPrompt('later');
 }
 
 // ============================================
