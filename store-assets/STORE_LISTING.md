@@ -10,11 +10,12 @@ Hover any paragraph to translate it. Screenshot translate, grammar lessons, flas
 
 ParsiPad is a powerful AI-powered translation extension that makes Persian-English translation seamless and intelligent.
 
-Version 3.4.0:
-• Library - History, Favorites and saved grammar Lessons in one page, with search, filters, and Undo on delete
-• Practice - flashcards from your favorites, in the side panel or a tab
-• Saved grammar lessons reopen with no new request to your provider
-• The New Tab page is gone, along with the bookmarks and most-visited permissions it needed
+Version 3.6.0:
+• Translating a whole page asks first, with the paragraph count and an estimated cost, and reports sections that failed with a Retry failed button
+• Cancel and Escape keep the sections already translated
+• The selection toolbar works on touch and from the keyboard, never appears inside text fields, and can mute a site
+• Every in-page box says so when ParsiPad was updated under the page, and offers a Reload page button
+• Better support for screen readers and for reduced motion
 
 🖱️ **Block Translate** (NEW!)
 Read a page in Persian without leaving it:
@@ -33,14 +34,17 @@ Pick your preferred AI provider:
 • ChatGPT (OpenAI) - Versatile and reliable
 Switch providers anytime in Settings!
 
-🌐 **Full Page Translation** (NEW!)
-Translate entire webpages instantly:
+🌐 **Full Page Translation**
+Translate entire webpages in place:
 • Right-click "Translate this page" or press Alt+P
+• Asks first: shows the number of paragraphs and an estimated cost with your provider, with Translate page, Cancel and "Don't ask again" (a switch in Settings turns the question back on)
 • Smart chunking for reliable translation
 • Progress overlay with real-time status
+• Cancel or press Escape at any time; sections already translated stay translated
+• A summary reports how many sections were translated and how many failed, and Retry failed sends only those
 • Toggle button to switch between original/translated
+• On sites that change pages without reloading, the original text is put back when you move on
 • Vazirmatn font for beautiful Persian text
-• Cancel anytime
 
 🎓 **Grammar Learning**
 Master grammar while you translate:
@@ -97,9 +101,9 @@ Save your best translations and learn vocabulary:
 • Choose 5 to 30 cards per session in Settings
 
 🎯 **Multiple Ways to Use**
-• Select text and use the floating popup
+• Select text and use the selection toolbar: Translate, Polish, Dictionary, and a button to mute the site. It works with mouse, touch, and keyboard (Tab to enter, arrow keys to move, Escape to close) and never appears inside text fields
 • Right-click context menu for translation, polish, dictionary, page, or screenshot translate
-• Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary), Alt+P (page), Alt+S (screenshot), Alt+B (block translate)
+• Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary), Alt+P (page), Alt+S (screenshot) can be remapped in Chrome; Alt+B (block translate) and Escape (close a box or stop a page translation) are fixed keys on web pages, listed in Settings under Shortcuts
 • Popup and side panel with three modes: Translate, Polish, and Doc & Image
 
 📚 **Library**
@@ -126,7 +130,8 @@ Keep your data safe and portable:
 ⚙️ **Customizable Settings**
 • One Settings page with a section nav, clear on/off switches, and Light, Dark or System theme
 • Choose your AI provider (Claude, Gemini, ChatGPT); each has its own key with Save & test
-• Muted sites: switch the translate icon and selection toolbar off on sites you choose
+• Muted sites: switch the translate icon and selection toolbar off on sites you choose, or mute the current site from the toolbar
+• Ask before translating a whole page: turn the cost question on or off
 • Set how many flashcards a Practice session holds (5 to 30)
 • Export and import your data
 • Control dictionary translation directions (EN→FA, FA→EN)
