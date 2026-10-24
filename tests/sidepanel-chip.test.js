@@ -36,11 +36,19 @@ describe('selection chip wiring', () => {
     expect(translations.en.selectedOnPage).toBeTruthy();
     expect(translations.fa.selectedOnPage).toBeTruthy();
     expect(ACTIONS.SELECTION_CHANGED).toBe('SELECTION_CHANGED');
+    expect(ACTIONS.GET_SELECTION).toBe('GET_SELECTION');
   });
 
   it('lists the content module in web_accessible_resources', () => {
     const manifest = JSON.parse(read('manifest.json'));
     expect(manifest.web_accessible_resources[0].resources).toContain('content/selection-report.js');
+  });
+
+  it('pulls the current selection from the content script on open and on tab change', () => {
+    const panelJs = read('sidepanel/panel.js');
+    expect(panelJs).toMatch(/action: 'GET_SELECTION'/);
+    expect(panelJs).toMatch(/onActivated\.addListener\(\(\) => \{\s*hideChip\(\);\s*pullSelection\(\);/);
+    expect(read('content/main.js')).toMatch(/case 'GET_SELECTION':/);
   });
 
   it('styles the chip with spacing tokens only', () => {
