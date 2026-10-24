@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Building needs Node 20.** `npm run build` now writes both packages, Chrome to `dist/` and Firefox to `dist-firefox/`, and `npm run package` writes the Chrome, Firefox and source zips for a release. Mozilla's `web-ext`, which lints and runs the Firefox package, requires Node 20, so the minimum moves up from 18.
 - **The store text and privacy policy name no single browser.** Where they said Chrome asks for a permission, stores your data or remaps shortcuts, they now say your browser, since the same text serves both stores.
 
+### Fixed
+- **Grammar quiz feedback could show markup from the lesson.** After you checked an answer, the explanation of the option you picked was inserted into the page as markup, unlike the correct option's explanation, so tags or links in a lesson the model returned would render rather than show as text. Every explanation is now shown as plain text. Lessons are written as plain text, so nothing looks different.
+
 ## [3.8.1] - 2026-10-24
 
 ### Fixed
