@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.8.1] - 2026-10-24
+
+### Fixed
+- **Polish results read backwards in the Persian interface.** With the interface in Persian, the Professional, Conversational and Concise cards laid English text out right to left, so a sentence's final period showed at the start of its line (".time") and the text hugged the right edge. The cards took the popup's right-to-left direction instead of their own. Each result now takes its direction from its own text, when it first appears, after Regenerate and when reopened from Recent, so English reads left to right in either interface.
+
 ## [3.8.0] - 2026-10-24
 
 ### Added

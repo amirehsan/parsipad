@@ -317,6 +317,19 @@ function recentRun(value) {
 }
 
 /**
+ * Write one Polish result into its card, marked with its own direction. The
+ * Persian UI sets the whole popup right to left, and an English result that
+ * inherited that put its final period at the start of the line.
+ * @param {HTMLElement} el
+ * @param {string} text
+ */
+function setPolishText(el, text) {
+  el.textContent = text;
+  el.dir = getTextDirection(el.textContent);
+  el.lang = el.dir === 'rtl' ? 'fa' : 'en';
+}
+
+/**
  * Draw the Recent item as "original · translation" on one line.
  * @param {{entry: Object, polish: boolean}|null} latest
  */
@@ -1005,9 +1018,9 @@ async function displayPolishResults(result, originalText = null, historyId = nul
   currentPolishOriginalText = originalText || inputText.value.trim();
   currentPolishHistoryId = historyId;
 
-  polishProfessional.textContent = result.professional;
-  polishConversational.textContent = result.conversational;
-  polishConcise.textContent = result.concise;
+  setPolishText(polishProfessional, result.professional);
+  setPolishText(polishConversational, result.conversational);
+  setPolishText(polishConcise, result.concise);
   polishSection.hidden = false;
   checkReviewPrompt();
 
@@ -1917,11 +1930,11 @@ async function handlePolishRegenerate(btn) {
 
     // Update the specific card
     if (version === 'professional') {
-      polishProfessional.textContent = response.text;
+      setPolishText(polishProfessional, response.text);
     } else if (version === 'conversational') {
-      polishConversational.textContent = response.text;
+      setPolishText(polishConversational, response.text);
     } else if (version === 'concise') {
-      polishConcise.textContent = response.text;
+      setPolishText(polishConcise, response.text);
     }
 
     // Update usage stats (analytics event logged in service worker)
