@@ -390,6 +390,8 @@ function setupSettingsTabs() {
   const main = document.querySelector('main');
   if (!main || tabs.length === 0) return;
 
+  const names = Array.from(tabs, (tab) => tab.dataset.tabTarget);
+
   const setActive = (name) => {
     main.dataset.settingsActive = name;
     tabs.forEach((t) => {
@@ -402,18 +404,26 @@ function setupSettingsTabs() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Default to General on first paint.
-  setActive('general');
+  // Open on the tab named by the URL hash (e.g. #providers from the popup
+  // badge), falling back to General.
+  const fromHash = location.hash.slice(1);
+  setActive(names.includes(fromHash) ? fromHash : 'general');
+
+  // Record the tab in the hash without adding a history entry.
+  const select = (name) => {
+    setActive(name);
+    history.replaceState(null, '', `#${name}`);
+  };
 
   tabs.forEach((tab) => {
-    tab.addEventListener('click', () => setActive(tab.dataset.tabTarget));
+    tab.addEventListener('click', () => select(tab.dataset.tabTarget));
     tab.addEventListener('keydown', (e) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       e.preventDefault();
       const order = Array.from(tabs);
       const i = order.indexOf(e.currentTarget);
       const next = order[(i + (e.key === 'ArrowRight' ? 1 : -1) + order.length) % order.length];
-      setActive(next.dataset.tabTarget);
+      select(next.dataset.tabTarget);
       next.focus();
     });
   });

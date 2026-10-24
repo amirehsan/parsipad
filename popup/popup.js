@@ -2,7 +2,7 @@ import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
 import { getHistory, clearHistory, getPolishHistory, clearPolishHistory, getDictionaryHistory, clearDictionaryHistory } from '../lib/history.js';
 import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider, getFavorites, isFavorite, claimReviewPrompt, respondToReviewPrompt } from '../lib/storage.js';
-import { PROVIDER_CONFIGS, ACTIONS, STORE_REVIEWS_URL } from '../lib/constants.js';
+import { PROVIDER_CONFIGS, ACTIONS, STORE_REVIEWS_URL, STORAGE_KEYS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 import { setSafeInnerHTML } from '../lib/sanitize.js';
 import { renderCard, injectCardStyles } from '../shared/card/index.js';
@@ -11,6 +11,7 @@ import { applySourceOverride } from '../shared/source-override.js';
 import { getBoundShortcuts } from '../shared/shortcuts.js';
 import { applyThemeToRoot } from '../lib/theme.js';
 import { directionLabel } from '../lib/direction-label.js';
+import { getProviderHealth, healthTone } from '../lib/provider-health.js';
 
 // The popup script also runs inside the side panel, which must stay open.
 const isPanel = document.body.dataset.surface === 'panel';
@@ -18,6 +19,8 @@ const isPanel = document.body.dataset.surface === 'panel';
 // DOM Elements
 const openSidePanelBtn = document.getElementById('open-sidepanel-btn');
 const settingsBtn = document.getElementById('settings-btn');
+const providerBadge = document.getElementById('provider-badge');
+const providerBadgeName = document.getElementById('provider-badge-name');
 const apiKeyWarning = document.getElementById('api-key-warning');
 const configureApiBtn = document.getElementById('configure-api-btn');
 // Tab elements (4 main tabs)
@@ -166,6 +169,7 @@ async function init() {
   await initLanguage();
   await initTheme();
   await annotateShortcuts();
+  await renderProviderBadge();
   // The card's rules live in a JS string so the floating box can put them
   // inside a closed shadow root; the popup takes the same string into its
   // own document. popup.css maps the four tokens they consume.
@@ -178,6 +182,45 @@ async function init() {
   updateCharCount();
   updateTab('text');
   updateTextMode('translate');
+}
+
+/**
+ * "2 minutes ago" in the interface language.
+ * @param {number} at - Epoch milliseconds
+ * @returns {string}
+ */
+function formatAgo(at) {
+  const seconds = Math.round((at - Date.now()) / 1000);
+  const units = [['day', 86400], ['hour', 3600], ['minute', 60]];
+  const formatter = new Intl.RelativeTimeFormat(currentLang, { numeric: 'auto' });
+  for (const [unit, size] of units) {
+    if (Math.abs(seconds) >= size) return formatter.format(Math.round(seconds / size), unit);
+  }
+  return formatter.format(0, 'second');
+}
+
+/**
+ * Show the active provider and how its last request went. The dot colour
+ * comes from data-tone; the same sentence is the tooltip and the accessible
+ * name, since colour alone cannot carry the state.
+ */
+async function renderProviderBadge() {
+  try {
+    const providerId = await getSelectedProvider();
+    const record = await getProviderHealth(providerId);
+    const tone = healthTone(record);
+    const name = (PROVIDER_CONFIGS[providerId] || {}).name || providerId;
+    const key = { ok: 'providerHealthOk', warn: 'providerHealthWarn', error: 'providerHealthError', unknown: 'providerHealthUnknown' }[tone];
+    const detail = t(key, currentLang).replace('{ago}', record ? formatAgo(record.at) : '');
+    const label = `${name}: ${detail}`;
+
+    providerBadgeName.textContent = name;
+    providerBadge.dataset.tone = tone;
+    providerBadge.title = label;
+    providerBadge.setAttribute('aria-label', label);
+  } catch (error) {
+    console.error('Could not render the provider badge:', error);
+  }
 }
 
 /**
@@ -353,6 +396,20 @@ function setupEventListeners() {
       window.close();
     } catch (error) {
       console.error('Could not open the side panel:', error);
+    }
+  });
+
+  // Provider badge opens the providers tab of settings
+  providerBadge.addEventListener('click', (event) => {
+    event.preventDefault();
+    chrome.tabs.create({ url: chrome.runtime.getURL('settings/settings.html#providers') });
+    if (!isPanel) window.close();
+  });
+
+  // Keep the badge current when the provider changes or a request finishes
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && (STORAGE_KEYS.selectedProvider in changes || STORAGE_KEYS.providerHealth in changes)) {
+      renderProviderBadge();
     }
   });
 
