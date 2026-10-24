@@ -772,6 +772,10 @@ body.dark {
   border: none;
 }
 
+a.btn {
+  text-decoration: none;
+}
+
 .btn-primary {
   background: var(--primary-500);
   color: var(--color-gray-50);
