@@ -179,12 +179,32 @@ function actionsRow(entry, lang, favorite) {
   return actions;
 }
 
+/** An id prefix for one card's elements, from its entry key ('translation:1' -> 'lib-translation-1'). */
+function idBase(key) {
+  return `lib-${String(key).replace(/[^A-Za-z0-9_-]/g, '-')}`;
+}
+
+/**
+ * Name one side of the pair for screen readers, which otherwise read two
+ * unlabelled runs of text. The name is in the interface language, so it
+ * carries that lang while the side carries its text's.
+ */
+function labelSide(side, text, lang, id) {
+  const label = el('span', 'lib-sr-only', text);
+  label.id = id;
+  label.setAttribute('lang', lang);
+  side.prepend(label);
+  side.setAttribute('role', 'group');
+  side.setAttribute('aria-labelledby', id);
+}
+
 /**
  * @param {import('../lib/library-model.js').LibraryEntry} entry
  * @param {{ lang: string, favorite: boolean, now?: number }} options
  * @returns {HTMLElement}
  */
 export function renderLibraryCard(entry, { lang, favorite, now = Date.now() }) {
+  const base = idBase(entry.key);
   const card = el('article', `lib-card lib-card-${entry.kind}`);
   card.setAttribute('data-key', entry.key);
 
@@ -195,10 +215,28 @@ export function renderLibraryCard(entry, { lang, favorite, now = Date.now() }) {
   }
 
   const pair = el('div', 'lib-pair');
-  pair.appendChild(textBlock('lib-original', entry.original));
-  pair.appendChild(resultSide(entry, lang));
+  const original = textBlock('lib-original', entry.original);
+  const originalText = original.querySelector('.lib-text');
+  originalText.id = `${base}-original`;
+  labelSide(original, t('original', lang), lang, `${base}-original-label`);
+  pair.appendChild(original);
+
+  // A lesson saved without its translation has nothing to show on this side.
+  if (entry.result || shownVariants(entry).length) {
+    const result = resultSide(entry, lang);
+    labelSide(result, t('libraryResult', lang), lang, `${base}-result-label`);
+    pair.appendChild(result);
+  } else {
+    pair.classList.add('lib-pair-single');
+  }
   card.appendChild(pair);
 
   card.appendChild(actionsRow(entry, lang, favorite));
+
+  // Every card has the same few actions; the original text says which entry
+  // a "Delete" or "Copy" belongs to.
+  for (const action of card.querySelectorAll('[data-action]')) {
+    action.setAttribute('aria-describedby', originalText.id);
+  }
   return card;
 }

@@ -34,8 +34,7 @@ const MODULE_ENTRIES = [
   { in: 'newtab/newtab.js',              out: 'newtab/newtab.js' },
   { in: 'welcome/welcome.js',            out: 'welcome/welcome.js' },
   { in: 'grammar/grammar.js',            out: 'grammar/grammar.js' },
-  { in: 'history/history.js',            out: 'history/history.js' },
-  { in: 'favorites/favorites.js',        out: 'favorites/favorites.js' },
+  { in: 'library/library.js',            out: 'library/library.js' },
   { in: 'analytics/analytics.js',        out: 'analytics/analytics.js' }
 ];
 const IIFE_ENTRIES = [
@@ -54,8 +53,10 @@ const STATIC = [
   'newtab/newtab.html', 'newtab/newtab.css',
   'welcome/welcome.html', 'welcome/welcome.css',
   'grammar/grammar.html', 'grammar/grammar.css',
-  'history/history.html', 'history/history.css',
-  'favorites/favorites.html', 'favorites/favorites.css',
+  'library/library.html', 'library/library.css',
+  // Redirect stubs: old links and bookmarks land on the matching Library tab.
+  'history/history.html',
+  'favorites/favorites.html',
   'analytics/analytics.html', 'analytics/analytics.css',
   '_locales',
   'fonts',

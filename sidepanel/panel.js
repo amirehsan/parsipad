@@ -23,18 +23,57 @@ function hideChip() {
   chip.hidden = true;
 }
 
+/**
+ * Put text in the popup controller's input the way typing would, so its
+ * character count and text direction follow.
+ * @param {string} text
+ * @returns {boolean} false when the input is not on the page
+ */
+function fillInput(text) {
+  const input = document.getElementById('input-text');
+  if (!input) return false;
+  input.value = text;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
+}
+
 function translateSelection() {
   if (!selectedText) return;
-  const input = document.getElementById('input-text');
   const modeTranslate = document.getElementById('mode-translate');
   const actionBtn = document.getElementById('action-btn');
-  if (!input || !modeTranslate || !actionBtn) return;
+  if (!modeTranslate || !actionBtn) return;
 
   // Switching modes resets the outputs, so do it before filling the input.
   if (modeTranslate.getAttribute('aria-selected') !== 'true') modeTranslate.click();
-  input.value = selectedText;
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  actionBtn.click();
+  if (fillInput(selectedText)) actionBtn.click();
+}
+
+/**
+ * Text handed over by the Library's "Open in side panel": the Library writes
+ * { text, at, windowId } to chrome.storage.session and opens the panel in its
+ * window. Session storage is shared by every window, so a panel in another
+ * window leaves the text for the panel it was meant for. It is used once and
+ * then removed. One older than PREFILL_MAX_AGE was left behind by an open
+ * that never happened (the panel failed to open, or was closed first), and
+ * would otherwise surprise the next panel opened, so it is dropped unused.
+ */
+const PREFILL_KEY = 'panel_prefill';
+const PREFILL_MAX_AGE = 60e3;
+
+function usePrefill(prefill) {
+  if (!prefill || typeof prefill.text !== 'string') return;
+  if (typeof prefill.windowId === 'number' && panelWindowId !== null && prefill.windowId !== panelWindowId) return;
+  if (Date.now() - (Number(prefill.at) || 0) <= PREFILL_MAX_AGE) fillInput(prefill.text);
+  chrome.storage.session.remove(PREFILL_KEY).catch(() => {});
+}
+
+async function readPrefill() {
+  try {
+    const stored = await chrome.storage.session.get(PREFILL_KEY);
+    usePrefill(stored[PREFILL_KEY]);
+  } catch {
+    // Session storage unavailable; the panel opens empty
+  }
 }
 
 /**
@@ -84,6 +123,14 @@ export async function initPanel() {
   });
 
   chipTranslateBtn.addEventListener('click', translateSelection);
+
+  // A panel that is already open hears the Library through onChanged; one
+  // that was just opened finds the text waiting. Removing the key fires
+  // onChanged again with no newValue, which is ignored.
+  chrome.storage.session.onChanged.addListener((changes) => {
+    if (changes[PREFILL_KEY]?.newValue) usePrefill(changes[PREFILL_KEY].newValue);
+  });
+  readPrefill();
 
   pullSelection();
 }

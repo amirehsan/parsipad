@@ -1,6 +1,7 @@
 // tests/library-card.test.js
 import { describe, it, expect, beforeAll } from 'vitest';
 import fs from 'fs'; import path from 'path';
+import { translations } from '../lib/i18n.js';
 let renderLibraryCard;
 beforeAll(async () => {
   const { Window } = await import('happy-dom');
@@ -120,6 +121,36 @@ describe('library card', () => {
     expect(en.querySelector('button[data-variant="concise"]').getAttribute('aria-label')).toBe('Copy Concise');
     const fa = renderLibraryCard(polish, { lang: 'fa', favorite: false, now });
     expect(fa.querySelector('button[data-variant="concise"]').getAttribute('aria-label')).not.toMatch(/\{variant\}|Copy/);
+  });
+  it('names the original and result columns for screen readers in the interface language', () => {
+    const card = renderLibraryCard(tr, { lang: 'fa', favorite: false, now });
+    for (const [selector, key] of [['.lib-original', 'original'], ['.lib-result', 'libraryResult']]) {
+      const side = card.querySelector(selector);
+      expect(side.getAttribute('role'), selector).toBe('group');
+      const label = card.querySelector(`[id="${side.getAttribute('aria-labelledby')}"]`);
+      expect(label, selector).not.toBeNull();
+      expect(label.textContent).toBe(translations.fa[key]);
+      expect(label.getAttribute('lang')).toBe('fa');
+      expect(label.classList.contains('lib-sr-only')).toBe(true);
+    }
+  });
+  it('ties every action to the entry it acts on', () => {
+    const card = renderLibraryCard(polish, { lang: 'en', favorite: false, now });
+    const text = card.querySelector('.lib-original .lib-text');
+    expect(text.id).toBeTruthy();
+    const actions = [...card.querySelectorAll('[data-action]')];
+    expect(actions.length).toBeGreaterThan(0);
+    for (const action of actions) expect(action.getAttribute('aria-describedby')).toBe(text.id);
+    const other = renderLibraryCard(tr, { lang: 'en', favorite: false, now });
+    expect(other.querySelector('.lib-original .lib-text').id).not.toBe(text.id);
+  });
+  it('shows no result column for a saved lesson without saved text', () => {
+    const lesson = { ...tr, key: 'favorite:grammar_y', source: 'favorites', kind: 'grammar', id: 'grammar_y', result: '', lesson: { title: 'T' } };
+    const card = renderLibraryCard(lesson, { lang: 'en', favorite: true, now });
+    expect(card.querySelector('.lib-result')).toBeNull();
+    expect(card.querySelector('.lib-pair').classList.contains('lib-pair-single')).toBe(true);
+    const withText = renderLibraryCard({ ...lesson, result: 'سلام' }, { lang: 'en', favorite: true, now });
+    expect(withText.querySelector('.lib-result')).not.toBeNull();
   });
   it('skips a polish variant that is missing or empty', () => {
     const partial = { ...polish, variants: { professional: 'Good afternoon.', conversational: '', concise: undefined } };

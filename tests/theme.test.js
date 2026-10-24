@@ -106,8 +106,8 @@ describe('resolveTheme', () => {
 describe('every page applies theme the same way', () => {
   const root = path.resolve(__dirname, '..');
   const PAGES = [
-    'newtab/newtab.js', 'popup/popup.js', 'favorites/favorites.js',
-    'history/history.js', 'analytics/analytics.js',
+    'newtab/newtab.js', 'popup/popup.js', 'library/library.js',
+    'analytics/analytics.js',
     'settings/settings.js', 'grammar/grammar.js', 'welcome/welcome.js'
   ];
 
