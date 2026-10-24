@@ -695,17 +695,17 @@ function setupQuizInteractions(container, quiz, pointNumber) {
     let explanationText = '';
     if (isCorrect) {
       // For correct answer: show the correct option's explanation or global explanation
-      explanationText = selectedExplanation || quiz.explanation || '';
+      explanationText = escapeHtml(selectedExplanation || quiz.explanation || '');
     } else {
       // For wrong answer: show why the selected answer is wrong, then why the correct one is right
       if (selectedExplanation) {
-        explanationText = selectedExplanation;
+        explanationText = escapeHtml(selectedExplanation);
         if (correctExplanation) {
           explanationText += `<br><br><strong>${t('correctAnswer', currentLang) || 'Correct answer'}:</strong> ${escapeHtml(correctExplanation)}`;
         }
       } else {
         // Fall back to global explanation
-        explanationText = quiz.explanation || '';
+        explanationText = escapeHtml(quiz.explanation || '');
       }
     }
 
