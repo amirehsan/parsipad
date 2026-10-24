@@ -21,7 +21,8 @@ import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils/batch.js';
 import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
-import { selectionToReport, createSelectionReporter } from './selection-report.js';
+import { selectionToReport, createSelectionReporter, isEditableSelection } from './selection-report.js';
+import { createToolbarTrigger, selectionAnchor, isSameAnchor } from './toolbar-trigger.js';
 import { MUTED_SITES_KEY, isHostMuted } from '../lib/muted-sites.js';
 import { initBlockTranslate, translateFocusedBlock, hideBlockIcon, isBlockTranslateEnabled } from './blocks/index.js';
 
@@ -45,7 +46,9 @@ let siteMuted = false;
 // Cached user-language preference for translating floating-box copy. Read once
 // on init and kept fresh by the chrome.storage.onChanged listener below.
 let userLang = 'en';
-let selectionDebounceTimer = null;
+// What the selection toolbar on screen was built for (text and range
+// rectangle), so a selectionchange that moves nothing does not rebuild it.
+let selectionPopupAnchor = null;
 let currentPolishOriginalText = null; // Store original text for regeneration
 let currentTranslationData = null; // Store current translation for favorites
 let currentDictionaryData = null; // Store current dictionary result for favorites
@@ -104,8 +107,25 @@ function init() {
   // Listen for Escape key to close the box
   document.addEventListener('keydown', handleKeyDown);
 
-  // Listen for text selection (mouseup)
-  document.addEventListener('mouseup', handleTextSelection);
+  // Selection toolbar: one trigger for mouse, touch and keyboard selection.
+  // Pointer events on the toolbar or the floating box are ignored, so a
+  // toolbar button is not hidden before its click lands. A touch long-press
+  // ends in pointercancel rather than pointerup, so both end the gesture.
+  const toolbarTrigger = createToolbarTrigger({
+    evaluate: evaluateSelection,
+    hide: removeSelectionPopup
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (isPointerOnOwnUi(event)) return;
+    toolbarTrigger.onPointerDown();
+  });
+  const onPointerEnd = (event) => {
+    if (isPointerOnOwnUi(event)) return;
+    toolbarTrigger.onPointerUp();
+  };
+  document.addEventListener('pointerup', onPointerEnd);
+  document.addEventListener('pointercancel', onPointerEnd);
+  document.addEventListener('selectionchange', toolbarTrigger.onSelectionChange);
 
   // Tell the side panel what is selected so it can offer a one-click translate
   const reportSelection = createSelectionReporter((text) => {
@@ -2979,42 +2999,75 @@ async function loadMutedSites() {
 }
 
 /**
- * Handle text selection on mouseup
+ * Whether a pointer event started on the selection toolbar or the floating
+ * box. Both live in closed shadow roots, so the composed path ends at their
+ * host elements.
+ * @param {Event} event
+ * @returns {boolean}
  */
-function handleTextSelection(event) {
-  // Quiet on sites the user muted
-  if (siteMuted) return;
+function isPointerOnOwnUi(event) {
+  const path = event.composedPath();
+  return Boolean((selectionPopup && path.includes(selectionPopup)) ||
+    (floatingBox && path.includes(floatingBox)));
+}
 
-  // Don't show popup if disabled
+// The hosts ParsiPad adds to a page: the floating box, toolbar, toast and
+// page-translation overlay and toggle carry a parsipad- id; block translate
+// marks its icon and its inline translations with data attributes.
+const OWN_UI_SELECTOR = '[id^="parsipad-"], [data-parsipad-icon], [data-parsipad-translation]';
+
+/**
+ * Whether the selection lies in ParsiPad's own UI (see OWN_UI_SELECTOR).
+ * @param {Selection} selection
+ * @returns {boolean}
+ */
+function isSelectionInOwnUi(selection) {
+  const inOwnUi = (node) => {
+    const element = node && (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement);
+    return Boolean(element && element.closest(OWN_UI_SELECTOR));
+  };
+  if (inOwnUi(selection.anchorNode) || inOwnUi(selection.focusNode)) return true;
+  // A selection inside a closed shadow root (the floating box) is reported
+  // at the host's own position in its parent, both ends at the same offset.
+  const { anchorNode, anchorOffset } = selection;
+  if (!anchorNode || anchorNode.nodeType !== Node.ELEMENT_NODE) return false;
+  if (selection.focusNode !== anchorNode || selection.focusOffset !== anchorOffset) return false;
+  const child = anchorNode.childNodes[anchorOffset];
+  return Boolean(child && child.nodeType === Node.ELEMENT_NODE && child.matches(OWN_UI_SELECTOR));
+}
+
+/**
+ * Look at the selection once it has settled (called by the toolbar trigger)
+ * and show the toolbar for it, move it to a new range, or hide it.
+ */
+function evaluateSelection() {
+  if (siteMuted) return;
   if (!selectionPopupEnabled) return;
 
-  // Don't show if clicking inside existing popup or floating box
-  if (selectionPopup && selectionPopup.contains(event.target)) return;
-  if (floatingBox && floatingBox.contains(event.target)) return;
+  // Focus inside the toolbar (a keyboard user on its buttons): leave it, or a
+  // rebuild would destroy the focused button.
+  if (selectionPopup && document.activeElement === selectionPopup) return;
 
-  // Clear any existing debounce timer
-  if (selectionDebounceTimer) {
-    clearTimeout(selectionDebounceTimer);
-    selectionDebounceTimer = null;
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 ||
+      isEditableSelection(selection, document.activeElement) ||
+      isSelectionInOwnUi(selection)) {
+    removeSelectionPopup();
+    return;
   }
 
-  // Remove existing popup immediately on new selection attempt
+  const selectedText = selection.toString().trim();
+  if (selectedText.length < 2) {
+    removeSelectionPopup();
+    return;
+  }
+
+  const anchor = selectionAnchor(selectedText, selection.getRangeAt(0).getBoundingClientRect());
+  if (selectionPopup && selectionPopup.isConnected && isSameAnchor(anchor, selectionPopupAnchor)) return;
+
   removeSelectionPopup();
-
-  // Debounce: wait 200ms before showing popup to avoid flickering
-  selectionDebounceTimer = setTimeout(() => {
-    // A mute that arrived during the debounce wins
-    if (siteMuted) return;
-
-    const selection = window.getSelection();
-    const selectedText = selection?.toString().trim();
-
-    // Only show popup if there's selected text (min 2 chars)
-    if (selectedText && selectedText.length >= 2) {
-      const position = getSelectionPopupPosition(selection);
-      createSelectionPopup(position, selectedText);
-    }
-  }, 200);
+  createSelectionPopup(getSelectionPopupPosition(selection), selectedText);
+  selectionPopupAnchor = anchor;
 }
 
 /**
@@ -3198,6 +3251,7 @@ function removeSelectionPopup() {
     selectionPopup = null;
     selectionPopupShadow = null;
   }
+  selectionPopupAnchor = null;
 }
 
 

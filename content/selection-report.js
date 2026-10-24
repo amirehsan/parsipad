@@ -7,7 +7,9 @@ const MIN_REPORT_LENGTH = 2;
 // The chip shows 120 characters and the textarea takes at most this many, so a
 // select-all on a long page never pushes megabytes through messaging.
 export const MAX_REPORT_LENGTH = 2000;
-const EDITABLE_TAGS = new Set(['INPUT', 'TEXTAREA']);
+const EDITABLE_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
+// An editable region, but not a read-only island inside one marked "false".
+const EDITABLE_REGION = '[contenteditable]:not([contenteditable="false"])';
 
 /**
  * The element that really has focus. document.activeElement stops at the
@@ -36,6 +38,30 @@ function isOpaqueCustomElement(element) {
 }
 
 /**
+ * Whether the selection belongs to something the reader is editing: focus is
+ * in a form field, an editable element or an opaque custom element (looked up
+ * through open shadow roots), or the selection starts inside an editable
+ * region, which covers rich editors that hold the selection without focus.
+ * The selection toolbar and the side-panel report both use this one rule, so
+ * they always skip the same selections.
+ * @param {Selection | null} selection
+ * @param {Element | null} activeElement
+ * @returns {boolean}
+ */
+export function isEditableSelection(selection, activeElement) {
+  const focused = deepestActiveElement(activeElement);
+  if (focused) {
+    if (EDITABLE_TAGS.has(String(focused.tagName).toUpperCase())) return true;
+    if (focused.isContentEditable) return true;
+    if (isOpaqueCustomElement(focused)) return true;
+  }
+  const node = selection && selection.anchorNode;
+  if (!node) return false;
+  const element = node.nodeType === 1 ? node : node.parentElement;
+  return Boolean(element && element.closest(EDITABLE_REGION));
+}
+
+/**
  * Turn the page selection into the text worth offering, or null.
  * Selections inside form fields and editable regions are skipped, including
  * fields inside shadow DOM, which also keeps anything typed into a password
@@ -46,12 +72,7 @@ function isOpaqueCustomElement(element) {
  */
 export function selectionToReport(selection, activeElement) {
   if (!selection) return null;
-  const focused = deepestActiveElement(activeElement);
-  if (focused) {
-    if (EDITABLE_TAGS.has(String(focused.tagName).toUpperCase())) return null;
-    if (focused.isContentEditable) return null;
-    if (isOpaqueCustomElement(focused)) return null;
-  }
+  if (isEditableSelection(selection, activeElement)) return null;
   const text = selection.toString().trim();
   if (text.length < MIN_REPORT_LENGTH) return null;
   return text.length > MAX_REPORT_LENGTH ? text.slice(0, MAX_REPORT_LENGTH) : text;
