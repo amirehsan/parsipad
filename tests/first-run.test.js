@@ -5,7 +5,7 @@ import { Window } from 'happy-dom';
 import { createFirstRun } from '../popup/first-run.js';
 import { renderKeyHelp } from '../lib/key-help.js';
 import { t } from '../lib/i18n.js';
-import { normalizeApiKey } from '../lib/storage.js';
+import { normalizeApiKey, checkKeyFormat } from '../lib/storage.js';
 
 const root = path.resolve(__dirname, '..');
 const popupHtml = fs.readFileSync(path.join(root, 'popup/popup.html'), 'utf8');
@@ -34,7 +34,8 @@ function setup({ result = { ok: true, model: 'm', ms: 12 } } = {}) {
     setSelectedProvider: vi.fn(async (id) => { selected = id; }),
     getProviderApiKey: async (id) => stored[id] || null,
     setProviderApiKey: vi.fn(async (id, key) => { stored[id] = key; }),
-    normalizeApiKey
+    normalizeApiKey,
+    checkKeyFormat
   };
   ctl = createFirstRun({
     doc,
@@ -49,6 +50,7 @@ function setup({ result = { ok: true, model: 'm', ms: 12 } } = {}) {
 
 const keyInput = () => doc.getElementById('first-run-key');
 const status = () => doc.getElementById('first-run-status');
+const testBtn = () => doc.getElementById('first-run-test');
 const radio = (value) => doc.querySelector(`input[name="first-run-provider"][value="${value}"]`);
 
 async function type(value) {
@@ -91,7 +93,7 @@ describe('first run key section', () => {
     expect(testKey).toHaveBeenCalledWith('claude', 'sk-ant-wrong');
     expect(storage.setProviderApiKey).not.toHaveBeenCalled();
     expect(keyInput().value).toBe('sk-ant-wrong');
-    expect(status().textContent).toBe('Test failed. Invalid API key. Please check settings.');
+    expect(status().textContent).toBe(`Test failed. ${t('keyRejected', 'en')}`);
     expect(status().dataset.state).toBe('error');
     expect(doc.getElementById('first-run').hidden).toBe(false);
     expect(actionBtn.disabled).toBe(true);
@@ -200,6 +202,45 @@ describe('first run key section', () => {
     expect(status().textContent).toBe(t('pleaseEnterApiKey', 'en'));
   });
 
+  it('sends no request for a key with the wrong prefix and names the prefix instead', async () => {
+    const storage = setup();
+    await ctl.check();
+    await type('AIzaNotAClaudeKey');
+
+    await ctl.submit();
+
+    expect(testKey).not.toHaveBeenCalled();
+    expect(storage.setProviderApiKey).not.toHaveBeenCalled();
+    expect(status().textContent).toBe('Test failed. A Claude key starts with sk-ant-, so check that you copied all of it.');
+    expect(status().dataset.state).toBe('error');
+    expect(doc.activeElement).toBe(keyInput());
+    expect(testBtn().disabled).toBe(false);
+  });
+
+  it('reports a failed round trip with its message, through the shared helper', async () => {
+    setup();
+    await ctl.check();
+    await type('sk-ant-x');
+    testKey.mockRejectedValue(new Error('Could not establish connection'));
+
+    await ctl.submit();
+
+    expect(status().textContent).toBe('Test failed. Could not establish connection');
+    expect(status().dataset.state).toBe('error');
+  });
+
+  it('localizes a key storage turns away instead of showing its English message', async () => {
+    const storage = setup();
+    storage.setProviderApiKey.mockRejectedValue(Object.assign(new Error('Invalid Claude API key format'), { code: 'INVALID_KEY_FORMAT', prefixes: ['sk-ant-'] }));
+    await ctl.check();
+    await type('sk-ant-x');
+
+    await ctl.submit();
+
+    expect(status().textContent).toBe('Test failed. A Claude key starts with sk-ant-, so check that you copied all of it.');
+    expect(status().querySelector('bdi[dir="ltr"]').textContent).toBe('sk-ant-');
+  });
+
   it('picks up a key added in Settings after a failed test', async () => {
     setup({ result: { ok: false, code: 'INVALID_API_KEY', message: 'Invalid API key. Please check settings.' } });
     await ctl.check();
@@ -240,7 +281,7 @@ describe('settings page', () => {
   });
 
   it('uses the Persian font on the pill only when the pill is Persian', () => {
-    for (const file of ['popup/popup.css', 'settings/settings.css']) {
+    for (const file of ['popup/popup.css', 'settings/settings.css', 'welcome/welcome.css']) {
       const css = fs.readFileSync(path.join(root, file), 'utf8');
       expect(css, file).toMatch(/\.key-help-lang\[lang="fa"\]\s*\{[^}]*var\(--font-persian\)/);
       expect(css, file).not.toMatch(/\.key-help-lang\s*\{[^}]*font-persian/);

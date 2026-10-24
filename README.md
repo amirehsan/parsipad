@@ -60,10 +60,12 @@
 
 ### Settings & Data
 - **Data Backup & Restore** - Export and import favorites, history, and cache
-- **Welcome/Onboarding Page** - Beautiful first-time setup with feature showcase
+- **Settings** - One page with a section nav: AI provider & key, Reading on web pages, Language & appearance, Flashcards, Data & backup, Shortcuts, About. Each provider has its own key field with Save & test
+- **Muted Sites** - Turn off the hover translate button and the selection toolbar on sites you choose, subdomains included
+- **Welcome/Onboarding Page** - First-time setup that starts with your key, tests it, and ends on a first translation
 - **Dark Mode** - Beautiful dark theme that syncs with system preferences
 - **Bilingual Support** - Full English and Persian (فارسی) interface
-- **Usage Analytics** - Track your translation and token usage on the Analytics page, opened from Settings > More
+- **Usage Analytics** - Track your translation and token usage on the Analytics page, opened from Settings > Data & backup
 - **Offline Caching** - Previously translated text loads instantly
 
 ## Installation
@@ -102,7 +104,7 @@
    - Click the ParsiPad icon in your toolbar
    - On first run, choose your AI provider and paste the key (the "How do I get a key?" guide has the link and key format for each provider)
    - Click "Save and test key": ParsiPad makes one tiny real request and stores the key only if it works
-   - Later, change provider or key from Settings (gear icon) with "Save & Test"
+   - Later, change provider or key from Settings (gear icon): each provider card has its own "Save & test"
 
 3. **Start Translating**
    - **Option 1:** Type or paste text in the popup and click Translate (or press `Ctrl+Enter`, `Cmd+Enter` on Mac)
@@ -238,18 +240,19 @@ Translate entire webpages:
 ### Data Backup & Restore (NEW in v2.5)
 
 Keep your data safe and portable:
-1. Go to Settings → Data Backup section
+1. Go to Settings → Data & backup section
 2. **Export**: Select data types to export (favorites, history, cache)
 3. Click "Export to JSON" to download a backup file
 4. **Import**: Choose merge (add to existing) or replace strategy
 5. Click "Import from JSON" and select your backup file
 
-### Welcome Guide (NEW in v2.5)
+### Welcome Guide
 
-First-time users see a beautiful welcome page with:
-- Feature showcase with all ParsiPad capabilities
-- Integrated API key setup
-- Access anytime via Settings → "View Welcome Guide"
+First-time users see a welcome page that:
+- Starts with API key setup: choose a provider, paste the key and press Save & test (the key is stored only if it works)
+- Offers a "Try it" step that translates a sample sentence with your own key
+- Has one Done button next to the sample, with the feature tour below it
+- Can be reopened anytime from Settings → About → "View Welcome Guide"; Done then returns you to Settings
 
 ## Development
 

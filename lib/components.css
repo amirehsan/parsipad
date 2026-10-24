@@ -156,6 +156,102 @@
   resize: vertical;
 }
 
+/* ------------- Switch -------------
+ *
+ * A native checkbox drawn as a track and thumb:
+ *   <input type="checkbox" role="switch" class="pp-switch" id="..." aria-describedby="...">
+ * It stays a real input, so it takes focus, answers Space, reports its state
+ * and fires `change` like any checkbox; its visible label is a <label for>.
+ * The thumb starts on the reading-start side and travels toward the end, so
+ * it moves right in English and left in Persian.
+ */
+
+.pp-switch {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 24px;
+  margin: 0;
+  border-radius: var(--radius-full);
+  background-color: var(--color-gray-500);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+
+.pp-switch::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--color-gray-50);
+  box-shadow: 0 1px 3px rgba(27, 24, 38, 0.2);
+  transition: transform var(--motion-fast) var(--ease-out);
+}
+
+.pp-switch:checked {
+  background-color: var(--color-primary-500);
+}
+
+.pp-switch:checked::before {
+  transform: translateX(20px);
+}
+
+[dir='rtl'] .pp-switch::before {
+  left: auto;
+  right: 3px;
+}
+
+[dir='rtl'] .pp-switch:checked::before {
+  transform: translateX(-20px);
+}
+
+.pp-switch:focus-visible {
+  outline: var(--ring-width) solid var(--ring-color);
+  outline-offset: var(--ring-offset);
+}
+
+.pp-switch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Forced colors would repaint the track and thumb as one flat surface, so the
+   switch opts out and draws itself in system colors. */
+@media (forced-colors: active) {
+  .pp-switch,
+  .pp-switch::before {
+    forced-color-adjust: none;
+  }
+
+  .pp-switch {
+    background-color: Canvas;
+    box-shadow: inset 0 0 0 1px CanvasText;
+  }
+
+  .pp-switch::before {
+    background-color: CanvasText;
+    box-shadow: none;
+  }
+
+  .pp-switch:checked {
+    background-color: Highlight;
+    box-shadow: none;
+  }
+
+  .pp-switch:checked::before {
+    background-color: HighlightText;
+  }
+
+  .pp-switch:focus-visible {
+    outline-color: CanvasText;
+  }
+}
+
 /* ------------- Tabs (accessible ARIA tablist pattern) ------------- */
 
 .pp-tablist {

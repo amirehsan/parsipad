@@ -41,6 +41,6 @@ describe('spacing rhythm', () => {
   });
 
   it('settings rows have room to breathe', () => {
-    expect(rule(read('settings/settings.css'), '.toggle-row')).toMatch(/padding:\s*1\.125rem 0/);
+    expect(rule(read('settings/settings.css'), '.setting-row')).toMatch(/padding:\s*var\(--space-stack-group\) 0/);
   });
 });

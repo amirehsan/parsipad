@@ -4,7 +4,8 @@ import {
   getProviderApiKey,
   setProviderApiKey,
   removeProviderApiKey,
-  hasProviderApiKey,
+  normalizeApiKey,
+  checkKeyFormat,
   getLanguage,
   setLanguage,
   getDictionaryTranslationSettings,
@@ -13,6 +14,8 @@ import {
   setSelectionPopupEnabled,
   getTranslateOtherLanguages,
   setTranslateOtherLanguages,
+  getConfirmPageTranslate,
+  setConfirmPageTranslate,
   getPracticeSessionSize,
   setPracticeSessionSize,
   getFavorites,
@@ -22,7 +25,7 @@ import {
 import { PROVIDERS, PROVIDER_CONFIGS, STORAGE_KEYS, ACTIONS } from '../lib/constants.js';
 import { translationCache } from '../lib/cache.js';
 import { t, applyTranslations } from '../lib/i18n.js';
-import { renderKeyHelp, keyTestOkText, keyTestFailedText } from '../lib/key-help.js';
+import { renderKeyHelp, describeKeyTest, keyTestErrorResult, isKeyRejected, renderKeyTest, setKeyRevealed } from '../lib/key-help.js';
 import { COMMAND_DESCRIPTIONS, getBoundShortcuts, shortcutKeys } from '../shared/shortcuts.js';
 import {
   getHistory,
@@ -31,6 +34,8 @@ import {
 } from '../lib/history.js';
 import { applyThemeToRoot } from '../lib/theme.js';
 import { formatNumber } from '../lib/format.js';
+import { setupSectionNav } from './sections.js';
+import { getMutedSites, addMutedSite, removeMutedSite } from '../lib/muted-sites.js';
 
 // DOM Elements - Language
 const aboutVersionEl = document.getElementById('about-version');
@@ -48,36 +53,30 @@ const translateOtherLanguagesToggle = document.getElementById('translate-other-l
 // DOM Elements - Block Translate
 const blockTranslateToggle = document.getElementById('block-translate-toggle');
 
+// DOM Elements - Whole-page confirmation (row hidden until Plan E) and muted sites
+const confirmPageTranslateToggle = document.getElementById('confirm-page-translate-toggle');
+const mutedSitesList = document.getElementById('muted-sites-list');
+const mutedSitesEmpty = document.getElementById('muted-sites-empty');
+const mutedSiteForm = document.getElementById('muted-site-form');
+const mutedSiteInput = document.getElementById('muted-site-input');
+const mutedSiteStatus = document.getElementById('muted-site-status');
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
 // DOM Elements - Practice
 const practiceSizeSlider = document.getElementById('practice-size-slider');
 const practiceSizeValue = document.getElementById('practice-size-value');
 
 // DOM Elements - Theme
-const themeToggle = document.getElementById('theme-toggle');
+const themeRadios = document.querySelectorAll('input[name="theme"]');
+const systemDarkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
-// DOM Elements - Provider Selection
+// DOM Elements - Provider cards
 const providerRadios = document.querySelectorAll('input[name="provider"]');
-
-// DOM Elements - API Key Tabs
-const apiKeyTabs = document.querySelectorAll('.api-key-tab');
-const apiKeyPanels = document.querySelectorAll('.api-key-panel');
-
-// DOM Elements - API Key Inputs
-const claudeApiKeyInput = document.getElementById('claude-api-key');
-const geminiApiKeyInput = document.getElementById('gemini-api-key');
-const openaiApiKeyInput = document.getElementById('openai-api-key');
-
-// DOM Elements - Key Status Indicators (referenced via getElementById elsewhere, kept for parity)
-const _claudeKeyStatus = document.getElementById('claude-key-status');
-const _geminiKeyStatus = document.getElementById('gemini-key-status');
-const _openaiKeyStatus = document.getElementById('openai-key-status');
+const PROVIDER_IDS = [PROVIDERS.CLAUDE, PROVIDERS.GEMINI, PROVIDERS.OPENAI];
 
 // DOM Elements - Cache
 const cacheCountEl = document.getElementById('cache-count');
 const clearCacheBtn = document.getElementById('clear-cache-btn');
-
-// DOM Elements - Status
-const apiStatusEl = document.getElementById('api-status');
 
 // DOM Elements - Data Backup
 const exportFavoritesCheckbox = document.getElementById('export-favorites');
@@ -107,22 +106,35 @@ const EXTENSION_VERSION = chrome.runtime.getManifest().version;
 
 // State
 let currentLang = 'en';
-let currentProvider = PROVIDERS.CLAUDE;
+let currentTheme = 'light';
+// Per provider: whether a key is stored, and what its status line says as a
+// function of the language, so a language change rewords both in place.
+const keySaved = {};
+const keyTestMessages = {};
+// Providers whose Save & test is running; their card's buttons stay locked.
+const testingProviders = new Set();
+// The hosts the muted-sites chips show, and that card's status line as an
+// i18n key with its values, so a language change rewords both in place.
+let mutedSites = [];
+let mutedSiteMessage = null;
 
 /**
  * Initialize the settings page
  */
 async function init() {
-  initTheme();
+  await initTheme();
   await loadLanguage();
   await loadDictionarySettings();
   await loadSelectionPopupSetting();
   await loadTranslateOtherLanguagesSetting();
   await loadBlockTranslateSetting();
+  await loadConfirmPageTranslateSetting();
+  await loadMutedSites();
   await loadPracticeSetting();
   await loadProviderSettings();
   await loadAllApiKeyStatuses();
   mountKeyHelp();
+  refreshKeyRevealButtons();
   await loadCacheStats();
   await loadDataCounts();
   await loadKeyboardShortcuts();
@@ -131,24 +143,35 @@ async function init() {
 }
 
 /**
- * Initialize theme from chrome.storage (shared across all extension surfaces)
- * or system preference if unset.
+ * Apply the stored theme (shared across all extension surfaces) and check
+ * its radio.
  */
 async function initTheme() {
   // Both conventions, always. This page styles dark with the class, but
   // lib/design-tokens.css also answers to [data-theme], and theme-boot sets
   // both. Clearing only the class leaves data-theme="dark" behind and the
   // tokens stay dark while the page's own rules go light.
-  applyThemeToRoot(await getTheme());
+  currentTheme = await getTheme();
+  applyThemeToRoot(currentTheme);
+  themeRadios.forEach((radio) => { radio.checked = radio.value === currentTheme; });
 }
 
 /**
- * Toggle dark/light theme; persisted to chrome.storage so popup/grammar stay in sync.
+ * Store the chosen theme, then show it. Stored in chrome.storage so the
+ * popup, side panel and other pages follow.
  */
-async function toggleTheme() {
-  const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-  applyThemeToRoot(next);
-  await setTheme(next);
+async function handleThemeChange(event) {
+  currentTheme = event.target.value;
+  await setTheme(currentTheme);
+  applyThemeToRoot(currentTheme);
+}
+
+/**
+ * System follows the operating system while the page is open, not only when
+ * it loads.
+ */
+function handleSystemThemeChange() {
+  if (currentTheme === 'system') applyThemeToRoot('system');
 }
 
 /**
@@ -247,6 +270,138 @@ async function loadBlockTranslateSetting() {
 }
 
 /**
+ * Load the "ask before translating a whole page" setting. Its row ships
+ * hidden until Plan E's confirmation reads the preference.
+ */
+async function loadConfirmPageTranslateSetting() {
+  confirmPageTranslateToggle.checked = await getConfirmPageTranslate();
+}
+
+/**
+ * Read the muted hosts into their chips
+ */
+async function loadMutedSites() {
+  renderMutedSites(await getMutedSites());
+}
+
+/**
+ * Show the muted hosts as chips, or the empty line when there are none.
+ * A chip that had keyboard focus keeps it when its host is still listed;
+ * when its host went away (unmuted here or elsewhere), focus moves on by
+ * the same rule as unmuting.
+ * @param {string[]} list
+ */
+function renderMutedSites(list) {
+  const active = document.activeElement;
+  const focusedHost = mutedSitesList.contains(active) ? active.dataset.host : undefined;
+  const focusedIndex = mutedSites.indexOf(focusedHost);
+
+  mutedSites = [...list];
+  mutedSitesList.replaceChildren(...mutedSites.map(createMutedChip));
+  mutedSitesList.hidden = mutedSites.length === 0;
+  mutedSitesEmpty.hidden = mutedSites.length > 0;
+
+  if (focusedHost === undefined) return;
+  const sameChip = [...mutedSitesList.querySelectorAll('.muted-chip-remove')]
+    .find((button) => button.dataset.host === focusedHost);
+  if (sameChip) {
+    sameChip.focus();
+  } else {
+    focusAfterUnmute(focusedIndex);
+  }
+}
+
+/**
+ * One chip: the host as an ltr run, then its unmute button. Built from
+ * nodes, never markup, since the host is user input.
+ * @param {string} host
+ * @returns {HTMLLIElement}
+ */
+function createMutedChip(host) {
+  const item = document.createElement('li');
+  item.className = 'muted-chip';
+
+  const name = document.createElement('bdi');
+  name.className = 'muted-chip-host';
+  name.setAttribute('dir', 'ltr');
+  name.textContent = host;
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'muted-chip-remove';
+  button.dataset.host = host;
+  button.setAttribute('aria-label', t('unmuteSite', currentLang).replace('{host}', host));
+  button.append(createCloseIcon());
+
+  item.append(name, button);
+  return item;
+}
+
+/**
+ * The unmute button's cross
+ * @returns {SVGSVGElement}
+ */
+function createCloseIcon() {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '2');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', 'M6 6l12 12M18 6L6 18');
+  svg.append(path);
+  return svg;
+}
+
+/**
+ * After a chip goes, focus the chip that took its place, else the one
+ * before it, else the add field.
+ * @param {number} index The removed chip's position
+ */
+function focusAfterUnmute(index) {
+  const buttons = mutedSitesList.querySelectorAll('.muted-chip-remove');
+  const target = buttons.length > 0 ? buttons[Math.min(Math.max(index, 0), buttons.length - 1)] : mutedSiteInput;
+  target.focus();
+}
+
+/**
+ * Show a message in the muted-sites status line, or clear it with null
+ * @param {string | null} key
+ * @param {Record<string, string>} [values] Placeholder values, shown as ltr runs
+ * @param {'ok'|'error'|'info'} [tone]
+ */
+function setMutedSiteMessage(key, values = {}, tone = 'info') {
+  mutedSiteMessage = key ? { key, values, tone } : null;
+  renderMutedSiteMessage();
+}
+
+/**
+ * Write the status line in the UI language. Each {placeholder} becomes a
+ * <bdi dir="ltr">, so a host keeps its own order inside Persian text.
+ */
+function renderMutedSiteMessage() {
+  if (!mutedSiteMessage) {
+    mutedSiteStatus.replaceChildren();
+    mutedSiteStatus.dataset.state = '';
+    return;
+  }
+  const { key, values, tone } = mutedSiteMessage;
+  const parts = t(key, currentLang).split(/(\{\w+\})/).filter(Boolean);
+  mutedSiteStatus.replaceChildren(...parts.map((part) => {
+    const name = part.match(/^\{(\w+)\}$/)?.[1];
+    if (!name || !(name in values)) return document.createTextNode(part);
+    const run = document.createElement('bdi');
+    run.setAttribute('dir', 'ltr');
+    run.textContent = values[name];
+    return run;
+  }));
+  mutedSiteStatus.dataset.state = tone;
+}
+
+/**
  * Load the practice session size
  */
 async function loadPracticeSetting() {
@@ -263,19 +418,14 @@ function showPracticeSize(size) {
 }
 
 /**
- * Load provider settings (selected provider)
+ * Check the radio of the provider Translate uses
  */
 async function loadProviderSettings() {
-  currentProvider = await getSelectedProvider();
-
-  // Set the correct radio button
-  const providerRadio = document.getElementById(`provider-${currentProvider}`);
+  const provider = await getSelectedProvider();
+  const providerRadio = document.getElementById(`provider-${provider}`);
   if (providerRadio) {
     providerRadio.checked = true;
   }
-
-  // Also activate the corresponding API key tab
-  activateApiKeyTab(currentProvider);
 }
 
 /**
@@ -283,77 +433,84 @@ async function loadProviderSettings() {
  * interface language. Called again when that language changes.
  */
 function mountKeyHelp() {
-  for (const provider of [PROVIDERS.CLAUDE, PROVIDERS.GEMINI, PROVIDERS.OPENAI]) {
+  for (const provider of PROVIDER_IDS) {
     document.getElementById(`${provider}-key-help`)?.replaceChildren(renderKeyHelp(provider, currentLang));
   }
 }
 
 /**
- * Show the result of a key test beside the field it belongs to.
- * @param {string} provider
- * @param {string} text - Empty clears it
- * @param {'ok'|'error'|'pending'|''} state
+ * A status line message from one i18n key.
+ * @param {string} key
+ * @param {'ok'|'error'|'pending'|'info'} tone
+ * @returns {(lang: string) => {tone: string, text: string}}
  */
-function setKeyTestStatus(provider, text, state) {
-  const el = document.getElementById(`${provider}-key-test`);
-  if (!el) return;
-  el.textContent = text;
-  el.dataset.state = state;
+function keyMessage(key, tone) {
+  return (lang) => ({ tone, text: t(key, lang) });
 }
 
 /**
- * Test the key stored for a provider with one real request and report the
- * result inline under its field.
+ * Show a message in one provider's status line, under its key field. Nothing
+ * else on the page reports key results.
+ * @param {string} provider
+ * @param {((lang: string) => {tone: string, text: string, ltr?: string[]}) | null} describe - null clears it
  */
-async function testStoredKey(provider) {
-  setKeyTestStatus(provider, t('keyTesting', currentLang), 'pending');
-  try {
-    const key = await getProviderApiKey(provider);
-    const result = await chrome.runtime.sendMessage({ action: ACTIONS.TEST_API_KEY, provider, key });
-    if (result?.ok) {
-      setKeyTestStatus(provider, keyTestOkText(result, currentLang), 'ok');
-    } else {
-      setKeyTestStatus(provider, keyTestFailedText(result?.message || result?.error, currentLang), 'error');
-    }
-  } catch (error) {
-    setKeyTestStatus(provider, keyTestFailedText(error.message, currentLang), 'error');
+function setKeyTestStatus(provider, describe) {
+  keyTestMessages[provider] = describe;
+  const el = document.getElementById(`${provider}-key-test`);
+  if (!el) return;
+  if (describe) {
+    renderKeyTest(el, describe(currentLang));
+  } else {
+    el.textContent = '';
+    el.dataset.state = '';
   }
 }
 
 /**
- * Load API key status indicators for all providers
+ * Load the key state of every provider card
  */
 async function loadAllApiKeyStatuses() {
-  const providers = [PROVIDERS.CLAUDE, PROVIDERS.GEMINI, PROVIDERS.OPENAI];
-
-  for (const provider of providers) {
+  for (const provider of PROVIDER_IDS) {
     await updateKeyStatus(provider);
   }
 }
 
 /**
- * Update key status indicator for a provider
+ * Show "Key saved" or "No key yet" on a provider card
+ */
+function renderKeyState(provider) {
+  const el = document.getElementById(`${provider}-key-state`);
+  if (el) {
+    el.dataset.state = keySaved[provider] ? 'saved' : 'missing';
+    el.textContent = t(keySaved[provider] ? 'keyConfigured' : 'keyNotConfigured', currentLang);
+  }
+  syncCardButtons(provider);
+}
+
+/**
+ * Lock a card's Save & test and Clear while its test runs, and offer Clear
+ * only when there is a stored key to remove.
+ */
+function syncCardButtons(provider) {
+  const testing = testingProviders.has(provider);
+  const save = document.querySelector(`.save-key-btn[data-provider="${provider}"]`);
+  const clear = document.querySelector(`.clear-key-btn[data-provider="${provider}"]`);
+  if (save) save.disabled = testing;
+  if (clear) clear.disabled = testing || !keySaved[provider];
+}
+
+/**
+ * Read a provider's stored key into its card: the key state, and the key
+ * itself into the field
  */
 async function updateKeyStatus(provider) {
-  const hasKey = await hasProviderApiKey(provider);
-  const statusEl = document.getElementById(`${provider}-key-status`);
-
-  if (statusEl) {
-    if (hasKey) {
-      statusEl.classList.add('configured');
-      statusEl.title = 'API key configured';
-    } else {
-      statusEl.classList.remove('configured');
-      statusEl.title = 'API key not configured';
-    }
-  }
-
-  // Also load the key into the input if it exists
   const key = await getProviderApiKey(provider);
+  keySaved[provider] = Boolean(key);
+  renderKeyState(provider);
+
   const input = getApiKeyInput(provider);
   if (input && key) {
     input.value = key;
-    input.placeholder = `${PROVIDER_CONFIGS[provider].keyPlaceholder} (configured)`;
   }
 }
 
@@ -361,39 +518,36 @@ async function updateKeyStatus(provider) {
  * Get the API key input element for a provider
  */
 function getApiKeyInput(provider) {
-  switch (provider) {
-    case PROVIDERS.CLAUDE:
-      return claudeApiKeyInput;
-    case PROVIDERS.GEMINI:
-      return geminiApiKeyInput;
-    case PROVIDERS.OPENAI:
-      return openaiApiKeyInput;
-    default:
-      return null;
+  return document.getElementById(`${provider}-api-key`);
+}
+
+/**
+ * Get the reveal button of a provider's key field
+ */
+function getRevealButton(provider) {
+  return document.querySelector(`.key-reveal[aria-controls="${provider}-api-key"]`);
+}
+
+/**
+ * Label every reveal button for its field's current state in the UI language
+ */
+function refreshKeyRevealButtons() {
+  for (const provider of PROVIDER_IDS) {
+    const input = getApiKeyInput(provider);
+    const button = getRevealButton(provider);
+    if (input && button) setKeyRevealed(input, button, input.type === 'text', currentLang);
   }
 }
 
 /**
- * Activate API key tab for a provider
+ * Reword everything the provider cards set from script in the UI language
  */
-function activateApiKeyTab(provider) {
-  // Update tab states
-  apiKeyTabs.forEach(tab => {
-    if (tab.dataset.provider === provider) {
-      tab.classList.add('active');
-    } else {
-      tab.classList.remove('active');
-    }
-  });
-
-  // Update panel visibility
-  apiKeyPanels.forEach(panel => {
-    if (panel.id === `${provider}-panel`) {
-      panel.classList.add('active');
-    } else {
-      panel.classList.remove('active');
-    }
-  });
+function refreshProviderCards() {
+  for (const provider of PROVIDER_IDS) {
+    renderKeyState(provider);
+    setKeyTestStatus(provider, keyTestMessages[provider] || null);
+  }
+  refreshKeyRevealButtons();
 }
 
 /**
@@ -412,60 +566,14 @@ async function loadCacheStats() {
 /**
  * Set up event listeners
  */
-/**
- * Settings tab navigation. Each tab button has data-tab-target; <main> carries
- * data-settings-active and CSS hides cards whose data-settings-tab doesn't
- * match. Pure presentation - no card state mutates.
- */
-function setupSettingsTabs() {
-  const tabs = document.querySelectorAll('.settings-tab');
-  const main = document.querySelector('main');
-  if (!main || tabs.length === 0) return;
-
-  const names = Array.from(tabs, (tab) => tab.dataset.tabTarget);
-
-  const setActive = (name) => {
-    main.dataset.settingsActive = name;
-    tabs.forEach((t) => {
-      const active = t.dataset.tabTarget === name;
-      t.classList.toggle('is-active', active);
-      t.setAttribute('aria-selected', active ? 'true' : 'false');
-      t.tabIndex = active ? 0 : -1;
-    });
-    // Scroll to top so users land at the start of the new tab's content.
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // Open on the tab named by the URL hash (e.g. #providers from the popup
-  // badge), falling back to General.
-  const fromHash = location.hash.slice(1);
-  setActive(names.includes(fromHash) ? fromHash : 'general');
-
-  // Record the tab in the hash without adding a history entry.
-  const select = (name) => {
-    setActive(name);
-    history.replaceState(null, '', `#${name}`);
-  };
-
-  tabs.forEach((tab) => {
-    tab.addEventListener('click', () => select(tab.dataset.tabTarget));
-    tab.addEventListener('keydown', (e) => {
-      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-      e.preventDefault();
-      const order = Array.from(tabs);
-      const i = order.indexOf(e.currentTarget);
-      const next = order[(i + (e.key === 'ArrowRight' ? 1 : -1) + order.length) % order.length];
-      select(next.dataset.tabTarget);
-      next.focus();
-    });
-  });
-}
-
 function setupEventListeners() {
-  setupSettingsTabs();
+  // Section nav and deep links. Wired after init's loads, so the page has its
+  // final height before it scrolls to the section the URL names.
+  setupSectionNav();
 
-  // Theme toggle
-  themeToggle.addEventListener('click', toggleTheme);
+  // Theme
+  themeRadios.forEach((radio) => radio.addEventListener('change', handleThemeChange));
+  systemDarkQuery.addEventListener('change', handleSystemThemeChange);
 
   // Language selection
   langEnRadio.addEventListener('change', () => handleLanguageChange('en'));
@@ -482,6 +590,18 @@ function setupEventListeners() {
   // Block translate setting
   blockTranslateToggle.addEventListener('change', handleBlockTranslateChange);
 
+  // Whole-page confirmation and muted sites
+  confirmPageTranslateToggle.addEventListener('change', handleConfirmPageTranslateChange);
+  mutedSiteForm.addEventListener('submit', handleMutedSiteSubmit);
+  mutedSiteInput.addEventListener('input', handleMutedSiteInput);
+  mutedSitesList.addEventListener('click', handleUnmuteClick);
+  // A mute made elsewhere, such as from the page itself, shows up live
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes[STORAGE_KEYS.mutedSites]) {
+      loadMutedSites().catch((error) => console.warn('Could not reload the muted sites:', error));
+    }
+  });
+
   // Practice session size: the label follows the thumb, storage waits for release
   practiceSizeSlider.addEventListener('input', () => showPracticeSize(Number(practiceSizeSlider.value)));
   practiceSizeSlider.addEventListener('change', handlePracticeSizeChange);
@@ -491,39 +611,25 @@ function setupEventListeners() {
     radio.addEventListener('change', handleProviderChange);
   });
 
-  // API key tabs
-  apiKeyTabs.forEach(tab => {
-    tab.addEventListener('click', () => handleTabClick(tab.dataset.provider));
-  });
-
-  // Toggle password visibility buttons
-  document.querySelectorAll('.toggle-visibility').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const targetId = btn.dataset.target;
-      togglePasswordVisibility(targetId);
+  // Provider cards: reveal, Enter, Save & test and Clear each act on their own
+  // card's provider only
+  for (const provider of PROVIDER_IDS) {
+    const input = getApiKeyInput(provider);
+    const revealButton = getRevealButton(provider);
+    revealButton?.addEventListener('click', () => {
+      setKeyRevealed(input, revealButton, input.type === 'password', currentLang);
     });
-  });
 
-  // Save API key buttons
+    // Enter in a key field is that card's Save & test.
+    input?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleSaveApiKey(provider);
+    });
+  }
   document.querySelectorAll('.save-key-btn').forEach(btn => {
     btn.addEventListener('click', () => handleSaveApiKey(btn.dataset.provider));
   });
-
-  // Clear API key buttons
   document.querySelectorAll('.clear-key-btn').forEach(btn => {
     btn.addEventListener('click', () => handleClearApiKey(btn.dataset.provider));
-  });
-
-  // Allow Enter key to save in API key inputs
-  [claudeApiKeyInput, geminiApiKeyInput, openaiApiKeyInput].forEach(input => {
-    if (input) {
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          const provider = input.id.replace('-api-key', '');
-          handleSaveApiKey(provider);
-        }
-      });
-    }
   });
 
   // Clear cache
@@ -548,21 +654,12 @@ function setupEventListeners() {
     });
   }
 
-  // Analytics button
-  const openAnalyticsBtn = document.getElementById('openAnalyticsBtn');
-  if (openAnalyticsBtn) {
-    openAnalyticsBtn.addEventListener('click', () => {
-      chrome.tabs.create({ url: chrome.runtime.getURL('analytics/analytics.html') });
-    });
-  }
-
-  // Welcome Guide button
+  // Welcome Guide button: the guide opens in this tab, and its Done brings
+  // the user back here, to About
   const welcomeGuideBtn = document.getElementById('welcome-guide-btn');
   if (welcomeGuideBtn) {
     welcomeGuideBtn.addEventListener('click', () => {
-      chrome.tabs.create({
-        url: chrome.runtime.getURL('welcome/welcome.html')
-      });
+      location.href = '../welcome/welcome.html?from=settings';
     });
   }
 }
@@ -575,6 +672,9 @@ async function handleLanguageChange(lang) {
   await setLanguage(lang);
   applyTranslations(lang);
   mountKeyHelp();
+  refreshProviderCards();
+  renderMutedSites(mutedSites);
+  renderMutedSiteMessage();
   showPracticeSize(Number(practiceSizeSlider.value));
   await loadCacheStats();
 }
@@ -611,6 +711,62 @@ async function handleBlockTranslateChange() {
 }
 
 /**
+ * Handle the "ask before translating a whole page" change
+ */
+async function handleConfirmPageTranslateChange() {
+  await setConfirmPageTranslate(confirmPageTranslateToggle.checked);
+}
+
+/**
+ * Mute the site in the add field. Invalid input and a site already muted
+ * are reported in the status line; focus stays in the field either way.
+ * @param {SubmitEvent} event
+ */
+async function handleMutedSiteSubmit(event) {
+  event.preventDefault();
+  const before = await getMutedSites();
+  const host = await addMutedSite(mutedSiteInput.value);
+
+  if (!host) {
+    mutedSiteInput.setAttribute('aria-invalid', 'true');
+    setMutedSiteMessage('mutedSiteInvalid', { example: 'example.com' }, 'error');
+  } else if (before.includes(host)) {
+    mutedSiteInput.removeAttribute('aria-invalid');
+    setMutedSiteMessage('mutedSiteDuplicate', { host });
+  } else {
+    mutedSiteInput.removeAttribute('aria-invalid');
+    mutedSiteInput.value = '';
+    renderMutedSites(await getMutedSites());
+    setMutedSiteMessage('mutedSiteAdded', { host }, 'ok');
+  }
+  mutedSiteInput.focus();
+}
+
+/**
+ * Editing the field withdraws an invalid-input report
+ */
+function handleMutedSiteInput() {
+  if (!mutedSiteInput.hasAttribute('aria-invalid')) return;
+  mutedSiteInput.removeAttribute('aria-invalid');
+  setMutedSiteMessage(null);
+}
+
+/**
+ * Unmute the chip whose button was pressed, then move focus on
+ * @param {MouseEvent} event
+ */
+async function handleUnmuteClick(event) {
+  const button = event.target.closest('.muted-chip-remove');
+  if (!button) return;
+  const host = button.dataset.host;
+  const index = mutedSites.indexOf(host);
+  await removeMutedSite(host);
+  renderMutedSites(await getMutedSites());
+  focusAfterUnmute(index);
+  setMutedSiteMessage('mutedSiteRemoved', { host }, 'ok');
+}
+
+/**
  * Handle practice session size change
  */
 async function handlePracticeSizeChange() {
@@ -620,151 +776,94 @@ async function handlePracticeSizeChange() {
 }
 
 /**
- * Handle provider selection change
+ * Store the provider whose radio was picked. The selected card is the
+ * feedback, so success says nothing; a failure shows on that card.
  */
 async function handleProviderChange(e) {
   const provider = e.target.value;
-  currentProvider = provider;
-
   try {
     await setSelectedProvider(provider);
-    activateApiKeyTab(provider);
-    showStatus(`Switched to ${PROVIDER_CONFIGS[provider].displayName}`, 'success');
   } catch (error) {
-    showStatus(error.message, 'error');
+    console.error('Could not store the provider choice:', error);
+    setKeyTestStatus(provider, keyMessage('errorUnknown', 'error'));
+    // Check the radio of the provider that is still stored, so the page does
+    // not claim a choice that did not take.
+    await loadProviderSettings();
   }
 }
 
 /**
- * Handle API key tab click
- */
-function handleTabClick(provider) {
-  activateApiKeyTab(provider);
-}
-
-/**
- * Toggle password visibility for an input
- */
-function togglePasswordVisibility(inputId) {
-  const input = document.getElementById(inputId);
-  const btn = document.querySelector(`[data-target="${inputId}"]`);
-
-  if (input && btn) {
-    const isVisible = input.type === 'text';
-    input.type = isVisible ? 'password' : 'text';
-
-    // Update icon
-    const icon = btn.querySelector('.eye-icon');
-    if (icon) {
-      if (isVisible) {
-        icon.innerHTML = `
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-          <circle cx="12" cy="12" r="3"/>
-        `;
-      } else {
-        icon.innerHTML = `
-          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-          <line x1="1" y1="1" x2="23" y2="23"/>
-        `;
-      }
-    }
-  }
-}
-
-/**
- * Handle save API key button click
+ * Test the key typed into one provider's card with one real request, then
+ * store it. Only that provider is tested, and only on this click (or Enter in
+ * its field). A key with the wrong prefix is turned away before any request.
+ * The typed key is stored only when the provider accepts it, or when the test
+ * reaches no verdict (offline, timeout, rate limit, outage, unknown), and then
+ * the status says it is untested. A key the provider rejects is never stored,
+ * so the key already stored and its badge stay as they were. The result shows
+ * under the field, and focus goes back into the field when the key was not
+ * stored.
  */
 async function handleSaveApiKey(provider) {
-  const saveButtons = document.querySelectorAll('.save-key-btn');
-  saveButtons.forEach((btn) => { btn.disabled = true; });
-  setKeyTestStatus(provider, '', '');
-  try {
-    await saveAndTestApiKeys(provider);
-  } finally {
-    saveButtons.forEach((btn) => { btn.disabled = false; });
-  }
-}
-
-/**
- * Save every changed key, then test the one whose button was clicked.
- */
-async function saveAndTestApiKeys(provider) {
-  const savedProviders = [];
-
-  // Save all providers that have new/changed values
-  const allProviders = [PROVIDERS.CLAUDE, PROVIDERS.GEMINI, PROVIDERS.OPENAI];
-
-  for (const p of allProviders) {
-    const input = getApiKeyInput(p);
-    if (!input) continue;
-
-    const apiKey = input.value.trim();
-    if (!apiKey) continue;
-
-    // Check if this key is different from what's stored
-    const existingKey = await getProviderApiKey(p);
-    if (apiKey !== existingKey) {
-      try {
-        await setProviderApiKey(p, apiKey);
-        await updateKeyStatus(p);
-        savedProviders.push(PROVIDER_CONFIGS[p].name);
-      } catch (error) {
-        showStatus(error.message, 'error');
-        return;
-      }
-    }
-  }
-
-  // Also ensure the clicked provider's key is saved even if unchanged (in case it's a first save)
   const input = getApiKeyInput(provider);
-  if (input) {
-    const apiKey = input.value.trim();
-    if (!apiKey) {
-      // Nothing typed and nothing stored: there is no key to test.
-      showStatus(t('pleaseEnterApiKey', currentLang), 'error');
-      setKeyTestStatus(provider, t('pleaseEnterApiKey', currentLang), 'error');
-      return;
-    }
-    if (!savedProviders.includes(PROVIDER_CONFIGS[provider].name)) {
-      try {
-        await setProviderApiKey(provider, apiKey);
-        await updateKeyStatus(provider);
-        savedProviders.push(PROVIDER_CONFIGS[provider].name);
-      } catch (error) {
-        showStatus(error.message, 'error');
-        return;
-      }
-    }
+  if (!input || testingProviders.has(provider)) return;
+
+  const key = normalizeApiKey(input.value);
+  if (!key) {
+    setKeyTestStatus(provider, keyMessage('pleaseEnterApiKey', 'error'));
+    input.focus();
+    return;
   }
 
-  if (savedProviders.length > 0) {
-    showStatus(`${savedProviders.join(', ')} API key${savedProviders.length > 1 ? 's' : ''} saved successfully`, 'success');
-  } else {
-    showStatus('No changes to save', 'success');
+  const formatProblem = checkKeyFormat(provider, key);
+  if (formatProblem) {
+    setKeyTestStatus(provider, (lang) => describeKeyTest(formatProblem, lang, provider));
+    input.focus();
+    return;
   }
 
-  await testStoredKey(provider);
+  testingProviders.add(provider);
+  syncCardButtons(provider);
+  setKeyTestStatus(provider, keyMessage('keyTesting', 'pending'));
+  let result;
+  let stored = false;
+  try {
+    result = await chrome.runtime.sendMessage({ action: ACTIONS.TEST_API_KEY, provider, key });
+  } catch (error) {
+    result = keyTestErrorResult(error);
+  }
+  try {
+    if (!isKeyRejected(result)) {
+      await setProviderApiKey(provider, key);
+      stored = true;
+      await updateKeyStatus(provider);
+    }
+  } catch (error) {
+    result = keyTestErrorResult(error);
+  } finally {
+    testingProviders.delete(provider);
+    syncCardButtons(provider);
+  }
+
+  const untested = stored && !result?.ok;
+  setKeyTestStatus(provider, (lang) => describeKeyTest(result, lang, provider, { stored: untested }));
+  if (!stored) input.focus();
 }
 
 /**
- * Handle clear API key button click
+ * Remove one provider's stored key after a confirmation. Clear is disabled
+ * while there is no stored key or a test is running.
  */
 async function handleClearApiKey(provider) {
+  if (!keySaved[provider] || testingProviders.has(provider)) return;
   const input = getApiKeyInput(provider);
   const config = PROVIDER_CONFIGS[provider];
 
   if (!confirm(t('confirmClearApiKey', currentLang).replace('{provider}', config.name))) return;
 
   await removeProviderApiKey(provider);
-  setKeyTestStatus(provider, '', '');
-
-  if (input) {
-    input.value = '';
-    input.placeholder = config.keyPlaceholder;
-  }
-
+  if (input) input.value = '';
   await updateKeyStatus(provider);
-  showStatus(`${config.name} API key removed`, 'success');
+  setKeyTestStatus(provider, keyMessage('keyCleared', 'info'));
 }
 
 /**
@@ -778,20 +877,7 @@ async function handleClearCache() {
 
   await translationCache.clear();
   await loadCacheStats();
-  showStatus(t('cacheCleared', currentLang), 'success');
-}
-
-/**
- * Show a status message
- */
-function showStatus(message, type) {
-  apiStatusEl.textContent = message;
-  apiStatusEl.className = `status-message ${type}`;
-  apiStatusEl.hidden = false;
-
-  setTimeout(() => {
-    apiStatusEl.hidden = true;
-  }, 3000);
+  showBackupStatus(t('cacheCleared', currentLang), 'success');
 }
 
 // ============================================

@@ -5,7 +5,7 @@ vi.mock('../lib/providers/index.js', () => ({ getProviderById: vi.fn(), getCurre
 import { getProviderById } from '../lib/providers/index.js';
 import { testApiKey } from '../lib/api.js';
 import { TranslationError, ERROR_CODES, errorI18nKey } from '../lib/translation/errors.js';
-import { KEY_HELP, keyTestOkText, keyTestFailedText } from '../lib/key-help.js';
+import { KEY_HELP, describeKeyTest } from '../lib/key-help.js';
 import { translations, t } from '../lib/i18n.js';
 
 describe('testApiKey', () => {
@@ -119,15 +119,15 @@ describe('key help', () => {
 
 describe('key test status text', () => {
   it('fills in the model and timing', () => {
-    expect(keyTestOkText({ model: 'claude-haiku-5-5', ms: 420 }, 'en')).toBe('Key works. claude-haiku-5-5 replied in 420 ms.');
+    expect(describeKeyTest({ ok: true, model: 'claude-haiku-5-5', ms: 420 }, 'en', 'claude').text).toBe('Key works. claude-haiku-5-5 replied in 420 ms.');
   });
 
   it('prefixes the localized reason without repeating its advice', () => {
-    expect(keyTestFailedText('Invalid API key. Please check settings.', 'en')).toBe('Test failed. Invalid API key. Please check settings.');
+    expect(describeKeyTest({ ok: false, code: 'INVALID_API_KEY', message: 'ignored' }, 'en', 'claude').text).toBe(`Test failed. ${translations.en.keyRejected}`);
   });
 
   it('falls back to the unknown error text when there is no reason', () => {
-    expect(keyTestFailedText(undefined, 'en')).toContain(translations.en.errorUnknown);
+    expect(describeKeyTest({ ok: false }, 'en', 'claude').text).toContain(translations.en.errorUnknown);
   });
 });
 

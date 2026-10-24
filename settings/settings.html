@@ -1,273 +1,98 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ParsiPad Settings</title>
-
-  <!-- Fonts - Same as landing page -->
-
   <link rel="stylesheet" href="settings.css">
   <script src="../lib/theme-boot.js"></script>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
+<body>
 
-  <!-- Navigation Bar - Matching landing page -->
-  <nav class="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
-    <div class="max-w-3xl mx-auto px-6 py-4">
-      <div class="flex items-center justify-between">
-        <!-- Logo -->
-        <div class="flex items-center space-x-3">
-          <img src="../icons/icon-48.png" alt="ParsiPad" class="w-10 h-10 rounded-xl">
-          <div>
-            <h1 class="font-semibold text-lg text-gray-900 dark:text-white">ParsiPad</h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400" data-i18n="settingsSubtitle">Settings</p>
-          </div>
-        </div>
-
-        <!-- Right side controls -->
-        <div class="flex items-center space-x-3">
-          <!-- Dark mode toggle -->
-          <button id="theme-toggle" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Toggle dark mode">
-            <!-- Sun icon (shown in dark mode) -->
-            <svg class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-              <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
-            </svg>
-            <!-- Moon icon (shown in light mode) -->
-            <svg class="w-5 h-5 block dark:hidden" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
-            </svg>
-          </button>
-        </div>
-      </div>
+  <header class="settings-header">
+    <div class="settings-header-inner">
+      <img src="../icons/icon-48.png" alt="" class="settings-logo" width="32" height="32">
+      <span class="settings-brand-name">ParsiPad</span>
+      <h1 class="settings-title" data-i18n="settings">Settings</h1>
     </div>
-  </nav>
+  </header>
 
-  <!-- Main Content -->
-  <main class="max-w-3xl mx-auto px-6 py-8">
-
-    <!-- Settings tab navigation: groups 11 cards into 4 buckets so the page
-         stops scrolling forever. JS wires clicks; CSS hides non-active tabs. -->
-    <nav class="settings-tabs" role="tablist" aria-label="Settings sections">
-      <button type="button" class="settings-tab is-active" role="tab" aria-selected="true" data-tab-target="general" data-i18n="settingsTabGeneral">General</button>
-      <button type="button" class="settings-tab" role="tab" aria-selected="false" data-tab-target="providers" data-i18n="settingsTabProviders">AI Providers</button>
-      <button type="button" class="settings-tab" role="tab" aria-selected="false" data-tab-target="data" data-i18n="settingsTabData">Data</button>
-      <button type="button" class="settings-tab" role="tab" aria-selected="false" data-tab-target="more" data-i18n="settingsTabMore">More</button>
+  <div class="settings-layout">
+    <!-- In-page links; settings/sections.js marks the section in view with
+         aria-current and lands deep links (settings.html#reading). -->
+    <nav class="settings-nav" data-i18n-aria-label="settingsNavLabel" aria-label="Settings sections">
+      <ul class="settings-nav-list">
+        <li><a class="settings-nav-link" href="#providers" data-i18n="sectionProviders">AI provider &amp; key</a></li>
+        <li><a class="settings-nav-link" href="#reading" data-i18n="sectionReading">Reading on web pages</a></li>
+        <li><a class="settings-nav-link" href="#appearance" data-i18n="sectionAppearance">Language &amp; appearance</a></li>
+        <li><a class="settings-nav-link" href="#flashcards" data-i18n="sectionFlashcards">Flashcards</a></li>
+        <li><a class="settings-nav-link" href="#data" data-i18n="sectionData">Data &amp; backup</a></li>
+        <li><a class="settings-nav-link" href="#shortcuts" data-i18n="sectionShortcuts">Shortcuts</a></li>
+        <li><a class="settings-nav-link" href="#about" data-i18n="sectionAbout">About</a></li>
+      </ul>
     </nav>
 
+    <main class="settings-main">
 
-    <!-- Language Settings Card -->
-    <section class="settings-card" data-settings-tab="general">
-      <div class="card-header">
-        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
-          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
-          </svg>
-        </div>
-        <div>
-          <h2 class="card-title" data-i18n="languageSettings">Language Settings</h2>
-          <p class="card-subtitle" data-i18n="languageSubtitle">Choose your preferred interface language</p>
-        </div>
-      </div>
-      <div class="card-content">
-        <div class="language-options">
-          <label class="language-option">
-            <input type="radio" name="language" value="en" id="lang-en" checked>
-            <div class="option-content">
-              <img src="../icons/Flag_of_the_United_States.svg" alt="English" class="option-flag">
-              <span class="option-label">English</span>
-            </div>
-          </label>
-          <label class="language-option">
-            <input type="radio" name="language" value="fa" id="lang-fa">
-            <div class="option-content">
-              <img src="../icons/Flag_of_Iran.svg" alt="فارسی" class="option-flag">
-              <span class="option-label persian-text">فارسی</span>
-            </div>
-          </label>
-        </div>
-      </div>
-    </section>
-
-    <!-- Dictionary Settings Card -->
-    <section class="settings-card" data-settings-tab="general">
-      <div class="card-header">
-        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
-          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-          </svg>
-        </div>
-        <div>
-          <h2 class="card-title" data-i18n="dictionarySettings">Dictionary Settings</h2>
-          <p class="card-subtitle" data-i18n="dictionarySubtitle">Control translation directions for dictionary lookups</p>
-        </div>
-      </div>
-      <div class="card-content">
-        <label class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-label-text" data-i18n="translateEnToFa">Show Persian translation for English words</span>
-            <span class="toggle-hint" data-i18n="translateEnToFaHint">Dictionary entries for English words include the Persian meaning.</span>
-          </div>
-          <div class="toggle-switch">
-            <input type="checkbox" id="dict-en-to-fa" checked>
-            <span class="toggle-slider"></span>
-          </div>
-        </label>
-        <label class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-label-text" data-i18n="translateFaToEn">Show English translation for Persian words</span>
-            <span class="toggle-hint" data-i18n="translateFaToEnHint">Dictionary entries for Persian words include the English meaning.</span>
-          </div>
-          <div class="toggle-switch">
-            <input type="checkbox" id="dict-fa-to-en" checked>
-            <span class="toggle-slider"></span>
-          </div>
-        </label>
-      </div>
-    </section>
-
-    <!-- Selection Popup Card -->
-    <section class="settings-card" data-settings-tab="general">
-      <div class="card-header">
-        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
-          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/>
-          </svg>
-        </div>
-        <div>
-          <h2 class="card-title" data-i18n="selectionPopup">Selection Popup</h2>
-          <p class="card-subtitle" data-i18n="selectionPopupSubtitle">Show quick action icons when selecting text</p>
-        </div>
-      </div>
-      <div class="card-content">
-        <label class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-label-text" data-i18n="enableSelectionPopup">Enable selection popup</span>
-            <span class="toggle-hint" data-i18n="selectionPopupHint">Show translate, polish, and dictionary icons when you select text on any webpage</span>
-          </div>
-          <div class="toggle-switch">
-            <input type="checkbox" id="selection-popup-toggle">
-            <span class="toggle-slider"></span>
-          </div>
-        </label>
-      </div>
-    </section>
-
-    <!-- Block Translate Card -->
-    <section class="settings-card" data-settings-tab="general">
-      <div class="card-header">
-        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
-          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-          </svg>
-        </div>
-        <div>
-          <h2 class="card-title" data-i18n="blockTranslate">Block translate</h2>
-          <p class="card-subtitle" data-i18n="blockTranslateHint">Point at a paragraph, post, or heading to show a translate icon beside it.</p>
-        </div>
-      </div>
-      <div class="card-content">
-        <label class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-label-text" data-i18n="blockTranslate">Block translate</span>
-          </div>
-          <div class="toggle-switch">
-            <input type="checkbox" id="block-translate-toggle" checked>
-            <span class="toggle-slider"></span>
-          </div>
-        </label>
-      </div>
-    </section>
-
-    <!-- Other Languages Card -->
-    <section class="settings-card" data-settings-tab="general">
-      <div class="card-header">
-        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
-          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
-          </svg>
-        </div>
-        <div>
-          <h2 class="card-title" data-i18n="translateOtherLanguages">Other Languages</h2>
-          <p class="card-subtitle" data-i18n="translateOtherLanguagesHint">When off, text that is neither Persian nor English is rejected instead of translated.</p>
-        </div>
-      </div>
-      <div class="card-content">
-        <label class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-label-text" data-i18n="enableTranslateOtherLanguages">Translate other languages into Persian</span>
-          </div>
-          <div class="toggle-switch">
-            <input type="checkbox" id="translate-other-languages-toggle">
-            <span class="toggle-slider"></span>
-          </div>
-        </label>
-      </div>
-    </section>
-
-    <!-- Flashcards Card -->
-    <section class="settings-card" data-settings-tab="general">
-      <div class="card-header">
-        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
-          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-          </svg>
-        </div>
-        <div>
-          <h2 class="card-title" data-i18n="practiceTitle">Practice</h2>
-          <p class="card-subtitle" data-i18n="practiceSubtitle">Review your favorites as flashcards</p>
-        </div>
-      </div>
-      <div class="card-content">
-        <div class="slider-row">
-          <div class="slider-info">
-            <label class="slider-label-text" for="practice-size-slider" data-i18n="practiceSessionSize">Cards per session</label>
-          </div>
-          <div class="slider-control">
-            <input type="range" id="practice-size-slider" min="5" max="30" step="1" value="10" class="slider-input">
-            <output class="slider-value" id="practice-size-value" for="practice-size-slider">10</output>
-          </div>
-        </div>
-        <a class="btn btn-secondary btn-full" href="../practice/practice.html" target="_blank" rel="noopener" data-i18n="openPractice">Open Practice</a>
-      </div>
-    </section>
-
-    <!-- AI Provider Selection Card -->
-    <section class="settings-card" data-settings-tab="providers">
-      <div class="card-header">
-        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
-          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-          </svg>
-        </div>
-        <div>
-          <h2 class="card-title" data-i18n="aiProvider">AI Provider</h2>
-          <p class="card-subtitle" data-i18n="aiProviderSubtitle">Choose your AI provider for translations</p>
-        </div>
-      </div>
-      <div class="card-content">
-        <div class="provider-options">
-          <label class="provider-option">
-            <input type="radio" name="provider" value="claude" id="provider-claude" checked>
-            <div class="provider-content">
+      <section id="providers" class="settings-section" aria-labelledby="providers-title">
+        <h2 id="providers-title" class="settings-section-title" data-i18n="sectionProviders">AI provider &amp; key</h2>
+        <!-- One card per provider: its radio picks the provider Translate uses,
+             and its key field, Save & test, Clear and status line act on that
+             provider only. -->
+        <fieldset class="settings-fieldset provider-cards">
+          <legend class="settings-legend" data-i18n="aiProviderSubtitle">Choose your AI provider for translations</legend>
+          <article class="provider-card" data-provider="claude" aria-labelledby="provider-claude-name">
+            <div class="provider-card-header">
               <div class="provider-logo">
-                <svg class="provider-icon" viewBox="0 0 48 48" fill="currentColor">
+                <svg class="provider-icon" aria-hidden="true" focusable="false" viewBox="0 0 48 48" fill="currentColor">
                   <path d="M24.9 7.2L33.6 40.8H27.9L25.8 32.4H16.2L14.1 40.8H8.4L17.1 7.2H24.9ZM21 13.5L17.4 27.6H24.6L21 13.5Z"/>
                   <path d="M39.6 40.8H33.9L41.7 7.2H47.4L39.6 40.8Z" fill-opacity="0.6"/>
                 </svg>
               </div>
               <div class="provider-info">
-                <span class="provider-name">Claude</span>
+                <h3 class="provider-name" id="provider-claude-name">Claude</h3>
                 <span class="provider-company">Anthropic</span>
               </div>
+              <span class="key-state" id="claude-key-state" data-state="missing">No key yet</span>
             </div>
-          </label>
+            <label class="provider-use">
+              <input type="radio" name="provider" value="claude" id="provider-claude" aria-labelledby="provider-claude-name provider-claude-use" checked>
+              <span id="provider-claude-use" data-i18n="useThisProvider">Use this provider</span>
+            </label>
+            <div class="provider-key">
+              <label for="claude-api-key" class="input-label" data-i18n="anthropicApiKey">Anthropic API key</label>
+              <div class="input-wrapper">
+                <input type="password" id="claude-api-key" name="claude-api-key" class="text-input" dir="ltr" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
+                <button type="button" class="input-icon-btn key-reveal" aria-controls="claude-api-key" aria-pressed="false" aria-label="Show key">
+                  <svg class="eye-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
+              <p class="key-test-status" id="claude-key-test" role="status" aria-live="polite"></p>
+              <div class="provider-actions">
+                <button type="button" class="btn btn-primary save-key-btn" data-provider="claude" aria-describedby="provider-claude-name">
+                  <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span data-i18n="saveAndTestKey">Save &amp; test</span>
+                </button>
+                <button type="button" class="btn btn-secondary clear-key-btn" data-provider="claude" aria-describedby="provider-claude-name">
+                  <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                  <span data-i18n="clear">Clear</span>
+                </button>
+              </div>
+              <div id="claude-key-help"></div>
+            </div>
+          </article>
 
-          <label class="provider-option">
-            <input type="radio" name="provider" value="gemini" id="provider-gemini">
-            <div class="provider-content">
+          <article class="provider-card" data-provider="gemini" aria-labelledby="provider-gemini-name">
+            <div class="provider-card-header">
               <div class="provider-logo">
-                <svg class="provider-icon" viewBox="0 0 28 28" fill="none">
+                <svg class="provider-icon" aria-hidden="true" focusable="false" viewBox="0 0 28 28" fill="none">
                   <path d="M14 28C14 26.0633 13.6267 24.2433 12.88 22.54C12.1567 20.8367 11.165 19.355 9.905 18.095C8.645 16.835 7.16333 15.8433 5.46 15.12C3.75667 14.3733 1.93667 14 0 14C1.93667 14 3.75667 13.6383 5.46 12.915C7.16333 12.1683 8.645 11.165 9.905 9.905C11.165 8.645 12.1567 7.16333 12.88 5.46C13.6267 3.75667 14 1.93667 14 0C14 1.93667 14.3617 3.75667 15.085 5.46C15.8317 7.16333 16.835 8.645 18.095 9.905C19.355 11.165 20.8367 12.1683 22.54 12.915C24.2433 13.6383 26.0633 14 28 14C26.0633 14 24.2433 14.3733 22.54 15.12C20.8367 15.8433 19.355 16.835 18.095 18.095C16.835 19.355 15.8317 20.8367 15.085 22.54C14.3617 24.2433 14 26.0633 14 28Z" fill="url(#gemini-gradient)"/>
                   <defs>
                     <linearGradient id="gemini-gradient" x1="0" y1="14" x2="28" y2="14" gradientUnits="userSpaceOnUse">
@@ -279,414 +104,538 @@
                 </svg>
               </div>
               <div class="provider-info">
-                <span class="provider-name">Gemini</span>
+                <h3 class="provider-name" id="provider-gemini-name">Gemini</h3>
                 <span class="provider-company">Google</span>
               </div>
+              <span class="key-state" id="gemini-key-state" data-state="missing">No key yet</span>
             </div>
-          </label>
+            <label class="provider-use">
+              <input type="radio" name="provider" value="gemini" id="provider-gemini" aria-labelledby="provider-gemini-name provider-gemini-use">
+              <span id="provider-gemini-use" data-i18n="useThisProvider">Use this provider</span>
+            </label>
+            <div class="provider-key">
+              <label for="gemini-api-key" class="input-label" data-i18n="googleApiKey">Google AI API key</label>
+              <div class="input-wrapper">
+                <input type="password" id="gemini-api-key" name="gemini-api-key" class="text-input" dir="ltr" placeholder="AIza… / AQ.…" autocomplete="off" spellcheck="false">
+                <button type="button" class="input-icon-btn key-reveal" aria-controls="gemini-api-key" aria-pressed="false" aria-label="Show key">
+                  <svg class="eye-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
+              <p class="key-test-status" id="gemini-key-test" role="status" aria-live="polite"></p>
+              <div class="provider-actions">
+                <button type="button" class="btn btn-primary save-key-btn" data-provider="gemini" aria-describedby="provider-gemini-name">
+                  <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span data-i18n="saveAndTestKey">Save &amp; test</span>
+                </button>
+                <button type="button" class="btn btn-secondary clear-key-btn" data-provider="gemini" aria-describedby="provider-gemini-name">
+                  <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                  <span data-i18n="clear">Clear</span>
+                </button>
+              </div>
+              <div id="gemini-key-help"></div>
+            </div>
+          </article>
 
-          <label class="provider-option">
-            <input type="radio" name="provider" value="openai" id="provider-openai">
-            <div class="provider-content">
+          <article class="provider-card" data-provider="openai" aria-labelledby="provider-openai-name">
+            <div class="provider-card-header">
               <div class="provider-logo">
-                <svg class="provider-icon" viewBox="0 0 24 24" fill="currentColor">
+                <svg class="provider-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.8956zm16.0993 3.8558L12.6 8.3829l2.02-1.1638a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.1408 1.6465 4.4708 4.4708 0 0 1 .5765 3.0137zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/>
                 </svg>
               </div>
               <div class="provider-info">
-                <span class="provider-name">ChatGPT</span>
+                <h3 class="provider-name" id="provider-openai-name">ChatGPT</h3>
                 <span class="provider-company">OpenAI</span>
               </div>
+              <span class="key-state" id="openai-key-state" data-state="missing">No key yet</span>
             </div>
-          </label>
-        </div>
-      </div>
-    </section>
-
-    <!-- API Keys Card -->
-    <section class="settings-card" data-settings-tab="providers">
-      <div class="card-header">
-        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
-          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-          </svg>
-        </div>
-        <div>
-          <h2 class="card-title" data-i18n="apiKeys">API Keys</h2>
-          <p class="card-subtitle" data-i18n="apiKeysSubtitle">Configure API keys for each provider</p>
-        </div>
-      </div>
-      <div class="card-content">
-        <!-- Tab Navigation -->
-        <div class="api-key-tabs">
-          <button type="button" class="api-key-tab active" data-provider="claude">
-            <span>Claude</span>
-            <span class="key-status" id="claude-key-status"></span>
-          </button>
-          <button type="button" class="api-key-tab" data-provider="gemini">
-            <span>Gemini</span>
-            <span class="key-status" id="gemini-key-status"></span>
-          </button>
-          <button type="button" class="api-key-tab" data-provider="openai">
-            <span>ChatGPT</span>
-            <span class="key-status" id="openai-key-status"></span>
-          </button>
-        </div>
-
-        <!-- Claude API Key Panel -->
-        <div class="api-key-panel active" id="claude-panel">
-          <div class="form-group">
-            <label for="claude-api-key" class="input-label" data-i18n="anthropicApiKey">Anthropic API Key</label>
-            <div class="input-wrapper">
-              <input type="password" id="claude-api-key" class="text-input" placeholder="sk-ant-api03-..." autocomplete="off">
-              <button type="button" class="input-icon-btn toggle-visibility" data-target="claude-api-key">
-                <svg class="eye-icon eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-            <p class="key-test-status" id="claude-key-test" role="status" aria-live="polite"></p>
-            <div id="claude-key-help"></div>
-          </div>
-          <div class="button-group">
-            <button type="button" class="btn btn-primary save-key-btn" data-provider="claude">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-              </svg>
-              <span data-i18n="saveAndTestKey">Save &amp; Test</span>
-            </button>
-            <button type="button" class="btn btn-secondary clear-key-btn" data-provider="claude">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-              </svg>
-              <span data-i18n="clear">Clear</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Gemini API Key Panel -->
-        <div class="api-key-panel" id="gemini-panel">
-          <div class="form-group">
-            <label for="gemini-api-key" class="input-label" data-i18n="googleApiKey">Google AI API Key</label>
-            <div class="input-wrapper">
-              <input type="password" id="gemini-api-key" class="text-input" placeholder="AIza..." autocomplete="off">
-              <button type="button" class="input-icon-btn toggle-visibility" data-target="gemini-api-key">
-                <svg class="eye-icon eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-            <p class="key-test-status" id="gemini-key-test" role="status" aria-live="polite"></p>
-            <div id="gemini-key-help"></div>
-          </div>
-          <div class="button-group">
-            <button type="button" class="btn btn-primary save-key-btn" data-provider="gemini">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-              </svg>
-              <span data-i18n="saveAndTestKey">Save &amp; Test</span>
-            </button>
-            <button type="button" class="btn btn-secondary clear-key-btn" data-provider="gemini">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-              </svg>
-              <span data-i18n="clear">Clear</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- OpenAI API Key Panel -->
-        <div class="api-key-panel" id="openai-panel">
-          <div class="form-group">
-            <label for="openai-api-key" class="input-label" data-i18n="openaiApiKey">OpenAI API Key</label>
-            <div class="input-wrapper">
-              <input type="password" id="openai-api-key" class="text-input" placeholder="sk-..." autocomplete="off">
-              <button type="button" class="input-icon-btn toggle-visibility" data-target="openai-api-key">
-                <svg class="eye-icon eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-            <p class="key-test-status" id="openai-key-test" role="status" aria-live="polite"></p>
-            <div id="openai-key-help"></div>
-          </div>
-          <div class="button-group">
-            <button type="button" class="btn btn-primary save-key-btn" data-provider="openai">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-              </svg>
-              <span data-i18n="saveAndTestKey">Save &amp; Test</span>
-            </button>
-            <button type="button" class="btn btn-secondary clear-key-btn" data-provider="openai">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-              </svg>
-              <span data-i18n="clear">Clear</span>
-            </button>
-          </div>
-        </div>
-
-        <div id="api-status" class="status-message" hidden></div>
-      </div>
-    </section>
-
-    <!-- Cache Card -->
-    <section class="settings-card" data-settings-tab="data">
-      <div class="card-header">
-        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
-          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
-          </svg>
-        </div>
-        <div>
-          <h2 class="card-title" data-i18n="cache">Cache</h2>
-          <p class="card-subtitle" data-i18n="cacheSubtitle">Manage cached translations for faster loading</p>
-        </div>
-      </div>
-      <div class="card-content">
-        <div class="cache-stats" id="cache-stats">
-          <div class="stat-item">
-            <span class="stat-label" data-i18n="cachedItems">Cached items</span>
-            <span class="stat-value" id="cache-count" data-i18n="loadingLabel">Loading...</span>
-          </div>
-        </div>
-        <button type="button" id="clear-cache-btn" class="btn btn-secondary btn-full">
-          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-          </svg>
-          <span data-i18n="clearCache">Clear Cache</span>
-        </button>
-      </div>
-    </section>
-
-    <!-- Data Backup Card -->
-    <section class="settings-card" data-settings-tab="data">
-      <div class="card-header">
-        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
-          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
-          </svg>
-        </div>
-        <div>
-          <h2 class="card-title" data-i18n="dataBackup">Data Backup</h2>
-          <p class="card-subtitle" data-i18n="dataBackupSubtitle">Export and import your favorites, history, and cache</p>
-        </div>
-      </div>
-      <div class="card-content">
-        <!-- Export Section -->
-        <div class="backup-section">
-          <h3 class="section-label" data-i18n="exportData">Export Data</h3>
-          <div class="checkbox-group">
-            <label class="checkbox-row">
-              <input type="checkbox" id="export-favorites" checked>
-              <span class="checkbox-label" data-i18n="favorites">Favorites</span>
-              <span class="item-count" id="favorites-count">(0)</span>
+            <label class="provider-use">
+              <input type="radio" name="provider" value="openai" id="provider-openai" aria-labelledby="provider-openai-name provider-openai-use">
+              <span id="provider-openai-use" data-i18n="useThisProvider">Use this provider</span>
             </label>
-            <label class="checkbox-row">
-              <input type="checkbox" id="export-translation-history" checked>
-              <span class="checkbox-label" data-i18n="translationHistory">Translation History</span>
-              <span class="item-count" id="translation-history-count">(0)</span>
-            </label>
-            <label class="checkbox-row">
-              <input type="checkbox" id="export-polish-history" checked>
-              <span class="checkbox-label" data-i18n="polishHistory">Polish History</span>
-              <span class="item-count" id="polish-history-count">(0)</span>
-            </label>
-            <label class="checkbox-row">
-              <input type="checkbox" id="export-dictionary-history" checked>
-              <span class="checkbox-label" data-i18n="dictionaryHistory">Dictionary History</span>
-              <span class="item-count" id="dictionary-history-count">(0)</span>
-            </label>
-            <label class="checkbox-row">
-              <input type="checkbox" id="export-cache">
-              <span class="checkbox-label" data-i18n="translationCache">Translation Cache</span>
-              <span class="item-count" id="cache-count-export">(0)</span>
-            </label>
-          </div>
-          <button type="button" id="export-btn" class="btn btn-primary btn-full">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
-            <span data-i18n="exportToJson">Export to JSON</span>
-          </button>
-        </div>
-
-        <div class="divider"></div>
-
-        <!-- Import Section -->
-        <div class="backup-section">
-          <h3 class="section-label" data-i18n="importData">Import Data</h3>
-          <div class="import-strategy">
-            <label class="radio-row">
-              <input type="radio" name="import-strategy" value="merge" checked>
-              <div class="radio-info">
-                <span class="radio-label" data-i18n="mergeData">Merge with existing</span>
-                <span class="radio-hint" data-i18n="mergeDataHint">Add imported items, keeping existing data</span>
+            <div class="provider-key">
+              <label for="openai-api-key" class="input-label" data-i18n="openaiApiKey">OpenAI API key</label>
+              <div class="input-wrapper">
+                <input type="password" id="openai-api-key" name="openai-api-key" class="text-input" dir="ltr" placeholder="sk-…" autocomplete="off" spellcheck="false">
+                <button type="button" class="input-icon-btn key-reveal" aria-controls="openai-api-key" aria-pressed="false" aria-label="Show key">
+                  <svg class="eye-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
               </div>
-            </label>
-            <label class="radio-row">
-              <input type="radio" name="import-strategy" value="replace">
-              <div class="radio-info">
-                <span class="radio-label" data-i18n="replaceData">Replace existing</span>
-                <span class="radio-hint" data-i18n="replaceDataHint">Clear and replace with imported data</span>
+              <p class="key-test-status" id="openai-key-test" role="status" aria-live="polite"></p>
+              <div class="provider-actions">
+                <button type="button" class="btn btn-primary save-key-btn" data-provider="openai" aria-describedby="provider-openai-name">
+                  <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span data-i18n="saveAndTestKey">Save &amp; test</span>
+                </button>
+                <button type="button" class="btn btn-secondary clear-key-btn" data-provider="openai" aria-describedby="provider-openai-name">
+                  <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                  <span data-i18n="clear">Clear</span>
+                </button>
               </div>
-            </label>
-          </div>
-          <input type="file" id="import-file" accept=".json" hidden>
-          <button type="button" id="import-btn" class="btn btn-secondary btn-full">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-            </svg>
-            <span data-i18n="importFromJson">Import from JSON</span>
-          </button>
-        </div>
+              <div id="openai-key-help"></div>
+            </div>
+          </article>
+        </fieldset>
+      </section>
 
-        <div id="backup-status" class="status-message" hidden></div>
-      </div>
-    </section>
-
-    <!-- Keyboard Shortcuts Card -->
-    <section class="settings-card" data-settings-tab="more">
-      <div class="card-header">
-        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
-          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
-          </svg>
-        </div>
-        <div>
-          <h2 class="card-title" data-i18n="keyboardShortcuts">Keyboard Shortcuts</h2>
-          <p class="card-subtitle" data-i18n="keyboardShortcutsDesc">Quick access commands</p>
-        </div>
-      </div>
-      <div class="card-content">
-        <div class="shortcuts-section">
-          <h3 class="shortcuts-title" data-i18n="globalShortcuts">Global (works anywhere)</h3>
-          <!-- Rendered from chrome.commands.getAll(): what the manifest
-               suggests is not necessarily what Chrome bound. -->
-          <div class="shortcuts-list" id="global-shortcuts-list"></div>
-        </div>
-        <div class="shortcuts-section">
-          <h3 class="shortcuts-title" data-i18n="popupShortcuts">Popup</h3>
-          <div class="shortcuts-list">
-            <div class="shortcut-item">
-              <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Enter</kbd></span>
-              <span class="shortcut-desc" data-i18n="shortcutSubmit">Submit translation</span>
+      <section id="reading" class="settings-section" aria-labelledby="reading-title">
+        <h2 id="reading-title" class="settings-section-title" data-i18n="sectionReading">Reading on web pages</h2>
+        <div class="settings-card">
+          <div class="card-content">
+            <div class="setting-row">
+              <div class="setting-text">
+                <label for="block-translate-toggle" data-i18n="hoverTranslateLabel">Translate paragraphs on hover</label>
+                <p id="block-translate-hint" class="setting-hint" data-i18n="hoverTranslateHint">Point at a paragraph, post or heading to show a translate button beside it.</p>
+              </div>
+              <input type="checkbox" role="switch" class="pp-switch" id="block-translate-toggle" aria-describedby="block-translate-hint" checked>
+            </div>
+            <!-- Hidden in 3.5.0: nothing asks yet. Plan E removes hidden when page
+                 translation shows its confirmation; settings.js already loads
+                 and saves the switch. -->
+            <div class="setting-row" hidden>
+              <div class="setting-text">
+                <label for="confirm-page-translate-toggle" data-i18n="confirmPageTranslateLabel">Ask before translating a whole page</label>
+                <p id="confirm-page-translate-hint" class="setting-hint" data-i18n="confirmPageTranslateHint">Shows how many paragraphs and the estimated cost first.</p>
+              </div>
+              <input type="checkbox" role="switch" class="pp-switch" id="confirm-page-translate-toggle" aria-describedby="confirm-page-translate-hint" checked>
+            </div>
+            <div class="setting-row">
+              <div class="setting-text">
+                <label for="selection-popup-toggle" data-i18n="selectionToolbarLabel">Selection toolbar</label>
+                <p id="selection-popup-hint" class="setting-hint" data-i18n="selectionToolbarHint">Shows Translate, Polish and Dictionary buttons when you select text.</p>
+              </div>
+              <input type="checkbox" role="switch" class="pp-switch" id="selection-popup-toggle" aria-describedby="selection-popup-hint">
+            </div>
+            <div class="setting-row">
+              <div class="setting-text">
+                <label for="translate-other-languages-toggle" data-i18n="translateOtherLabel">Translate other languages into Persian</label>
+                <p id="translate-other-languages-hint" class="setting-hint" data-i18n="translateOtherHint">When off, ParsiPad only translates between Persian and English.</p>
+              </div>
+              <input type="checkbox" role="switch" class="pp-switch" id="translate-other-languages-toggle" aria-describedby="translate-other-languages-hint">
             </div>
           </div>
         </div>
-        <div class="shortcuts-section">
-          <h3 class="shortcuts-title" data-i18n="practiceShortcuts">Practice</h3>
-          <div class="shortcuts-list">
-            <div class="shortcut-item">
-              <span class="shortcut-keys"><kbd>←</kbd> <kbd>→</kbd></span>
-              <span class="shortcut-desc" data-i18n="shortcutNavigate">Navigate cards</span>
+
+        <div class="settings-card">
+          <div class="card-header">
+            <div class="card-icon" aria-hidden="true">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5L6 9H3v6h3l5 4V5z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 9l-6 6m0-6l6 6"/>
+              </svg>
             </div>
-            <div class="shortcut-item">
-              <span class="shortcut-keys"><kbd>Space</kbd> <kbd>Enter</kbd></span>
-              <span class="shortcut-desc" data-i18n="shortcutFlip">Flip card</span>
-            </div>
-            <div class="shortcut-item">
-              <span class="shortcut-keys"><kbd>C</kbd></span>
-              <span class="shortcut-desc" data-i18n="shortcutCopy">Copy text</span>
+            <div>
+              <h3 class="card-title" id="muted-sites-title" data-i18n="mutedSitesTitle">Muted sites</h3>
+              <p class="card-subtitle" id="muted-sites-hint" data-i18n="mutedSitesHint">ParsiPad shows no hover translate button and no selection toolbar on these sites. Muting a site also mutes its subdomains.</p>
             </div>
           </div>
-        </div>
-        <button type="button" id="customizeShortcutsBtn" class="btn btn-primary btn-full" data-i18n="customizeShortcuts">Customize Shortcuts</button>
-      </div>
-    </section>
-
-    <!-- Analytics Card -->
-    <section class="settings-card" data-settings-tab="more">
-      <div class="card-header">
-        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
-          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-          </svg>
-        </div>
-        <div>
-          <h2 class="card-title" data-i18n="analytics">Analytics</h2>
-          <p class="card-subtitle" data-i18n="analyticsSubtitle">Track usage and estimated API costs</p>
-        </div>
-      </div>
-      <div class="card-content">
-        <button type="button" id="openAnalyticsBtn" class="btn btn-primary btn-full" data-i18n="analyticsViewAll">View Analytics</button>
-      </div>
-    </section>
-
-    <!-- About Card -->
-    <section class="settings-card" data-settings-tab="more">
-      <div class="card-header">
-        <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
-          <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-        </div>
-        <div>
-          <h2 class="card-title" data-i18n="about">About</h2>
-          <p class="card-subtitle" data-i18n="aboutSubtitle">ParsiPad extension information</p>
-        </div>
-      </div>
-      <div class="card-content">
-        <div class="about-info">
-          <div class="about-row">
-            <span class="about-label" data-i18n="versionLabel">Version</span>
-            <span class="about-value" id="about-version"></span>
-          </div>
-          <div class="about-row">
-            <span class="about-label" data-i18n="poweredBy">Powered by</span>
-            <span class="about-value">Claude, Gemini, ChatGPT</span>
-          </div>
-          <div class="about-row">
-            <span class="about-label" data-i18n="licenseLabel">License</span>
-            <span class="about-value">MIT</span>
+          <div class="card-content">
+            <!-- One chip per muted host, built by renderMutedSites in settings.js -->
+            <ul id="muted-sites-list" class="muted-chips" aria-labelledby="muted-sites-title" hidden></ul>
+            <p id="muted-sites-empty" class="muted-empty" data-i18n="mutedSitesEmpty">No muted sites. ParsiPad works on every site.</p>
+            <form id="muted-site-form" class="muted-add">
+              <label for="muted-site-input" class="input-label" data-i18n="mutedSiteInputLabel">Site address</label>
+              <div class="muted-add-row">
+                <input id="muted-site-input" class="text-input" type="text" inputmode="url" autocomplete="off" spellcheck="false" dir="ltr" placeholder="example.com" aria-describedby="muted-sites-hint muted-site-status">
+                <button type="submit" class="btn btn-primary">
+                  <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m-7-7h14"/>
+                  </svg>
+                  <span data-i18n="mutedSiteAdd">Mute</span>
+                </button>
+              </div>
+              <p id="muted-site-status" class="muted-status" role="status" aria-live="polite"></p>
+            </form>
           </div>
         </div>
-        <!-- Primary actions with text -->
-        <div class="about-links">
-          <a href="https://chromewebstore.google.com/detail/parsipad/kmifhjlofnblfogkjjcmhlmcecghhfbp/reviews" target="_blank" class="about-link about-link-highlight">
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-            </svg>
-            <span data-i18n="rateExtension">Rate Extension</span>
-          </a>
-          <button type="button" id="welcome-guide-btn" class="about-link">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            <span data-i18n="viewWelcomeGuide">View Welcome Guide</span>
-          </button>
-        </div>
-        <!-- Secondary icon-only links -->
-        <div class="about-links-secondary">
-          <a href="https://parsipad.com" target="_blank" class="about-link-icon" data-i18n-title="website" title="Website">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
-            </svg>
-          </a>
-          <a href="https://github.com/amirehsan/parsipad" target="_blank" class="about-link-icon" title="GitHub">
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-            </svg>
-          </a>
-          <a href="https://github.com/amirehsan/parsipad/issues" target="_blank" class="about-link-icon" data-i18n-title="reportIssue" title="Report Issue">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-            </svg>
-          </a>
-        </div>
-      </div>
-    </section>
 
-  </main>
+        <div class="settings-card">
+          <div class="card-header">
+            <div class="card-icon" aria-hidden="true">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="card-title" data-i18n="dictionarySettings">Dictionary settings</h3>
+              <p class="card-subtitle" data-i18n="dictionarySubtitle">Control translation directions for dictionary lookups</p>
+            </div>
+          </div>
+          <div class="card-content">
+            <div class="setting-row">
+              <div class="setting-text">
+                <label for="dict-en-to-fa" data-i18n="translateEnToFa">Show Persian translation for English words</label>
+                <p id="dict-en-to-fa-hint" class="setting-hint" data-i18n="translateEnToFaHint">Dictionary entries for English words include the Persian meaning.</p>
+              </div>
+              <input type="checkbox" role="switch" class="pp-switch" id="dict-en-to-fa" aria-describedby="dict-en-to-fa-hint" checked>
+            </div>
+            <div class="setting-row">
+              <div class="setting-text">
+                <label for="dict-fa-to-en" data-i18n="translateFaToEn">Show English translation for Persian words</label>
+                <p id="dict-fa-to-en-hint" class="setting-hint" data-i18n="translateFaToEnHint">Dictionary entries for Persian words include the English meaning.</p>
+              </div>
+              <input type="checkbox" role="switch" class="pp-switch" id="dict-fa-to-en" aria-describedby="dict-fa-to-en-hint" checked>
+            </div>
+          </div>
+        </div>
+      </section>
 
-  <!-- Footer -->
-  <footer class="border-t border-gray-200 dark:border-gray-800 py-6 mt-8">
-    <div class="max-w-3xl mx-auto px-6 text-center text-sm text-gray-500 dark:text-gray-400">
-      ParsiPad &ndash; <span data-i18n="footerTagline">AI-powered Persian and English translation</span>
-    </div>
+      <section id="appearance" class="settings-section" aria-labelledby="appearance-title">
+        <h2 id="appearance-title" class="settings-section-title" data-i18n="sectionAppearance">Language &amp; appearance</h2>
+        <p class="settings-section-intro" data-i18n="appearanceIntro">Choose the interface language and how ParsiPad looks.</p>
+        <div class="settings-card">
+          <div class="card-content">
+            <fieldset class="settings-fieldset">
+              <legend class="settings-legend" data-i18n="uiLanguage">Interface language</legend>
+              <div class="language-options">
+                <label class="language-option">
+                  <input type="radio" name="language" value="en" id="lang-en" checked>
+                  <div class="option-content">
+                    <img src="../icons/Flag_of_the_United_States.svg" alt="English" class="option-flag">
+                    <span class="option-label">English</span>
+                  </div>
+                </label>
+                <label class="language-option">
+                  <input type="radio" name="language" value="fa" id="lang-fa">
+                  <div class="option-content">
+                    <img src="../icons/Flag_of_Iran.svg" alt="فارسی" class="option-flag">
+                    <span class="option-label persian-text">فارسی</span>
+                  </div>
+                </label>
+              </div>
+            </fieldset>
+            <fieldset class="settings-fieldset">
+              <legend class="settings-legend" data-i18n="themeLabel">Theme</legend>
+              <div class="theme-options">
+                <label class="theme-option">
+                  <input type="radio" name="theme" value="light" id="theme-light">
+                  <span class="theme-option-content">
+                    <svg class="theme-option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <circle cx="12" cy="12" r="5"/>
+                      <line x1="12" y1="1" x2="12" y2="3"/>
+                      <line x1="12" y1="21" x2="12" y2="23"/>
+                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                      <line x1="1" y1="12" x2="3" y2="12"/>
+                      <line x1="21" y1="12" x2="23" y2="12"/>
+                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                    <span data-i18n="themeLight">Light</span>
+                  </span>
+                </label>
+                <label class="theme-option">
+                  <input type="radio" name="theme" value="dark" id="theme-dark">
+                  <span class="theme-option-content">
+                    <svg class="theme-option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                    <span data-i18n="themeDark">Dark</span>
+                  </span>
+                </label>
+                <label class="theme-option">
+                  <input type="radio" name="theme" value="system" id="theme-system">
+                  <span class="theme-option-content">
+                    <svg class="theme-option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <rect x="2" y="3" width="20" height="14" rx="2"/>
+                      <line x1="8" y1="21" x2="16" y2="21"/>
+                      <line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                    <span data-i18n="themeSystem">System</span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+          </div>
+        </div>
+      </section>
+
+      <section id="flashcards" class="settings-section" aria-labelledby="flashcards-title">
+        <h2 id="flashcards-title" class="settings-section-title" data-i18n="sectionFlashcards">Flashcards</h2>
+        <p class="settings-section-intro" data-i18n="practiceSubtitle">Review your favorites as flashcards</p>
+        <div class="settings-card">
+          <div class="card-content">
+            <div class="slider-row">
+              <div class="slider-info">
+                <label class="slider-label-text" for="practice-size-slider" data-i18n="practiceSessionSize">Cards per session</label>
+              </div>
+              <div class="slider-control">
+                <input type="range" id="practice-size-slider" min="5" max="30" step="1" value="10" class="slider-input">
+                <output class="slider-value" id="practice-size-value" for="practice-size-slider">10</output>
+              </div>
+            </div>
+            <a class="btn btn-secondary btn-full" href="../practice/practice.html" target="_blank" rel="noopener" data-i18n="openPractice">Open Practice</a>
+          </div>
+        </div>
+      </section>
+
+      <section id="data" class="settings-section" aria-labelledby="data-title">
+        <h2 id="data-title" class="settings-section-title" data-i18n="sectionData">Data &amp; backup</h2>
+        <div class="settings-card">
+          <div class="card-header">
+            <div class="card-icon" aria-hidden="true">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="card-title" data-i18n="cache">Cache</h3>
+              <p class="card-subtitle" data-i18n="cacheSubtitle">Manage cached translations for faster loading</p>
+            </div>
+          </div>
+          <div class="card-content">
+            <div class="cache-stats" id="cache-stats">
+              <div class="stat-item">
+                <span class="stat-label" data-i18n="cachedItems">Cached items</span>
+                <span class="stat-value" id="cache-count" data-i18n="loadingLabel">Loading...</span>
+              </div>
+            </div>
+            <button type="button" id="clear-cache-btn" class="btn btn-secondary btn-full">
+              <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+              <span data-i18n="clearCache">Clear Cache</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="card-header">
+            <div class="card-icon" aria-hidden="true">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="card-title" data-i18n="backupFileTitle">Backup file</h3>
+              <p class="card-subtitle" data-i18n="dataBackupSubtitle">Export and import your favorites, history, and cache</p>
+            </div>
+          </div>
+          <div class="card-content">
+            <!-- Export Section -->
+            <div class="backup-section">
+              <h4 class="section-label" data-i18n="exportData">Export data</h4>
+              <div class="checkbox-group">
+                <label class="checkbox-row">
+                  <input type="checkbox" id="export-favorites" checked>
+                  <span class="checkbox-label" data-i18n="favorites">Favorites</span>
+                  <span class="item-count" id="favorites-count">(0)</span>
+                </label>
+                <label class="checkbox-row">
+                  <input type="checkbox" id="export-translation-history" checked>
+                  <span class="checkbox-label" data-i18n="translationHistory">Translation History</span>
+                  <span class="item-count" id="translation-history-count">(0)</span>
+                </label>
+                <label class="checkbox-row">
+                  <input type="checkbox" id="export-polish-history" checked>
+                  <span class="checkbox-label" data-i18n="polishHistory">Polish History</span>
+                  <span class="item-count" id="polish-history-count">(0)</span>
+                </label>
+                <label class="checkbox-row">
+                  <input type="checkbox" id="export-dictionary-history" checked>
+                  <span class="checkbox-label" data-i18n="dictionaryHistory">Dictionary History</span>
+                  <span class="item-count" id="dictionary-history-count">(0)</span>
+                </label>
+                <label class="checkbox-row">
+                  <input type="checkbox" id="export-cache">
+                  <span class="checkbox-label" data-i18n="translationCache">Translation Cache</span>
+                  <span class="item-count" id="cache-count-export">(0)</span>
+                </label>
+              </div>
+              <button type="button" id="export-btn" class="btn btn-primary btn-full">
+                <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                <span data-i18n="exportToJson">Export to JSON</span>
+              </button>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Import Section -->
+            <div class="backup-section">
+              <h4 class="section-label" data-i18n="importData">Import data</h4>
+              <div class="import-strategy">
+                <label class="radio-row">
+                  <input type="radio" name="import-strategy" value="merge" checked>
+                  <div class="radio-info">
+                    <span class="radio-label" data-i18n="mergeData">Merge with existing</span>
+                    <span class="radio-hint" data-i18n="mergeDataHint">Add imported items, keeping existing data</span>
+                  </div>
+                </label>
+                <label class="radio-row">
+                  <input type="radio" name="import-strategy" value="replace">
+                  <div class="radio-info">
+                    <span class="radio-label" data-i18n="replaceData">Replace existing</span>
+                    <span class="radio-hint" data-i18n="replaceDataHint">Clear and replace with imported data</span>
+                  </div>
+                </label>
+              </div>
+              <input type="file" id="import-file" accept=".json" hidden>
+              <button type="button" id="import-btn" class="btn btn-secondary btn-full">
+                <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+                <span data-i18n="importFromJson">Import from JSON</span>
+              </button>
+            </div>
+
+            <div id="backup-status" class="status-message" hidden></div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="card-header">
+            <div class="card-icon" aria-hidden="true">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="card-title" data-i18n="analytics">Analytics</h3>
+              <p class="card-subtitle" data-i18n="analyticsSubtitle">Track usage and estimated API costs</p>
+            </div>
+          </div>
+          <div class="card-content">
+            <a id="openAnalyticsBtn" class="btn btn-secondary btn-full" href="../analytics/analytics.html" target="_blank" rel="noopener" data-i18n="analyticsViewAll">View Analytics</a>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="card-header">
+            <div class="card-icon" aria-hidden="true">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="card-title" data-i18n="libraryTitle">Library</h3>
+              <p class="card-subtitle" data-i18n="librarySettingsSubtitle">Your translation history, favorites and saved lessons</p>
+            </div>
+          </div>
+          <div class="card-content">
+            <a id="open-library-link" class="btn btn-secondary btn-full" href="../library/library.html" target="_blank" rel="noopener" data-i18n="openLibrary">Open Library</a>
+          </div>
+        </div>
+      </section>
+
+      <section id="shortcuts" class="settings-section" aria-labelledby="shortcuts-title">
+        <h2 id="shortcuts-title" class="settings-section-title" data-i18n="sectionShortcuts">Shortcuts</h2>
+        <p class="settings-section-intro" data-i18n="keyboardShortcutsDesc">Quick access commands</p>
+        <div class="settings-card">
+          <div class="card-content">
+            <div class="shortcuts-section">
+              <h3 class="shortcuts-title" data-i18n="globalShortcuts">Global (works anywhere)</h3>
+              <!-- Rendered from chrome.commands.getAll(): what the manifest
+                   suggests is not necessarily what Chrome bound. -->
+              <div class="shortcuts-list" id="global-shortcuts-list"></div>
+            </div>
+            <div class="shortcuts-section">
+              <h3 class="shortcuts-title" data-i18n="popupShortcuts">Popup</h3>
+              <div class="shortcuts-list">
+                <div class="shortcut-item">
+                  <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Enter</kbd></span>
+                  <span class="shortcut-desc" data-i18n="shortcutSubmit">Submit translation</span>
+                </div>
+              </div>
+            </div>
+            <div class="shortcuts-section">
+              <h3 class="shortcuts-title" data-i18n="practiceShortcuts">Practice</h3>
+              <div class="shortcuts-list">
+                <div class="shortcut-item">
+                  <span class="shortcut-keys"><kbd>←</kbd> <kbd>→</kbd></span>
+                  <span class="shortcut-desc" data-i18n="shortcutNavigate">Navigate cards</span>
+                </div>
+                <div class="shortcut-item">
+                  <span class="shortcut-keys"><kbd>Space</kbd> <kbd>Enter</kbd></span>
+                  <span class="shortcut-desc" data-i18n="shortcutFlip">Flip card</span>
+                </div>
+                <div class="shortcut-item">
+                  <span class="shortcut-keys"><kbd>C</kbd></span>
+                  <span class="shortcut-desc" data-i18n="shortcutCopy">Copy text</span>
+                </div>
+              </div>
+            </div>
+            <button type="button" id="customizeShortcutsBtn" class="btn btn-primary btn-full" data-i18n="customizeShortcuts">Customize Shortcuts</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="about" class="settings-section" aria-labelledby="about-title">
+        <h2 id="about-title" class="settings-section-title" data-i18n="sectionAbout">About</h2>
+        <p class="settings-section-intro" data-i18n="aboutSubtitle">ParsiPad extension information</p>
+        <div class="settings-card">
+          <div class="card-content">
+            <div class="about-info">
+              <div class="about-row">
+                <span class="about-label" data-i18n="versionLabel">Version</span>
+                <span class="about-value" id="about-version"></span>
+              </div>
+              <div class="about-row">
+                <span class="about-label" data-i18n="poweredBy">Powered by</span>
+                <span class="about-value">Claude, Gemini, ChatGPT</span>
+              </div>
+              <div class="about-row">
+                <span class="about-label" data-i18n="licenseLabel">License</span>
+                <span class="about-value">MIT</span>
+              </div>
+            </div>
+            <!-- Primary actions with text -->
+            <div class="about-links">
+              <a href="https://chromewebstore.google.com/detail/parsipad/kmifhjlofnblfogkjjcmhlmcecghhfbp/reviews" target="_blank" class="about-link about-link-highlight">
+                <svg aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                </svg>
+                <span data-i18n="rateExtension">Rate Extension</span>
+              </a>
+              <button type="button" id="welcome-guide-btn" class="about-link">
+                <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span data-i18n="viewWelcomeGuide">View Welcome Guide</span>
+              </button>
+            </div>
+            <!-- Secondary icon-only links -->
+            <div class="about-links-secondary">
+              <a href="https://parsipad.com" target="_blank" class="about-link-icon" data-i18n-title="website" title="Website">
+                <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                </svg>
+              </a>
+              <a href="https://github.com/amirehsan/parsipad" target="_blank" class="about-link-icon" title="GitHub">
+                <svg aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+              </a>
+              <a href="https://github.com/amirehsan/parsipad/issues" target="_blank" class="about-link-icon" data-i18n-title="reportIssue" title="Report Issue">
+                <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="settings-footer">
+    <p>ParsiPad &ndash; <span data-i18n="footerTagline">AI-powered Persian and English translation</span></p>
   </footer>
 
   <script type="module" src="settings.js"></script>
