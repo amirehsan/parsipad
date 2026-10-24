@@ -200,6 +200,30 @@ describe('first run key section', () => {
     expect(status().textContent).toBe(t('pleaseEnterApiKey', 'en'));
   });
 
+  it('reports a failed round trip with its message, through the shared helper', async () => {
+    setup();
+    await ctl.check();
+    await type('sk-ant-x');
+    testKey.mockRejectedValue(new Error('Could not establish connection'));
+
+    await ctl.submit();
+
+    expect(status().textContent).toBe('Test failed. Could not establish connection');
+    expect(status().dataset.state).toBe('error');
+  });
+
+  it('localizes a key storage turns away instead of showing its English message', async () => {
+    const storage = setup();
+    storage.setProviderApiKey.mockRejectedValue(Object.assign(new Error('Invalid Claude API key format'), { code: 'INVALID_KEY_FORMAT', prefixes: ['sk-ant-'] }));
+    await ctl.check();
+    await type('sk-ant-x');
+
+    await ctl.submit();
+
+    expect(status().textContent).toBe('Test failed. Claude keys start with sk-ant-. Check you copied the whole key.');
+    expect(status().querySelector('bdi[dir="ltr"]').textContent).toBe('sk-ant-');
+  });
+
   it('picks up a key added in Settings after a failed test', async () => {
     setup({ result: { ok: false, code: 'INVALID_API_KEY', message: 'Invalid API key. Please check settings.' } });
     await ctl.check();

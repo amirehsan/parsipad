@@ -4,7 +4,7 @@ import {
   getProviderApiKey,
   setProviderApiKey,
   removeProviderApiKey,
-  hasProviderApiKey,
+  normalizeApiKey,
   getLanguage,
   setLanguage,
   getDictionaryTranslationSettings,
@@ -22,7 +22,7 @@ import {
 import { PROVIDERS, PROVIDER_CONFIGS, STORAGE_KEYS, ACTIONS } from '../lib/constants.js';
 import { translationCache } from '../lib/cache.js';
 import { t, applyTranslations } from '../lib/i18n.js';
-import { renderKeyHelp, keyTestOkText, keyTestFailedText } from '../lib/key-help.js';
+import { renderKeyHelp, describeKeyTest, keyTestErrorResult, renderKeyTest, setKeyRevealed } from '../lib/key-help.js';
 import { COMMAND_DESCRIPTIONS, getBoundShortcuts, shortcutKeys } from '../shared/shortcuts.js';
 import {
   getHistory,
@@ -57,29 +57,13 @@ const practiceSizeValue = document.getElementById('practice-size-value');
 const themeRadios = document.querySelectorAll('input[name="theme"]');
 const systemDarkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
-// DOM Elements - Provider Selection
+// DOM Elements - Provider cards
 const providerRadios = document.querySelectorAll('input[name="provider"]');
-
-// DOM Elements - API Key Tabs
-const apiKeyTabs = document.querySelectorAll('.api-key-tab');
-const apiKeyPanels = document.querySelectorAll('.api-key-panel');
-
-// DOM Elements - API Key Inputs
-const claudeApiKeyInput = document.getElementById('claude-api-key');
-const geminiApiKeyInput = document.getElementById('gemini-api-key');
-const openaiApiKeyInput = document.getElementById('openai-api-key');
-
-// DOM Elements - Key Status Indicators (referenced via getElementById elsewhere, kept for parity)
-const _claudeKeyStatus = document.getElementById('claude-key-status');
-const _geminiKeyStatus = document.getElementById('gemini-key-status');
-const _openaiKeyStatus = document.getElementById('openai-key-status');
+const PROVIDER_IDS = [PROVIDERS.CLAUDE, PROVIDERS.GEMINI, PROVIDERS.OPENAI];
 
 // DOM Elements - Cache
 const cacheCountEl = document.getElementById('cache-count');
 const clearCacheBtn = document.getElementById('clear-cache-btn');
-
-// DOM Elements - Status
-const apiStatusEl = document.getElementById('api-status');
 
 // DOM Elements - Data Backup
 const exportFavoritesCheckbox = document.getElementById('export-favorites');
@@ -109,8 +93,11 @@ const EXTENSION_VERSION = chrome.runtime.getManifest().version;
 
 // State
 let currentLang = 'en';
-let currentProvider = PROVIDERS.CLAUDE;
 let currentTheme = 'light';
+// Per provider: whether a key is stored, and what its status line says as a
+// function of the language, so a language change rewords both in place.
+const keySaved = {};
+const keyTestMessages = {};
 
 /**
  * Initialize the settings page
@@ -126,6 +113,7 @@ async function init() {
   await loadProviderSettings();
   await loadAllApiKeyStatuses();
   mountKeyHelp();
+  refreshKeyRevealButtons();
   await loadCacheStats();
   await loadDataCounts();
   await loadKeyboardShortcuts();
@@ -277,19 +265,14 @@ function showPracticeSize(size) {
 }
 
 /**
- * Load provider settings (selected provider)
+ * Check the radio of the provider Translate uses
  */
 async function loadProviderSettings() {
-  currentProvider = await getSelectedProvider();
-
-  // Set the correct radio button
-  const providerRadio = document.getElementById(`provider-${currentProvider}`);
+  const provider = await getSelectedProvider();
+  const providerRadio = document.getElementById(`provider-${provider}`);
   if (providerRadio) {
     providerRadio.checked = true;
   }
-
-  // Also activate the corresponding API key tab
-  activateApiKeyTab(currentProvider);
 }
 
 /**
@@ -297,77 +280,70 @@ async function loadProviderSettings() {
  * interface language. Called again when that language changes.
  */
 function mountKeyHelp() {
-  for (const provider of [PROVIDERS.CLAUDE, PROVIDERS.GEMINI, PROVIDERS.OPENAI]) {
+  for (const provider of PROVIDER_IDS) {
     document.getElementById(`${provider}-key-help`)?.replaceChildren(renderKeyHelp(provider, currentLang));
   }
 }
 
 /**
- * Show the result of a key test beside the field it belongs to.
- * @param {string} provider
- * @param {string} text - Empty clears it
- * @param {'ok'|'error'|'pending'|''} state
+ * A status line message from one i18n key.
+ * @param {string} key
+ * @param {'ok'|'error'|'pending'|'info'} tone
+ * @returns {(lang: string) => {tone: string, text: string}}
  */
-function setKeyTestStatus(provider, text, state) {
-  const el = document.getElementById(`${provider}-key-test`);
-  if (!el) return;
-  el.textContent = text;
-  el.dataset.state = state;
+function keyMessage(key, tone) {
+  return (lang) => ({ tone, text: t(key, lang) });
 }
 
 /**
- * Test the key stored for a provider with one real request and report the
- * result inline under its field.
+ * Show a message in one provider's status line, under its key field. Nothing
+ * else on the page reports key results.
+ * @param {string} provider
+ * @param {((lang: string) => {tone: string, text: string, ltr?: string[]}) | null} describe - null clears it
  */
-async function testStoredKey(provider) {
-  setKeyTestStatus(provider, t('keyTesting', currentLang), 'pending');
-  try {
-    const key = await getProviderApiKey(provider);
-    const result = await chrome.runtime.sendMessage({ action: ACTIONS.TEST_API_KEY, provider, key });
-    if (result?.ok) {
-      setKeyTestStatus(provider, keyTestOkText(result, currentLang), 'ok');
-    } else {
-      setKeyTestStatus(provider, keyTestFailedText(result?.message || result?.error, currentLang), 'error');
-    }
-  } catch (error) {
-    setKeyTestStatus(provider, keyTestFailedText(error.message, currentLang), 'error');
+function setKeyTestStatus(provider, describe) {
+  keyTestMessages[provider] = describe;
+  const el = document.getElementById(`${provider}-key-test`);
+  if (!el) return;
+  if (describe) {
+    renderKeyTest(el, describe(currentLang));
+  } else {
+    el.textContent = '';
+    el.dataset.state = '';
   }
 }
 
 /**
- * Load API key status indicators for all providers
+ * Load the key state of every provider card
  */
 async function loadAllApiKeyStatuses() {
-  const providers = [PROVIDERS.CLAUDE, PROVIDERS.GEMINI, PROVIDERS.OPENAI];
-
-  for (const provider of providers) {
+  for (const provider of PROVIDER_IDS) {
     await updateKeyStatus(provider);
   }
 }
 
 /**
- * Update key status indicator for a provider
+ * Show "Key saved" or "No key yet" on a provider card
+ */
+function renderKeyState(provider) {
+  const el = document.getElementById(`${provider}-key-state`);
+  if (!el) return;
+  el.dataset.state = keySaved[provider] ? 'saved' : 'missing';
+  el.textContent = t(keySaved[provider] ? 'keyConfigured' : 'keyNotConfigured', currentLang);
+}
+
+/**
+ * Read a provider's stored key into its card: the key state, and the key
+ * itself into the field
  */
 async function updateKeyStatus(provider) {
-  const hasKey = await hasProviderApiKey(provider);
-  const statusEl = document.getElementById(`${provider}-key-status`);
-
-  if (statusEl) {
-    if (hasKey) {
-      statusEl.classList.add('configured');
-      statusEl.title = 'API key configured';
-    } else {
-      statusEl.classList.remove('configured');
-      statusEl.title = 'API key not configured';
-    }
-  }
-
-  // Also load the key into the input if it exists
   const key = await getProviderApiKey(provider);
+  keySaved[provider] = Boolean(key);
+  renderKeyState(provider);
+
   const input = getApiKeyInput(provider);
   if (input && key) {
     input.value = key;
-    input.placeholder = `${PROVIDER_CONFIGS[provider].keyPlaceholder} (configured)`;
   }
 }
 
@@ -375,39 +351,36 @@ async function updateKeyStatus(provider) {
  * Get the API key input element for a provider
  */
 function getApiKeyInput(provider) {
-  switch (provider) {
-    case PROVIDERS.CLAUDE:
-      return claudeApiKeyInput;
-    case PROVIDERS.GEMINI:
-      return geminiApiKeyInput;
-    case PROVIDERS.OPENAI:
-      return openaiApiKeyInput;
-    default:
-      return null;
+  return document.getElementById(`${provider}-api-key`);
+}
+
+/**
+ * Get the reveal button of a provider's key field
+ */
+function getRevealButton(provider) {
+  return document.querySelector(`.key-reveal[aria-controls="${provider}-api-key"]`);
+}
+
+/**
+ * Label every reveal button for its field's current state in the UI language
+ */
+function refreshKeyRevealButtons() {
+  for (const provider of PROVIDER_IDS) {
+    const input = getApiKeyInput(provider);
+    const button = getRevealButton(provider);
+    if (input && button) setKeyRevealed(input, button, input.type === 'text', currentLang);
   }
 }
 
 /**
- * Activate API key tab for a provider
+ * Reword everything the provider cards set from script in the UI language
  */
-function activateApiKeyTab(provider) {
-  // Update tab states
-  apiKeyTabs.forEach(tab => {
-    if (tab.dataset.provider === provider) {
-      tab.classList.add('active');
-    } else {
-      tab.classList.remove('active');
-    }
-  });
-
-  // Update panel visibility
-  apiKeyPanels.forEach(panel => {
-    if (panel.id === `${provider}-panel`) {
-      panel.classList.add('active');
-    } else {
-      panel.classList.remove('active');
-    }
-  });
+function refreshProviderCards() {
+  for (const provider of PROVIDER_IDS) {
+    renderKeyState(provider);
+    setKeyTestStatus(provider, keyTestMessages[provider] || null);
+  }
+  refreshKeyRevealButtons();
 }
 
 /**
@@ -459,39 +432,25 @@ function setupEventListeners() {
     radio.addEventListener('change', handleProviderChange);
   });
 
-  // API key tabs
-  apiKeyTabs.forEach(tab => {
-    tab.addEventListener('click', () => handleTabClick(tab.dataset.provider));
-  });
-
-  // Toggle password visibility buttons
-  document.querySelectorAll('.toggle-visibility').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const targetId = btn.dataset.target;
-      togglePasswordVisibility(targetId);
+  // Provider cards: reveal, Enter, Save & test and Clear each act on their own
+  // card's provider only
+  for (const provider of PROVIDER_IDS) {
+    const input = getApiKeyInput(provider);
+    const revealButton = getRevealButton(provider);
+    revealButton?.addEventListener('click', () => {
+      setKeyRevealed(input, revealButton, input.type === 'password', currentLang);
     });
-  });
 
-  // Save API key buttons
+    // Enter in a key field is that card's Save & test.
+    input?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleSaveApiKey(provider);
+    });
+  }
   document.querySelectorAll('.save-key-btn').forEach(btn => {
     btn.addEventListener('click', () => handleSaveApiKey(btn.dataset.provider));
   });
-
-  // Clear API key buttons
   document.querySelectorAll('.clear-key-btn').forEach(btn => {
     btn.addEventListener('click', () => handleClearApiKey(btn.dataset.provider));
-  });
-
-  // Allow Enter key to save in API key inputs
-  [claudeApiKeyInput, geminiApiKeyInput, openaiApiKeyInput].forEach(input => {
-    if (input) {
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          const provider = input.id.replace('-api-key', '');
-          handleSaveApiKey(provider);
-        }
-      });
-    }
   });
 
   // Clear cache
@@ -535,6 +494,7 @@ async function handleLanguageChange(lang) {
   await setLanguage(lang);
   applyTranslations(lang);
   mountKeyHelp();
+  refreshProviderCards();
   showPracticeSize(Number(practiceSizeSlider.value));
   await loadCacheStats();
 }
@@ -580,134 +540,57 @@ async function handlePracticeSizeChange() {
 }
 
 /**
- * Handle provider selection change
+ * Store the provider whose radio was picked. The selected card is the
+ * feedback, so success says nothing; a failure shows on that card.
  */
 async function handleProviderChange(e) {
   const provider = e.target.value;
-  currentProvider = provider;
-
   try {
     await setSelectedProvider(provider);
-    activateApiKeyTab(provider);
-    showStatus(`Switched to ${PROVIDER_CONFIGS[provider].displayName}`, 'success');
   } catch (error) {
-    showStatus(error.message, 'error');
+    console.error('Could not store the provider choice:', error);
+    setKeyTestStatus(provider, keyMessage('errorUnknown', 'error'));
   }
 }
 
 /**
- * Handle API key tab click
- */
-function handleTabClick(provider) {
-  activateApiKeyTab(provider);
-}
-
-/**
- * Toggle password visibility for an input
- */
-function togglePasswordVisibility(inputId) {
-  const input = document.getElementById(inputId);
-  const btn = document.querySelector(`[data-target="${inputId}"]`);
-
-  if (input && btn) {
-    const isVisible = input.type === 'text';
-    input.type = isVisible ? 'password' : 'text';
-
-    // Update icon
-    const icon = btn.querySelector('.eye-icon');
-    if (icon) {
-      if (isVisible) {
-        icon.innerHTML = `
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-          <circle cx="12" cy="12" r="3"/>
-        `;
-      } else {
-        icon.innerHTML = `
-          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-          <line x1="1" y1="1" x2="23" y2="23"/>
-        `;
-      }
-    }
-  }
-}
-
-/**
- * Handle save API key button click
+ * Save the key typed into one provider's card, then test it with one real
+ * request. Only that provider's key is saved and tested, and only on this
+ * click. A key with the wrong prefix is turned away before any request. The
+ * result shows under the field, and focus goes back into the field when the
+ * key did not work.
  */
 async function handleSaveApiKey(provider) {
-  const saveButtons = document.querySelectorAll('.save-key-btn');
-  saveButtons.forEach((btn) => { btn.disabled = true; });
-  setKeyTestStatus(provider, '', '');
-  try {
-    await saveAndTestApiKeys(provider);
-  } finally {
-    saveButtons.forEach((btn) => { btn.disabled = false; });
-  }
-}
-
-/**
- * Save every changed key, then test the one whose button was clicked.
- */
-async function saveAndTestApiKeys(provider) {
-  const savedProviders = [];
-
-  // Save all providers that have new/changed values
-  const allProviders = [PROVIDERS.CLAUDE, PROVIDERS.GEMINI, PROVIDERS.OPENAI];
-
-  for (const p of allProviders) {
-    const input = getApiKeyInput(p);
-    if (!input) continue;
-
-    const apiKey = input.value.trim();
-    if (!apiKey) continue;
-
-    // Check if this key is different from what's stored
-    const existingKey = await getProviderApiKey(p);
-    if (apiKey !== existingKey) {
-      try {
-        await setProviderApiKey(p, apiKey);
-        await updateKeyStatus(p);
-        savedProviders.push(PROVIDER_CONFIGS[p].name);
-      } catch (error) {
-        showStatus(error.message, 'error');
-        return;
-      }
-    }
-  }
-
-  // Also ensure the clicked provider's key is saved even if unchanged (in case it's a first save)
   const input = getApiKeyInput(provider);
-  if (input) {
-    const apiKey = input.value.trim();
-    if (!apiKey) {
-      // Nothing typed and nothing stored: there is no key to test.
-      showStatus(t('pleaseEnterApiKey', currentLang), 'error');
-      setKeyTestStatus(provider, t('pleaseEnterApiKey', currentLang), 'error');
-      return;
-    }
-    if (!savedProviders.includes(PROVIDER_CONFIGS[provider].name)) {
-      try {
-        await setProviderApiKey(provider, apiKey);
-        await updateKeyStatus(provider);
-        savedProviders.push(PROVIDER_CONFIGS[provider].name);
-      } catch (error) {
-        showStatus(error.message, 'error');
-        return;
-      }
-    }
+  const button = document.querySelector(`.save-key-btn[data-provider="${provider}"]`);
+  if (!input || button?.disabled) return;
+
+  if (!normalizeApiKey(input.value)) {
+    setKeyTestStatus(provider, keyMessage('pleaseEnterApiKey', 'error'));
+    input.focus();
+    return;
   }
 
-  if (savedProviders.length > 0) {
-    showStatus(`${savedProviders.join(', ')} API key${savedProviders.length > 1 ? 's' : ''} saved successfully`, 'success');
-  } else {
-    showStatus('No changes to save', 'success');
+  if (button) button.disabled = true;
+  setKeyTestStatus(provider, keyMessage('keyTesting', 'pending'));
+  let result;
+  try {
+    await setProviderApiKey(provider, input.value);
+    await updateKeyStatus(provider);
+    const key = await getProviderApiKey(provider);
+    result = await chrome.runtime.sendMessage({ action: ACTIONS.TEST_API_KEY, provider, key });
+  } catch (error) {
+    result = keyTestErrorResult(error);
+  } finally {
+    if (button) button.disabled = false;
   }
 
-  await testStoredKey(provider);
+  setKeyTestStatus(provider, (lang) => describeKeyTest(result, lang, provider));
+  if (!result?.ok) input.focus();
 }
 
 /**
- * Handle clear API key button click
+ * Remove one provider's key after a confirmation
  */
 async function handleClearApiKey(provider) {
   const input = getApiKeyInput(provider);
@@ -716,15 +599,9 @@ async function handleClearApiKey(provider) {
   if (!confirm(t('confirmClearApiKey', currentLang).replace('{provider}', config.name))) return;
 
   await removeProviderApiKey(provider);
-  setKeyTestStatus(provider, '', '');
-
-  if (input) {
-    input.value = '';
-    input.placeholder = config.keyPlaceholder;
-  }
-
+  if (input) input.value = '';
   await updateKeyStatus(provider);
-  showStatus(`${config.name} API key removed`, 'success');
+  setKeyTestStatus(provider, keyMessage('keyCleared', 'info'));
 }
 
 /**
@@ -738,20 +615,7 @@ async function handleClearCache() {
 
   await translationCache.clear();
   await loadCacheStats();
-  showStatus(t('cacheCleared', currentLang), 'success');
-}
-
-/**
- * Show a status message
- */
-function showStatus(message, type) {
-  apiStatusEl.textContent = message;
-  apiStatusEl.className = `status-message ${type}`;
-  apiStatusEl.hidden = false;
-
-  setTimeout(() => {
-    apiStatusEl.hidden = true;
-  }, 3000);
+  showBackupStatus(t('cacheCleared', currentLang), 'success');
 }
 
 // ============================================

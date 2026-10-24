@@ -1,4 +1,4 @@
-import { renderKeyHelp, keyTestOkText, keyTestFailedText } from '../lib/key-help.js';
+import { renderKeyHelp, describeKeyTest, keyTestErrorResult, renderKeyTest } from '../lib/key-help.js';
 import { t } from '../lib/i18n.js';
 
 /**
@@ -38,6 +38,10 @@ export function createFirstRun({ doc, getLang, onNeedsKeyChange, storage, testKe
   function setStatus(text, state) {
     statusEl.textContent = text;
     statusEl.dataset.state = state;
+  }
+
+  function showResult(result, provider) {
+    renderKeyTest(statusEl, describeKeyTest(result, getLang(), provider));
   }
 
   function render(provider) {
@@ -88,8 +92,9 @@ export function createFirstRun({ doc, getLang, onNeedsKeyChange, storage, testKe
     setBusy(true);
     setStatus(t('keyTesting', getLang()), 'pending');
     let succeeded = false;
+    let result;
     try {
-      const result = await testKey(provider, typed);
+      result = await testKey(provider, typed);
       if (provider !== await storage.getSelectedProvider()) {
         // Settings switched provider mid-test; this result is not about the
         // provider the section now shows.
@@ -101,13 +106,11 @@ export function createFirstRun({ doc, getLang, onNeedsKeyChange, storage, testKe
         // Only a key the provider accepted is stored.
         await storage.setProviderApiKey(provider, typed);
         succeeded = true;
-        setStatus(keyTestOkText(result, getLang()), 'ok');
-      } else {
-        setStatus(keyTestFailedText(result?.message || result?.error, getLang()), 'error');
       }
     } catch (error) {
-      setStatus(keyTestFailedText(error.message, getLang()), 'error');
+      result = keyTestErrorResult(error);
     }
+    showResult(result, provider);
     testBtn.disabled = false;
     providerGroup.disabled = false;
 
