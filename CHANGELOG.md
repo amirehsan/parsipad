@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A Library page with History, Favorites and Lessons in tabs.** History and Favorites were two separate pages that showed the same kind of card with different controls, and finding something old meant scrolling. The Library puts them side by side. Search matches the original, the result and the polished versions, type chips narrow the list to translations, dictionary lookups or polished text, a direction filter narrows it further, and results are grouped under Today, This week and Earlier. Each card can be starred, copied (one button per style on a polished text), opened in the side panel or deleted. The tab, search and filters are kept in the page address, so a reload lands you in the same place. The Library links in the popup and the side panel open it.
+- **Deleting an entry can be undone for five seconds.** A delete used to be final the moment you clicked it. The Library now shows an Undo button for five seconds after each delete and puts the entry back. Clear all is scoped to the tab and the type chip you are looking at, so clearing translations no longer touches anything else, and it asks first.
+- **Dictionary lookups are visible in the Library's history.** Lookups were stored in their own list that no page displayed, so a word you had looked up could not be found again. They now appear in History under the Dictionary chip, where they can be starred, copied, opened in the side panel and deleted like any other entry.
+- **Saved grammar lessons reopen from the Lessons tab with no new request.** Opening a saved lesson used to ask your provider for it again, which cost a request and could return a different lesson from the one you saved. The Library now reopens the lesson exactly as it was saved, with nothing sent to the provider. If the lesson has since been deleted, the page says so and links back to the Library.
+- **Practice, a flashcards page for your favorites, in the side panel and the Library.** It deals a short session from your favorites, including those saved by 2.x versions, one card at a time with the original hidden until you flip it. Arrow keys move between cards, Space or Enter flips and C copies the face that is showing. Flipping is instant when your system is set to reduce motion. Grammar lessons are not dealt as cards, because they have no short answer to flip to; they reopen from the Library. A Practice link sits in the side panel's Recent row, and the Library header has one too. The session size, 5 to 30 cards with a default of 10, is a slider in Settings.
+
+### Changed
+- **History and Favorites became tabs of the Library.** The two pages are gone as separate destinations. Anything that still points at the old History or Favorites page, such as a bookmark or an old link, redirects to the matching Library tab.
+- **The provider badge's "last used" time reads the same everywhere.** It now comes from the formatter the rest of the extension uses: relative within a week ("2 hours ago"), a date after that.
+
+### Removed
+- **The New Tab page.** ParsiPad no longer replaces Chrome's New Tab page, so opening a new tab shows Chrome's own again. The page showed one saved word, a clock and optional bookmark and most-visited panels, which were a second product inside the translator and the only reason it needed to read your bookmarks and browsing shortcuts. Your favorites are untouched and are now reviewed in Practice. The New Tab settings are cleared the first time the extension updates, so nothing is left behind.
+- **The bookmarks, favicon and topSites permissions.** Only the New Tab page used them. With it gone ParsiPad no longer asks to read your bookmarks or your most visited sites, and Chrome stops listing them in the permissions it shows for the extension.
+
 ## [3.3.0] - 2026-10-24
 
 ### Added
