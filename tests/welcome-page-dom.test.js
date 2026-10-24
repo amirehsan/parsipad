@@ -160,6 +160,10 @@ describe('welcome setup markup', () => {
     expect(tryIt).toMatch(/<button type="button" id="done-btn"/);
     expect(html).not.toMatch(/id="start-btn"|startUsing|welcomeSkip/);
     expect(translations.en.welcomeTryAgainHint).toBe('Check the key above, then try again.');
+    expect(translations.en.translating).toBe('Translating…');
+    expect(translations.fa.translating).toMatch(/[^.]…$/);
+    expect(translations.en.welcomeFinishing).toMatch(/…$/);
+    expect(translations.fa.welcomeFinishing).toMatch(/…$/);
     expect(translations.en.welcomeSkip).toBeUndefined();
     expect(translations.en.startUsing).toBeUndefined();
   });
@@ -414,20 +418,126 @@ describe.each(['en', 'fa'])('welcome try-it and Done in %s', (lang) => {
     expect(tryButton().disabled).toBe(false);
   });
 
-  it('an UNKNOWN error shows the worker message, and a failed send still names a next step', async () => {
+  it('a missing key also points at the key field', async () => {
     await loadWelcome(lang, { [STORAGE_KEYS.apiKey]: 'sk-ant-stored' });
-    answerTranslate({ error: 'Provider said no.', errorCode: 'UNKNOWN' });
+    answerTranslate({ error: 'API key not set.', errorCode: 'API_KEY_NOT_SET' });
     tryButton().click();
     await vi.waitFor(() => expect(tryResult().dataset.state).toBe('error'));
-    expect(tryResult().textContent).toBe(`Provider said no. ${tr.welcomeTryAgainHint}`);
+    expect(tryResult().textContent).toBe(`${tr.errorApiKeyNotSet} ${tr.welcomeTryAgainHint}`);
+  });
 
-    answerTranslate(new Error('Could not establish connection. Receiving end does not exist.'));
-    tryButton().click();
-    await vi.waitFor(() => expect(tryResult().textContent).toBe(`${tr.errorUnknown} ${tr.welcomeTryAgainHint}`));
+  it('a failure that says nothing about the key shows its own message alone', async () => {
+    await loadWelcome(lang, { [STORAGE_KEYS.apiKey]: 'sk-ant-stored' });
+    const cases = [
+      [{ error: 'Provider said no.', errorCode: 'UNKNOWN' }, 'Provider said no.'],
+      [new Error('Could not establish connection. Receiving end does not exist.'), tr.errorUnknown],
+      [new Error('Failed to fetch'), tr.errorNetwork],
+      [{ error: 'x', errorCode: 'TIMEOUT' }, tr.errorTimeout],
+      [{ error: 'x', errorCode: 'RATE_LIMITED' }, tr.errorRateLimited],
+      [{ error: 'x', errorCode: 'PARSE_FAILED' }, tr.errorParseFailed],
+      [{ error: 'x', errorCode: 'SERVER_ERROR' }, tr.errorServerError]
+    ];
+    for (const [answer, expected] of cases) {
+      answerTranslate(answer);
+      tryButton().click();
+      await vi.waitFor(() => expect(tryResult().textContent).toBe(expected));
+      expect(tryResult().dataset.state).toBe('error');
+    }
+  });
 
-    answerTranslate(new Error('Failed to fetch'));
+  it('clears the last result when a Translate starts, so the same error is announced again', async () => {
+    await loadWelcome(lang, { [STORAGE_KEYS.apiKey]: 'sk-ant-stored' });
+    answerTranslate({ error: 'x', errorCode: 'RATE_LIMITED' });
     tryButton().click();
-    await vi.waitFor(() => expect(tryResult().textContent).toBe(`${tr.errorNetwork} ${tr.welcomeTryAgainHint}`));
+    await vi.waitFor(() => expect(tryResult().textContent).toBe(tr.errorRateLimited));
+
+    let finish;
+    chrome.runtime.sendMessage.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    tryButton().click();
+    await vi.waitFor(() => expect(translateCalls()).toHaveLength(2));
+    expect(tryResult().textContent).toBe('');
+    expect(tryResult().dataset.state).toBe('');
+    finish({ error: 'x', errorCode: 'RATE_LIMITED' });
+    await vi.waitFor(() => expect(tryResult().textContent).toBe(tr.errorRateLimited));
+  });
+
+  it('clears the result when the provider or the key changes', async () => {
+    await loadWelcome(lang, { [STORAGE_KEYS.apiKey]: 'sk-ant-stored' });
+    answerTranslate({ translation: 'جلسه منتقل شد.' });
+    tryButton().click();
+    await vi.waitFor(() => expect(tryResult().dataset.state).toBe('ok'));
+
+    radio('gemini').click();
+    await vi.waitFor(() => expect(tryResult().textContent).toBe(''));
+    expect(tryResult().dataset.state).toBe('');
+
+    radio('claude').click();
+    await vi.waitFor(() => expect(tryButton().disabled).toBe(false));
+    tryButton().click();
+    await vi.waitFor(() => expect(tryResult().dataset.state).toBe('ok'));
+    testResult = { ok: true, model: 'claude-haiku-5-5', ms: 300 };
+    keyInput().value = 'sk-ant-other';
+    saveButton().click();
+    await vi.waitFor(() => expect(status().dataset.state).toBe('ok'));
+    expect(tryResult().textContent).toBe('');
+    expect(tryResult().dataset.state).toBe('');
+  });
+
+  it('a double Done click finishes once', async () => {
+    history.replaceState(null, '', '/welcome/welcome.html?from=settings');
+    await loadWelcome(lang, { [STORAGE_KEYS.apiKey]: 'sk-ant-stored' });
+    const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
+    doneButton().click();
+    doneButton().click();
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(assign).toHaveBeenCalledTimes(1);
+    const onboardingWrites = chrome.storage.local.set.mock.calls.filter(([items]) => STORAGE_KEYS.onboardingComplete in items);
+    expect(onboardingWrites).toHaveLength(1);
+    // Leaving for Settings, the button stays busy so it is not pressed again
+    expect(doneButton().getAttribute('aria-busy')).toBe('true');
+  });
+
+  it('Done shows it is busy while a typed key is tested, and is itself again if the tab stays open', async () => {
+    await loadWelcome(lang);
+    const close = vi.spyOn(window, 'close').mockImplementation(() => {});
+    let finish;
+    chrome.runtime.sendMessage.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    keyInput().value = 'sk-ant-typed';
+    doneButton().click();
+
+    await vi.waitFor(() => expect(testCalls()).toHaveLength(1));
+    expect(doneButton().getAttribute('aria-busy')).toBe('true');
+    expect(doneButton().getAttribute('aria-disabled')).toBe('true');
+    expect(doneButton().textContent.trim()).toBe(tr.welcomeFinishing);
+    expect(close).not.toHaveBeenCalled();
+
+    finish({ ok: true, model: 'claude-haiku-5-5', ms: 300 });
+    await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(doneButton().hasAttribute('aria-busy')).toBe(false);
+    expect(doneButton().hasAttribute('aria-disabled')).toBe(false);
+    expect(doneButton().textContent.trim()).toBe(tr.welcomeDone);
+  });
+
+  it('Done while a Save & test is pending waits for it and does not test the key twice', async () => {
+    await loadWelcome(lang);
+    const close = vi.spyOn(window, 'close').mockImplementation(() => {});
+    let finish;
+    chrome.runtime.sendMessage.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    keyInput().value = 'sk-ant-pending';
+    saveButton().click();
+    await vi.waitFor(() => expect(testCalls()).toHaveLength(1));
+
+    doneButton().click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(close).not.toHaveBeenCalled();
+    expect(store.has(STORAGE_KEYS.onboardingComplete)).toBe(false);
+
+    finish({ ok: true, model: 'claude-haiku-5-5', ms: 300 });
+    await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(testCalls()).toHaveLength(1);
+    expect(store.get(STORAGE_KEYS.apiKey)).toBe('sk-ant-pending');
+    expect(store.get(STORAGE_KEYS.onboardingComplete)).toBe(true);
   });
 
   it('Done from Settings marks onboarding complete and returns to Settings at About', async () => {

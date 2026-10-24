@@ -39,6 +39,7 @@ const tryBtn = document.getElementById('try-it-btn');
 const tryLabelEl = tryBtn.querySelector('.try-btn-label');
 const tryResultEl = document.getElementById('try-it-result');
 const doneBtn = document.getElementById('done-btn');
+const doneLabelEl = doneBtn.querySelector('.done-btn-label');
 
 // State
 let currentLang = 'en';
@@ -63,10 +64,13 @@ let pendingSave = null;
 export let keyWorks = false;
 
 /**
+ * Set whenever the provider or its key changes, so a result or error from
+ * the last key never sits under a different one.
  * @param {boolean} value
  */
 function setKeyWorks(value) {
   keyWorks = value;
+  clearTryResult();
   updateTryButton();
 }
 
@@ -332,6 +336,8 @@ async function handleTryTranslate() {
   tryBtn.setAttribute('aria-busy', 'true');
   tryBtn.setAttribute('aria-disabled', 'true');
   tryLabelEl.textContent = t('translating', currentLang);
+  // Emptied first, so a repeated identical message is announced again
+  clearTryResult();
 
   let response;
   try {
@@ -352,6 +358,11 @@ async function handleTryTranslate() {
   }
 }
 
+function clearTryResult() {
+  tryResultEl.textContent = '';
+  tryResultEl.dataset.state = '';
+}
+
 /**
  * @param {string} translation - Persian
  */
@@ -365,7 +376,9 @@ function showTryResult(translation) {
 /**
  * The service worker answers a failure with { error, errorCode }. A known
  * code is shown in the UI language; an UNKNOWN or missing one shows the
- * worker's own message when there is one.
+ * worker's own message when there is one. Only a verdict on the key
+ * (rejected, missing or malformed) adds the hint to check the key above;
+ * offline, timeouts, rate limits and the rest say nothing about the key.
  * @param {{error?: string, errorCode?: string}|undefined} response
  */
 function showTryError(response) {
@@ -375,7 +388,9 @@ function showTryError(response) {
   tryResultEl.setAttribute('lang', currentLang);
   tryResultEl.setAttribute('dir', document.documentElement.dir || 'ltr');
   tryResultEl.dataset.state = 'error';
-  tryResultEl.textContent = `${message} ${t('welcomeTryAgainHint', currentLang)}`;
+  tryResultEl.textContent = isKeyRejected(response)
+    ? `${message} ${t('welcomeTryAgainHint', currentLang)}`
+    : message;
 }
 
 /**
@@ -395,6 +410,23 @@ async function saveTypedKey() {
 }
 
 /**
+ * Show Done as busy while it finishes (a typed key test can take a while),
+ * or as itself again. It stays focusable either way.
+ * @param {boolean} busy
+ */
+function setDoneBusy(busy) {
+  finishing = busy;
+  if (busy) {
+    doneBtn.setAttribute('aria-busy', 'true');
+    doneBtn.setAttribute('aria-disabled', 'true');
+  } else {
+    doneBtn.removeAttribute('aria-busy');
+    doneBtn.removeAttribute('aria-disabled');
+  }
+  doneLabelEl.textContent = t(busy ? 'welcomeFinishing' : 'welcomeDone', currentLang);
+}
+
+/**
  * Finish onboarding: Done never strands the user. The typed key is saved
  * when it can be, onboarding is marked complete whatever happened before,
  * then the page returns to Settings when Settings opened it, and closes
@@ -402,8 +434,7 @@ async function saveTypedKey() {
  */
 async function handleDone() {
   if (finishing) return;
-  finishing = true;
-  doneBtn.setAttribute('aria-busy', 'true');
+  setDoneBusy(true);
 
   try {
     await saveTypedKey();
@@ -419,14 +450,13 @@ async function handleDone() {
 
   const target = finishTarget(location.search);
   if (target.type === 'navigate') {
+    // The page is leaving; Done stays busy so it is not pressed again
     location.assign(target.url);
-  } else {
-    window.close();
+    return;
   }
-
+  window.close();
   // Should the tab refuse to close, Done can be pressed again.
-  finishing = false;
-  doneBtn.removeAttribute('aria-busy');
+  setDoneBusy(false);
 }
 
 // Initialize when DOM is ready
