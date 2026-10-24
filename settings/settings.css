@@ -1204,6 +1204,98 @@ footer div {
   margin-right: 0.25rem;
 }
 
+/* Key test result and the "How do I get a key?" block under each key field */
+.key-test-status {
+  font-size: 0.875rem;
+  margin-top: var(--space-inline-actions);
+  color: var(--color-text-secondary);
+}
+
+.key-test-status:empty {
+  display: none;
+}
+
+.key-test-status[data-state="ok"] {
+  color: var(--color-success-500);
+}
+
+.key-test-status[data-state="error"] {
+  color: var(--color-error-500);
+}
+
+.key-help {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-stack-item);
+  margin-top: var(--space-stack-group);
+  padding: var(--space-stack-item) var(--space-stack-group);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+}
+
+.key-help details {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.key-help details[lang="fa"] {
+  font-family: var(--font-persian);
+}
+
+.key-help summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.key-help ol {
+  margin: var(--space-stack-item) 0 0;
+  padding-inline-start: var(--space-stack-section);
+}
+
+.key-help li + li {
+  margin-top: var(--space-inline-actions);
+}
+
+.key-help a {
+  color: var(--primary-500);
+  font-weight: 500;
+}
+
+.key-help code {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-hover);
+  color: var(--color-text);
+}
+
+.key-help-cost {
+  margin-top: var(--space-stack-item);
+}
+
+.key-help-lang {
+  flex: none;
+  padding: var(--space-1) var(--space-stack-item);
+  font-size: 0.8125rem;
+  font-family: var(--font-persian);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.key-help-lang:hover {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .language-options {

@@ -1,4 +1,4 @@
-import { translate, explainGrammar, polish, translateImage, regeneratePolishVariant, getGrammarLesson } from '../lib/api.js';
+import { translate, explainGrammar, polish, translateImage, regeneratePolishVariant, getGrammarLesson, testApiKey } from '../lib/api.js';
 import { lookupWord } from '../lib/dictionary.js';
 import { translateDocument } from '../lib/document-translator.js';
 import { translationCache } from '../lib/cache.js';
@@ -11,6 +11,7 @@ import { normalizeInput, normalizeForMode, normalizePersian } from '../lib/trans
 import { buildCacheKeyParts, hashContext } from '../lib/translation/cache-key.js';
 import { TranslationError, ERROR_CODES, toTranslationError, errorI18nKey } from '../lib/translation/errors.js';
 import { t } from '../lib/i18n.js';
+import { recordProviderHealth } from '../lib/provider-health.js';
 
 /**
  * Localized error payload for UI consumers.
@@ -90,6 +91,9 @@ async function handleMessage(message, sender) {
 
     case ACTIONS.CHECK_API_KEY:
       return { hasApiKey: await hasApiKey() };
+
+    case ACTIONS.TEST_API_KEY:
+      return handleTestApiKey(message.provider, message.key);
 
     case ACTIONS.GET_GRAMMAR_LESSON:
       return handleGrammarLesson(message.originalText, message.translation, message.direction);
@@ -710,6 +714,22 @@ async function handleGrammarLesson(originalText, translation, direction) {
 }
 
 const OPEN_SIDE_PANEL_MENU_ID = 'parsipad-open-side-panel';
+
+/**
+ * Test a key with one real request and record how the provider answered, so
+ * the header badge turns green (or red) without further wiring.
+ * @param {string} providerId
+ * @param {string} key
+ * @returns {Promise<{ok: true, model: string, ms: number} | {ok: false, code: string, message: string}>}
+ */
+async function handleTestApiKey(providerId, key) {
+  const result = await testApiKey(providerId, key);
+  if (PROVIDER_CONFIGS[providerId]) {
+    const outcome = result.ok ? { ok: true, ms: result.ms } : { ok: false, code: result.code };
+    await recordProviderHealth(providerId, outcome).catch(() => {});
+  }
+  return result;
+}
 
 /**
  * Open the side panel for a tab. Callers must invoke this inside the user

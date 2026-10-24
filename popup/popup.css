@@ -239,6 +239,198 @@ body {
   margin-bottom: var(--space-xs);
 }
 
+/* First run: add and test a key while the selected provider has none */
+.first-run {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-inset-card);
+  margin-bottom: var(--space-stack-section);
+}
+
+.first-run-title {
+  font-size: 16px;
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--space-inline-actions);
+}
+
+.first-run-body {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-stack-group);
+}
+
+.first-run-providers {
+  border: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-inline-actions);
+  margin-bottom: var(--space-stack-group);
+}
+
+.first-run-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: var(--space-inline-actions);
+}
+
+.first-run-provider {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-inline-actions);
+  min-height: 36px;
+  padding: 0 var(--space-stack-item);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.first-run-provider:has(input:checked) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-50);
+}
+
+.first-run-provider:has(input:focus-visible) {
+  outline: var(--ring-width) solid var(--ring-color);
+  outline-offset: 2px;
+}
+
+.first-run-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.first-run-input {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-stack-section) var(--space-3) var(--space-4);
+  font-size: 14px;
+  font-family: var(--font-sans);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.first-run-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.first-run-reveal {
+  position: absolute;
+  right: var(--space-1);
+}
+
+[dir="rtl"] .first-run-reveal {
+  right: auto;
+  left: var(--space-1);
+}
+
+[dir="rtl"] .first-run-input {
+  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-stack-section);
+}
+
+.first-run-status {
+  font-size: 13px;
+  margin-top: var(--space-inline-actions);
+  color: var(--color-text-secondary);
+}
+
+.first-run-status:empty {
+  display: none;
+}
+
+.first-run-status[data-state="ok"] {
+  color: var(--color-success);
+}
+
+.first-run-status[data-state="error"] {
+  color: var(--color-error);
+}
+
+.first-run-test {
+  margin-top: var(--space-stack-group);
+  margin-bottom: 0;
+}
+
+/* Key help: the per-provider "How do I get a key?" block and its language pill */
+.key-help {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-stack-item);
+  margin-top: var(--space-stack-item);
+}
+
+.key-help details {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.key-help details[lang="fa"] {
+  font-family: var(--font-persian);
+}
+
+.key-help summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.key-help ol {
+  margin: var(--space-stack-item) 0 0;
+  padding-inline-start: var(--space-stack-section);
+}
+
+.key-help li + li {
+  margin-top: var(--space-inline-actions);
+}
+
+.key-help a {
+  color: var(--color-primary);
+}
+
+.key-help code {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-hover);
+  color: var(--color-text);
+}
+
+.key-help-cost {
+  margin-top: var(--space-stack-item);
+}
+
+.key-help-lang {
+  flex: none;
+  min-height: 28px;
+  padding: 0 var(--space-stack-item);
+  font-size: 12px;
+  font-family: var(--font-persian);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.key-help-lang:hover {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
 /* Tab Navigation - Text Tabs (4 tabs) */
 .tab-nav {
   display: flex;

@@ -1,7 +1,7 @@
 import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
 import { getHistory, clearHistory, getPolishHistory, clearPolishHistory, getDictionaryHistory, clearDictionaryHistory } from '../lib/history.js';
-import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider, getFavorites, isFavorite, claimReviewPrompt, respondToReviewPrompt } from '../lib/storage.js';
+import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider, setSelectedProvider, getProviderApiKey, setProviderApiKey, getFavorites, isFavorite, claimReviewPrompt, respondToReviewPrompt } from '../lib/storage.js';
 import { PROVIDER_CONFIGS, ACTIONS, STORE_REVIEWS_URL, STORAGE_KEYS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 import { setSafeInnerHTML } from '../lib/sanitize.js';
@@ -12,6 +12,7 @@ import { getBoundShortcuts } from '../shared/shortcuts.js';
 import { applyThemeToRoot } from '../lib/theme.js';
 import { directionLabel } from '../lib/direction-label.js';
 import { getProviderHealth, healthTone } from '../lib/provider-health.js';
+import { renderKeyHelp, keyTestOkText, keyTestFailedText } from '../lib/key-help.js';
 
 // The popup script also runs inside the side panel, which must stay open.
 const isPanel = document.body.dataset.surface === 'panel';
@@ -21,8 +22,14 @@ const openSidePanelBtn = document.getElementById('open-sidepanel-btn');
 const settingsBtn = document.getElementById('settings-btn');
 const providerBadge = document.getElementById('provider-badge');
 const providerBadgeName = document.getElementById('provider-badge-name');
-const apiKeyWarning = document.getElementById('api-key-warning');
-const configureApiBtn = document.getElementById('configure-api-btn');
+// First-run key setup
+const firstRun = document.getElementById('first-run');
+const firstRunKey = document.getElementById('first-run-key');
+const firstRunReveal = document.getElementById('first-run-reveal');
+const firstRunTest = document.getElementById('first-run-test');
+const firstRunStatus = document.getElementById('first-run-status');
+const firstRunHelp = document.getElementById('first-run-help');
+const firstRunProviders = document.querySelectorAll('input[name="first-run-provider"]');
 // Tab elements (4 main tabs)
 const tabText = document.getElementById('tab-text');
 const tabDictionary = document.getElementById('tab-dictionary');
@@ -143,6 +150,11 @@ const reviewNeverBtn = document.getElementById('review-never-btn');
 
 // State
 let isProcessing = false;
+// True while the selected provider has no key. Translate stays off until then.
+let needsKey = false;
+// True from saving a first-run key until its test result has been shown, so
+// the key landing in storage does not hide the section before the user sees it.
+let firstRunHold = false;
 let currentTab = 'text'; // 'text', 'dictionary', 'document', or 'image'
 let currentTextMode = 'translate'; // 'translate' or 'polish' (for text tab)
 let currentLang = 'en';
@@ -311,17 +323,109 @@ function formatNumber(num) {
 }
 
 /**
- * Check if API key is configured
+ * Show the first-run key section when the selected provider has no key, and
+ * keep Translate off while it is showing.
  */
 async function checkApiKey() {
   try {
-    const response = await chrome.runtime.sendMessage({ action: 'CHECK_API_KEY' });
-    if (!response.hasApiKey) {
-      apiKeyWarning.hidden = false;
-    }
+    const provider = await getSelectedProvider();
+    const key = await getProviderApiKey(provider);
+    setNeedsKey(!key, provider);
   } catch (error) {
     // Silently handle API key check errors
   }
+}
+
+function setNeedsKey(needs, provider) {
+  needsKey = needs;
+  firstRun.hidden = !needs;
+  actionBtn.disabled = isProcessing || needsKey;
+  if (needs) renderFirstRun(provider);
+}
+
+/**
+ * Draw the section for a provider: its radio, an empty field and status, and
+ * that provider's how-to block.
+ */
+function renderFirstRun(provider) {
+  firstRunProviders.forEach((radio) => { radio.checked = radio.value === provider; });
+  setFirstRunStatus('', '');
+  firstRunHelp.replaceChildren(renderKeyHelp(provider, currentLang));
+}
+
+function setFirstRunStatus(text, state) {
+  firstRunStatus.textContent = text;
+  firstRunStatus.dataset.state = state;
+}
+
+function selectedFirstRunProvider() {
+  return [...firstRunProviders].find((radio) => radio.checked)?.value;
+}
+
+/**
+ * Picking a provider here makes it the selected one, so the key typed next is
+ * the key Translate will use. If that provider already has a key the section
+ * simply goes away.
+ */
+async function handleFirstRunProviderChange() {
+  const provider = selectedFirstRunProvider();
+  if (!provider) return;
+  firstRunKey.value = '';
+  try {
+    await setSelectedProvider(provider);
+  } catch (error) {
+    console.error('Could not switch provider:', error);
+  }
+  await checkApiKey();
+}
+
+/**
+ * Save the typed key, test it with one real request, and report the result
+ * beside the field. A rejected key stays in the field and Translate stays off.
+ */
+async function handleFirstRunTest() {
+  const provider = selectedFirstRunProvider();
+  const typed = firstRunKey.value.trim();
+  if (!provider || firstRunTest.disabled) return;
+  if (!typed) {
+    setFirstRunStatus(t('pleaseEnterApiKey', currentLang), 'error');
+    firstRunKey.focus();
+    return;
+  }
+
+  firstRunTest.disabled = true;
+  firstRunHold = true;
+  setFirstRunStatus(t('keyTesting', currentLang), 'pending');
+  let succeeded = false;
+  try {
+    await setProviderApiKey(provider, typed);
+    // Test the key as it was stored, after the paste cleanup.
+    const result = await chrome.runtime.sendMessage({ action: ACTIONS.TEST_API_KEY, provider, key: await getProviderApiKey(provider) });
+    if (result?.ok) {
+      succeeded = true;
+      setFirstRunStatus(keyTestOkText(result, currentLang), 'ok');
+    } else {
+      setFirstRunStatus(keyTestFailedText(result?.message || result?.error, currentLang), 'error');
+    }
+  } catch (error) {
+    setFirstRunStatus(keyTestFailedText(error.message, currentLang), 'error');
+  }
+  firstRunTest.disabled = false;
+
+  if (succeeded) {
+    setTimeout(() => {
+      firstRunHold = false;
+      checkApiKey();
+    }, 1500);
+  } else {
+    firstRunHold = false;
+  }
+}
+
+function toggleFirstRunReveal() {
+  const reveal = firstRunKey.type === 'password';
+  firstRunKey.type = reveal ? 'text' : 'password';
+  firstRunReveal.setAttribute('aria-pressed', String(reveal));
 }
 
 /**
@@ -418,9 +522,18 @@ function setupEventListeners() {
     chrome.runtime.openOptionsPage();
   });
 
-  // Configure API button
-  configureApiBtn.addEventListener('click', () => {
-    chrome.runtime.openOptionsPage();
+  // First-run key setup
+  firstRunProviders.forEach((radio) => radio.addEventListener('change', handleFirstRunProviderChange));
+  firstRunReveal.addEventListener('click', toggleFirstRunReveal);
+  firstRunTest.addEventListener('click', handleFirstRunTest);
+  firstRunKey.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') handleFirstRunTest();
+  });
+  // A key added or a provider switched in Settings while this stays open
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || firstRunHold) return;
+    const keyStorageKeys = [STORAGE_KEYS.selectedProvider, STORAGE_KEYS.apiKey, STORAGE_KEYS.geminiApiKey, STORAGE_KEYS.openaiApiKey];
+    if (keyStorageKeys.some((key) => key in changes)) checkApiKey();
   });
 
   // Tab switching (4 main tabs)
@@ -705,6 +818,7 @@ function updateTextMode(mode) {
  * Handle action button click
  */
 async function handleAction() {
+  if (needsKey) return;
   const mode = getCurrentMode();
   if (mode === 'translate') {
     await handleTranslate();
@@ -1332,7 +1446,7 @@ function renderPolishHistory(history) {
  */
 function setLoadingState(loading) {
   isProcessing = loading;
-  actionBtn.disabled = loading;
+  actionBtn.disabled = loading || needsKey;
   btnText.hidden = loading;
   btnLoading.hidden = !loading;
 }
