@@ -54,7 +54,7 @@ function detachPage() {
   }
 }
 
-function installChrome({ permission = false, grant = false, updateFails = false } = {}) {
+function installChrome({ permission = false, grant = false, updateFails = false, base = 'chrome-extension://parsipad' } = {}) {
   listeners = [];
   globalThis.chrome = {
     storage: {
@@ -76,7 +76,7 @@ function installChrome({ permission = false, grant = false, updateFails = false 
     },
     runtime: {
       id: 'parsipad',
-      getURL: (p) => `chrome-extension://parsipad${p.startsWith('/') ? '' : '/'}${p}`
+      getURL: (p) => `${base}${p.startsWith('/') ? '' : '/'}${p}`
     },
     bookmarks: { getTree: vi.fn(async () => structuredClone(TREE)) },
     permissions: {
@@ -312,6 +312,19 @@ describe('new tab: turned off', () => {
     await vi.waitFor(() => expect($('#nt-off-fallback').hidden).toBe(false));
     expect($('#nt-off-fallback').textContent).toContain(en.newTabOpenChromeFailed);
     expect($('#nt-off-fallback a').getAttribute('href')).toBe('../settings/settings.html#flashcards');
+  });
+
+  it('opens Firefox Home in Firefox, where chrome:// pages do not exist', async () => {
+    await openNewTab(off(), { base: 'moz-extension://parsipad' });
+    $('#nt-open-chrome').click();
+    await vi.waitFor(() => expect(chrome.tabs.update).toHaveBeenCalledWith(42, { url: 'about:home' }));
+    expect($('#nt-off-fallback').hidden).toBe(true);
+  });
+
+  it('explains and links to Settings when Firefox refuses its Home too', async () => {
+    await openNewTab(off(), { base: 'moz-extension://parsipad', updateFails: true });
+    $('#nt-open-chrome').click();
+    await vi.waitFor(() => expect($('#nt-off-fallback').hidden).toBe(false));
   });
 
   it('follows the switch live, both ways', async () => {

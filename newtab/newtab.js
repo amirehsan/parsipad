@@ -26,9 +26,8 @@ import { textSizeStep } from '../lib/text-size.js';
 import { debounce } from '../lib/debounce.js';
 import { getTopSites, faviconUrl, hasTopSitesPermission, isLinkableUrl, hostLabel } from '../lib/top-sites.js';
 import { greetingKeyForHour, msUntilNextMinute } from './glance.js';
+import { browserNewTabUrl } from '../lib/platform.js';
 
-// Chrome's own New Tab. chrome://newtab would land back on this override.
-const CHROME_NEW_TAB = 'chrome://new-tab-page/';
 // How long a copy confirmation stays on screen.
 const TOAST_MS = 3000;
 // A status message is written this long after the region is emptied, so the
@@ -271,21 +270,23 @@ function announce(message) {
 // ---------------------------------------------------------------------------
 
 /**
- * Load Chrome's own New Tab in this tab. A plain link cannot reach a chrome://
- * page from an extension page, but the tabs API can. If Chrome refuses, say
- * so and point to the switch in Settings.
+ * Load the browser's own New Tab in this tab: Chrome's New Tab, or Firefox
+ * Home. A plain link cannot reach either from an extension page, but the
+ * tabs API can. If the browser refuses, say so and point to the switch in
+ * Settings.
  */
-async function openChromeNewTab() {
+async function openBrowserNewTab() {
   offFallback.hidden = true;
+  const url = browserNewTabUrl();
   try {
     const tab = await chrome.tabs.getCurrent();
     if (tab?.id !== undefined) {
-      await chrome.tabs.update(tab.id, { url: CHROME_NEW_TAB });
+      await chrome.tabs.update(tab.id, { url });
     } else {
-      await chrome.tabs.update({ url: CHROME_NEW_TAB });
+      await chrome.tabs.update({ url });
     }
   } catch (error) {
-    console.warn("ParsiPad: could not open Chrome's New Tab", error);
+    console.warn("ParsiPad: could not open the browser's New Tab", error);
     offFallback.hidden = false;
   }
 }
@@ -621,7 +622,7 @@ function setupEventListeners() {
   cardButton.addEventListener('click', flip);
   copyBtn.addEventListener('click', copyShownFace);
   anotherBtn.addEventListener('click', showAnother);
-  openChromeBtn.addEventListener('click', openChromeNewTab);
+  openChromeBtn.addEventListener('click', openBrowserNewTab);
   bookmarksBtn.addEventListener('click', () => {
     if (drawerOpen) closeDrawer();
     else openDrawer(bookmarksBtn);

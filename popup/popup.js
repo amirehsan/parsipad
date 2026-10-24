@@ -2,7 +2,7 @@ import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
 import { getHistory, getPolishHistory } from '../lib/history.js';
 import { getTheme, setTheme, updateUsageStats, getLanguage, getSelectedProvider, setSelectedProvider, getProviderApiKey, setProviderApiKey, normalizeApiKey, checkKeyFormat, getFavorites, isFavorite, claimReviewPrompt, respondToReviewPrompt } from '../lib/storage.js';
-import { PROVIDER_CONFIGS, ACTIONS, STORE_REVIEWS_URL, STORAGE_KEYS } from '../lib/constants.js';
+import { PROVIDER_CONFIGS, ACTIONS, STORAGE_KEYS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 import { renderCard, injectCardStyles } from '../shared/card/index.js';
 import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
@@ -15,7 +15,7 @@ import { getProviderHealth, healthTone } from '../lib/provider-health.js';
 import { createFirstRun } from './first-run.js';
 import { screenshotCaptureFailed, screenshotGuidance } from './screenshot-guidance.js';
 import { classifyFile } from './file-kind.js';
-import { isFirefox, openSidebar } from '../lib/platform.js';
+import { isFirefox, openSidebar, storeReviewsUrl } from '../lib/platform.js';
 
 // The popup script also runs inside the side panel, which must stay open.
 const isPanel = document.body.dataset.surface === 'panel';
@@ -135,6 +135,9 @@ const RECENT_PREVIEW_LENGTH = 120;
 async function init() {
   // Not awaited: it only has to be ready before the reader clicks Open in sidebar
   cacheWindowId();
+  // The markup names the Chrome Web Store; middle-click and "open in new tab"
+  // follow the href, so it has to name the store this copy came from.
+  if (reviewRateBtn) reviewRateBtn.href = storeReviewsUrl();
   await initLanguage();
   await initTheme();
   await annotateShortcuts();
@@ -2003,7 +2006,7 @@ async function answerReviewPrompt(response) {
 async function handleReviewRateClick(event) {
   event.preventDefault();
   await answerReviewPrompt('rated');
-  chrome.tabs.create({ url: STORE_REVIEWS_URL });
+  chrome.tabs.create({ url: storeReviewsUrl() });
 }
 
 /** "Later" and the close button both snooze; neither means never. */

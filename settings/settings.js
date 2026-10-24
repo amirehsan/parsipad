@@ -41,6 +41,7 @@ import { formatNumber } from '../lib/format.js';
 import { setupSectionNav } from './sections.js';
 import { getMutedSites, addMutedSite, removeMutedSite } from '../lib/muted-sites.js';
 import { hasTopSitesPermission, removeTopSitesPermission, requestTopSitesPermission } from '../lib/top-sites.js';
+import { storeReviewsUrl, openShortcutSettings } from '../lib/platform.js';
 
 // DOM Elements - Language
 const aboutVersionEl = document.getElementById('about-version');
@@ -135,6 +136,9 @@ let mutedSiteMessage = null;
  * Initialize the settings page
  */
 async function init() {
+  // The markup names the Chrome Web Store; Firefox users rate on AMO.
+  const rateLink = document.getElementById('about-rate-link');
+  if (rateLink) rateLink.href = storeReviewsUrl();
   await initTheme();
   await loadLanguage();
   await loadDictionarySettings();
@@ -694,7 +698,9 @@ function setupEventListeners() {
   const customizeShortcutsBtn = document.getElementById('customizeShortcutsBtn');
   if (customizeShortcutsBtn) {
     customizeShortcutsBtn.addEventListener('click', () => {
-      chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+      openShortcutSettings().catch((error) => {
+        console.error('ParsiPad: could not open the shortcut settings', error);
+      });
     });
   }
 
