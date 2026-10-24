@@ -373,9 +373,10 @@ async function translateAndShow(text, { sourceLang } = {}) {
   // selection, and neither the rectangle nor the context survives that.
   const selectionRect = captureSelectionRect(selection);
   const context = captureSelectionContext(selection);
-  currentSelectionContext = context;
 
   createFloatingBox(selectionRect);
+  // Only now: opening the box closes the old one, which clears the context.
+  currentSelectionContext = context;
   showLoading();
   placeFloatingBox();
 

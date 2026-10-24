@@ -250,6 +250,55 @@ describe('the rating line', () => {
     expect(box().querySelector('.parsipad-content .parsipad-review-line')).toBeNull();
   });
 
+  // A word picked out of a sentence on the page, translated from the context
+  // menu: the box keeps the sentence around it for the Sentence control.
+  function translateWordInSentence() {
+    document.body.innerHTML = `<p id="cat">${SENTENCE}</p>`;
+    const node = document.getElementById('cat').firstChild;
+    const range = document.createRange();
+    range.setStart(node, 4);
+    range.setEnd(node, 7);
+    document.getSelection().removeAllRanges();
+    document.getSelection().addRange(range);
+    h.onMessage({ action: 'SHOW_TRANSLATION', text: 'cat' });
+  }
+  const wordResult = { translation: 'گربه', direction: 'en-fa', mode: 'word', sourceText: 'cat', provider: 'claude' };
+  const sentenceAction = () => box().querySelector('[data-action="cardSentence"]');
+
+  it('offers the sentence around a word picked out of it', async () => {
+    h.respond = (message) => (message.action === 'TRANSLATE' ? wordResult : undefined);
+    translateWordInSentence();
+    await settle();
+    expect(sentenceAction()).not.toBeNull();
+    sentenceAction().click();
+    await settle();
+    const asked = h.sent.filter((m) => m.action === 'TRANSLATE');
+    expect(asked.at(-1)).toMatchObject({ text: SENTENCE, mode: 'sentence' });
+  });
+
+  it('stays under a later skeleton but leaves with an error', async () => {
+    let finishSentence;
+    h.respond = (message) => {
+      if (message.action === 'TRANSLATE' && message.mode === 'word') return wordResult;
+      if (message.action === 'TRANSLATE') return new Promise((resolve) => { finishSentence = resolve; });
+      if (message.action === 'REVIEW_PROMPT_STATE') return { show: true };
+      return undefined;
+    };
+    translateWordInSentence();
+    await settle();
+    expect(box().querySelector('.parsipad-review-slot .parsipad-review-line')).not.toBeNull();
+
+    sentenceAction().click();
+    await settle();
+    expect(box().querySelector('.parsipad-content .parsipad-loading')).not.toBeNull();
+    expect(box().querySelector('.parsipad-review-slot .parsipad-review-line')).not.toBeNull();
+
+    finishSentence({ error: 'Check your internet connection.', errorCode: 'NETWORK' });
+    await settle();
+    expect(errorEl()).not.toBeNull();
+    expect(box().querySelector('.parsipad-review-slot .parsipad-review-line')).toBeNull();
+  });
+
   it('closes quietly when Later is pressed after the extension was reloaded', async () => {
     h.respond = (message) => {
       if (message.action === 'TRANSLATE') return result;
