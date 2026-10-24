@@ -22,6 +22,7 @@ import { renderCard, injectCardStyles } from '../shared/card/index.js';
 import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils/batch.js';
+import { createPageRun, markBatch, failedIndexes, summarizeRun, summaryMessageKey } from './utils/page-run.js';
 import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
 import { selectionToReport, createSelectionReporter, isEditableSelection, MAX_REPORT_LENGTH } from './selection-report.js';
 import { createToolbarTrigger, selectionAnchor, isSameAnchor } from './toolbar-trigger.js';
@@ -106,7 +107,6 @@ let pageProgressOverlay = null;
 let pageProgressShadow = null;
 let pageToggleButton = null;
 let pageToggleShadow = null;
-let pageTranslationCancelled = false;
 let pageTranslationAbortController = null;
 // Aborted when the floating box closes, so a translation nobody will see
 // stops streaming, and stops being billed, at once.
@@ -194,15 +194,35 @@ function init() {
 
 /**
  * Patch history pushState/replaceState to emit a navigation event and listen
- * for popstate; on any URL change reset stale page-translation state.
+ * for popstate; on a route change put the original text back and reset
+ * stale page-translation state.
  */
 function installSpaNavigationListener() {
+  // A route is its origin, path and query. A hash change, or the same-URL
+  // replaceState many sites call as the reader scrolls, is the same page,
+  // and resetting on it would silently revert a translated page.
+  const routeOf = () => location.origin + location.pathname + location.search;
+  let lastRoute = routeOf();
+
   const handleNav = () => {
+    const route = routeOf();
+    if (route === lastRoute) return;
+    lastRoute = route;
+
+    // A running translation is discarded: its run sees it no longer owns
+    // pageTranslationState and stops without applying or saying anything.
     if (pageTranslationAbortController) {
       pageTranslationAbortController.abort();
       pageTranslationAbortController = null;
     }
-    pageTranslationCancelled = false;
+
+    // Put back the text of nodes the SPA kept; restorePageOriginals skips
+    // the ones it took away.
+    if (pageTranslationState?.isShowingTranslated) {
+      restorePageOriginals();
+    }
+    // A summary's Retry failed would act on the page that is gone.
+    pageTranslationState?.closeSummary?.();
 
     if (pageProgressOverlay) {
       hidePageProgressOverlay();
@@ -294,14 +314,8 @@ function handleMessage(message, sender, sendResponse) {
       break;
 
     case 'CANCEL_PAGE_TRANSLATION':
-      // Cancel page translation
-      pageTranslationCancelled = true;
-      pageTranslationAbortController?.abort();
-      // Nothing has been requested while the page asks first; removing the
-      // overlay closes the dialog, which answers Cancel.
-      if (pageTranslationState?.phase === 'confirming') {
-        hidePageProgressOverlay();
-      }
+      // Stop page translation, keeping what finished
+      stopPageTranslation();
       break;
 
     case 'TOGGLE_PAGE_TRANSLATION':
@@ -1164,6 +1178,7 @@ let activeToast = null;
  *   the message, and with focus, focus moves to it (for a keyboard user)
  *   once the message is in
  * @param {'status'|'alert'} [options.role]
+ * @returns {() => void} closes this toast, if it is still the one on screen
  */
 function showToast({
   message = t('apiKeyNotConfigured', userLang),
@@ -1341,6 +1356,8 @@ function showToast({
     resume();
     if (action?.focus) actionBtn.focus();
   }, TOAST_LIVE_REGION_DELAY_MS);
+
+  return close;
 }
 
 /**
@@ -2425,17 +2442,23 @@ async function readPageTranslatePrefs() {
   }
 }
 
+// Pause between batch requests, to stay clear of provider rate limits.
+const PAGE_BATCH_GAP_MS = 200;
+
 /**
- * Handle page translation request
+ * Handle page translation request. With `retry`, run again only the given
+ * batches of the run that owns the page, without the question: the user
+ * already agreed to translate this page.
+ * @param {{retry?: {state: object, indexes: number[]}}} [options]
  */
-async function handleTranslatePage() {
+async function handleTranslatePage({ retry = null } = {}) {
   // If already translating, ignore
   if (pageTranslationState?.isTranslating) {
     return;
   }
 
   // If already translated, toggle instead
-  if (pageTranslationState?.isTranslated) {
+  if (!retry && pageTranslationState?.isTranslated) {
     handleTogglePageTranslation();
     return;
   }
@@ -2443,8 +2466,10 @@ async function handleTranslatePage() {
   // Initialize state. phase is 'confirming' until the first request goes
   // out, 'running' from then on. A navigation replaces pageTranslationState,
   // so after every await this run checks it still owns the state and
-  // otherwise stops quietly.
-  const state = {
+  // otherwise stops quietly: nothing applied, nothing said. stopReason says
+  // why a run ended early: 'user' (Cancel, Escape, the popup) or
+  // 'missingKey'. batches and run outlive the run, for Retry failed.
+  const state = retry ? retry.state : {
     phase: 'confirming',
     isTranslated: false,
     isTranslating: true,
@@ -2455,15 +2480,18 @@ async function handleTranslatePage() {
     sourceLanguage: null,
     targetLanguage: null,
     textNodes: [],
-    totalChunks: 0,
-    translatedChunks: 0
+    batches: [],
+    run: null,
+    stopReason: null,
+    closeSummary: null
   };
+  state.isTranslating = true;
+  state.stopReason = null;
   pageTranslationState = state;
   // Set when the run ends before any request (the user said no, or there is
   // no key): it leaves no state, as if never asked.
   let discard = false;
 
-  pageTranslationCancelled = false;
   pageTranslationAbortController = new AbortController();
   const abortSignal = pageTranslationAbortController.signal;
 
@@ -2472,137 +2500,109 @@ async function handleTranslatePage() {
   mountPageOverlay();
 
   try {
-    // Extract text nodes
-    pageTranslationState.textNodes = extractVisibleTextNodes(document.body);
+    let indexes;
+    if (!retry) {
+      // Extract text nodes
+      state.textNodes = extractVisibleTextNodes(document.body);
 
-    if (pageTranslationState.textNodes.length === 0) {
-      discard = true;
-      hidePageProgressOverlay();
-      pageTranslationState.isTranslating = false;
-      // Page translation runs without a floating box, so there is nothing to
-      // render an error into; the toast is the surface that does not need one.
-      showToast({ message: t('noTextOnPage', userLang), withSettings: false });
-      return;
-    }
+      if (state.textNodes.length === 0) {
+        discard = true;
+        hidePageProgressOverlay();
+        state.isTranslating = false;
+        // Page translation runs without a floating box, so there is nothing to
+        // render an error into; the toast is the surface that does not need one.
+        showToast({ message: t('noTextOnPage', userLang), withSettings: false });
+        return;
+      }
 
-    // Store original texts
-    for (const { node, text } of pageTranslationState.textNodes) {
-      pageTranslationState.originalTexts.set(node, text);
-    }
+      // Store original texts
+      for (const { node, text } of state.textNodes) {
+        state.originalTexts.set(node, text);
+      }
 
-    // Detect language
-    pageTranslationState.sourceLanguage = detectPageLanguage(pageTranslationState.textNodes);
-    pageTranslationState.targetLanguage = pageTranslationState.sourceLanguage === 'fa' ? 'en' : 'fa';
+      // Detect language
+      state.sourceLanguage = detectPageLanguage(state.textNodes);
+      state.targetLanguage = state.sourceLanguage === 'fa' ? 'en' : 'fa';
 
-    // Group text nodes into batches for translation
-    const batches = batchTextNodesForTranslation(pageTranslationState.textNodes);
-    pageTranslationState.totalChunks = batches.length;
+      // Group text nodes into batches for translation
+      state.batches = batchTextNodesForTranslation(state.textNodes);
+      state.run = createPageRun(state.batches.length);
 
-    // A missing key gets its toast before any question about cost.
-    const [keySet, prefs] = await Promise.all([hasProviderKey(), readPageTranslatePrefs()]);
-    if (pageTranslationState !== state) return;
-    if (pageTranslationCancelled || abortSignal.aborted) {
-      discard = true;
-      return;
-    }
-    if (!keySet) {
-      discard = true;
-      hidePageProgressOverlay();
-      showMissingApiKeyToast();
-      return;
-    }
-
-    // Ask before the first request, unless the user turned that off.
-    if (prefs.confirm) {
-      const chars = state.textNodes.reduce((sum, { text }) => sum + text.length, 0);
-      const estimate = estimateTranslationCost({
-        chars,
-        batches: batches.length,
-        provider: prefs.provider,
-        targetLang: state.targetLanguage
-      });
-      clearPagePreparing();
-      const answer = await confirmPageTranslation(pageProgressShadow, {
-        count: countParagraphs(state.textNodes),
-        costText: formatEstimateUsd(estimate.usd),
-        providerName: PROVIDER_NAMES[prefs.provider] || PROVIDER_NAMES[DEFAULT_PROVIDER_ID],
-        lang: userLang
-      });
+      // A missing key gets its toast before any question about cost.
+      const [keySet, prefs] = await Promise.all([hasProviderKey(), readPageTranslatePrefs()]);
       if (pageTranslationState !== state) return;
-      if (!answer.go || pageTranslationCancelled || abortSignal.aborted) {
+      if (state.stopReason || abortSignal.aborted) {
         discard = true;
         return;
       }
+      if (!keySet) {
+        discard = true;
+        hidePageProgressOverlay();
+        showMissingApiKeyToast();
+        return;
+      }
+
+      // Ask before the first request, unless the user turned that off.
+      if (prefs.confirm) {
+        const chars = state.textNodes.reduce((sum, { text }) => sum + text.length, 0);
+        const estimate = estimateTranslationCost({
+          chars,
+          batches: state.batches.length,
+          provider: prefs.provider,
+          targetLang: state.targetLanguage
+        });
+        clearPagePreparing();
+        coverPageForConfirm();
+        const answer = await confirmPageTranslation(pageProgressShadow, {
+          count: countParagraphs(state.textNodes),
+          costText: formatEstimateUsd(estimate.usd),
+          providerName: PROVIDER_NAMES[prefs.provider] || PROVIDER_NAMES[DEFAULT_PROVIDER_ID],
+          lang: userLang
+        });
+        if (pageTranslationState !== state) return;
+        if (!answer.go || state.stopReason || abortSignal.aborted) {
+          discard = true;
+          return;
+        }
+      }
+      indexes = state.batches.map((_, index) => index);
+    } else {
+      // The key may have gone since the first run. Without it the run keeps
+      // what it has and says only that.
+      const keyStillSet = await hasProviderKey();
+      if (pageTranslationState !== state) return;
+      if (!keyStillSet) state.stopReason = 'missingKey';
+      indexes = retry.indexes;
     }
 
     state.phase = 'running';
-    showPageProgress();
-    updatePageProgress(0, batches.length, 0);
+    if (!state.stopReason) {
+      showPageProgress();
+      updatePageProgress(0, indexes.length);
+    }
 
-    // Translate each batch
-    for (let i = 0; i < batches.length; i++) {
-      if (pageTranslationCancelled || abortSignal.aborted) {
+    // Each batch's outcome is recorded; a failed one does not stop the
+    // others, and a stop keeps the ones that finished.
+    for (let step = 0; step < indexes.length; step++) {
+      if (step > 0) {
+        await new Promise(resolve => setTimeout(resolve, PAGE_BATCH_GAP_MS));
+        if (pageTranslationState !== state) return;
+      }
+      if (state.stopReason || abortSignal.aborted) break;
+
+      const index = indexes[step];
+      const outcome = await translatePageBatch(state, index, abortSignal);
+      if (pageTranslationState !== state) return;
+      if (outcome === 'stopped') break;
+      if (outcome === 'missingKey') {
+        state.stopReason = 'missingKey';
         break;
       }
-
-      const batch = batches[i];
-
-      try {
-        // Build the batch text with numbered markers
-        const batchText = batch.map((item, idx) => `[${idx + 1}] ${item.text}`).join('\n');
-
-        const response = await requestTranslation({
-          text: batchText,
-          sourceLang: pageTranslationState.sourceLanguage,
-          mode: 'batch'
-        }, { signal: abortSignal });
-
-        if (response.errorCode === 'ABORTED') {
-          break;
-        }
-
-        if (response.error) {
-          if (isMissingApiKeyResponse(response)) {
-            showMissingApiKeyToast();
-            pageTranslationCancelled = true;
-            break;
-          }
-          console.error('Batch translation error:', response.error);
-          continue;
-        }
-
-        // Parse numbered translations back to individual nodes
-        const translations = parseNumberedTranslations(response.translation, batch.length);
-
-        for (let j = 0; j < batch.length; j++) {
-          const node = batch[j].node;
-          const translatedText = translations[j] || batch[j].text;
-          pageTranslationState.translatedTexts.set(node, translatedText);
-        }
-      } catch (error) {
-        if (error?.name === 'AbortError' || abortSignal.aborted) {
-          break;
-        }
-        console.error('Batch translation failed:', error);
-      }
-
-      pageTranslationState.translatedChunks = i + 1;
-      const percent = Math.round(((i + 1) / batches.length) * 100);
-      updatePageProgress(i + 1, batches.length, percent);
-
-      // Delay between batches
-      if (i < batches.length - 1 && !pageTranslationCancelled && !abortSignal.aborted) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
+      markBatch(state.run, index, outcome);
+      updatePageProgress(step + 1, indexes.length);
     }
 
-    // Apply translations to DOM
-    if (!pageTranslationCancelled && !abortSignal.aborted) {
-      applyPageTranslations();
-      pageTranslationState.isTranslated = true;
-      pageTranslationState.isShowingTranslated = true;
-      showPageToggleButton();
-    }
+    finishPageRun(state);
   } catch (error) {
     console.error('Page translation error:', error);
   } finally {
@@ -2614,6 +2614,117 @@ async function handleTranslatePage() {
       pageTranslationAbortController = null;
       if (discard) pageTranslationState = null;
     }
+  }
+}
+
+/**
+ * Translate one batch of the page into state.translatedTexts. Nothing is
+ * written to the page here; finishPageRun applies every batch that came
+ * back at the end.
+ * @param {object} state - the run's pageTranslationState
+ * @param {number} index - which of state.batches
+ * @param {AbortSignal} abortSignal - aborted by a stop or a navigation
+ * @returns {Promise<'ok'|'failed'|'stopped'|'missingKey'>} 'stopped' only
+ *   when the signal was aborted
+ */
+async function translatePageBatch(state, index, abortSignal) {
+  const batch = state.batches[index];
+  // Build the batch text with numbered markers
+  const batchText = batch.map((item, idx) => `[${idx + 1}] ${item.text}`).join('\n');
+
+  let response;
+  try {
+    response = await requestTranslation({
+      text: batchText,
+      sourceLang: state.sourceLanguage,
+      mode: 'batch'
+    }, { signal: abortSignal });
+  } catch (error) {
+    if (error?.name === 'AbortError' || abortSignal.aborted) return 'stopped';
+    console.error('Batch translation failed:', error);
+    return 'failed';
+  }
+
+  // ABORTED without our signal is a dropped port (the service worker went
+  // away): a failure a retry can fix, not a stop.
+  if (abortSignal.aborted) return 'stopped';
+  if (response?.error) {
+    if (isMissingApiKeyResponse(response)) return 'missingKey';
+    console.error('Batch translation error:', response.error);
+    return 'failed';
+  }
+  if (typeof response?.translation !== 'string') return 'failed';
+
+  // Parse numbered translations back to individual nodes
+  const translations = parseNumberedTranslations(response.translation, batch.length);
+  batch.forEach((item, j) => {
+    state.translatedTexts.set(item.node, translations[j] || item.text);
+  });
+  return 'ok';
+}
+
+/**
+ * End a run that still owns the page: apply every batch that came back,
+ * show the toggle once anything is translated, and say how it went. A
+ * missing key says only that, in its own alert, never under a summary.
+ * @param {object} state
+ */
+function finishPageRun(state) {
+  const summary = summarizeRun(state.run);
+  if (summary.done > 0) {
+    applyPageTranslations();
+    state.isTranslated = true;
+    state.isShowingTranslated = true;
+    showPageToggleButton();
+    updatePageToggleButton();
+  }
+
+  if (state.stopReason === 'missingKey') {
+    showMissingApiKeyToast();
+    return;
+  }
+
+  const key = summaryMessageKey(summary, state.stopReason === 'user');
+  const message = t(key, userLang)
+    .replace('{done}', String(summary.done))
+    .replace('{total}', String(summary.total))
+    .replace('{failed}', String(summary.failed));
+  // A stop is the user's choice, so only a run that went to the end offers
+  // to send again what failed.
+  const action = key === 'pageTranslatePartial'
+    ? { label: t('pageTranslateRetryFailed', userLang), onClick: () => retryFailedBatches(state) }
+    : null;
+  state.closeSummary = showToast({ message, withSettings: false, action });
+}
+
+/**
+ * Retry failed: send again only the batches of `state`'s run that failed.
+ * Does nothing once the page has moved on (a navigation or a newer run owns
+ * it) or while a run is going.
+ * @param {object} state
+ * @returns {Promise<void>|undefined}
+ */
+function retryFailedBatches(state) {
+  if (pageTranslationState !== state || state.isTranslating) return;
+  const indexes = failedIndexes(state.run);
+  if (indexes.length === 0) return;
+  return handleTranslatePage({ retry: { state, indexes } });
+}
+
+/**
+ * Stop the page translation: the Cancel button, Escape or the popup. While
+ * the page is still asking first, the question closes with nothing sent; a
+ * running translation keeps what finished and says it stopped.
+ */
+function stopPageTranslation() {
+  const state = pageTranslationState;
+  if (!state?.isTranslating) return;
+  state.stopReason = 'user';
+  pageTranslationAbortController?.abort();
+  // Nothing has been requested while the page asks first; removing the
+  // overlay closes the dialog, which answers Cancel.
+  if (state.phase === 'confirming') {
+    hidePageProgressOverlay();
   }
 }
 
@@ -2744,12 +2855,14 @@ function applyPageTranslations() {
 }
 
 /**
- * Restore original text to the DOM
+ * Restore original text to the DOM. Nodes no longer on the page (an SPA
+ * took them away) are skipped: they are not ours to write to any more.
  */
 function restorePageOriginals() {
   if (!pageTranslationState) return;
 
   for (const { node, parent } of pageTranslationState.textNodes) {
+    if (!node.isConnected) continue;
     const originalText = pageTranslationState.originalTexts.get(node);
     if (originalText) {
       node.textContent = originalText;
@@ -2790,7 +2903,7 @@ function handleTogglePageTranslation() {
 
 // The overlay host while the page asks first: it covers the viewport so the
 // scrim keeps the page inert behind the modal dialog, which sits where the
-// progress card will. No transform, or the host would not span the viewport.
+// progress card is. No transform, or the host would not span the viewport.
 const PAGE_OVERLAY_CONFIRM_STYLE = `
   position: fixed;
   top: 0;
@@ -2805,8 +2918,8 @@ const PAGE_OVERLAY_CONFIRM_STYLE = `
   z-index: 2147483647;
 `;
 
-// The overlay host once the requests run: a card at the bottom centre that
-// leaves the page usable.
+// The overlay host while it prepares and once the requests run: a card at
+// the bottom centre that leaves the page usable.
 const PAGE_OVERLAY_PROGRESS_STYLE = `
   position: fixed;
   bottom: 24px;
@@ -2816,9 +2929,10 @@ const PAGE_OVERLAY_PROGRESS_STYLE = `
 `;
 
 /**
- * Create the page overlay over the whole viewport, with a scrim and a
- * "Preparing" status: it holds the confirmation first and the progress after
- * it. A click on the scrim answers the dialog's Cancel.
+ * Create the page overlay as the bottom-centre card saying "Preparing": it
+ * holds the confirmation first, when there is one, and the progress after
+ * it. The scrim comes only with the question (coverPageForConfirm), so a
+ * run that does not ask never covers the page.
  */
 function mountPageOverlay() {
   if (pageProgressOverlay) {
@@ -2827,7 +2941,7 @@ function mountPageOverlay() {
 
   const host = document.createElement('div');
   host.id = 'parsipad-page-progress';
-  host.style.cssText = PAGE_OVERLAY_CONFIRM_STYLE;
+  host.style.cssText = PAGE_OVERLAY_PROGRESS_STYLE;
 
   pageProgressShadow = host.attachShadow({ mode: 'closed' });
 
@@ -2838,13 +2952,6 @@ function mountPageOverlay() {
   style.textContent = getPageProgressStyles() + getPageConfirmStyles();
   pageProgressShadow.appendChild(style);
 
-  const scrim = document.createElement('div');
-  scrim.className = 'parsipad-scrim';
-  scrim.addEventListener('click', (event) => {
-    if (event.target !== scrim) return;
-    pageProgressShadow?.querySelector('.parsipad-confirm [data-action="cancel"]')?.click();
-  });
-
   const status = document.createElement('div');
   status.className = 'parsipad-page-status';
   status.setAttribute('role', 'status');
@@ -2853,9 +2960,27 @@ function mountPageOverlay() {
   status.setAttribute('dir', userLang === 'fa' ? 'rtl' : 'ltr');
   status.textContent = t('pagePreparing', userLang);
 
-  pageProgressShadow.append(scrim, status);
+  pageProgressShadow.append(status);
   document.body.appendChild(host);
   pageProgressOverlay = host;
+}
+
+/**
+ * Make the overlay modal for the question: the host spans the viewport and
+ * a scrim keeps the page inert behind the dialog. A click on the scrim
+ * answers the dialog's Cancel.
+ */
+function coverPageForConfirm() {
+  if (!pageProgressShadow) return;
+
+  pageProgressOverlay.style.cssText = PAGE_OVERLAY_CONFIRM_STYLE;
+  const scrim = document.createElement('div');
+  scrim.className = 'parsipad-scrim';
+  scrim.addEventListener('click', (event) => {
+    if (event.target !== scrim) return;
+    pageProgressShadow?.querySelector('.parsipad-confirm [data-action="cancel"]')?.click();
+  });
+  pageProgressShadow.append(scrim);
 }
 
 /**
@@ -2878,33 +3003,41 @@ function showPageProgress() {
 
   const overlay = document.createElement('div');
   overlay.className = 'parsipad-progress-overlay';
+  overlay.setAttribute('lang', userLang);
+  // In-page UI is not mirrored, but Persian text still reads right to left.
+  overlay.setAttribute('dir', userLang === 'fa' ? 'rtl' : 'ltr');
+  // Static markup only; every piece of text is set below with textContent.
   overlay.innerHTML = `
     <div class="parsipad-progress-header">
       <img src="${chrome.runtime.getURL('icons/icon-48.png')}" alt="ParsiPad" class="parsipad-progress-logo">
-      <span class="parsipad-progress-title">Translating page...</span>
+      <span class="parsipad-progress-title"></span>
     </div>
     <div class="parsipad-progress-bar-container">
       <div class="parsipad-progress-bar" style="width: 0%"></div>
     </div>
-    <div class="parsipad-progress-text">Preparing...</div>
-    <button class="parsipad-progress-cancel">Cancel</button>
+    <div class="parsipad-progress-text"></div>
+    <button class="parsipad-progress-cancel" type="button"></button>
   `;
+  overlay.querySelector('.parsipad-progress-title').textContent = t('translatingPage', userLang);
+  overlay.querySelector('.parsipad-progress-text').textContent = t('pagePreparing', userLang);
 
   pageProgressShadow.appendChild(overlay);
 
-  // Cancel button handler
+  // Cancel stops the run and keeps what finished.
   const cancelBtn = pageProgressShadow.querySelector('.parsipad-progress-cancel');
-  cancelBtn.addEventListener('click', () => {
-    pageTranslationCancelled = true;
-    pageTranslationAbortController?.abort();
-  });
+  cancelBtn.textContent = t('cancel', userLang);
+  cancelBtn.addEventListener('click', stopPageTranslation);
 }
 
 /**
- * Update progress display
+ * Update progress display: `current` of `total` sections done.
+ * @param {number} current
+ * @param {number} total
  */
-function updatePageProgress(current, total, percent) {
+function updatePageProgress(current, total) {
   if (!pageProgressShadow) return;
+
+  const percent = total > 0 ? Math.round((current / total) * 100) : 0;
 
   const progressBar = pageProgressShadow.querySelector('.parsipad-progress-bar');
   const progressText = pageProgressShadow.querySelector('.parsipad-progress-text');
@@ -2913,7 +3046,10 @@ function updatePageProgress(current, total, percent) {
     progressBar.style.width = `${percent}%`;
   }
   if (progressText) {
-    progressText.textContent = `Processing chunk ${current} of ${total} (${percent}%)`;
+    // The section being translated, so the count starts at 1, not 0.
+    progressText.textContent = t('pageTranslateProgress', userLang)
+      .replace('{n}', String(Math.min(current + 1, total)))
+      .replace('{total}', String(total));
   }
 }
 
@@ -2953,10 +3089,14 @@ function showPageToggleButton() {
   style.textContent = getPageToggleStyles();
   pageToggleShadow.appendChild(style);
 
+  // A constant name and a pressed state: pressed while the original shows.
+  // Changing both the name and the state would announce the change twice.
   const button = document.createElement('button');
+  button.type = 'button';
   button.className = 'parsipad-toggle-btn showing-translated';
-  button.title = 'Show original';
-  button.setAttribute('aria-label', 'Toggle between original and translated text');
+  button.title = t('showOriginal', userLang);
+  button.setAttribute('aria-label', t('showOriginal', userLang));
+  button.setAttribute('aria-pressed', 'false');
   button.innerHTML = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
       <path d="M4.545 6.714 4.11 8H3l1.862-5h1.284L8 8H6.833l-.435-1.286zm1.634-.736L5.5 3.956h-.049l-.679 2.022z"/>
@@ -2979,15 +3119,11 @@ function updatePageToggleButton() {
 
   const button = pageToggleShadow.querySelector('.parsipad-toggle-btn');
   if (button) {
-    if (pageTranslationState?.isShowingTranslated) {
-      button.classList.add('showing-translated');
-      button.classList.remove('showing-original');
-      button.title = 'Show original';
-    } else {
-      button.classList.remove('showing-translated');
-      button.classList.add('showing-original');
-      button.title = 'Show translated';
-    }
+    const showingTranslated = Boolean(pageTranslationState?.isShowingTranslated);
+    button.classList.toggle('showing-translated', showingTranslated);
+    button.classList.toggle('showing-original', !showingTranslated);
+    button.setAttribute('aria-pressed', String(!showingTranslated));
+    button.title = t(showingTranslated ? 'showOriginal' : 'showTranslated', userLang);
   }
 }
 
@@ -3054,6 +3190,13 @@ function handleKeyDown(event) {
   }
 
   if (event.key === 'Escape') {
+    // A running page translation stops first and keeps what finished. The
+    // key is not consumed: the page's own Escape handling still runs, and so
+    // do the branches below. The question before a run handles its own
+    // Escape, so this acts only once the requests are going.
+    if (pageTranslationState?.isTranslating && pageTranslationState.phase === 'running') {
+      stopPageTranslation();
+    }
     hideBlockIcon();
     if (screenshotOverlay) {
       cancelScreenshotMode();

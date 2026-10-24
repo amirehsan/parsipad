@@ -229,7 +229,12 @@ describe('handleTranslatePage', () => {
   it('asks before the first batch request', () => {
     const js = fs.readFileSync(path.resolve(__dirname, '../content/main.js'), 'utf8');
     const body = functionBody(js, 'handleTranslatePage');
-    expect(body.indexOf('confirmPageTranslation(')).toBeGreaterThan(-1);
-    expect(body.indexOf('confirmPageTranslation(')).toBeLessThan(body.indexOf('requestTranslation('));
+    const confirmAt = body.indexOf('confirmPageTranslation(');
+    expect(confirmAt).toBeGreaterThan(-1);
+    // Each batch request goes out through translatePageBatch, which the run
+    // calls only after the question.
+    expect(body).not.toMatch(/requestTranslation\(/);
+    expect(confirmAt).toBeLessThan(body.indexOf('translatePageBatch('));
+    expect(functionBody(js, 'translatePageBatch')).toMatch(/requestTranslation\(/);
   });
 });
