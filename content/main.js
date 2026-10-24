@@ -712,7 +712,7 @@ function createFloatingBox(selectionRect) {
       </div>
       <button class="parsipad-close" type="button">×</button>
     </div>
-    <div class="parsipad-content" aria-live="polite" aria-atomic="true">
+    <div class="parsipad-content" aria-live="polite">
       <div class="parsipad-text"></div>
     </div>
     <div class="parsipad-review-slot"></div>
@@ -1962,9 +1962,11 @@ async function handlePolishRegenerate(btn) {
   const card = shadowRoot.querySelector(`.parsipad-polish-card[data-variant="${variant}"]`);
   if (!card) return;
 
-  // Show loading state on the button
+  // Show loading state on the button; its name says it is working, and the
+  // spinner turns only for readers who have not asked for less motion.
   btn.classList.add('loading');
   btn.disabled = true;
+  nameControl(btn, 'regenerating');
 
   // Show skeleton in the text area
   const textEl = card.querySelector('.parsipad-polish-text');
@@ -1986,6 +1988,8 @@ async function handlePolishRegenerate(btn) {
       variant: variant
     });
 
+    // No longer busy before the words go in, so the change is read out.
+    textEl.removeAttribute('aria-busy');
     if (response.error) {
       // Restore original text on error
       textEl.textContent = originalText;
@@ -2014,12 +2018,13 @@ async function handlePolishRegenerate(btn) {
     }
   } catch (error) {
     // Restore original text on error
+    textEl.removeAttribute('aria-busy');
     textEl.textContent = originalText;
   } finally {
     // Remove loading state
-    textEl.removeAttribute('aria-busy');
     btn.classList.remove('loading');
     btn.disabled = false;
+    nameControl(btn, 'regenerate');
   }
 }
 
@@ -3609,11 +3614,14 @@ function showImageTranslationResult(response) {
     html += `<div class="parsipad-text" dir="${isTranslationRTL ? 'rtl' : 'ltr'}">${escapeHtml(translation)}</div>`;
   }
   if (!extractedText && !translation) {
-    html = '<div class="parsipad-text" style="color:#6B7280;">No text found in selected region.</div>';
+    html = '<div class="parsipad-text" style="color:#6B7280;"></div>';
   }
 
   setContentLiveState(content, 'ready');
   content.innerHTML = html;
+  if (!extractedText && !translation) {
+    content.querySelector('.parsipad-text').textContent = t('noTextFound', userLang);
+  }
 
   // Show footer
   const footer = shadowRoot.querySelector('.parsipad-footer');

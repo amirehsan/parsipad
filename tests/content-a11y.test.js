@@ -41,6 +41,9 @@ describe('in-page accessibility', () => {
     for (const svg of read('content/reload-state.js').match(/<svg[^>]*>/g)) {
       expect(svg).toMatch(/aria-hidden="true"[^>]*focusable="false"/);
     }
+    const blockIcon = read('content/blocks/icon.js');
+    expect(blockIcon).toMatch(/svg\.setAttribute\('aria-hidden', 'true'\)/);
+    expect(blockIcon).toMatch(/svg\.setAttribute\('focusable', 'false'\)/);
     const toolbar = functionBody(js, 'createSelectionPopup');
     expect(toolbar).toMatch(/createElementNS\(ns, 'svg'\)/);
     expect(toolbar).toMatch(/svg\.setAttribute\('aria-hidden', 'true'\)/);
@@ -99,6 +102,7 @@ describe('in-page accessibility', () => {
     expect(en.shortcutsFixedNote).toMatch(/Option/);
     expect(en.customizeShortcuts).toBe('Customize shortcuts');
     expect(en.shortcutNotSetHint).toContain(en.customizeShortcuts);
+    expect(fa.shortcutNotSetHint).toContain(fa.customizeShortcuts);
   });
 
   it('leaves no English chrome and no dead fallback in the box shells', () => {
@@ -111,6 +115,8 @@ describe('in-page accessibility', () => {
       expect(js, literal).not.toContain(literal);
     }
     expect(js).not.toMatch(/^\s*Copy\s*$/m);
+    expect(js).not.toContain('No text found in selected region.');
+    expect(functionBody(js, 'showImageTranslationResult')).toMatch(/t\('noTextFound', userLang\)/);
     expect(en.loadingLesson.endsWith('…')).toBe(true);
     expect(fa.loadingLesson.endsWith('…')).toBe(true);
   });
@@ -174,6 +180,9 @@ describe('the boxes, in the real content script', () => {
     expect(box().querySelector('.parsipad-favorite').getAttribute('aria-label')).toBe(fa.addToFavorites);
     const content = box().querySelector('.parsipad-content');
     expect(content.getAttribute('aria-live')).toBe('polite');
+    // A result replaces the whole region, so atomic would only make a lesson
+    // loading inside the card re-read the card.
+    expect(content.hasAttribute('aria-atomic')).toBe(false);
     expect(content.getAttribute('aria-busy')).toBe('true');
     expect(content.querySelector('.parsipad-loading').getAttribute('aria-label')).toBe(fa.translating);
     expectQuietIcons(box());
@@ -234,6 +243,66 @@ describe('the boxes, in the real content script', () => {
     expect(content.querySelector('.parsipad-dict-copy-translation').getAttribute('aria-label')).toBe(fa.copyTranslation);
     expect(content.querySelector('.parsipad-dict-favorite-translation').getAttribute('aria-label')).toBe(fa.addToFavorites);
     expectQuietIcons(box());
+  });
+
+  // Open a polish box with its three versions on screen, then ask for a new
+  // professional version and hold the worker's answer.
+  async function regenerate() {
+    h.respond = (message) => (message.action === 'POLISH'
+      ? { professional: 'Please improve this.', conversational: 'Make it better.', concise: 'Improve.', provider: 'claude' }
+      : undefined);
+    h.onMessage({ action: 'SHOW_POLISH', text: 'make this better' });
+    await settle();
+    const finish = hold('REGENERATE_POLISH_VARIANT');
+    const card = box().querySelector('.parsipad-polish-card[data-variant="professional"]');
+    const button = card.querySelector('.parsipad-polish-regenerate');
+    const text = card.querySelector('.parsipad-polish-text');
+    button.click();
+    await settle();
+    return { finish, button, text };
+  }
+
+  // The order in which the text stopped being busy and got its new words.
+  function watchOrder(text) {
+    const records = [];
+    const observer = new MutationObserver((list) => records.push(...list));
+    observer.observe(text, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['aria-busy'] });
+    return () => {
+      records.push(...observer.takeRecords());
+      observer.disconnect();
+      return records.map((r) => (r.type === 'attributes' ? 'unbusy' : 'text'));
+    };
+  }
+
+  for (const [outcome, reply, expected] of [
+    ['a new version', { text: 'Kindly improve this.' }, 'Kindly improve this.'],
+    ['a failure', { error: 'cut off', errorCode: 'TRUNCATED' }, 'Please improve this.']
+  ]) {
+    it(`regenerate: stops being busy before ${outcome} is written, so it is read out`, async () => {
+      const { finish, button, text } = await regenerate();
+      expect(text.getAttribute('aria-busy')).toBe('true');
+      const order = watchOrder(text);
+      finish(reply);
+      await settle();
+      expect(text.textContent).toBe(expected);
+      expect(text.hasAttribute('aria-busy')).toBe(false);
+      const seen = order();
+      expect(seen[0]).toBe('unbusy');
+      expect(seen).toContain('text');
+      expect(button.getAttribute('aria-label')).toBe(fa.regenerate);
+    });
+  }
+
+  it('regenerate: the button says it is working while it waits, and its name comes back', async () => {
+    const { finish, button } = await regenerate();
+    expect(button.getAttribute('aria-label')).toBe(fa.regenerating);
+    expect(button.title).toBe(fa.regenerating);
+    expect(en.regenerating.endsWith('\u2026')).toBe(true);
+    expect(fa.regenerating.endsWith('\u2026')).toBe(true);
+    finish({ text: 'Kindly improve this.' });
+    await settle();
+    expect(button.getAttribute('aria-label')).toBe(fa.regenerate);
+    expect(button.title).toBe(fa.regenerate);
   });
 
   it('an error is read once: by the polite region, with no alert role of its own', async () => {
