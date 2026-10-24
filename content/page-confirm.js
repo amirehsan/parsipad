@@ -14,20 +14,23 @@ export const CONFIRM_PAGE_TRANSLATE_KEY = 'confirm_page_translate';
 // inline runs inside them split the text into several nodes that are still
 // one paragraph.
 const BLOCK_CONTAINERS = 'p, li, h1, h2, h3, h4, h5, h6, td, th, dd, dt, blockquote, figcaption, pre';
+// Sites built from divs put text straight into them; text with no block
+// container counts once per nearest one of these, not once per inline run.
+const LOOSE_TEXT_BOXES = 'div, section, article, aside, header, footer, nav, main';
 
 let dialogCount = 0;
 
 /**
  * How many paragraphs the extracted text nodes make up: the number of
- * distinct block containers they sit in, or their own parent when they sit
- * in none.
+ * distinct block containers they sit in. Text in none counts by its nearest
+ * div or sectioning element, or by its own parent when it has neither.
  * @param {Array<{parent: Element|null}>} textNodes
  * @returns {number}
  */
 export function countParagraphs(textNodes) {
   const blocks = new Set();
   for (const { parent } of textNodes) {
-    if (parent) blocks.add(parent.closest(BLOCK_CONTAINERS) || parent);
+    if (parent) blocks.add(parent.closest(BLOCK_CONTAINERS) || parent.closest(LOOSE_TEXT_BOXES) || parent);
   }
   return blocks.size;
 }
@@ -78,7 +81,7 @@ export function confirmPageTranslation(root, { count, costText, providerName, la
     // and the digits keep their order.
     const body = setLanguage(make('p', 'parsipad-confirm-body'));
     body.id = `${id}-body`;
-    const template = t('pageConfirmBody', lang).replace('{count}', String(count));
+    const template = t(count === 1 ? 'pageConfirmBodyOne' : 'pageConfirmBody', lang).replace('{count}', String(count));
     for (const piece of template.split(/(\{cost\}|\{provider\})/)) {
       if (piece === '{cost}' || piece === '{provider}') {
         const run = document.createElement('bdi');
