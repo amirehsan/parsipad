@@ -14,7 +14,7 @@ All data is stored locally on your device using Chrome's storage API:
 
 - **API Keys**: Your API keys for supported providers (Anthropic, Google, OpenAI) are stored locally in Chrome's secure storage. They are never sent to any server other than their respective APIs.
 - **Provider Preference**: Your selected AI provider is stored locally.
-- **Muted Sites**: The list of sites where you turned ParsiPad off is stored locally and never leaves your browser.
+- **Muted Sites**: The list of sites where you muted the hover button, Alt+B and the selection toolbar is stored locally and never leaves your browser.
 - **Translation History**: Recent translations (up to 50 entries) are stored locally for your convenience.
 - **Translation Cache**: Recent translations are cached locally to reduce API calls and improve response times.
 

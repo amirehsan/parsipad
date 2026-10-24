@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Muted sites: turn ParsiPad off on the pages you choose.** The only way to stop the hover translate button and the selection toolbar was to switch them off everywhere, which is a poor trade for one noisy site. Settings now has a Muted sites list under Reading on web pages. Add a site and ParsiPad shows neither the hover button nor the selection toolbar there, on its subdomains too. The change applies to open tabs at once with no reload, and removing the site brings both back. The list is stored only in your browser.
+- **Muted sites: quiet the hover button and selection toolbar on pages you choose.** The only way to stop the hover translate button and the selection toolbar was to switch them off everywhere, which is a poor trade for one noisy site. Settings now has a Muted sites list under Reading on web pages. Add a site and ParsiPad shows no hover translate button, no selection toolbar and no Alt+B block translation there, on its subdomains too. Only those three are silenced: translating the whole page, the screenshot and the right-click menu still work on a muted site. The change applies to open tabs at once with no reload, and removing the site brings all three back. The list is stored only in your browser.
 - **Save & test for every provider in Settings.** Each provider now has its own card with its own key field, a show key button, Save & test and Clear. Save & test checks the key format first and sends nothing for a malformed key. Otherwise it tests the key you typed and stores it only when it works. If the test could not reach a verdict, for example because the network was down, the key is kept and the message says the test was inconclusive. A rejected key never replaces a key that already works, and the result is shown in your interface language.
 - **The welcome page ends on a first translation.** After the key is saved and tested, a Try it step translates a sample sentence with your own key, so you see ParsiPad work before you leave setup instead of finding out on the first real page.
 
@@ -17,11 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Every on/off setting is a real switch with its own label and hint.** The options were checkboxes whose labels and hints ran together, and the keyboard focus was hard to see. Each is now a switch with a clear label, a one-line hint under it and a visible focus outline.
 - **The welcome page starts with the key.** The order is now provider, key, Save & test, the "How do I get a key?" help and a short privacy note, then the first translation and the Done button, with the feature tour below. Save & test there runs the same checks as in Settings. If the first translation fails, the hint to check your key appears only when the key is the problem, not for a network error.
 - **Welcome has one Done button.** It always finishes setup. When the page was opened from Settings it returns you to About in Settings; otherwise it closes as before.
+- **The welcome guide opens inside Settings.** Opened from Settings, the guide used to open in a separate tab and close itself when you finished, leaving you wherever Chrome put you. It now opens in the Settings tab, and Done brings you back to About.
 
 ### Fixed
 - **Some status messages were always in English.** Messages such as the result of testing a key or a failed save ignored the interface language and stayed in English even when ParsiPad was set to Persian. They are all translated now.
-- **Opening the welcome guide from Settings closed the Settings tab.** The guide ended by closing its own tab, which took you out of Settings with it. Done now returns to Settings when that is where you came from.
-- **Save stored keys you had not tested.** Pressing Save wrote the key of every provider on the page, including ones you had not touched or whose test had failed. Each provider is saved on its own now, and only after its own test.
+- **Save could store keys you had not tested.** Pressing Save wrote every key you had typed into any provider's field, not only the provider you were saving, and stored it without testing it. Each provider is saved on its own now, and only after its own test.
 
 ## [3.4.0] - 2026-10-24
 
