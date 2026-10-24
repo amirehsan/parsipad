@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-10-24
+
 ### Added
 - **Translating a whole page asks first.** Translate page started sending the whole page to your provider the moment you chose it, with no hint of how big the page was or what it would cost. It now stops at a short question: how many paragraphs the page has, about what it will cost with your provider, and three choices, Translate page, Cancel and a "Don't ask again" box. The page behind is dimmed and cannot be clicked or tabbed into while the question is open, and Escape answers Cancel. The cost is an estimate from the page's text and your provider's price, shown as "<$0.01" when it is under a cent. "Don't ask again" takes effect when you press Translate page, not Cancel.
 - **A Settings switch for that question.** Under Reading on web pages, "Ask before translating a whole page" turns the question on or off. Ticking "Don't ask again" in the question turns the switch off, and turning it back on brings the question back.
