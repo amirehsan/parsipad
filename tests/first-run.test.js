@@ -281,7 +281,7 @@ describe('settings page', () => {
   });
 
   it('uses the Persian font on the pill only when the pill is Persian', () => {
-    for (const file of ['popup/popup.css', 'settings/settings.css']) {
+    for (const file of ['popup/popup.css', 'settings/settings.css', 'welcome/welcome.css']) {
       const css = fs.readFileSync(path.join(root, file), 'utf8');
       expect(css, file).toMatch(/\.key-help-lang\[lang="fa"\]\s*\{[^}]*var\(--font-persian\)/);
       expect(css, file).not.toMatch(/\.key-help-lang\s*\{[^}]*font-persian/);
