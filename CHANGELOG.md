@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.8.0] - 2026-10-24
+
 ### Added
 - **The ParsiPad New Tab is back, on the new design.** It was removed in 3.4.0, so a new tab showed Chrome's own page and your saved words appeared only in Practice. Every new tab shows one of your favorites again, in large Persian or English type, dealt the same way Practice deals them, under the time, the date and a greeting in both languages. Click the word, or press Space or Enter, to flip it, and C copies what is showing. Your bookmarks open in a searchable drawer with "/" or the Bookmarks button, and Escape closes it. Your most visited sites can appear as tiles, only if you switch them on; Chrome asks for that permission first, and switching it off gives the permission back. A New tab card in Settings > Flashcards turns the page and each panel on or off. With the page off, a new tab shows only the time and a button to Chrome's own New Tab. Because the page reads bookmarks again, Chrome may ask you to approve the bookmarks permission ("Read and change your bookmarks") when this version installs; ParsiPad only reads them.
 
@@ -15,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Settings > Shortcuts lined up three different ways.** Short descriptions sat at the far end of their row, long ones wrapped beside the keys, and the note about fixed keys followed neither. Every row now has the keys in one column and the description beside them, the note starts where the descriptions start, and on a narrow window the keys sit above their description.
-- **Key names read backwards on a Persian page.** Settings and the popup showed Option+T as "T⌥" in Persian, because the key name took the page's right-to-left direction. Key names now always read left to right.
+- **Removing a file mid-translation left the run going.** Remove in Doc & Image brought the upload area back while the translation carried on, so the next file was refused without a word, or a finished document was saved under the next file's name. Remove now waits until the translation ends; Cancel stops a document first.
+- **Key names read backwards on a Persian page.** Settings and the popup showed Option+T as "T⌥" and Alt+B as "B + Alt" in Persian, because the key names took the page's right-to-left direction. Key names now always read left to right.
 
 ## [3.7.0] - 2026-10-24
 
