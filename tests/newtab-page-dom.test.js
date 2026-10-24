@@ -35,7 +35,8 @@ const TREE = [{
     {
       id: '1', title: 'Bookmarks bar', children: [
         { id: '10', title: '<img src=x onerror=alert(1)>', url: 'https://evil.example/' },
-        { id: '11', title: 'Persian news', url: 'https://www.bbc.com/persian' }
+        { id: '11', title: 'Persian news', url: 'https://www.bbc.com/persian' },
+        { id: '12', title: 'Extensions', url: 'chrome://extensions/' }
       ]
     },
     { id: '2', title: 'Other bookmarks', children: [{ id: '20', title: 'Docs', url: 'https://developer.chrome.com/docs' }] },
@@ -92,6 +93,7 @@ function installChrome({ permission = false, grant = false, updateFails = false 
     },
     tabs: {
       getCurrent: vi.fn(async () => ({ id: 42 })),
+      create: vi.fn(async () => ({ id: 43 })),
       update: vi.fn(async () => {
         if (updateFails) throw new Error('Not allowed to load local resource');
         return { id: 42 };
@@ -388,6 +390,30 @@ describe('new tab: the bookmarks drawer', () => {
     expect($('#nt-drawer').hasAttribute('inert')).toBe(false);
     press('Escape', search);
     expect($('#nt-drawer').hasAttribute('inert')).toBe(true);
+  });
+
+  it('leaves the card behind the open drawer alone: no flip, no copy', async () => {
+    await openNewTab();
+    press('/');
+    await vi.waitFor(() => expect(document.activeElement).toBe($('#nt-bookmark-search')));
+    const link = [...$('#nt-bookmark-tree').querySelectorAll('a')].find(a => a.textContent.includes('Persian'));
+    link.focus();
+    press('c', link);
+    expect(press(' ').defaultPrevented).toBe(false);
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+    expect($('#nt-card').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('opens a chrome:// bookmark here on a plain click and in a new tab with a modifier', async () => {
+    await openNewTab();
+    press('/');
+    await vi.waitFor(() => expect($('#nt-bookmark-tree a')).not.toBeNull());
+    const link = [...$('#nt-bookmark-tree').querySelectorAll('a')].find(a => a.textContent.includes('Extensions'));
+    link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, metaKey: true }));
+    expect(chrome.tabs.create).toHaveBeenCalledWith({ url: 'chrome://extensions/', active: false });
+    expect(chrome.tabs.update).not.toHaveBeenCalled();
+    link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    expect(chrome.tabs.update).toHaveBeenCalledWith({ url: 'chrome://extensions/' });
   });
 
   it('is gone when the bookmarks panel is switched off', async () => {

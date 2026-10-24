@@ -516,8 +516,10 @@ body {
   color: var(--color-text-muted);
 }
 
+/* Tinted from the accent rather than a fixed light shade, so the match reads
+   on both themes. */
 .nt-bookmark mark {
-  background: var(--color-primary-100);
+  background: color-mix(in srgb, var(--color-primary) 28%, transparent);
   color: inherit;
   border-radius: var(--radius-sm);
 }

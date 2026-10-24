@@ -42,7 +42,8 @@ function fakeChrome({ permission = false, grant = false } = {}) {
     },
     permissions: {
       contains: vi.fn(async () => permission),
-      request: vi.fn(async () => grant)
+      request: vi.fn(async () => grant),
+      remove: vi.fn(async () => true)
     },
     tabs: { create: vi.fn() },
     commands: { getAll: vi.fn(async () => []) }
@@ -131,6 +132,8 @@ describe('the New tab switches', () => {
     $('newtab-recents-toggle').click();
     await vi.waitFor(() => expect(store.get(STORAGE_KEYS.newTabPanels)).toEqual({ bookmarks: true, recents: false }));
     expect(chrome.permissions.request).not.toHaveBeenCalled();
+    // The grant follows the switch, so nothing keeps the right to read them.
+    await vi.waitFor(() => expect(chrome.permissions.remove).toHaveBeenCalledWith({ permissions: ['topSites'] }));
   });
 
   it('shows Most visited off when the permission was revoked in Chrome', async () => {

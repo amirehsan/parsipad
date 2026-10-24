@@ -108,8 +108,7 @@ async function showView(on) {
   }
   // The word is the first thing on the page, so it is read and rendered
   // before anything else is asked for.
-  if (!deck) deck = await loadDeck();
-  panels = await getNewTabPanels();
+  [deck, panels] = await Promise.all([deck ? deck : loadDeck(), getNewTabPanels()]);
   renderWord();
   applyPanels();
   offView.hidden = true;
@@ -402,7 +401,9 @@ function closeDrawer() {
   bookmarksBtn.setAttribute('aria-expanded', 'false');
   const invoker = drawerInvoker;
   drawerInvoker = null;
+  // The bookmarks button may have been switched off while the drawer was open.
   if (invoker?.isConnected && !invoker.hidden) invoker.focus();
+  else if (!pageView.hidden) cardButton.focus();
 }
 
 async function loadBookmarks() {
@@ -544,9 +545,13 @@ const filterSoon = debounce(() => filterBookmarks(bookmarkSearch.value.trim()), 
  */
 function handleBookmarkClick(event) {
   const link = event.target.closest?.('a.nt-bookmark');
-  if (!link || isLinkableUrl(link.href) || event.button !== 0) return;
+  if (!link || isLinkableUrl(link.href) || event.button > 1) return;
   event.preventDefault();
-  chrome.tabs.update({ url: link.getAttribute('href') }).catch((error) => {
+  const url = link.getAttribute('href');
+  // A modifier or the middle button means a new tab, as it does for a plain link.
+  const inNewTab = event.button === 1 || event.metaKey || event.ctrlKey || event.shiftKey;
+  const opening = inNewTab ? chrome.tabs.create({ url, active: false }) : chrome.tabs.update({ url });
+  opening.catch((error) => {
     console.warn('ParsiPad: could not open the bookmark', error);
   });
 }
@@ -591,7 +596,8 @@ function handleKeydown(event) {
 
   if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
   if (isFormControl(event.target) || isFormControl(document.activeElement)) return;
-  if (!enabled) return;
+  // The open drawer is modal: the card behind the scrim takes no keys.
+  if (!enabled || drawerOpen) return;
 
   if (event.key === '/') {
     if (!panels.bookmarks) return;
@@ -622,6 +628,7 @@ function setupEventListeners() {
   scrim.addEventListener('click', closeDrawer);
   bookmarkSearch.addEventListener('input', filterSoon);
   bookmarkTree.addEventListener('click', handleBookmarkClick);
+  bookmarkTree.addEventListener('auxclick', handleBookmarkClick);
   document.addEventListener('keydown', handleKeydown);
   chrome.storage.onChanged.addListener(handleStorageChange);
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {

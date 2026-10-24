@@ -40,7 +40,7 @@ import { applyThemeToRoot } from '../lib/theme.js';
 import { formatNumber } from '../lib/format.js';
 import { setupSectionNav } from './sections.js';
 import { getMutedSites, addMutedSite, removeMutedSite } from '../lib/muted-sites.js';
-import { hasTopSitesPermission, requestTopSitesPermission } from '../lib/top-sites.js';
+import { hasTopSitesPermission, removeTopSitesPermission, requestTopSitesPermission } from '../lib/top-sites.js';
 
 // DOM Elements - Language
 const aboutVersionEl = document.getElementById('about-version');
@@ -845,6 +845,7 @@ async function handleNewTabRecentsChange() {
   showNewTabRecentsStatus();
   if (!newTabRecentsToggle.checked) {
     await setNewTabPanels({ recents: false });
+    await removeTopSitesPermission();
     return;
   }
   const granted = await requestTopSitesPermission();

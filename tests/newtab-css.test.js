@@ -133,3 +133,10 @@ describe('the theme button', () => {
     expect(block('[data-theme="dark"] #theme-icon-dark')).toMatch(/display:\s*block/);
   });
 });
+
+describe('new tab: the search match', () => {
+  it('is tinted from the theme accent, so it reads in dark mode too', () => {
+    // --color-primary-100 has no dark value: light text on pale lavender.
+    expect(block('.nt-bookmark mark {')).toMatch(/background:\s*color-mix\(in srgb, var\(--color-primary\)/);
+  });
+});
