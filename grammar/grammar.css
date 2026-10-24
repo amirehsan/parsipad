@@ -397,7 +397,7 @@ body.dark {
   color: var(--primary-300);
 }
 
-[dir="rtl"] .direction-badge {
+[dir="rtl"]:not(html) .direction-badge {
   right: auto;
   left: 1rem;
 }
@@ -930,36 +930,21 @@ body.dark {
    RTL Support - Comprehensive Persian/Arabic RTL
    ============================================ */
 
-/* Base RTL direction - Only applies to main content, header stays LTR */
-#lesson-content[dir="rtl"],
-#loading-section[dir="rtl"],
-#error-section[dir="rtl"] {
-  direction: rtl;
-  text-align: right;
-}
-
-/* Persian font for ALL text elements in RTL context */
+/* Persian font wherever Persian text is marked, and for the Persian
+   interface as a whole. English lesson text is never forced into it. */
+/* Lesson content is English and says so with lang="en", which keeps it in
+   the Latin font when the interface around it is Persian. Persian runs
+   inside it carry lang="fa" and switch back. */
 [dir="rtl"],
-[dir="rtl"] * {
+[lang="fa"] {
   font-family: var(--font-persian);
 }
 
-/* Specific elements that MUST have Persian font in RTL */
-[dir="rtl"] .grammar-point-title,
-[dir="rtl"] .explanation-text,
-[dir="rtl"] .section-title span,
-[dir="rtl"] .quiz-question,
-[dir="rtl"] .quiz-option-text,
-[dir="rtl"] .quiz-feedback,
-[dir="rtl"] .quiz-explanation,
-[dir="rtl"] .compare-text,
-[dir="rtl"] .compare-label,
-[dir="rtl"] .mistake-item,
-[dir="rtl"] .related-tag,
-[dir="rtl"] .source-label,
-[dir="rtl"] .btn,
-[dir="rtl"] .loading-text,
-[dir="rtl"] .error-text {
+[lang="en"] {
+  font-family: var(--font-sans);
+}
+
+[lang="en"] [lang="fa"] {
   font-family: var(--font-persian);
 }
 
@@ -970,109 +955,103 @@ body.dark {
   text-align: right;
 }
 
-/* Example target text in RTL context (Persian translation) */
-[dir="rtl"] .example-target {
-  font-family: var(--font-persian);
-  text-align: right;
-}
-
-/* Example source text in RTL context (English original) - Keep English */
-[dir="rtl"] .example-source {
+/* Example source stays English even under the Persian interface */
+[dir="rtl"]:not(html) .example-source {
   font-family: var(--font-sans);
   direction: ltr;
   text-align: left;
 }
 
 /* Grammar point header in RTL - reverse icon and title */
-[dir="rtl"] .grammar-point-header {
+[dir="rtl"]:not(html) .grammar-point-header {
   flex-direction: row-reverse;
 }
 
 /* Grammar point number badge in RTL */
-[dir="rtl"] .grammar-point-number {
+[dir="rtl"]:not(html) .grammar-point-number {
   font-family: var(--font-sans); /* Keep numbers in English font */
 }
 
 /* Section titles with icons in RTL */
-[dir="rtl"] .section-title {
+[dir="rtl"]:not(html) .section-title {
   flex-direction: row-reverse;
 }
 
 /* Quiz section in RTL */
-[dir="rtl"] .quiz-section {
+[dir="rtl"]:not(html) .quiz-section {
   text-align: right;
 }
 
 /* Quiz options in RTL - radio on right side */
-[dir="rtl"] .quiz-option {
+[dir="rtl"]:not(html) .quiz-option {
   flex-direction: row-reverse;
 }
 
 /* Quiz option text alignment in RTL */
-[dir="rtl"] .quiz-option-text {
+[dir="rtl"]:not(html) .quiz-option-text {
   text-align: right;
   flex: 1;
 }
 
 /* Quiz actions (buttons) in RTL */
-[dir="rtl"] .quiz-actions {
+[dir="rtl"]:not(html) .quiz-actions {
   flex-direction: row-reverse;
 }
 
 /* Quiz feedback in RTL */
-[dir="rtl"] .quiz-feedback {
+[dir="rtl"]:not(html) .quiz-feedback {
   text-align: right;
 }
 
-[dir="rtl"] .quiz-explanation {
+[dir="rtl"]:not(html) .quiz-explanation {
   text-align: right;
 }
 
 /* Example items in RTL */
-[dir="rtl"] .example-item {
+[dir="rtl"]:not(html) .example-item {
   text-align: right;
 }
 
 /* Mistake items in RTL - icon on right */
-[dir="rtl"] .mistake-item {
+[dir="rtl"]:not(html) .mistake-item {
   flex-direction: row-reverse;
   text-align: right;
 }
 
 /* Compare section in RTL */
-[dir="rtl"] .compare-section {
+[dir="rtl"]:not(html) .compare-section {
   text-align: right;
 }
 
-[dir="rtl"] .compare-column {
+[dir="rtl"]:not(html) .compare-column {
   text-align: right;
 }
 
-[dir="rtl"] .compare-text {
+[dir="rtl"]:not(html) .compare-text {
   text-align: right;
 }
 
 /* Related tags in RTL - start from right */
-[dir="rtl"] .related-tags {
+[dir="rtl"]:not(html) .related-tags {
   justify-content: flex-end;
 }
 
 /* Related section title in RTL */
-[dir="rtl"] .related-section .section-title {
+[dir="rtl"]:not(html) .related-section .section-title {
   flex-direction: row-reverse;
 }
 
 /* Source section in RTL */
-[dir="rtl"] .source-section {
+[dir="rtl"]:not(html) .source-section {
   text-align: right;
 }
 
-[dir="rtl"] .source-row {
+[dir="rtl"]:not(html) .source-row {
   text-align: right;
 }
 
 /* Direction badge position in RTL */
-[dir="rtl"] .direction-badge {
+[dir="rtl"]:not(html) .direction-badge {
   right: auto;
   left: 1rem;
 }
@@ -1277,7 +1256,7 @@ body.dark {
 }
 
 /* RTL TTS button positioning */
-[dir="rtl"] .source-text-wrapper {
+[dir="rtl"]:not(html) .source-text-wrapper {
   flex-direction: row-reverse;
 }
 
@@ -1301,7 +1280,7 @@ body.dark {
 }
 
 /* In RTL context, transliteration should still be LTR */
-[dir="rtl"] .transliteration {
+[dir="rtl"]:not(html) .transliteration {
   direction: ltr;
   text-align: left;
   font-family: var(--font-sans);
@@ -1324,7 +1303,7 @@ body.dark {
   flex-shrink: 0;
 }
 
-[dir="rtl"] .register-badge {
+[dir="rtl"]:not(html) .register-badge {
   margin-left: 0;
   margin-right: auto;
 }
@@ -1373,7 +1352,7 @@ body.dark {
   border-left-color: var(--primary-500);
 }
 
-[dir="rtl"] .register-info {
+[dir="rtl"]:not(html) .register-info {
   border-left: none;
   border-right: 3px solid var(--primary-400);
 }
@@ -1511,11 +1490,11 @@ details[open] .collapsible-chevron {
 }
 
 /* RTL collapsible adjustments */
-[dir="rtl"] .collapsible-header {
+[dir="rtl"]:not(html) .collapsible-header {
   flex-direction: row-reverse;
 }
 
-[dir="rtl"] .collapsible-title {
+[dir="rtl"]:not(html) .collapsible-title {
   flex-direction: row-reverse;
 }
 

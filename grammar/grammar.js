@@ -187,13 +187,6 @@ function updateTTSButtonState(button, speaking) {
  * Load the grammar lesson
  */
 async function loadLesson() {
-  // Apply RTL direction to loading/error sections if content will be in Persian
-  const contentIsRtl = direction === 'en-to-fa' || direction === 'en-fa';
-  if (contentIsRtl) {
-    loadingSection?.setAttribute('dir', 'rtl');
-    errorSection?.setAttribute('dir', 'rtl');
-  }
-
   showLoading();
 
   if (!originalText || !translation) {
@@ -364,33 +357,24 @@ function renderLesson() {
     originalTextEl.removeAttribute('dir');
     translationTextEl.classList.add('persian-text');
     translationTextEl.setAttribute('dir', 'rtl');
+    translationTextEl.setAttribute('lang', 'fa');
+    originalTextEl.removeAttribute('lang');
     if (originalTtsBtn) originalTtsBtn.hidden = false;     // English source
     if (translationTtsBtn) translationTtsBtn.hidden = true; // Persian target
   } else {
     originalTextEl.classList.add('persian-text');
     originalTextEl.setAttribute('dir', 'rtl');
+    originalTextEl.setAttribute('lang', 'fa');
+    translationTextEl.removeAttribute('lang');
     translationTextEl.classList.remove('persian-text');
     translationTextEl.removeAttribute('dir');
     if (originalTtsBtn) originalTtsBtn.hidden = true;       // Persian source
     if (translationTtsBtn) translationTtsBtn.hidden = false; // English target
   }
 
-  // Set RTL direction on main content for grammar explanations
-  // Grammar explanations are in the target language, so:
-  // EN→FA: explanations in Persian (RTL)
-  // FA→EN: explanations in English (LTR)
-  const contentIsRtl = direction === 'en-to-fa' || direction === 'en-fa';
-  if (contentIsRtl) {
-    lessonContent.setAttribute('dir', 'rtl');
-    loadingSection?.setAttribute('dir', 'rtl');
-    errorSection?.setAttribute('dir', 'rtl');
-    saveNotification?.setAttribute('dir', 'rtl');
-  } else {
-    lessonContent.removeAttribute('dir');
-    loadingSection?.removeAttribute('dir');
-    errorSection?.removeAttribute('dir');
-    saveNotification?.removeAttribute('dir');
-  }
+  // The lesson prompt writes every explanation in English, so the lesson
+  // stays left-to-right. Persian appears only in the translation and the
+  // example targets, which carry their own dir and lang.
 
   // Render grammar points
   renderGrammarPoints();
@@ -465,7 +449,7 @@ function createGrammarPointElement(point, number) {
             ${point.examples.map(ex => `
               <div class="example-item">
                 <div class="example-source">${highlightText(escapeHtml(ex.source), ex.highlight)}</div>
-                <div class="example-target">
+                <div class="example-target" dir="rtl" lang="fa">
                   ${highlightText(escapeHtml(ex.target), ex.highlight)}
                   ${ex.transliteration ? `<span class="transliteration">${escapeHtml(ex.transliteration)}</span>` : ''}
                 </div>

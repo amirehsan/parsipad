@@ -1,8 +1,8 @@
 import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
 import { getHistory, clearHistory, getPolishHistory, clearPolishHistory, getDictionaryHistory, clearDictionaryHistory } from '../lib/history.js';
-import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider, getFavorites, isFavorite, shouldShowReviewPrompt, dismissReviewPrompt, markReviewClicked } from '../lib/storage.js';
-import { PROVIDER_CONFIGS, ACTIONS } from '../lib/constants.js';
+import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider, getFavorites, isFavorite, claimReviewPrompt, respondToReviewPrompt } from '../lib/storage.js';
+import { PROVIDER_CONFIGS, ACTIONS, STORE_REVIEWS_URL } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 import { setSafeInnerHTML } from '../lib/sanitize.js';
 import { renderCard, injectCardStyles } from '../shared/card/index.js';
@@ -10,6 +10,7 @@ import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
 import { getBoundShortcuts } from '../shared/shortcuts.js';
 import { applyThemeToRoot } from '../lib/theme.js';
+import { directionLabel } from '../lib/direction-label.js';
 
 // DOM Elements
 const settingsBtn = document.getElementById('settings-btn');
@@ -38,6 +39,7 @@ const polishConversational = document.getElementById('polish-conversational');
 const polishConcise = document.getElementById('polish-concise');
 const errorSection = document.getElementById('error-section');
 const errorMessage = document.getElementById('error-message');
+const statusLine = document.getElementById('status-line');
 const historySection = document.getElementById('history-section');
 const historyList = document.getElementById('history-list');
 const clearHistoryBtn = document.getElementById('clear-history-btn');
@@ -130,6 +132,7 @@ const reviewPromptBanner = document.getElementById('review-prompt-banner');
 const reviewRateBtn = document.getElementById('review-rate-btn');
 const reviewLaterBtn = document.getElementById('review-later-btn');
 const reviewDismissBtn = document.getElementById('review-dismiss-btn');
+const reviewNeverBtn = document.getElementById('review-never-btn');
 
 // State
 let isProcessing = false;
@@ -167,7 +170,6 @@ async function init() {
   await loadHistory();
   await loadStats();
   await loadFavoritesCount();
-  await checkReviewPrompt();
   setupEventListeners();
   updateCharCount();
   updateTab('text');
@@ -295,19 +297,6 @@ async function loadHistory() {
 }
 
 /**
- * Format direction for display (e.g., 'ru-fa' -> 'RU→FA')
- * @param {string} direction - Direction string like 'en-fa' or 'fa-en'
- * @returns {string} - Formatted display string
- */
-function formatDirectionBadge(direction) {
-  const parts = direction.split('-');
-  if (parts.length === 2) {
-    return `${parts[0].toUpperCase()}→${parts[1].toUpperCase()}`;
-  }
-  return direction.toUpperCase();
-}
-
-/**
  * Render history items
  * @param {Array} history - History entries
  */
@@ -315,7 +304,7 @@ function renderHistory(history) {
   historyList.innerHTML = history.map(entry => {
     const targetLang = entry.direction.split('-')[1] || 'fa';
     const translationDir = ['fa', 'ar', 'he'].includes(targetLang) ? 'rtl' : 'ltr';
-    const badgeText = formatDirectionBadge(entry.direction);
+    const badgeText = directionLabel(entry.direction);
 
     return `
       <div class="history-item" data-original="${escapeAttr(entry.original)}" data-translation="${escapeAttr(entry.translation)}" data-direction="${entry.direction}">
@@ -323,7 +312,7 @@ function renderHistory(history) {
           <div class="history-item-original">${escapeHtml(entry.original)}</div>
           <div class="history-item-translation" dir="${translationDir}">${escapeHtml(entry.translation)}</div>
         </div>
-        <span class="history-item-badge">${badgeText}</span>
+        <span class="history-item-badge" dir="ltr">${badgeText}</span>
       </div>
     `;
   }).join('');
@@ -440,6 +429,9 @@ function setupEventListeners() {
   if (reviewRateBtn) {
     reviewRateBtn.addEventListener('click', handleReviewRateClick);
   }
+  if (reviewNeverBtn) {
+    reviewNeverBtn.addEventListener('click', () => answerReviewPrompt('never'));
+  }
   if (reviewLaterBtn) {
     reviewLaterBtn.addEventListener('click', handleReviewDismiss);
   }
@@ -531,7 +523,7 @@ function setupEventListeners() {
   });
 
   // Reset stats button
-  resetStatsBtn.addEventListener('click', async () => {
+  attachTwoStageConfirm(resetStatsBtn, async () => {
     await resetUsageStats();
     await loadStats();
   });
@@ -1036,6 +1028,7 @@ async function displayTranslation(result) {
   // onTranslateSentence omits the control.
 
   cardSlot.replaceChildren(currentCardEl);
+  checkReviewPrompt();
   outputSection.hidden = false;
 
   // Update favorite button state
@@ -1060,6 +1053,7 @@ async function displayPolishResults(result, originalText = null, historyId = nul
   polishConversational.textContent = result.conversational;
   polishConcise.textContent = result.concise;
   polishSection.hidden = false;
+  checkReviewPrompt();
 
   // Update favorite button states
   await updatePolishFavoriteStates();
@@ -1076,7 +1070,7 @@ async function handleCardCopy(text) {
   try {
     await navigator.clipboard.writeText(text);
   } catch (error) {
-    showError('Failed to copy to clipboard');
+    showNotice(t('copyFailed', currentLang), 'warning');
     return;
   }
 
@@ -1085,6 +1079,7 @@ async function handleCardCopy(text) {
 
   const label = btn.textContent;
   btn.textContent = t('copied', currentLang);
+  showNotice(t('copied', currentLang));
   setTimeout(() => { btn.textContent = label; }, 1500);
 }
 
@@ -1107,11 +1102,12 @@ async function handlePolishCopy(btn) {
   try {
     await navigator.clipboard.writeText(text);
     btn.classList.add('copied');
+    showNotice(t('copied', currentLang));
     setTimeout(() => {
       btn.classList.remove('copied');
     }, 1500);
   } catch (error) {
-    showError('Failed to copy to clipboard');
+    showNotice(t('copyFailed', currentLang), 'warning');
   }
 }
 
@@ -1289,6 +1285,24 @@ function showError(message) {
   hideAllOutputs();
 }
 
+let statusLineTimer = null;
+
+/**
+ * Report the outcome of a secondary action (copy, favorite, regenerate) in
+ * the status line. Unlike showError it leaves the result on screen: a failed
+ * copy is no reason to lose the translation the user was reading.
+ *
+ * @param {string} message
+ * @param {'success' | 'warning'} [tone]
+ */
+function showNotice(message, tone = 'success') {
+  if (!statusLine) return;
+  clearTimeout(statusLineTimer);
+  statusLine.textContent = message;
+  statusLine.classList.toggle('is-warning', tone === 'warning');
+  statusLineTimer = setTimeout(() => { statusLine.textContent = ''; }, 3000);
+}
+
 /**
  * Hide error section
  */
@@ -1448,11 +1462,12 @@ async function handleDictCopy() {
   try {
     await navigator.clipboard.writeText(text);
     dictCopyBtn.classList.add('copied');
+    showNotice(t('copied', currentLang));
     setTimeout(() => {
       dictCopyBtn.classList.remove('copied');
     }, 1500);
   } catch (error) {
-    showError('Failed to copy to clipboard');
+    showNotice(t('copyFailed', currentLang), 'warning');
   }
 }
 
@@ -1942,7 +1957,8 @@ async function displayImageResult(result) {
   imageTranslation.dir = ['fa', 'ar', 'he'].includes(targetLang) ? 'rtl' : 'ltr';
 
   // Display direction badge
-  imageDirectionBadge.textContent = formatDirectionBadge(direction);
+  imageDirectionBadge.textContent = directionLabel(direction);
+  imageDirectionBadge.hidden = !imageDirectionBadge.textContent;
 
   // Show provider badge
   await updateProviderBadge(imageProviderBadge);
@@ -1973,11 +1989,12 @@ async function handleImageCopy() {
   try {
     await navigator.clipboard.writeText(text);
     imageCopyBtn.classList.add('copied');
+    showNotice(t('copied', currentLang));
     setTimeout(() => {
       imageCopyBtn.classList.remove('copied');
     }, 1500);
   } catch (error) {
-    showError('Failed to copy to clipboard');
+    showNotice(t('copyFailed', currentLang), 'warning');
   }
 }
 
@@ -2069,13 +2086,12 @@ async function handleTranslationFavorite() {
       if (response.success) {
         setTranslationFavoriteState(true);
         // Check if we should show review prompt after adding favorite
-        await checkReviewPrompt();
       }
     }
 
     await loadFavoritesCount();
   } catch (error) {
-    showError('Failed to update favorites');
+    showNotice(t('favoriteFailed', currentLang), 'warning');
   }
 }
 
@@ -2130,13 +2146,12 @@ async function handlePolishFavorite(btn) {
       if (response.success) {
         btn.classList.add('favorited');
         // Check if we should show review prompt after adding favorite
-        await checkReviewPrompt();
       }
     }
 
     await loadFavoritesCount();
   } catch (error) {
-    showError('Failed to update favorites');
+    showNotice(t('favoriteFailed', currentLang), 'warning');
   }
 }
 
@@ -2198,7 +2213,7 @@ async function handlePolishRegenerate(btn) {
   const original = currentPolishOriginalText || inputText.value.trim();
 
   if (!original) {
-    showError('No text to regenerate');
+    showNotice(t('regenerateFailed', currentLang), 'warning');
     return;
   }
 
@@ -2217,7 +2232,7 @@ async function handlePolishRegenerate(btn) {
     });
 
     if (response.error) {
-      showError(response.error);
+      showNotice(response.error, 'warning');
       return;
     }
 
@@ -2241,7 +2256,7 @@ async function handlePolishRegenerate(btn) {
     // Update favorite state for this variant
     await updatePolishFavoriteStates();
   } catch (error) {
-    showError(error.message || 'Regenerate failed');
+    showNotice(error.message || t('regenerateFailed', currentLang), 'warning');
   } finally {
     btn.classList.remove('loading');
     btn.disabled = false;
@@ -2253,46 +2268,54 @@ async function handlePolishRegenerate(btn) {
 // ============================================
 
 /**
- * Check if review prompt should be shown
+ * Show the rating banner when the rules say it is time. Called only after a
+ * result has rendered, so the ask follows something that just worked. Once
+ * shown it stays for the rest of this popup session; a later result does not
+ * hide it again.
  */
+let reviewPromptShown = false;
+
 async function checkReviewPrompt() {
-  if (!reviewPromptBanner) return;
-
+  if (!reviewPromptBanner || reviewPromptShown) return;
   try {
-    const shouldShow = await shouldShowReviewPrompt();
-    reviewPromptBanner.hidden = !shouldShow;
+    if (await claimReviewPrompt()) {
+      reviewPromptShown = true;
+      reviewPromptBanner.hidden = false;
+    }
   } catch (error) {
-    // Silently handle errors
-    reviewPromptBanner.hidden = true;
+    // A storage failure only means the banner is not shown this time.
   }
 }
 
 /**
- * Handle "Rate Now" button click
+ * Record the answer and take the banner away.
+ * @param {'rated' | 'later' | 'never'} response
  */
-async function handleReviewRateClick() {
+async function answerReviewPrompt(response) {
+  if (reviewPromptBanner) reviewPromptBanner.hidden = true;
   try {
-    await markReviewClicked();
-    if (reviewPromptBanner) {
-      reviewPromptBanner.hidden = true;
-    }
+    await respondToReviewPrompt(response);
   } catch (error) {
-    // Silently handle errors
+    // The banner is already gone; the next eligible result will ask again.
   }
 }
 
 /**
- * Handle "Maybe Later" or dismiss button click
+ * Record the rating first, then open the store. Following the link directly
+ * closes the popup at once, often before the answer reaches storage, and the
+ * user who just rated would be asked again in two weeks. The href stays so
+ * middle-click and "open in new tab" still work.
+ * @param {MouseEvent} event
  */
-async function handleReviewDismiss() {
-  try {
-    await dismissReviewPrompt();
-    if (reviewPromptBanner) {
-      reviewPromptBanner.hidden = true;
-    }
-  } catch (error) {
-    // Silently handle errors
-  }
+async function handleReviewRateClick(event) {
+  event.preventDefault();
+  await answerReviewPrompt('rated');
+  chrome.tabs.create({ url: STORE_REVIEWS_URL });
+}
+
+/** "Later" and the close button both snooze; neither means never. */
+function handleReviewDismiss() {
+  answerReviewPrompt('later');
 }
 
 // ============================================

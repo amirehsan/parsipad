@@ -81,6 +81,9 @@ let pageToggleButton = null;
 let pageToggleShadow = null;
 let pageTranslationCancelled = false;
 let pageTranslationAbortController = null;
+// Aborted when the floating box closes, so a translation nobody will see
+// stops streaming, and stops being billed, at once.
+let boxAbortController = null;
 
 
 /**
@@ -274,9 +277,13 @@ async function translateAndShow(text, { sourceLang } = {}) {
   showLoading();
   placeFloatingBox();
 
+  boxAbortController?.abort();
+  boxAbortController = new AbortController();
+
   let streamed = '';
   try {
     const response = await requestTranslation({ text, sourceLang: requestedSourceLang, context }, {
+      signal: boxAbortController.signal,
       onDelta: (delta) => {
         streamed += delta;
         showStreamingText(streamed);
@@ -686,6 +693,9 @@ function buildSentenceHandler(result, originalText) {
     showLoading();
     placeFloatingBox();
 
+    boxAbortController?.abort();
+    boxAbortController = new AbortController();
+
     try {
       const response = await requestTranslation({
         text: sentence,
@@ -695,7 +705,7 @@ function buildSentenceHandler(result, originalText) {
         }).sourceLang,
         mode: 'sentence',
         context
-      });
+      }, { signal: boxAbortController.signal });
 
       if (response.errorCode === 'ABORTED') return;
 
@@ -884,6 +894,48 @@ function showTranslation(result, originalText) {
 
   // Check if already favorited
   checkTranslationFavoriteStatus();
+  maybeShowReviewLine(content);
+}
+
+/**
+ * One quiet rating ask under a translation, when the service worker says it
+ * is time. The worker records the show, so a second box in the same window
+ * does not ask again. "Rate" opens the store in a new tab from the worker;
+ * "Later" snoozes.
+ * @param {HTMLElement} content - the floating box's content area
+ */
+async function maybeShowReviewLine(content) {
+  let show = false;
+  try {
+    ({ show } = await chrome.runtime.sendMessage({ action: 'REVIEW_PROMPT_STATE' }));
+  } catch (error) {
+    return;
+  }
+  if (!show || !content.isConnected) return;
+
+  const line = document.createElement('div');
+  line.className = 'parsipad-review-line';
+
+  const rate = document.createElement('button');
+  rate.type = 'button';
+  rate.className = 'parsipad-review-rate';
+  rate.textContent = t('rateParsipad', userLang);
+
+  const later = document.createElement('button');
+  later.type = 'button';
+  later.className = 'parsipad-review-later';
+  later.textContent = t('later', userLang);
+
+  const answer = (response) => {
+    line.remove();
+    chrome.runtime.sendMessage({ action: 'REVIEW_PROMPT_RESPONSE', response }).catch(() => {});
+  };
+  rate.addEventListener('click', () => answer('rated'));
+  later.addEventListener('click', () => answer('later'));
+
+  line.append(rate, later);
+  content.appendChild(line);
+  placeFloatingBox();
 }
 
 /**
@@ -1230,6 +1282,8 @@ async function handleTranslationFavorite() {
  * Remove the floating box
  */
 function removeFloatingBox() {
+  boxAbortController?.abort();
+  boxAbortController = null;
   boxSelectionRect = null;
   currentCardEl = null;
   currentSelectionContext = null;

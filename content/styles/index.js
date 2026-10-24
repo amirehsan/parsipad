@@ -668,6 +668,44 @@ export function getStyles() {
       line-height: 1.75;
     }
 
+    .parsipad-review-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--pp-border);
+    }
+
+    .parsipad-review-line button {
+      background: none;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .parsipad-review-rate {
+      color: var(--pp-accent);
+      font-weight: 600;
+    }
+
+    .parsipad-review-later {
+      color: var(--pp-text-secondary);
+    }
+
+    .parsipad-review-line button:hover {
+      background: var(--pp-bg-secondary);
+    }
+
+    .parsipad-review-line button:focus-visible {
+      outline: 2px solid var(--pp-accent);
+      outline-offset: 2px;
+    }
+
     .parsipad-footer {
       display: flex;
       justify-content: space-between;
