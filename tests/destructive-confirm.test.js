@@ -5,12 +5,11 @@ import path from 'path';
 import { translations } from '../lib/i18n.js';
 
 /**
- * Clearing a key, replacing data on import and resetting stats all used to
- * act on the first click. Each now asks first.
+ * Clearing a key and replacing data on import both used to act on the first
+ * click. Each now asks first.
  */
 const rootDir = path.resolve(__dirname, '..');
 const settings = fs.readFileSync(path.join(rootDir, 'settings/settings.js'), 'utf8');
-const popup = fs.readFileSync(path.join(rootDir, 'popup/popup.js'), 'utf8');
 
 describe('destructive actions ask first', () => {
   it('clear API key confirms before removing', () => {
@@ -22,11 +21,6 @@ describe('destructive actions ask first', () => {
 
   it('replace import confirms before writing', () => {
     expect(settings).toMatch(/if \(isReplace && !confirm\(t\('confirmReplaceImport'/);
-  });
-
-  it('reset stats goes through the two-tap confirm', () => {
-    expect(popup).toMatch(/attachTwoStageConfirm\(resetStatsBtn,/);
-    expect(popup).not.toMatch(/resetStatsBtn\.addEventListener\('click'/);
   });
 
   it('the confirmation strings exist in both locales', () => {

@@ -1,14 +1,13 @@
 import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
-import { getHistory, clearHistory, getPolishHistory, clearPolishHistory, getDictionaryHistory, clearDictionaryHistory } from '../lib/history.js';
-import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider, setSelectedProvider, getProviderApiKey, setProviderApiKey, normalizeApiKey, getFavorites, isFavorite, claimReviewPrompt, respondToReviewPrompt } from '../lib/storage.js';
+import { getHistory, getPolishHistory } from '../lib/history.js';
+import { getTheme, setTheme, updateUsageStats, getLanguage, getSelectedProvider, setSelectedProvider, getProviderApiKey, setProviderApiKey, normalizeApiKey, getFavorites, isFavorite, claimReviewPrompt, respondToReviewPrompt } from '../lib/storage.js';
 import { PROVIDER_CONFIGS, ACTIONS, STORE_REVIEWS_URL, STORAGE_KEYS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
-import { setSafeInnerHTML } from '../lib/sanitize.js';
 import { renderCard, injectCardStyles } from '../shared/card/index.js';
 import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
-import { getBoundShortcuts } from '../shared/shortcuts.js';
+import { getBoundShortcuts, submitShortcut } from '../shared/shortcuts.js';
 import { applyThemeToRoot } from '../lib/theme.js';
 import { directionLabel } from '../lib/direction-label.js';
 import { getProviderHealth, healthTone } from '../lib/provider-health.js';
@@ -22,21 +21,19 @@ const openSidePanelBtn = document.getElementById('open-sidepanel-btn');
 const settingsBtn = document.getElementById('settings-btn');
 const providerBadge = document.getElementById('provider-badge');
 const providerBadgeName = document.getElementById('provider-badge-name');
-// Tab elements (4 main tabs)
-const tabText = document.getElementById('tab-text');
-const tabDictionary = document.getElementById('tab-dictionary');
-const tabDocument = document.getElementById('tab-document');
-const tabImage = document.getElementById('tab-image');
-// Segmented control for Text tab (Translate/Polish)
+// Mode pill (Translate, Polish, Doc & Image) and the two panels it switches
 const modeTranslate = document.getElementById('mode-translate');
 const modePolish = document.getElementById('mode-polish');
+const modeDocImage = document.getElementById('mode-doc-image');
 const textModeSection = document.getElementById('text-mode-section');
+const docImageSection = document.getElementById('doc-image-section');
 const inputText = document.getElementById('input-text');
 const charCount = document.getElementById('char-count');
 const clearInputBtn = document.getElementById('clear-input-btn');
 const actionBtn = document.getElementById('action-btn');
 const btnText = actionBtn.querySelector('.btn-text');
 const btnLoading = actionBtn.querySelector('.btn-loading');
+const submitKbd = document.getElementById('submit-kbd');
 const outputSection = document.getElementById('output-section');
 const cardSlot = document.getElementById('card-slot');
 const polishSection = document.getElementById('polish-section');
@@ -46,32 +43,10 @@ const polishConcise = document.getElementById('polish-concise');
 const errorSection = document.getElementById('error-section');
 const errorMessage = document.getElementById('error-message');
 const statusLine = document.getElementById('status-line');
-const historySection = document.getElementById('history-section');
-const historyList = document.getElementById('history-list');
-const clearHistoryBtn = document.getElementById('clear-history-btn');
-const viewAllHistoryBtn = document.getElementById('view-all-history-btn');
-const polishHistorySection = document.getElementById('polish-history-section');
-const polishHistoryList = document.getElementById('polish-history-list');
-const clearPolishHistoryBtn = document.getElementById('clear-polish-history-btn');
-const viewAllPolishHistoryBtn = document.getElementById('view-all-polish-history-btn');
-// Dictionary elements
-const dictionarySection = document.getElementById('dictionary-section');
-const dictWord = document.getElementById('dict-word');
-const dictPhonetic = document.getElementById('dict-phonetic');
-const dictPos = document.getElementById('dict-pos');
-const dictDefinitions = document.getElementById('dict-definitions');
-const dictSynonymsSection = document.getElementById('dict-synonyms-section');
-const dictSynonyms = document.getElementById('dict-synonyms');
-const dictAntonymsSection = document.getElementById('dict-antonyms-section');
-const dictAntonyms = document.getElementById('dict-antonyms');
-const dictTranslationSection = document.getElementById('dict-translation-section');
-const dictTranslation = document.getElementById('dict-translation');
-const dictCopyBtn = document.getElementById('dict-copy-btn');
-const dictionaryHistorySection = document.getElementById('dictionary-history-section');
-const dictionaryHistoryList = document.getElementById('dictionary-history-list');
-const clearDictHistoryBtn = document.getElementById('clear-dict-history-btn');
+// Recent row: the latest history item and the Library link
+const recentLabel = document.getElementById('recent-label');
+const recentItem = document.getElementById('recent-item');
 // Document elements
-const documentUploadSection = document.getElementById('document-upload-section');
 const uploadArea = document.getElementById('upload-area');
 const fileInput = document.getElementById('file-input');
 const selectFileBtn = document.getElementById('select-file-btn');
@@ -103,7 +78,6 @@ let manualSourceOverride = null;
 // drawn in a known state rather than left stateless until the check returns.
 let translationIsSaved = false;
 // Image elements
-const imageUploadSection = document.getElementById('image-upload-section');
 const imageUploadArea = document.getElementById('image-upload-area');
 const imageInput = document.getElementById('image-input');
 const selectImageBtn = document.getElementById('select-image-btn');
@@ -120,16 +94,7 @@ const imageCopyBtn = document.getElementById('image-copy-btn');
 const imageProviderBadge = document.getElementById('image-provider-badge');
 // Provider badges
 const polishProviderBadge = document.getElementById('polish-provider-badge');
-const dictProviderBadge = document.getElementById('dict-provider-badge');
 const themeBtn = document.getElementById('theme-btn');
-const statsToggle = document.getElementById('stats-toggle');
-const statsContent = document.getElementById('stats-content');
-const statTranslations = document.getElementById('stat-translations');
-const statPolishes = document.getElementById('stat-polishes');
-const statInputTokens = document.getElementById('stat-input-tokens');
-const statOutputTokens = document.getElementById('stat-output-tokens');
-const resetStatsBtn = document.getElementById('reset-stats-btn');
-const analyticsBtn = document.getElementById('analytics-btn');
 // Favorites elements
 const viewFavoritesBtn = document.getElementById('view-favorites-btn');
 const favoritesCount = document.getElementById('favorites-count');
@@ -144,8 +109,7 @@ const reviewNeverBtn = document.getElementById('review-never-btn');
 let isProcessing = false;
 // True while the selected provider has no key. Translate stays off until then.
 let needsKey = false;
-let currentTab = 'text'; // 'text', 'dictionary', 'document', or 'image'
-let currentTextMode = 'translate'; // 'translate' or 'polish' (for text tab)
+let currentMode = 'translate'; // 'translate', 'polish' or 'docImage'
 let currentLang = 'en';
 let uploadedFile = null;
 let translatedContent = null;
@@ -154,14 +118,12 @@ let selectedImage = null;
 let currentPolishHistoryId = null; // Track the current polish history entry
 let currentPolishOriginalText = null; // Track the original text for polish
 let currentTranslationData = null; // Track current translation for grammar page
-
-// Computed mode for backwards compatibility
-function getCurrentMode() {
-  if (currentTab === 'text') {
-    return currentTextMode;
-  }
-  return currentTab;
-}
+// The history entry the Recent row is showing, and whether it is a polish
+let recentEntry = null;
+// Bumped on every Recent load, so a slow read cannot overwrite a newer one
+let recentLoadSeq = 0;
+// How much of each side of the Recent item is put in the DOM; CSS cuts the rest
+const RECENT_PREVIEW_LENGTH = 120;
 
 /**
  * Initialize the popup
@@ -176,13 +138,15 @@ async function init() {
   // own document. popup.css maps the four tokens they consume.
   injectCardStyles(document.head, document);
   await checkApiKey();
-  await loadHistory();
-  await loadStats();
   await loadFavoritesCount();
   setupEventListeners();
+  showSubmitShortcut();
   updateCharCount();
-  updateTab('text');
-  updateTextMode('translate');
+  updateMode('translate');
+  // Opening the popup is almost always to type, so the caret starts there.
+  // Until a key is stored the key field is the only thing that works.
+  if (needsKey) document.getElementById('first-run-key').focus();
+  else inputText.focus();
 }
 
 /**
@@ -225,13 +189,13 @@ async function renderProviderBadge() {
 }
 
 /**
- * Name each button's shortcut on the button itself.
+ * Name each button's shortcut on the button itself, in its <kbd>.
  *
  * A shortcut is learned while doing the slow version of the same action,
  * not from a reference list the user would have to go looking for. Only
  * buttons that do exactly what the command does carry one, and only when
  * Chrome actually bound it: naming a key that does nothing is worse than
- * naming none at all.
+ * naming none at all, so an unbound command keeps its kbd hidden.
  */
 async function annotateShortcuts() {
   const targets = document.querySelectorAll('[data-shortcut-for]');
@@ -243,10 +207,22 @@ async function annotateShortcuts() {
     const shortcut = bound.get(el.dataset.shortcutFor);
     if (!shortcut) return;
 
-    const base = el.getAttribute('title') || el.textContent.trim();
-    el.setAttribute('title', `${base} (${shortcut})`);
     el.setAttribute('aria-keyshortcuts', shortcut);
+    const kbd = el.querySelector('kbd');
+    if (!kbd) return;
+    kbd.textContent = shortcut;
+    kbd.hidden = false;
   });
+}
+
+/**
+ * Show the platform's submit key on the primary button. The markup carries
+ * the non-Mac form so the button is never blank before this runs.
+ */
+function showSubmitShortcut() {
+  const { label, aria } = submitShortcut();
+  submitKbd.textContent = label;
+  actionBtn.setAttribute('aria-keyshortcuts', aria);
 }
 
 /**
@@ -285,32 +261,6 @@ async function toggleTheme() {
   applyTheme(newTheme);
 }
 
-/**
- * Load and display usage stats
- */
-async function loadStats() {
-  const stats = await getUsageStats();
-  statTranslations.textContent = formatNumber(stats.totalTranslations);
-  statPolishes.textContent = formatNumber(stats.totalPolishes);
-  statInputTokens.textContent = formatNumber(stats.totalInputTokens);
-  statOutputTokens.textContent = formatNumber(stats.totalOutputTokens);
-}
-
-/**
- * Format number with K/M suffix for large numbers
- * @param {number} num
- * @returns {string}
- */
-function formatNumber(num) {
-  if (num >= 1000000) {
-    return (num / 1000000).toFixed(1) + 'M';
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'K';
-  }
-  return num.toString();
-}
-
 // The first-run key section: shown while the selected provider has no key,
 // and Translate stays off for as long as it is showing.
 const firstRun = createFirstRun({
@@ -332,61 +282,82 @@ function checkApiKey() {
 }
 
 /**
- * Load and display translation history
+ * Fill the Recent row with the newest entry for the current mode: the latest
+ * polish in Polish, the latest translation otherwise. With nothing saved yet
+ * the row is just the Library link.
  */
-async function loadHistory() {
+async function loadRecent() {
+  const seq = ++recentLoadSeq;
+  const polish = currentMode === 'polish';
+  let latest = null;
   try {
-    const history = await getHistory();
-
-    if (history.length === 0) {
-      historySection.hidden = true;
-      return;
-    }
-
-    historySection.hidden = false;
-    renderHistory(history);
+    const [entry] = polish ? await getPolishHistory() : await getHistory();
+    if (entry) latest = { entry, polish };
   } catch (error) {
-    // Silently handle history load errors
+    // An unreadable history only means there is nothing to offer here.
   }
+  if (seq === recentLoadSeq) renderRecent(latest);
 }
 
 /**
- * Render history items
- * @param {Array} history - History entries
+ * One side of the Recent item, marked with its own direction so a Persian run
+ * lays out right to left inside an English row and the reverse.
+ * @param {string} value
+ * @returns {HTMLSpanElement}
  */
-function renderHistory(history) {
-  historyList.innerHTML = history.map(entry => {
-    const targetLang = entry.direction.split('-')[1] || 'fa';
-    const translationDir = ['fa', 'ar', 'he'].includes(targetLang) ? 'rtl' : 'ltr';
-    const badgeText = directionLabel(entry.direction);
+function recentRun(value) {
+  const run = document.createElement('span');
+  run.textContent = Array.from(String(value || '')).slice(0, RECENT_PREVIEW_LENGTH).join('');
+  run.dir = getTextDirection(run.textContent);
+  if (run.dir === 'rtl') run.lang = 'fa';
+  return run;
+}
 
-    return `
-      <div class="history-item" data-original="${escapeAttr(entry.original)}" data-translation="${escapeAttr(entry.translation)}" data-direction="${entry.direction}">
-        <div class="history-item-content">
-          <div class="history-item-original">${escapeHtml(entry.original)}</div>
-          <div class="history-item-translation" dir="${translationDir}">${escapeHtml(entry.translation)}</div>
-        </div>
-        <span class="history-item-badge" dir="ltr">${badgeText}</span>
-      </div>
-    `;
-  }).join('');
+/**
+ * Draw the Recent item as "original · translation" on one line.
+ * @param {{entry: Object, polish: boolean}|null} latest
+ */
+function renderRecent(latest) {
+  recentEntry = latest;
+  recentItem.replaceChildren();
+  recentLabel.hidden = !latest;
+  recentItem.hidden = !latest;
+  if (!latest) return;
 
-  historyList.querySelectorAll('.history-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const original = item.dataset.original;
-      const translation = item.dataset.translation;
-      const direction = item.dataset.direction;
+  const { entry, polish } = latest;
+  const result = polish ? entry.professional : entry.translation;
+  const line = document.createElement('span');
+  line.className = 'recent-text';
+  // The line takes the direction of its first strong character, so an English
+  // original in the Persian UI is still cut at its end, not its start.
+  line.dir = 'auto';
+  line.append(recentRun(entry.original), ' \u00b7 ', recentRun(result));
+  recentItem.append(line);
+}
 
-      inputText.value = original;
-      updateCharCount();
-      updateInputDirection();
+/**
+ * Put the Recent entry back on screen: the input it came from and its result.
+ */
+function reopenRecent() {
+  if (!recentEntry) return;
+  const { entry, polish } = recentEntry;
 
-      // Switch to text tab + translate mode and show result
-      updateTab('text');
-      updateTextMode('translate');
-      displayTranslation({ translation, direction, fromCache: true });
-    });
-  });
+  inputText.value = entry.original;
+  updateCharCount();
+  updateInputDirection();
+
+  if (polish) {
+    const { professional, conversational, concise } = entry;
+    displayPolishResults({ professional, conversational, concise }, entry.original, entry.id);
+    return;
+  }
+
+  // Newer entries keep the whole result, so a word comes back as its full card.
+  const stored = entry.result && typeof entry.result === 'object'
+    ? entry.result
+    : { translation: entry.translation, direction: entry.direction };
+  updateMode('translate');
+  displayTranslation({ ...stored, fromCache: true });
 }
 
 /**
@@ -434,37 +405,31 @@ function setupEventListeners() {
     if (keyStorageKeys.some((key) => key in changes)) checkApiKey();
   });
 
-  // Tab switching (4 main tabs)
-  tabText.addEventListener('click', () => updateTab('text'));
-  tabDictionary.addEventListener('click', () => updateTab('dictionary'));
-  tabDocument.addEventListener('click', () => updateTab('document'));
-  tabImage.addEventListener('click', () => updateTab('image'));
-
-  // Arrow-key navigation for the ARIA tablist (Left/Right wraps).
-  const tabOrder = [
-    { el: tabText, name: 'text' },
-    { el: tabDictionary, name: 'dictionary' },
-    { el: tabDocument, name: 'document' },
-    { el: tabImage, name: 'image' }
+  // Mode pill: an ARIA tablist with one tab stop. Arrow keys move and
+  // select (wrapping), Home and End jump to the ends.
+  const modeTabs = [
+    { el: modeTranslate, name: 'translate' },
+    { el: modePolish, name: 'polish' },
+    { el: modeDocImage, name: 'docImage' }
   ];
-  for (const { el } of tabOrder) {
+  for (const { el, name } of modeTabs) {
+    el.addEventListener('click', () => updateMode(name));
     el.addEventListener('keydown', (e) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return;
       e.preventDefault();
-      const i = tabOrder.findIndex(t => t.el === e.currentTarget);
+      const i = modeTabs.findIndex(tab => tab.el === e.currentTarget);
+      // The pill lays out right to left in the Persian UI, so the arrow that
+      // points at the next tab flips with it.
+      const forward = getComputedStyle(e.currentTarget).direction === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
       let next;
       if (e.key === 'Home') next = 0;
-      else if (e.key === 'End') next = tabOrder.length - 1;
-      else if (e.key === 'ArrowLeft') next = (i - 1 + tabOrder.length) % tabOrder.length;
-      else next = (i + 1) % tabOrder.length;
-      updateTab(tabOrder[next].name);
-      tabOrder[next].el.focus();
+      else if (e.key === 'End') next = modeTabs.length - 1;
+      else if (e.key === forward) next = (i + 1) % modeTabs.length;
+      else next = (i - 1 + modeTabs.length) % modeTabs.length;
+      updateMode(modeTabs[next].name);
+      modeTabs[next].el.focus();
     });
   }
-
-  // Mode switcher within the Text tab (replaces the old segmented control)
-  modeTranslate.addEventListener('click', () => updateTextMode('translate'));
-  modePolish.addEventListener('click', () => updateTextMode('polish'));
 
   // Input text changes
   inputText.addEventListener('input', () => {
@@ -524,46 +489,9 @@ function setupEventListeners() {
     reviewDismissBtn.addEventListener('click', handleReviewDismiss);
   }
 
-  // Clear-all buttons use a two-stage confirm (replaces unguarded data loss):
-  // first click arms the button with "Tap to confirm" copy + danger styling;
-  // second click within 3s actually clears. Mouse-leave or timeout disarms.
-  attachTwoStageConfirm(clearHistoryBtn, handleClearHistory);
-  attachTwoStageConfirm(clearPolishHistoryBtn, handleClearPolishHistory);
-  attachTwoStageConfirm(clearDictHistoryBtn, handleClearDictionaryHistory);
-
-  // View all history button
-  viewAllHistoryBtn.addEventListener('click', openHistoryPage);
-  viewAllPolishHistoryBtn.addEventListener('click', openHistoryPage);
-
-  // Dictionary buttons
-  dictCopyBtn.addEventListener('click', handleDictCopy);
-
-  // History toggle handlers (collapsible sections)
-  const historyToggle = document.getElementById('history-toggle');
-  const polishHistoryToggle = document.getElementById('polish-history-toggle');
-  const dictHistoryToggle = document.getElementById('dict-history-toggle');
-
-  if (historyToggle) {
-    historyToggle.addEventListener('click', (e) => {
-      // Don't toggle if clicking action buttons
-      if (e.target.closest('.history-actions')) return;
-      toggleHistorySection(historyToggle, historyList);
-    });
-  }
-
-  if (polishHistoryToggle) {
-    polishHistoryToggle.addEventListener('click', (e) => {
-      if (e.target.closest('.history-actions')) return;
-      toggleHistorySection(polishHistoryToggle, polishHistoryList);
-    });
-  }
-
-  if (dictHistoryToggle) {
-    dictHistoryToggle.addEventListener('click', (e) => {
-      if (e.target.closest('.history-actions')) return;
-      toggleHistorySection(dictHistoryToggle, dictionaryHistoryList);
-    });
-  }
+  // Recent row: the latest item reopens in place. Library is a plain link,
+  // so middle-click and "open in new tab" work without a handler.
+  recentItem.addEventListener('click', reopenRecent);
 
   // Document buttons
   selectFileBtn.addEventListener('click', () => fileInput.click());
@@ -599,117 +527,44 @@ function setupEventListeners() {
 
   // Theme toggle
   themeBtn.addEventListener('click', toggleTheme);
-
-  // Stats toggle
-  statsToggle.addEventListener('click', () => {
-    const isExpanded = statsContent.hidden;
-    statsContent.hidden = !isExpanded;
-    statsToggle.classList.toggle('expanded', isExpanded);
-  });
-
-  // Reset stats button
-  attachTwoStageConfirm(resetStatsBtn, async () => {
-    await resetUsageStats();
-    await loadStats();
-  });
-
-  // Analytics button
-  analyticsBtn.addEventListener('click', () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL('analytics/analytics.html') });
-  });
 }
 
 /**
- * Update main tab (text, dictionary, document, or image)
- * @param {string} tab - 'text', 'dictionary', 'document', or 'image'
+ * Switch the form to a mode from the pill. Translate and Polish share the
+ * textarea; Doc & Image swaps it for the document and image areas.
+ * @param {'translate'|'polish'|'docImage'} mode
  */
-function updateTab(tab) {
-  currentTab = tab;
+function updateMode(mode) {
+  currentMode = mode;
 
-  // Update tab buttons; aria-selected drives the new ARIA tablist styling.
-  const tabs = { text: tabText, dictionary: tabDictionary, document: tabDocument, image: tabImage };
+  // aria-selected drives the active look (.mode-switcher-btn[aria-selected="true"]);
+  // the roving tabindex keeps the pill a single tab stop.
+  const tabs = { translate: modeTranslate, polish: modePolish, docImage: modeDocImage };
   for (const [name, el] of Object.entries(tabs)) {
-    const active = name === tab;
-    el.classList.toggle('active', active);
+    const active = name === mode;
     el.setAttribute('aria-selected', active ? 'true' : 'false');
     el.tabIndex = active ? 0 : -1;
   }
 
-  // Hide outputs when switching tabs
-  hideAllOutputs();
-  hideError();
+  const isText = mode !== 'docImage';
+  textModeSection.hidden = !isText;
+  docImageSection.hidden = isText;
 
-  // Hide all history sections first
-  historySection.hidden = true;
-  polishHistorySection.hidden = true;
-  dictionaryHistorySection.hidden = true;
-
-  // Show/hide sections based on tab
-  textModeSection.hidden = tab !== 'text';
-  documentUploadSection.hidden = tab !== 'document';
-  imageUploadSection.hidden = tab !== 'image';
-
-  // Show/hide action button (document and image have their own buttons)
-  actionBtn.hidden = tab === 'document' || tab === 'image';
-
-  // Reset document translate button when switching to document tab
-  if (tab === 'document') {
-    // Only show if a file is already selected
+  if (isText) {
+    textModeSection.setAttribute('aria-labelledby', tabs[mode].id);
+    btnText.textContent = mode === 'translate' ? t('translate', currentLang) : t('polish', currentLang);
+    inputText.placeholder = mode === 'translate' ? t('enterTextTranslate', currentLang) : t('enterTextPolish', currentLang);
+    // Grammar notes only apply to a translation
+    grammarToggleSection.hidden = mode !== 'translate';
+  } else {
+    // Only offer Translate for a document once one is selected
     translateDocBtn.hidden = !uploadedFile;
   }
 
-  // For dictionary mode, we show the text input but change the button/placeholder
-  const modeSwitcher = document.querySelector('.mode-switcher');
-  if (tab === 'dictionary') {
-    textModeSection.hidden = false;
-    if (modeSwitcher) modeSwitcher.hidden = true;
-    btnText.textContent = t('lookupWord', currentLang);
-    inputText.placeholder = t('enterWordToLookup', currentLang);
-    grammarToggleSection.hidden = true;
-    actionBtn.hidden = false;
-    loadDictionaryHistory();
-  } else if (tab === 'text') {
-    if (modeSwitcher) modeSwitcher.hidden = false;
-    updateTextMode(currentTextMode);
-  }
-}
-
-/**
- * Update text mode (translate or polish) within the Text tab
- * @param {string} mode - 'translate' or 'polish'
- */
-function updateTextMode(mode) {
-  currentTextMode = mode;
-
-  // Update mode switcher; ARIA state drives the active-look CSS (.mode-switcher-btn[aria-selected="true"])
-  modeTranslate.setAttribute('aria-selected', mode === 'translate' ? 'true' : 'false');
-  modePolish.setAttribute('aria-selected', mode === 'polish' ? 'true' : 'false');
-  modeTranslate.classList.toggle('active', mode === 'translate');
-  modePolish.classList.toggle('active', mode === 'polish');
-
-  // Update button text
-  btnText.textContent = mode === 'translate' ? t('translate', currentLang) : t('polish', currentLang);
-
-  // Update placeholder
-  inputText.placeholder = mode === 'translate' ? t('enterTextTranslate', currentLang) : t('enterTextPolish', currentLang);
-
-  // Show/hide grammar toggle (only in translate mode)
-  grammarToggleSection.hidden = mode !== 'translate';
-
-  // Hide outputs when switching modes
+  // Results belong to the mode that produced them
   hideAllOutputs();
   hideError();
-
-  // Hide all history sections first
-  historySection.hidden = true;
-  polishHistorySection.hidden = true;
-
-  // Load appropriate history
-  if (mode === 'translate') {
-    loadHistory();
-  } else if (mode === 'polish') {
-    loadPolishHistory();
-  }
+  loadRecent();
 }
 
 /**
@@ -717,15 +572,10 @@ function updateTextMode(mode) {
  */
 async function handleAction() {
   if (needsKey) return;
-  const mode = getCurrentMode();
-  if (mode === 'translate') {
+  if (currentMode === 'translate') {
     await handleTranslate();
-  } else if (mode === 'polish') {
+  } else if (currentMode === 'polish') {
     await handlePolish();
-  } else if (mode === 'dictionary') {
-    await handleDictionary();
-  } else if (mode === 'document') {
-    await handleDocumentTranslate();
   }
 }
 
@@ -819,7 +669,7 @@ async function handleTranslate({ sourceLang } = {}) {
       }
     }
 
-    await loadHistory();
+    await loadRecent();
 
     // Update usage stats (analytics event logged in service worker)
     await updateUsageStats({
@@ -827,7 +677,6 @@ async function handleTranslate({ sourceLang } = {}) {
       outputTokens: response.fromCache ? 0 : (response.outputTokens || 0),
       translations: 1
     });
-    await loadStats();
   } catch (error) {
     showError(error.message || 'Translation failed');
   } finally {
@@ -866,7 +715,7 @@ async function handlePolish() {
     }
 
     displayPolishResults(response, text);
-    await loadPolishHistory();
+    await loadRecent();
 
     // Update usage stats (analytics event logged in service worker)
     await updateUsageStats({
@@ -874,7 +723,6 @@ async function handlePolish() {
       outputTokens: response.outputTokens || 0,
       polishes: 1
     });
-    await loadStats();
   } catch (error) {
     showError(error.message || 'Polish failed');
   } finally {
@@ -1198,147 +1046,6 @@ async function handlePolishCopy(btn) {
 }
 
 /**
- * Toggle a collapsible history section
- * @param {HTMLElement} toggleEl - The toggle header element
- * @param {HTMLElement} listEl - The history list element to show/hide
- */
-function toggleHistorySection(toggleEl, listEl) {
-  const isExpanded = toggleEl.classList.contains('expanded');
-  if (isExpanded) {
-    toggleEl.classList.remove('expanded');
-    listEl.hidden = true;
-  } else {
-    toggleEl.classList.add('expanded');
-    listEl.hidden = false;
-  }
-}
-
-/**
- * Handle clear history button click
- */
-/**
- * Wire a destructive button as a two-stage confirm: first click arms it
- * (label changes, danger styling), second click runs the action. Auto-disarms
- * after 3 seconds of inactivity, on mouseleave, or when focus moves away.
- * Replaces previous unguarded "Clear All" behavior - no native confirm() dialog.
- *
- * @param {HTMLButtonElement} btn
- * @param {() => unknown} action
- */
-function attachTwoStageConfirm(btn, action) {
-  if (!btn) return;
-  const originalLabel = btn.textContent;
-  let armed = false;
-  let timer = null;
-
-  const disarm = () => {
-    armed = false;
-    btn.textContent = originalLabel;
-    btn.classList.remove('is-confirming');
-    btn.removeAttribute('aria-live');
-    if (timer) { clearTimeout(timer); timer = null; }
-  };
-
-  btn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    if (!armed) {
-      armed = true;
-      btn.textContent = t('tapToConfirm', currentLang) || 'Tap to confirm';
-      btn.classList.add('is-confirming');
-      btn.setAttribute('aria-live', 'polite');
-      timer = setTimeout(disarm, 3000);
-      return;
-    }
-    disarm();
-    try { await action(); } catch { /* action manages its own errors */ }
-  });
-
-  btn.addEventListener('mouseleave', () => { if (armed) disarm(); });
-  btn.addEventListener('blur', () => { if (armed) disarm(); });
-}
-
-async function handleClearHistory() {
-  await clearHistory();
-  historySection.hidden = true;
-  historyList.innerHTML = '';
-}
-
-/**
- * Handle clear polish history button click
- */
-async function handleClearPolishHistory() {
-  await clearPolishHistory();
-  polishHistorySection.hidden = true;
-  polishHistoryList.innerHTML = '';
-}
-
-/**
- * Open the dedicated history page
- */
-function openHistoryPage() {
-  chrome.tabs.create({ url: chrome.runtime.getURL('history/history.html') });
-}
-
-/**
- * Load and display polish history
- */
-async function loadPolishHistory() {
-  try {
-    const history = await getPolishHistory();
-
-    if (history.length === 0) {
-      polishHistorySection.hidden = true;
-      return;
-    }
-
-    polishHistorySection.hidden = false;
-    renderPolishHistory(history);
-  } catch (error) {
-    // Silently handle polish history load errors
-  }
-}
-
-/**
- * Render polish history items
- * @param {Array} history - Polish history entries
- */
-function renderPolishHistory(history) {
-  polishHistoryList.innerHTML = history.map(entry => {
-    return `
-      <div class="history-item polish-history-item"
-           data-id="${entry.id}"
-           data-original="${escapeAttr(entry.original)}"
-           data-professional="${escapeAttr(entry.professional)}"
-           data-conversational="${escapeAttr(entry.conversational)}"
-           data-concise="${escapeAttr(entry.concise)}">
-        <div class="history-item-content">
-          <div class="history-item-original">${escapeHtml(entry.original)}</div>
-          <div class="history-item-translation">${escapeHtml(entry.professional.slice(0, 50))}${entry.professional.length > 50 ? '...' : ''}</div>
-        </div>
-        <span class="history-item-badge polish-badge">Polish</span>
-      </div>
-    `;
-  }).join('');
-
-  polishHistoryList.querySelectorAll('.polish-history-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const historyId = parseInt(item.dataset.id, 10);
-      const original = item.dataset.original;
-      const professional = item.dataset.professional;
-      const conversational = item.dataset.conversational;
-      const concise = item.dataset.concise;
-
-      inputText.value = original;
-      updateCharCount();
-      updateInputDirection();
-
-      // Show polish results directly with history ID
-      displayPolishResults({ professional, conversational, concise }, original, historyId);
-    });
-  });
-}
-
-/**
  * Set loading state
  * @param {boolean} loading
  */
@@ -1346,6 +1053,7 @@ function setLoadingState(loading) {
   isProcessing = loading;
   actionBtn.disabled = loading || needsKey;
   btnText.hidden = loading;
+  submitKbd.hidden = loading;
   btnLoading.hidden = !loading;
 }
 
@@ -1402,213 +1110,10 @@ function hideError() {
 function hideAllOutputs() {
   outputSection.hidden = true;
   polishSection.hidden = true;
-  dictionarySection.hidden = true;
   cardSlot.replaceChildren();
   currentCardEl = null;
   currentTranslationData = null;
   cancelSpeech();
-}
-
-/**
- * Escape HTML for safe rendering
- */
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-/**
- * Escape attribute value
- */
-function escapeAttr(text) {
-  return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-
-// ============================================
-// Dictionary Functions
-// ============================================
-
-/**
- * Handle dictionary lookup
- */
-async function handleDictionary() {
-  const word = inputText.value.trim();
-
-  if (!word) {
-    showError(t('enterWordToLookup', currentLang));
-    return;
-  }
-
-  // Validate single word
-  if (word.split(/\s+/).length > 1) {
-    showError(t('singleWordOnly', currentLang));
-    return;
-  }
-
-  if (isProcessing) {
-    return;
-  }
-
-  setLoadingState(true);
-  hideError();
-  hideAllOutputs();
-
-  try {
-    const response = await chrome.runtime.sendMessage({
-      action: 'DICTIONARY_LOOKUP',
-      word: word,
-      sourceLang: 'auto'
-    });
-
-    if (response.error) {
-      showError(response.error);
-      return;
-    }
-
-    displayDictionaryResult(response);
-    await loadDictionaryHistory();
-  } catch (error) {
-    showError(error.message || t('noDefinitionFound', currentLang));
-  } finally {
-    setLoadingState(false);
-  }
-}
-
-/**
- * Display dictionary result
- */
-async function displayDictionaryResult(result) {
-  const { word, phonetic, partOfSpeech, definitions, synonyms, antonyms, translation, targetLang } = result;
-
-  // Word and phonetic
-  dictWord.textContent = word;
-
-  // Show provider badge
-  await updateProviderBadge(dictProviderBadge);
-  dictPhonetic.textContent = phonetic || '';
-  dictPhonetic.hidden = !phonetic;
-
-  // Part of speech
-  dictPos.textContent = partOfSpeech || '';
-  dictPos.hidden = !partOfSpeech;
-
-  // Definitions
-  if (definitions && definitions.length > 0) {
-    setSafeInnerHTML(dictDefinitions, definitions.map((def, i) => `
-      <div class="dict-definition-item">
-        <div class="dict-meaning">${i + 1}. ${escapeHtml(def.meaning)}</div>
-        ${def.example ? `<div class="dict-example">"${escapeHtml(def.example)}"</div>` : ''}
-      </div>
-    `).join(''));
-  } else {
-    dictDefinitions.innerHTML = '';
-  }
-
-  // Synonyms
-  if (synonyms && synonyms.length > 0) {
-    setSafeInnerHTML(dictSynonyms, synonyms.slice(0, 5).map(s =>
-      `<span class="dict-tag">${escapeHtml(s)}</span>`
-    ).join(''));
-    dictSynonymsSection.hidden = false;
-  } else {
-    dictSynonymsSection.hidden = true;
-  }
-
-  // Antonyms
-  if (antonyms && antonyms.length > 0) {
-    setSafeInnerHTML(dictAntonyms, antonyms.slice(0, 3).map(a =>
-      `<span class="dict-tag dict-tag-antonym">${escapeHtml(a)}</span>`
-    ).join(''));
-    dictAntonymsSection.hidden = false;
-  } else {
-    dictAntonymsSection.hidden = true;
-  }
-
-  // Translation
-  if (translation) {
-    const isRTL = ['fa', 'ar', 'he'].includes(targetLang);
-    dictTranslation.textContent = translation;
-    dictTranslation.dir = isRTL ? 'rtl' : 'ltr';
-    dictTranslationSection.hidden = false;
-  } else {
-    dictTranslationSection.hidden = true;
-  }
-
-  dictionarySection.hidden = false;
-}
-
-/**
- * Handle dictionary translation copy
- */
-async function handleDictCopy() {
-  const text = dictTranslation.textContent;
-  if (!text) return;
-
-  try {
-    await navigator.clipboard.writeText(text);
-    dictCopyBtn.classList.add('copied');
-    showNotice(t('copied', currentLang));
-    setTimeout(() => {
-      dictCopyBtn.classList.remove('copied');
-    }, 1500);
-  } catch (error) {
-    showNotice(t('copyFailed', currentLang), 'warning');
-  }
-}
-
-/**
- * Load dictionary history
- */
-async function loadDictionaryHistory() {
-  try {
-    const history = await getDictionaryHistory();
-
-    if (history.length === 0) {
-      dictionaryHistorySection.hidden = true;
-      return;
-    }
-
-    dictionaryHistorySection.hidden = false;
-    renderDictionaryHistory(history);
-  } catch (error) {
-    // Silently handle dictionary history load errors
-  }
-}
-
-/**
- * Render dictionary history items
- */
-function renderDictionaryHistory(history) {
-  dictionaryHistoryList.innerHTML = history.map(entry => {
-    return `
-      <div class="history-item dict-history-item" data-word="${escapeAttr(entry.word)}">
-        <div class="history-item-content">
-          <div class="history-item-original">${escapeHtml(entry.word)}</div>
-          <div class="history-item-translation">${escapeHtml(entry.translation || entry.definition || '')}</div>
-        </div>
-        <span class="history-item-badge dict-badge">Dict</span>
-      </div>
-    `;
-  }).join('');
-
-  dictionaryHistoryList.querySelectorAll('.dict-history-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const word = item.dataset.word;
-      inputText.value = word;
-      updateCharCount();
-      handleDictionary();
-    });
-  });
-}
-
-/**
- * Clear dictionary history
- */
-async function handleClearDictionaryHistory() {
-  await clearDictionaryHistory();
-  dictionaryHistorySection.hidden = true;
-  dictionaryHistoryList.innerHTML = '';
 }
 
 // ============================================
@@ -1759,7 +1264,6 @@ async function handleDocumentTranslate() {
             outputTokens: msg.totalOutputTokens || 0,
             translations: 1
           });
-          await loadStats();
         }
         try { port.disconnect(); } catch { /* already closed */ }
         docTranslationPort = null;
@@ -1860,8 +1364,8 @@ function handleImageFileSelect(event) {
  * Handle paste event for clipboard images
  */
 function handlePaste(event) {
-  // Only handle paste when in image tab
-  if (currentTab !== 'image') return;
+  // Only handle paste while the image area is showing
+  if (currentMode !== 'docImage') return;
 
   const items = event.clipboardData?.items;
   if (!items) return;
@@ -2011,7 +1515,6 @@ async function handleImageTranslate() {
       outputTokens: response.outputTokens || 0,
       translations: 1
     });
-    await loadStats();
   } catch (error) {
     showError(error.message || 'Image translation failed');
   } finally {
@@ -2337,7 +1840,6 @@ async function handlePolishRegenerate(btn) {
       outputTokens: response.outputTokens || 0,
       polishes: 0 // Don't count regenerate as new polish
     });
-    await loadStats();
 
     // Update favorite state for this variant
     await updatePolishFavoriteStates();
