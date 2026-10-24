@@ -27,10 +27,9 @@ describe('Library clear all', () => {
   it('asks first, in words that name every kind of history', () => {
     expect(body.indexOf('confirm(')).toBeGreaterThan(-1);
     expect(body.indexOf('confirm(')).toBeLessThan(body.indexOf('clearHistory()'));
-    expect(body).toMatch(/'confirmClearAllHistory'/);
-    expect(body).toMatch(/'confirmClearShownHistory'/);
-    expect(body).toMatch(/'confirmClearFavorites'/);
-    for (const key of ['confirmClearAllHistory', 'confirmClearShownHistory', 'confirmClearFavorites']) {
+    const keys = ['confirmClearAllHistory', 'confirmClearHistoryType', 'confirmClearFavorites', 'confirmClearFavoritesType', 'confirmClearLessons'];
+    for (const key of keys) {
+      expect(js, key).toMatch(new RegExp(`'${key}'`));
       expect(translations.en[key], `en.${key}`).toBeTruthy();
       expect(translations.fa[key], `fa.${key}`).toBeTruthy();
     }

@@ -72,17 +72,17 @@ Save what is worth keeping
 
 Star any translation, polished passage, or grammar lesson, and it goes to your favourites.
 
-Practice turns your saved words into flashcards. Each session deals a handful of cards, one at a time, with the original hidden until you flip the card. Space or Enter flips it, the arrow keys move between cards, and C copies what is showing. Choose how many cards a session holds, from 5 to 30, in Settings. Open Practice from the side panel or from the Library. Grammar lessons stay in the Library for reading and are not dealt as cards. Flipping stays still if your system is set to reduce motion.
+Practice turns your saved words into flashcards. Each session deals a handful of cards, one at a time. A card shows the saved translation, and flipping it reveals the original. Space or Enter flips it, the arrow keys move between cards, and C copies what is showing. Choose how many cards a session holds, from 5 to 30, in Settings. Open Practice from the side panel or from the Library. Grammar lessons stay in the Library for reading and are not dealt as cards. Flipping stays still if your system is set to reduce motion.
 
 
 Library
 
 Everything you translate, polish, or look up is kept in one searchable Library, with tabs for History, Favourites, and Lessons.
 
-- Search it, narrow it to translations, dictionary lookups, or polished text, or to one direction, and results are grouped under Today, This week, and Earlier
-- Star, copy, or open any entry in the side panel, or delete it. A deleted entry can be brought back with Undo for five seconds
+- Search it, narrow it to translations, dictionary lookups, or polished text, or to one direction, and results are grouped under Today, Yesterday, This week, and Earlier
+- Star, copy, or open any entry in the side panel (polished text opens in Polish), or delete it. A deleted entry can be brought back with Undo for five seconds
 - Saved grammar lessons reopen from the Lessons tab exactly as you saved them, with no new request to your provider, so reopening one costs nothing
-- Clear all empties only the tab and type you are looking at
+- Clear all empties only the tab and type you are looking at, and asks first in words that name exactly what will go
 - What you are looking at stays in the page address, so a reload or a saved link brings you back to the same place
 
 

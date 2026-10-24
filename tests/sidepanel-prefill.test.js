@@ -19,13 +19,21 @@ let doc;
 let session;
 let onSessionChanged;
 let modeClicks;
+let polishClicks;
 
 async function setup(stored = {}, { translateSelected = true } = {}) {
   const window = new Window();
   doc = window.document;
-  doc.body.innerHTML = `${chipMarkup}<button id="mode-translate" aria-selected="${translateSelected}"></button><textarea id="input-text"></textarea>`;
+  doc.body.innerHTML = `${chipMarkup}<button id="mode-translate" aria-selected="${translateSelected}"></button><button id="mode-polish" aria-selected="false"></button><textarea id="input-text"></textarea>`;
   modeClicks = 0;
-  doc.getElementById('mode-translate').addEventListener('click', () => { modeClicks += 1; });
+  polishClicks = 0;
+  // Like the popup controller, a click selects that mode and deselects the other.
+  const select = (selected, other) => {
+    doc.getElementById(selected).setAttribute('aria-selected', 'true');
+    doc.getElementById(other).setAttribute('aria-selected', 'false');
+  };
+  doc.getElementById('mode-translate').addEventListener('click', () => { modeClicks += 1; select('mode-translate', 'mode-polish'); });
+  doc.getElementById('mode-polish').addEventListener('click', () => { polishClicks += 1; select('mode-polish', 'mode-translate'); });
   globalThis.document = doc;
   globalThis.Event = window.Event;
   onSessionChanged = undefined;
@@ -126,6 +134,30 @@ describe('side panel prefill', () => {
   it('leaves the mode alone when Translate is already selected', async () => {
     await setup({ panel_prefill: { text: 'Hello', at: Date.now() } });
     expect(modeClicks).toBe(0);
+  });
+
+  it('opens a polish entry in Polish, and switches back to Translate for a translation', async () => {
+    await setup({ panel_prefill: { text: 'hey there', at: Date.now(), mode: 'polish' } });
+    expect(polishClicks).toBe(1);
+    expect(modeClicks).toBe(0);
+    expect(doc.getElementById('mode-polish').getAttribute('aria-selected')).toBe('true');
+    expect(input().value).toBe('hey there');
+
+    onSessionChanged({ panel_prefill: { newValue: { text: 'Hello', at: Date.now(), mode: 'translate' } } });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(modeClicks).toBe(1);
+    expect(doc.getElementById('mode-translate').getAttribute('aria-selected')).toBe('true');
+    expect(input().value).toBe('Hello');
+  });
+
+  it('treats a prefill with no mode, written by an older Library, as a translation', async () => {
+    await setup({}, { translateSelected: false });
+    doc.getElementById('mode-polish').setAttribute('aria-selected', 'true');
+    onSessionChanged({ panel_prefill: { newValue: { text: 'Hello', at: Date.now() } } });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(modeClicks).toBe(1);
+    expect(polishClicks).toBe(0);
+    expect(input().value).toBe('Hello');
   });
 
   it('drops a stale prefill instead of filling a later panel with it', async () => {

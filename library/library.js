@@ -343,13 +343,15 @@ async function toggleFavorite(entry, button) {
 }
 
 /**
- * Hand the entry's text to the side panel and open it. sidePanel.open() only
- * works inside the click's user gesture, so nothing is awaited before it; the
- * panel picks the text up from session storage when it loads, or through
- * onChanged when it is already open (sidepanel/panel.js).
+ * Hand the entry's text to the side panel and open it, in Polish for a polish
+ * entry and Translate otherwise. sidePanel.open() only works inside the
+ * click's user gesture, so nothing is awaited before it; the panel picks the
+ * text up from session storage when it loads, or through onChanged when it
+ * is already open (sidepanel/panel.js).
  */
 function openInPanel(entry) {
-  chrome.storage.session.set({ panel_prefill: { text: entry.original, at: Date.now(), windowId } })
+  const mode = entry.kind === 'polish' ? 'polish' : 'translate';
+  chrome.storage.session.set({ panel_prefill: { text: entry.original, at: Date.now(), windowId, mode } })
     .catch(error => console.error('ParsiPad: could not hand the text to the side panel', error));
   chrome.sidePanel.open({ windowId })
     .catch(error => console.error('ParsiPad: could not open the side panel', error));
@@ -381,19 +383,39 @@ const HISTORY_CLEARERS = {
   dictionary: clearDictionaryHistory
 };
 
+const CLEAR_TYPE_NAMES = {
+  translation: 'clearTypeTranslation',
+  polish: 'clearTypePolish',
+  dictionary: 'clearTypeDictionary'
+};
+
+/**
+ * The question Clear all asks, naming exactly what goes. The search and the
+ * direction filter are mentioned only when they hide part of it.
+ * @param {import('../lib/library-model.js').LibraryEntry[]} scope - What will be cleared
+ */
+function clearQuestion(scope) {
+  let key;
+  if (state.tab === 'lessons') key = 'confirmClearLessons';
+  else if (state.tab === 'favorites') key = state.type === 'all' ? 'confirmClearFavorites' : 'confirmClearFavoritesType';
+  else key = state.type === 'all' ? 'confirmClearAllHistory' : 'confirmClearHistoryType';
+
+  const someHidden = filterEntries(scope, { dir: state.dir, q: state.q }).length < scope.length;
+  return t(key, currentLang)
+    .replace('{type}', CLEAR_TYPE_NAMES[state.type] ? t(CLEAR_TYPE_NAMES[state.type], currentLang) : '')
+    .replace('{hidden}', someHidden ? t('confirmClearHidden', currentLang) : '');
+}
+
 /**
  * Clear what the active tab and type chip hold; search and direction narrow
- * what is shown, not what Clear all means. History under All clears the
- * dictionary lookups too: they have no other place to be cleared from.
+ * what is shown, not what Clear all means, and the question says so. History
+ * under All clears the dictionary lookups too: they have no other place to be
+ * cleared from.
  */
 async function handleClearAll() {
   const scope = filterEntries(tabEntries(), { type: activeType() });
   if (!scope.length) return;
-
-  const question = state.tab !== 'history'
-    ? 'confirmClearFavorites'
-    : state.type === 'all' ? 'confirmClearAllHistory' : 'confirmClearShownHistory';
-  if (!confirm(t(question, currentLang))) return;
+  if (!confirm(clearQuestion(scope))) return;
 
   // Settle pending deletes first, so no Undo can bring back what is cleared.
   closeStatus();

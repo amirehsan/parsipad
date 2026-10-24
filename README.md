@@ -210,15 +210,15 @@ Save your best translations and polished text:
 Everything you translate, polish or look up is kept in the Library:
 1. Open it from the Library link in the popup or the side panel
 2. Switch between the History, Favorites and Lessons tabs
-3. Search, filter by type (translation, dictionary, polish) and by direction
-4. Star, copy, open in the side panel or delete any entry; Undo brings back a delete for five seconds
+3. Search, filter by type (translation, dictionary, polish) and by direction; entries are grouped under Today, Yesterday, This week and Earlier
+4. Star, copy, open in the side panel (a polished text opens in Polish) or delete any entry; Undo brings back a delete for five seconds
 5. Reopen a saved grammar lesson from the Lessons tab with no new request to your provider
 
 ### Practice
 
 Review your favorites as flashcards:
 1. Open Practice from the side panel or the Library
-2. Click a card, or press `Space` or `Enter`, to flip it and reveal the original text
+2. Each card shows the saved translation. Click it, or press `Space` or `Enter`, to flip it and reveal the original text
 3. Use keyboard shortcuts:
    - `←` / `→` - Navigate between cards
    - `Space` / `Enter` - Flip card
