@@ -2,7 +2,7 @@ import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
 import { getHistory, clearHistory, getPolishHistory, clearPolishHistory, getDictionaryHistory, clearDictionaryHistory } from '../lib/history.js';
 import { getTheme, setTheme, getUsageStats, updateUsageStats, resetUsageStats, getLanguage, getSelectedProvider, getFavorites, isFavorite, claimReviewPrompt, respondToReviewPrompt } from '../lib/storage.js';
-import { PROVIDER_CONFIGS, ACTIONS } from '../lib/constants.js';
+import { PROVIDER_CONFIGS, ACTIONS, STORE_REVIEWS_URL } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 import { setSafeInnerHTML } from '../lib/sanitize.js';
 import { renderCard, injectCardStyles } from '../shared/card/index.js';
@@ -2300,9 +2300,17 @@ async function answerReviewPrompt(response) {
   }
 }
 
-/** "Rate" follows the link itself; this only records the answer. */
-function handleReviewRateClick() {
-  answerReviewPrompt('rated');
+/**
+ * Record the rating first, then open the store. Following the link directly
+ * closes the popup at once, often before the answer reaches storage, and the
+ * user who just rated would be asked again in two weeks. The href stays so
+ * middle-click and "open in new tab" still work.
+ * @param {MouseEvent} event
+ */
+async function handleReviewRateClick(event) {
+  event.preventDefault();
+  await answerReviewPrompt('rated');
+  chrome.tabs.create({ url: STORE_REVIEWS_URL });
 }
 
 /** "Later" and the close button both snooze; neither means never. */

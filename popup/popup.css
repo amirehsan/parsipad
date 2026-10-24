@@ -1726,9 +1726,6 @@ body {
   color: var(--color-warning-500);
 }
 
-[data-theme="dark"] .review-prompt-content {
-  color: var(--color-warning-100);
-}
 
 .review-prompt-icon {
   font-size: 18px;
@@ -1771,12 +1768,15 @@ body {
   background: var(--color-warning-100);
 }
 
-[data-theme="dark"] .review-btn-secondary {
-  color: var(--color-warning-500);
+/* In dark mode the warning steps swap roles: 500 is the light amber that
+   carries text and 100 is the dark ground, so the banner's text rules above
+   already read correctly. Only the filled button needs a dark label. */
+[data-theme="dark"] .review-btn-primary {
+  color: var(--color-bg);
 }
 
 [data-theme="dark"] .review-btn-secondary:hover {
-  color: var(--color-warning-100);
+  background: rgba(232, 180, 92, 0.14);
 }
 
 .review-btn-icon {
