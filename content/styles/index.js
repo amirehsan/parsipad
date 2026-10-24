@@ -115,11 +115,23 @@ export function getPageProgressStyles() {
       margin-bottom: 8px;
     }
 
+    /* Filled by scaleX from updatePageProgress, from the start of the line. */
     .parsipad-progress-bar {
+      width: 100%;
       height: 100%;
       background: linear-gradient(90deg, var(--pp-accent), var(--pp-accent-strong));
       border-radius: 3px;
-      transition: width 0.3s ease;
+      transform-origin: left;
+    }
+
+    [dir='rtl'] .parsipad-progress-bar {
+      transform-origin: right;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .parsipad-progress-bar {
+        transition: transform 0.3s ease;
+      }
     }
 
     .parsipad-progress-text {
@@ -299,7 +311,6 @@ export function getPageToggleStyles() {
 
     .parsipad-toggle-btn.showing-translated:hover {
       background: var(--pp-accent-strong);
-      transform: scale(1.08);
       box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4),
                   0 3px 8px rgba(27, 24, 38, 0.12);
     }
@@ -312,13 +323,18 @@ export function getPageToggleStyles() {
 
     .parsipad-toggle-btn.showing-original:hover {
       background: var(--pp-bg-secondary);
-      transform: scale(1.08);
       box-shadow: 0 6px 20px rgba(27, 24, 38, 0.15),
                   0 3px 8px rgba(27, 24, 38, 0.1);
     }
 
-    .parsipad-toggle-btn:active {
-      transform: scale(0.96);
+    @media (prefers-reduced-motion: no-preference) {
+      .parsipad-toggle-btn:hover {
+        transform: scale(1.08);
+      }
+
+      .parsipad-toggle-btn:active {
+        transform: scale(0.96);
+      }
     }
   `;
 }
@@ -425,12 +441,15 @@ export function getSelectionPopupStyles() {
       padding: 6px;
     }
 
-    .selection-popup[data-placement='above'] {
-      animation: popup-spring-in-above 200ms cubic-bezier(0.16, 1, 0.3, 1);
-    }
+    /* Keyframes stay outside the guard; only their use is guarded. */
+    @media (prefers-reduced-motion: no-preference) {
+      .selection-popup[data-placement='above'] {
+        animation: popup-spring-in-above 200ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
 
-    .selection-popup[data-placement='below'] {
-      animation: popup-spring-in-below 200ms cubic-bezier(0.16, 1, 0.3, 1);
+      .selection-popup[data-placement='below'] {
+        animation: popup-spring-in-below 200ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
     }
 
     @keyframes popup-spring-in-above {
@@ -475,7 +494,6 @@ export function getSelectionPopupStyles() {
       /* Brand-tint background; brighter brand color in dark mode for legibility */
       background: rgba(99, 102, 241, 0.18);
       color: var(--pp-accent);
-      transform: scale(1.05);
     }
 
     :host([data-theme='dark']) .selection-btn:hover {
@@ -487,10 +505,6 @@ export function getSelectionPopupStyles() {
       outline-offset: 2px;
     }
 
-    .selection-btn:active {
-      transform: scale(0.95);
-    }
-
     .selection-btn.disabled {
       opacity: 0.4;
       cursor: not-allowed;
@@ -499,7 +513,20 @@ export function getSelectionPopupStyles() {
     .selection-btn.disabled:hover {
       background: transparent;
       color: var(--pp-text-secondary);
-      transform: none;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .selection-btn:hover {
+        transform: scale(1.05);
+      }
+
+      .selection-btn:active {
+        transform: scale(0.95);
+      }
+
+      .selection-btn.disabled:hover {
+        transform: none;
+      }
     }
 
     .selection-btn svg {
@@ -587,7 +614,6 @@ export function getStyles() {
       border: 1px solid var(--pp-border);
       min-width: 280px;
       max-width: 450px;
-      animation: parsipad-fade-in 150ms ease-out;
       font-size: 14px;
       line-height: 1.5;
       color: var(--pp-text);
@@ -601,6 +627,12 @@ export function getStyles() {
       to {
         opacity: 1;
         transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .parsipad-box {
+        animation: parsipad-fade-in 150ms ease-out;
       }
     }
 
@@ -1085,8 +1117,13 @@ export function getStyles() {
     }
 
     .parsipad-polish-card:hover {
-      transform: translateY(-1px);
       box-shadow: 0 4px 6px -1px rgba(27, 24, 38, 0.1);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .parsipad-polish-card:hover {
+        transform: translateY(-1px);
+      }
     }
 
     .parsipad-polish-card-header {
@@ -1157,13 +1194,15 @@ export function getStyles() {
       color: var(--pp-accent);
     }
 
-    .parsipad-polish-regenerate.loading svg {
-      animation: parsipad-spin 1s linear infinite;
-    }
-
     @keyframes parsipad-spin {
       from { transform: rotate(0deg); }
       to { transform: rotate(360deg); }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .parsipad-polish-regenerate.loading svg {
+        animation: parsipad-spin 1s linear infinite;
+      }
     }
 
     .parsipad-polish-regenerate:disabled {
