@@ -511,6 +511,11 @@ describe('side panel', () => {
     expect(chrome.sidePanel.open).toHaveBeenLastCalledWith({ tabId: 7 });
   });
 
+  it('SELECTION_CHANGED is acknowledged rather than rejected as unknown', async () => {
+    const res = await sendMessage({ action: 'SELECTION_CHANGED', text: 'hello' }, { tab: { id: 1 } });
+    expect(res).toEqual({ ok: true });
+  });
+
   it('registers a context menu item that opens the panel', () => {
     const ids = chrome.contextMenus.create.mock.calls.map(c => c[0].id);
     expect(ids).toContain('parsipad-open-side-panel');

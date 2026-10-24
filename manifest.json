@@ -96,6 +96,7 @@
         "content/context.js",
         "content/placement.js",
         "content/host-page.js",
+        "content/selection-report.js",
         "content/utils/*.js",
         "content/blocks/*.js",
         "content/styles/*.js",

@@ -11,3 +11,61 @@ body[data-surface="panel"] {
   width: auto;
   max-width: none;
 }
+
+/* The page selection offered by the content script: a tinted box with a small
+   label above the first line of the text and a compact Translate button. */
+.selection-chip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-inline-actions);
+  row-gap: var(--space-inline-actions);
+  margin-bottom: var(--space-stack-item);
+  padding: var(--space-stack-item) var(--space-inset-card);
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.selection-chip[hidden] {
+  display: none;
+}
+
+.selection-chip-label {
+  grid-column: 1 / -1;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.selection-chip-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.selection-chip button {
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  background-color: var(--button-primary-bg);
+  color: var(--button-primary-text);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.selection-chip button:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.selection-chip button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
