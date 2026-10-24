@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { createPageRun, markBatch, failedIndexes, summarizeRun, summaryMessageKey } from '../content/utils/page-run.js';
+import { createPageRun, markBatch, failedIndexes, unfinishedIndexes, summarizeRun, summaryMessageKey } from '../content/utils/page-run.js';
 import { functionBody } from './helpers/source.js';
 
 const js = fs.readFileSync(path.resolve(__dirname, '../content/main.js'), 'utf8');
@@ -20,6 +20,15 @@ describe('page run', () => {
     expect(summaryMessageKey(summarizeRun(run), false)).toBe('pageTranslatePartial');
     markBatch(run, 1, 'ok');
     expect(summaryMessageKey(summarizeRun(run), false)).toBe('pageTranslateDone');
+  });
+
+  it('a resume sends what failed and what was never sent', () => {
+    const run = createPageRun(4);
+    markBatch(run, 0, 'ok'); markBatch(run, 1, 'failed');
+    expect(unfinishedIndexes(run)).toEqual([1, 2, 3]);
+    expect(failedIndexes(run)).toEqual([1]);
+    markBatch(run, 1, 'ok'); markBatch(run, 2, 'ok'); markBatch(run, 3, 'ok');
+    expect(unfinishedIndexes(run)).toEqual([]);
   });
 
   it('keeps work on cancel and retries only failures', () => {

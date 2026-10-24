@@ -13,8 +13,16 @@ const en = translations.en;
 const fa = translations.fa;
 
 let h;
+// A stand-in for window.navigation, which happy-dom lacks; the content
+// script must find it when it loads.
+const navigation = new EventTarget();
+// History.prototype.pushState is the browser's own; the content script
+// patches only the history instance. Calling the original changes the URL
+// as a page script in the main world would, unseen by the patch.
+const unpatchedPushState = (url) => History.prototype.pushState.call(history, {}, '', url);
 
 beforeAll(async () => {
+  Object.defineProperty(window, 'navigation', { value: navigation, configurable: true });
   h = await loadContentScript();
 });
 
@@ -72,6 +80,9 @@ function holdBatch(held) {
 }
 
 const failure = { type: 'error', message: 'Rate limit exceeded', code: 'RATE_LIMIT' };
+const firstLine = (port) => port.started.text.split('\n')[0];
+const escapeFrom = (target) =>
+  target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }));
 
 const fill = (template, values) =>
   Object.entries(values).reduce((s, [k, v]) => s.replace(`{${k}}`, String(v)), template);
@@ -330,5 +341,131 @@ describe('navigation', () => {
     await vi.waitFor(() => expect(toastAction()?.hidden).toBe(false));
     history.pushState({}, '', '/elsewhere');
     expect(toastHost()).toBeNull();
+  });
+});
+
+describe('nothing finished is lost', () => {
+  it('Retry failed stays on screen until the user acts on it or closes it', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      h.answer = (msg, port) => (h.ports.indexOf(port) === 1 ? failure : translateLines(msg));
+      translatePage();
+      await vi.waitFor(() => expect(toastAction()?.hidden).toBe(false));
+      // Well past the 10 s a toast normally stays.
+      await vi.advanceTimersByTimeAsync(30000);
+      expect(toastHost()).not.toBeNull();
+      expect(toastAction().hidden).toBe(false);
+      toast().querySelector('.close').click();
+      expect(toastHost()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a summary with nothing to act on still closes itself', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      document.body.innerHTML = paragraphs(3);
+      translatePage();
+      await vi.waitFor(() => expect(toastMessage()).toBe(en.pageTranslateDone));
+      await vi.advanceTimersByTimeAsync(11000);
+      expect(toastHost()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('Translate Page resumes the failed batch without asking, then toggles once all is done', async () => {
+    h.store.delete('confirm_page_translate');
+    h.answer = (msg, port) => (h.ports.indexOf(port) === 1 ? failure : translateLines(msg));
+    translatePage();
+    const go = () => overlay()?.querySelector('[role="dialog"] [data-action="go"]');
+    await vi.waitFor(() => expect(go()).toBeTruthy());
+    go().click();
+    await vi.waitFor(() => expect(toastAction()?.hidden).toBe(false));
+    const keyChecks = () => h.sent.filter((m) => m.action === 'CHECK_API_KEY').length;
+    const checksBefore = keyChecks();
+
+    // As the popup, the side panel, the shortcut and the context menu send it.
+    translatePage();
+    // The summary whose Retry this replaces goes at once.
+    expect(toastHost()).toBeNull();
+    await vi.waitFor(() => expect(toastMessage()).toBe(en.pageTranslateDone));
+    expect(h.ports).toHaveLength(4);
+    expect(firstLine(h.ports[3])).toBe('[1] Paragraph 21.');
+    expect(overlay()?.querySelector('[role="dialog"]') ?? null).toBeNull();
+    expect(keyChecks()).toBe(checksBefore + 1);
+    expect(text(21)).toBe('FA:Paragraph 21.');
+
+    // Complete now: Translate Page toggles to the original, with no request.
+    translatePage();
+    await settle();
+    expect(h.ports).toHaveLength(4);
+    expect(text(1)).toBe('Paragraph 1.');
+    expect(pageState().isShowingTranslated).toBe(false);
+  });
+
+  it('Translate Page after a Stop sends only the sections that never finished', async () => {
+    const release = holdBatch(1);
+    try {
+      translatePage();
+      await vi.waitFor(() => expect(h.ports).toHaveLength(2));
+      escapeFrom(document.body);
+      await vi.waitFor(() => expect(toastMessage()).toBe(fill(en.pageTranslateStopped, { done: 1, total: 3 })));
+    } finally {
+      release();
+    }
+    translatePage();
+    await vi.waitFor(() => expect(toastMessage()).toBe(en.pageTranslateDone));
+    expect(h.ports).toHaveLength(4);
+    expect(firstLine(h.ports[2])).toBe('[1] Paragraph 21.');
+    expect(firstLine(h.ports[3])).toBe('[1] Paragraph 41.');
+    expect(text(1)).toBe('FA:Paragraph 1.');
+    expect(text(45)).toBe('FA:Paragraph 45.');
+  });
+});
+
+describe('Escape and text fields', () => {
+  it('Escape in a text field is left to the field; the run goes on', async () => {
+    document.body.insertAdjacentHTML('afterbegin', '<input id="search" type="search">');
+    const release = holdBatch(1);
+    const search = document.getElementById('search');
+    search.focus();
+    translatePage();
+    await vi.waitFor(() => expect(h.ports).toHaveLength(2));
+    escapeFrom(search);
+    await settle();
+    expect(pageState().isTranslating).toBe(true);
+    release();
+    await vi.waitFor(() => expect(toastMessage()).toBe(en.pageTranslateDone));
+    expect(h.ports).toHaveLength(3);
+  });
+});
+
+describe('restoring after a route change', () => {
+  it('a text node the SPA replaced inside a kept element still gets its element cleaned up', async () => {
+    document.body.innerHTML = paragraphs(3);
+    translatePage();
+    await vi.waitFor(() => expect(pageState().isTranslated).toBe(true));
+    const kept = document.getElementById('p2');
+    expect(kept.getAttribute('dir')).toBe('rtl');
+    kept.firstChild.remove();
+    kept.append('Fresh content.');
+    history.pushState({}, '', '/next');
+    expect(kept.textContent).toBe('Fresh content.');
+    expect(kept.hasAttribute('dir')).toBe(false);
+    expect(kept.hasAttribute('data-parsipad-translated')).toBe(false);
+    expect(text(1)).toBe('Paragraph 1.');
+  });
+
+  it('a route change the page made in its own world is seen through window.navigation', async () => {
+    document.body.innerHTML = paragraphs(3);
+    translatePage();
+    await vi.waitFor(() => expect(pageState().isTranslated).toBe(true));
+    unpatchedPushState('/from-the-page');
+    navigation.dispatchEvent(new Event('currententrychange'));
+    expect(text(1)).toBe('Paragraph 1.');
+    expect(toggleButton()).toBeNull();
+    expect(pageState().isTranslated).toBe(false);
   });
 });
