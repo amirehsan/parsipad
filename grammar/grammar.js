@@ -31,6 +31,10 @@ let originalText = '';
 let translation = '';
 let direction = '';
 let savedId = '';
+// Id of the stored record behind the lesson when it was reopened from the
+// Library. It can differ from the hash id (empty translation, older ids), so
+// removal goes by this one.
+let savedRecordId = '';
 let isSaved = false;
 let isSpeaking = false;
 
@@ -197,16 +201,24 @@ async function loadLesson() {
   // This runs before the empty-text guard: with only ?saved= in the URL the
   // texts are empty until the stored lesson fills them in.
   if (savedId) {
-    const saved = lessonFromFavorite(await isFavorite(savedId));
-    if (!saved) {
+    try {
+      const saved = lessonFromFavorite(await isFavorite(savedId));
+      if (!saved) {
+        showError(t('savedLessonMissing', currentLang), { retry: false });
+        return;
+      }
+      ({ originalText, translation, direction } = saved);
+      lessonData = saved;
+      isSaved = true;
+      savedRecordId = savedId;
+      updateSaveButton();
+      renderLesson();
+    } catch (error) {
+      // Unreadable storage or a malformed stored lesson: there is nothing to
+      // retry, so leave the spinner with the same way back to the Library.
+      console.error('Failed to open saved lesson:', error);
       showError(t('savedLessonMissing', currentLang), { retry: false });
-      return;
     }
-    ({ originalText, translation, direction } = saved);
-    lessonData = saved;
-    isSaved = true;
-    updateSaveButton();
-    renderLesson();
     return;
   }
 
@@ -753,7 +765,8 @@ async function handleSave() {
 
   try {
     if (isSaved) {
-      await removeFavorite(favoriteId);
+      await removeFavorite(savedRecordId || favoriteId);
+      savedRecordId = '';
       isSaved = false;
     } else {
       await addFavorite({

@@ -31,6 +31,16 @@ describe('saved lesson', () => {
     expect(lesson.grammarPoints).toEqual([]);
     expect(lesson.relatedPatterns).toEqual([]);
   });
+  it('falls back to English to Persian when the saved direction is missing', () => {
+    expect(lessonFromFavorite({ ...fav, direction: undefined }).direction).toBe('en-to-fa');
+  });
+  it('ignores points and patterns that are not lists, and drops entries that are not objects', () => {
+    const odd = lessonFromFavorite({ ...fav, lesson: { title: 'x', points: 'oops', relatedPatterns: 'nope' } });
+    expect(odd.grammarPoints).toEqual([]);
+    expect(odd.relatedPatterns).toEqual([]);
+    const mixed = lessonFromFavorite({ ...fav, lesson: { title: 'x', points: [null, 'a', { title: 'ok' }, 3] } });
+    expect(mixed.grammarPoints).toEqual([{ title: 'ok' }]);
+  });
   it('has the missing-lesson copy in both locales', async () => {
     const { translations } = await import('../lib/i18n.js');
     for (const lang of ['en', 'fa']) {

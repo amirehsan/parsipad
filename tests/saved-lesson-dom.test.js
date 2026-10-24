@@ -37,7 +37,7 @@ let store;
 let sendMessage;
 let initListeners;
 
-async function openGrammar(search, favorites) {
+async function openGrammar(search, favorites, { failFavorites = false } = {}) {
   store = { favorites };
   sendMessage = vi.fn().mockResolvedValue({ error: 'GRAMMAR_TIMEOUT' });
   globalThis.chrome = {
@@ -46,6 +46,7 @@ async function openGrammar(search, favorites) {
         get: vi.fn(async (key) => {
           const keys = Array.isArray(key) ? key : [key];
           const out = {};
+          if (failFavorites && keys.includes('favorites')) throw new Error('storage unavailable');
           for (const k of keys) if (k in store) out[k] = structuredClone(store[k]);
           return out;
         }),
@@ -134,5 +135,42 @@ describe('grammar page: a saved lesson', () => {
     expect($('#retry-btn').hidden).toBe(false);
     expect($('#error-library-link').hidden).toBe(true);
     expect(sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders a lesson whose stored points are not a list', async () => {
+    await openGrammar(`?saved=${GRAMMAR_ID}`, [{ ...grammarFav, lesson: { title: 'Past simple', points: 'oops' } }]);
+    expect($('#lesson-content').hidden).toBe(false);
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('renders a lesson whose stored points include a null entry', async () => {
+    await openGrammar(`?saved=${GRAMMAR_ID}`, [{ ...grammarFav, lesson: { title: 'Past simple', points: [null, { title: 'Kept point' }] } }]);
+    expect($('#lesson-content').hidden).toBe(false);
+    expect(document.body.textContent).toContain('Kept point');
+  });
+
+  it('leaves the spinner with the missing message when storage cannot be read', async () => {
+    await openGrammar(`?saved=${GRAMMAR_ID}`, [grammarFav], { failFavorites: true });
+    expect($('#loading-section').hidden).toBe(true);
+    expect($('#error-message').textContent).toBe(translations.en.savedLessonMissing);
+    expect($('#retry-btn').hidden).toBe(true);
+    expect(console.error).toHaveBeenCalled();
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('removes a reopened record whose id is not the hash of its texts', async () => {
+    await openGrammar('?saved=grammar_legacy', [{ ...grammarFav, id: 'grammar_legacy', savedText: '' }]);
+    $('#save-btn').click();
+    await vi.waitFor(() => expect(store.favorites).toEqual([]));
+  });
+
+  it('saves again under the hash id after a reopened record is removed, and removes that', async () => {
+    await openGrammar('?saved=grammar_legacy', [{ ...grammarFav, id: 'grammar_legacy' }]);
+    $('#save-btn').click();
+    await vi.waitFor(() => expect(store.favorites).toEqual([]));
+    $('#save-btn').click();
+    await vi.waitFor(() => expect(store.favorites.map(f => f.id)).toEqual([GRAMMAR_ID]));
+    $('#save-btn').click();
+    await vi.waitFor(() => expect(store.favorites).toEqual([]));
   });
 });
