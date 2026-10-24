@@ -20,6 +20,11 @@ body {
   font-family: var(--font-persian);
 }
 
+:root {
+  /* One height for every control in the filter row, so they share a line. */
+  --lib-control-height: 2.5rem;
+}
+
 .lib-page {
   display: flex;
   flex-direction: column;
@@ -90,6 +95,12 @@ body {
 }
 
 /* Tabs and filters */
+.lib-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-stack-section);
+}
+
 .lib-panel {
   display: flex;
   flex-direction: column;
@@ -120,14 +131,30 @@ body {
   color: var(--color-text-secondary);
 }
 
+.lib-filters .pp-input {
+  height: var(--lib-control-height);
+  padding-block: 0;
+}
+
 .lib-select {
   width: auto;
   min-width: 10rem;
 }
 
+/* Chips and Clear All: a row as tall as the inputs, its contents centred on it */
+.lib-filter-actions {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-inline-actions);
+  min-height: var(--lib-control-height);
+}
+
 .lib-types {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-inline-actions);
 }
 
@@ -135,21 +162,27 @@ body {
   display: none;
 }
 
-.lib-chip {
+.lib-chip,
+.lib-clear {
   min-height: 2rem;
-  padding: var(--space-1) var(--space-3);
+  padding: var(--space-1) var(--space-stack-item);
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
   color: var(--color-text-secondary);
   font: inherit;
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
   cursor: pointer;
   transition: background-color var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out);
 }
 
-.lib-chip:hover {
+.lib-chip {
+  border-radius: var(--radius-full);
+}
+
+.lib-chip:hover,
+.lib-clear:hover {
   border-color: var(--color-border-strong);
   color: var(--color-text);
 }
@@ -160,13 +193,19 @@ body {
   color: var(--button-primary-text);
 }
 
-.lib-chip:focus-visible {
+.lib-chip:focus-visible,
+.lib-clear:focus-visible {
   outline: var(--ring-width) solid var(--ring-color);
   outline-offset: var(--ring-offset);
 }
 
 .lib-clear {
   margin-inline-start: auto;
+  border-radius: var(--radius-md);
+}
+
+.lib-clear[hidden] {
+  display: none;
 }
 
 /* Day groups */
@@ -200,7 +239,7 @@ body {
 .lib-toast {
   position: fixed;
   inset-inline: 0;
-  bottom: var(--space-6);
+  bottom: var(--space-stack-section);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -208,7 +247,7 @@ body {
   width: max-content;
   max-width: calc(100% - 2 * var(--space-inset-card));
   margin-inline: auto;
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-stack-group);
   border-radius: var(--radius-lg);
   background: var(--color-gray-900);
   color: var(--color-gray-50);
@@ -308,9 +347,36 @@ body {
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* A divider where the columns meet, so a right-aligned Persian column does
+   not run into a left-aligned English one. Physical sides, not inline ones:
+   the result block carries its own text's dir, so its inline start can be
+   the far edge. The page's dir decides which side the columns meet on. */
+.lib-pair > .lib-result {
+  border-left: 1px solid var(--color-border);
+  padding-left: var(--space-stack-group);
+}
+
+:root[dir="rtl"] .lib-pair > .lib-result {
+  border-left: 0;
+  padding-left: 0;
+  border-right: 1px solid var(--color-border);
+  padding-right: var(--space-stack-group);
+}
+
 @media (max-width: 560px) {
   .lib-pair {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Stacked, the columns meet top to bottom */
+  .lib-pair > .lib-result,
+  :root[dir="rtl"] .lib-pair > .lib-result {
+    border-left: 0;
+    border-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--space-stack-item);
   }
 }
 

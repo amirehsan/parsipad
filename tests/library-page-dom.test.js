@@ -188,13 +188,44 @@ describe('library page: delete and undo', () => {
     await openLibrary();
     action('translation:1', 'delete').click();
     expect(cards()).not.toContain('translation:1');
-    expect(status()).toBe(en.libraryDeleted);
     expect($('#library-undo').hidden).toBe(false);
+    await vi.waitFor(() => expect(status()).toBe(en.libraryDeleted));
     await vi.waitFor(() => expect(store.translation_history.map(h => h.id)).toEqual([2]));
 
     $('#library-undo').click();
     await vi.waitFor(() => expect(store.translation_history.map(h => h.id)).toEqual([1, 2]));
     await vi.waitFor(() => expect(cards()).toContain('translation:1'));
+    expect($('#library-undo').hidden).toBe(true);
+  });
+
+  it('announces a second identical message as a change, not as nothing', async () => {
+    await openLibrary();
+    action('translation:1', 'delete').click();
+    await vi.waitFor(() => expect(status()).toBe(en.libraryDeleted));
+    action('dictionary:5', 'delete').click();
+    expect(status()).toBe('');
+    await vi.waitFor(() => expect(status()).toBe(en.libraryDeleted));
+  });
+
+  it('does not bring back a delete made while an Undo was being written', async () => {
+    await openLibrary();
+    action('translation:1', 'delete').click();
+    await vi.waitFor(() => expect(store.translation_history.map(h => h.id)).toEqual([2]));
+    $('#library-undo').click();
+    action('dictionary:5', 'delete').click();
+    await vi.waitFor(() => expect(store.translation_history.map(h => h.id)).toEqual([1, 2]));
+    await vi.waitFor(() => expect(store.dictionary_history).toEqual([]));
+    await vi.waitFor(() => expect(cards()).toContain('translation:1'));
+    await settle();
+    expect(cards()).not.toContain('dictionary:5');
+  });
+
+  it('closes the status on leaving, so a page restored from the back cache shows no dead Undo', async () => {
+    await openLibrary();
+    action('translation:1', 'delete').click();
+    await vi.waitFor(() => expect(status()).toBe(en.libraryDeleted));
+    window.dispatchEvent(new Event('pagehide'));
+    expect(status()).toBe('');
     expect($('#library-undo').hidden).toBe(true);
   });
 
@@ -304,13 +335,20 @@ describe('library page: card actions', () => {
   });
 
   it('unstarring on the Favorites tab removes the favorite with Undo', async () => {
-    await openLibrary('?tab=favorites');
+    const data = seed();
+    data.favorites.splice(1, 0, { id: 'fav_2', type: 'translation', originalText: 'Thanks', savedText: 'ممنون', direction: 'en-fa', timestamp: NOW - 2 * 60e3 });
+    await openLibrary('?tab=favorites', data);
     action('favorite:fav_1', 'favorite').click();
     expect(cards()).not.toContain('favorite:fav_1');
     expect($('#library-undo').hidden).toBe(false);
-    await vi.waitFor(() => expect(store.favorites.map(f => f.id)).toEqual(['grammar_1']));
+    expect(document.activeElement.getAttribute('data-action')).toBe('favorite');
+    expect(document.activeElement.closest('.lib-card').getAttribute('data-key')).toBe('favorite:fav_2');
+    await vi.waitFor(() => expect(status()).toBe(en.libraryRemovedFavorite));
+    expect(translations.fa.libraryRemovedFavorite).toBeTruthy();
+    expect(en.libraryRemovedFavorite).not.toBe(en.libraryDeleted);
+    await vi.waitFor(() => expect(store.favorites.map(f => f.id)).toEqual(['fav_2', 'grammar_1']));
     $('#library-undo').click();
-    await vi.waitFor(() => expect(store.favorites.map(f => f.id)).toEqual(['fav_1', 'grammar_1']));
-    await vi.waitFor(() => expect(cards()).toEqual(['favorite:fav_1']));
+    await vi.waitFor(() => expect(store.favorites.map(f => f.id)).toEqual(['fav_1', 'fav_2', 'grammar_1']));
+    await vi.waitFor(() => expect(cards()).toEqual(['favorite:fav_1', 'favorite:fav_2']));
   });
 });

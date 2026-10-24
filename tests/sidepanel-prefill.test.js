@@ -18,11 +18,14 @@ const chipMarkup = panelHtml.match(/<div id="selection-chip"[\s\S]*?<\/div>/)[0]
 let doc;
 let session;
 let onSessionChanged;
+let modeClicks;
 
-async function setup(stored = {}) {
+async function setup(stored = {}, { translateSelected = true } = {}) {
   const window = new Window();
   doc = window.document;
-  doc.body.innerHTML = `${chipMarkup}<textarea id="input-text"></textarea>`;
+  doc.body.innerHTML = `${chipMarkup}<button id="mode-translate" aria-selected="${translateSelected}"></button><textarea id="input-text"></textarea>`;
+  modeClicks = 0;
+  doc.getElementById('mode-translate').addEventListener('click', () => { modeClicks += 1; });
   globalThis.document = doc;
   globalThis.Event = window.Event;
   onSessionChanged = undefined;
@@ -101,6 +104,28 @@ describe('side panel prefill', () => {
     onSessionChanged({ panel_prefill: { newValue: { text: 'Mine', at: Date.now(), windowId: 1 } } });
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(input().value).toBe('Mine');
+  });
+
+  it('sets the input direction itself, since the popup may not be listening yet', async () => {
+    await setup({ panel_prefill: { text: 'سلام دنیا', at: Date.now() } });
+    expect(input().value).toBe('سلام دنیا');
+    expect(input().dir).toBe('rtl');
+    onSessionChanged({ panel_prefill: { newValue: { text: 'Hello world', at: Date.now() } } });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(input().dir).toBe('ltr');
+  });
+
+  it('switches to Translate before filling, so the text never lands in a hidden input', async () => {
+    await setup({}, { translateSelected: false });
+    onSessionChanged({ panel_prefill: { newValue: { text: 'Hello', at: Date.now() } } });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(modeClicks).toBe(1);
+    expect(input().value).toBe('Hello');
+  });
+
+  it('leaves the mode alone when Translate is already selected', async () => {
+    await setup({ panel_prefill: { text: 'Hello', at: Date.now() } });
+    expect(modeClicks).toBe(0);
   });
 
   it('drops a stale prefill instead of filling a later panel with it', async () => {

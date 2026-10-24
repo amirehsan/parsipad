@@ -33,6 +33,9 @@ import { renderLibraryCard } from './card.js';
 
 // How long Undo stays offered; the status message for a copy lasts as long.
 const UNDO_WINDOW_MS = 5000;
+// A status message is written this long after the region is emptied, so the
+// same words twice in a row are still a change a screen reader announces.
+const ANNOUNCE_DELAY_MS = 50;
 const TABS = ['history', 'favorites', 'lessons'];
 
 // DOM Elements
@@ -58,6 +61,7 @@ let favoriteEntries = [];
 // The window this tab is in, read once so opening the panel needs no await.
 let windowId = null;
 let statusTimer = null;
+let statusTextTimer = null;
 let undoKey = null;
 
 const undoQueue = createUndoQueue({
@@ -237,8 +241,12 @@ function focusCardAction(key, action) {
 
 function announce(message, { undo = null } = {}) {
   clearTimeout(statusTimer);
+  clearTimeout(statusTextTimer);
   undoKey = undo;
-  statusText.textContent = message;
+  statusText.textContent = '';
+  statusTextTimer = setTimeout(() => {
+    statusText.textContent = message;
+  }, ANNOUNCE_DELAY_MS);
   undoBtn.hidden = !undo;
   statusRegion.classList.add('lib-toast-open');
   statusTimer = setTimeout(closeStatus, UNDO_WINDOW_MS);
@@ -246,6 +254,7 @@ function announce(message, { undo = null } = {}) {
 
 function closeStatus() {
   clearTimeout(statusTimer);
+  clearTimeout(statusTextTimer);
   undoKey = null;
   statusText.textContent = '';
   undoBtn.hidden = true;
@@ -263,7 +272,12 @@ async function reportWriteFailure() {
 // Card actions
 // ---------------------------------------------------------------------------
 
-async function deleteEntry(entry) {
+/**
+ * @param {object} entry
+ * @param {{ message?: string, focusAction?: string }} [options] - What the status
+ *   says, and which action of the neighbouring card takes focus
+ */
+async function deleteEntry(entry, { message = 'libraryDeleted', focusAction = 'delete' } = {}) {
   // One Undo at a time: a new delete closes the previous one's window.
   undoQueue.flush();
 
@@ -274,8 +288,8 @@ async function deleteEntry(entry) {
   historyEntries = historyEntries.filter(e => e.key !== entry.key);
   favoriteEntries = favoriteEntries.filter(e => e.key !== entry.key);
   render();
-  focusCardAction(neighbour?.getAttribute('data-key'), 'delete');
-  announce(t('libraryDeleted', currentLang), { undo: entry.key });
+  focusCardAction(neighbour?.getAttribute('data-key'), focusAction);
+  announce(t(message, currentLang), { undo: entry.key });
 
   const ok = await undoQueue.remove(entry);
   if (!ok) await reportWriteFailure();
@@ -286,6 +300,8 @@ async function undoDelete() {
   closeStatus();
   if (!key) return;
   const ok = await undoQueue.undoAndWait(key);
+  // A delete clicked while the restore was written must land before the reread.
+  await undoQueue.flushWrites();
   await reloadAndRender();
   if (ok) focusCardAction(key, 'delete');
   else announce(t('libraryWriteFailed', currentLang));
@@ -306,7 +322,7 @@ async function toggleFavorite(entry, button) {
   // On the Favorites tab the star is the favorite itself: unstarring removes
   // it like Delete does, Undo included.
   if (entry.source === 'favorites') {
-    await deleteEntry(entry);
+    await deleteEntry(entry, { message: 'libraryRemovedFavorite', focusAction: 'favorite' });
     return;
   }
   try {
@@ -447,8 +463,10 @@ function setupEventListeners() {
   undoBtn.addEventListener('click', undoDelete);
 
   // Deletes are already written; this closes the undo windows and lets the
-  // last writes finish while the page can still run them.
+  // last writes finish while the page can still run them. The status goes
+  // too, or a page restored from the back-forward cache shows a dead Undo.
   window.addEventListener('pagehide', () => {
+    closeStatus();
     undoQueue.flush();
   });
 }
