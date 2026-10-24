@@ -21,9 +21,10 @@ import {
   getTheme,
   setTheme
 } from '../lib/storage.js';
-import { PROVIDERS, PROVIDER_CONFIGS, STORAGE_KEYS } from '../lib/constants.js';
+import { PROVIDERS, PROVIDER_CONFIGS, STORAGE_KEYS, ACTIONS } from '../lib/constants.js';
 import { translationCache } from '../lib/cache.js';
 import { t, applyTranslations } from '../lib/i18n.js';
+import { renderKeyHelp, keyTestOkText, keyTestFailedText } from '../lib/key-help.js';
 import { COMMAND_DESCRIPTIONS, getBoundShortcuts, shortcutKeys } from '../shared/shortcuts.js';
 import {
   getHistory,
@@ -124,6 +125,7 @@ async function init() {
   await loadNewTabSetting();
   await loadProviderSettings();
   await loadAllApiKeyStatuses();
+  mountKeyHelp();
   await loadCacheStats();
   await loadDataCounts();
   await loadKeyboardShortcuts();
@@ -289,6 +291,48 @@ async function loadProviderSettings() {
 }
 
 /**
+ * Put the "How do I get a key?" block under each provider's key field, in the
+ * interface language. Called again when that language changes.
+ */
+function mountKeyHelp() {
+  for (const provider of [PROVIDERS.CLAUDE, PROVIDERS.GEMINI, PROVIDERS.OPENAI]) {
+    document.getElementById(`${provider}-key-help`)?.replaceChildren(renderKeyHelp(provider, currentLang));
+  }
+}
+
+/**
+ * Show the result of a key test beside the field it belongs to.
+ * @param {string} provider
+ * @param {string} text - Empty clears it
+ * @param {'ok'|'error'|'pending'|''} state
+ */
+function setKeyTestStatus(provider, text, state) {
+  const el = document.getElementById(`${provider}-key-test`);
+  if (!el) return;
+  el.textContent = text;
+  el.dataset.state = state;
+}
+
+/**
+ * Test the key stored for a provider with one real request and report the
+ * result inline under its field.
+ */
+async function testStoredKey(provider) {
+  setKeyTestStatus(provider, t('keyTesting', currentLang), 'pending');
+  try {
+    const key = await getProviderApiKey(provider);
+    const result = await chrome.runtime.sendMessage({ action: ACTIONS.TEST_API_KEY, provider, key });
+    if (result?.ok) {
+      setKeyTestStatus(provider, keyTestOkText(result, currentLang), 'ok');
+    } else {
+      setKeyTestStatus(provider, keyTestFailedText(result?.message || result?.error, currentLang), 'error');
+    }
+  } catch (error) {
+    setKeyTestStatus(provider, keyTestFailedText(error.message, currentLang), 'error');
+  }
+}
+
+/**
  * Load API key status indicators for all providers
  */
 async function loadAllApiKeyStatuses() {
@@ -390,6 +434,8 @@ function setupSettingsTabs() {
   const main = document.querySelector('main');
   if (!main || tabs.length === 0) return;
 
+  const names = Array.from(tabs, (tab) => tab.dataset.tabTarget);
+
   const setActive = (name) => {
     main.dataset.settingsActive = name;
     tabs.forEach((t) => {
@@ -402,18 +448,26 @@ function setupSettingsTabs() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Default to General on first paint.
-  setActive('general');
+  // Open on the tab named by the URL hash (e.g. #providers from the popup
+  // badge), falling back to General.
+  const fromHash = location.hash.slice(1);
+  setActive(names.includes(fromHash) ? fromHash : 'general');
+
+  // Record the tab in the hash without adding a history entry.
+  const select = (name) => {
+    setActive(name);
+    history.replaceState(null, '', `#${name}`);
+  };
 
   tabs.forEach((tab) => {
-    tab.addEventListener('click', () => setActive(tab.dataset.tabTarget));
+    tab.addEventListener('click', () => select(tab.dataset.tabTarget));
     tab.addEventListener('keydown', (e) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       e.preventDefault();
       const order = Array.from(tabs);
       const i = order.indexOf(e.currentTarget);
       const next = order[(i + (e.key === 'ArrowRight' ? 1 : -1) + order.length) % order.length];
-      setActive(next.dataset.tabTarget);
+      select(next.dataset.tabTarget);
       next.focus();
     });
   });
@@ -536,6 +590,7 @@ async function handleLanguageChange(lang) {
   currentLang = lang;
   await setLanguage(lang);
   applyTranslations(lang);
+  mountKeyHelp();
   await loadCacheStats();
 }
 
@@ -644,6 +699,20 @@ function togglePasswordVisibility(inputId) {
  * Handle save API key button click
  */
 async function handleSaveApiKey(provider) {
+  const saveButtons = document.querySelectorAll('.save-key-btn');
+  saveButtons.forEach((btn) => { btn.disabled = true; });
+  setKeyTestStatus(provider, '', '');
+  try {
+    await saveAndTestApiKeys(provider);
+  } finally {
+    saveButtons.forEach((btn) => { btn.disabled = false; });
+  }
+}
+
+/**
+ * Save every changed key, then test the one whose button was clicked.
+ */
+async function saveAndTestApiKeys(provider) {
   const savedProviders = [];
 
   // Save all providers that have new/changed values
@@ -675,7 +744,9 @@ async function handleSaveApiKey(provider) {
   if (input) {
     const apiKey = input.value.trim();
     if (!apiKey) {
+      // Nothing typed and nothing stored: there is no key to test.
       showStatus(t('pleaseEnterApiKey', currentLang), 'error');
+      setKeyTestStatus(provider, t('pleaseEnterApiKey', currentLang), 'error');
       return;
     }
     if (!savedProviders.includes(PROVIDER_CONFIGS[provider].name)) {
@@ -695,6 +766,8 @@ async function handleSaveApiKey(provider) {
   } else {
     showStatus('No changes to save', 'success');
   }
+
+  await testStoredKey(provider);
 }
 
 /**
@@ -707,6 +780,7 @@ async function handleClearApiKey(provider) {
   if (!confirm(t('confirmClearApiKey', currentLang).replace('{provider}', config.name))) return;
 
   await removeProviderApiKey(provider);
+  setKeyTestStatus(provider, '', '');
 
   if (input) {
     input.value = '';

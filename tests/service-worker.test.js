@@ -23,10 +23,11 @@ vi.mock('../lib/api.js', () => ({
   polish: vi.fn(),
   translateImage: vi.fn(),
   regeneratePolishVariant: vi.fn(),
-  getGrammarLesson: vi.fn()
+  getGrammarLesson: vi.fn(),
+  testApiKey: vi.fn()
 }));
 
-import { translate } from '../lib/api.js';
+import { translate, testApiKey } from '../lib/api.js';
 import { getHistory } from '../lib/history.js';
 import { translationCache } from '../lib/cache.js';
 import { setLanguage } from '../lib/storage.js';
@@ -44,7 +45,9 @@ let captured;
 function installChromeStub() {
   const listeners = {
     onMessage: null,
-    onConnect: []
+    onConnect: [],
+    onInstalled: null,
+    onClicked: null
   };
 
   globalThis.chrome = {
@@ -52,7 +55,7 @@ function installChromeStub() {
       id: 'test-extension-id',
       onMessage: { addListener: (fn) => { listeners.onMessage = fn; } },
       onConnect: { addListener: (fn) => { listeners.onConnect.push(fn); } },
-      onInstalled: { addListener: () => {} },
+      onInstalled: { addListener: (fn) => { listeners.onInstalled = fn; } },
       onStartup: { addListener: () => {} },
       getURL: (path) => `chrome-extension://test-extension-id/${path}`,
       openOptionsPage: vi.fn(async () => {}),
@@ -92,7 +95,11 @@ function installChromeStub() {
     scripting: { executeScript: vi.fn(async () => {}) },
     contextMenus: {
       create: vi.fn(),
-      onClicked: { addListener: () => {} }
+      onClicked: { addListener: (fn) => { listeners.onClicked = fn; } }
+    },
+    sidePanel: {
+      open: vi.fn().mockResolvedValue(undefined),
+      setPanelBehavior: vi.fn().mockResolvedValue(undefined)
     },
     commands: {
       onCommand: { addListener: () => {} }
@@ -109,9 +116,9 @@ function installChromeStub() {
  * Replays chrome.runtime.onMessage the way the browser would: calls the
  * captured handler and resolves with whatever it passes to sendResponse.
  */
-function sendMessage(message) {
+function sendMessage(message, sender = {}) {
   return new Promise((resolve) => {
-    captured.onMessage(message, {}, resolve);
+    captured.onMessage(message, sender, resolve);
   });
 }
 
@@ -138,6 +145,8 @@ function connectPort(name) {
 beforeAll(async () => {
   captured = installChromeStub();
   await import('../background/service-worker.js');
+  // Replay the install event so the menu items and panel behavior are registered.
+  await captured.onInstalled({ reason: 'update' });
 });
 
 beforeEach(() => {
@@ -408,6 +417,36 @@ describe('error localization', () => {
   });
 });
 
+describe('TEST_API_KEY', () => {
+  it('returns the outcome and records health', async () => {
+    testApiKey.mockResolvedValue({ ok: true, model: 'm', ms: 50 });
+
+    const r = await sendMessage({ action: 'TEST_API_KEY', provider: 'claude', key: 'sk-ant-x' });
+
+    expect(testApiKey).toHaveBeenCalledWith('claude', 'sk-ant-x');
+    expect(r.ok).toBe(true);
+    expect(store.get('provider_health').claude.ok).toBe(true);
+    expect(store.get('provider_health').claude.ms).toBe(50);
+  });
+
+  it('records a failed test with its code', async () => {
+    testApiKey.mockResolvedValue({ ok: false, code: 'INVALID_API_KEY', message: 'Invalid API key. Please check settings.' });
+
+    const r = await sendMessage({ action: 'TEST_API_KEY', provider: 'gemini', key: 'AIza-bad' });
+
+    expect(r).toMatchObject({ ok: false, code: 'INVALID_API_KEY' });
+    expect(store.get('provider_health').gemini).toMatchObject({ ok: false, code: 'INVALID_API_KEY' });
+  });
+
+  it('does not record health for a provider it does not know', async () => {
+    testApiKey.mockResolvedValue({ ok: false, code: 'UNKNOWN', message: 'Unknown provider: nope' });
+
+    await sendMessage({ action: 'TEST_API_KEY', provider: 'nope', key: 'k' });
+
+    expect(store.get('provider_health')?.nope).toBeUndefined();
+  });
+});
+
 describe('the stream port (translate-stream)', () => {
   it('forwards deltas and ends with done', async () => {
     translate.mockImplementation(async (req) => {
@@ -489,5 +528,38 @@ describe('review prompt', () => {
     translate.mockResolvedValue({ translation: 'سلام', detectedSource: 'en', inputTokens: 1, outputTokens: 1 });
     await sendMessage({ action: 'TRANSLATE', text: 'hello', sourceLang: 'auto', mode: 'word' });
     expect(store.get('review_usage').successes).toBe(1);
+  });
+});
+
+describe('side panel', () => {
+  it('OPEN_SIDE_PANEL opens the panel for the sender tab', async () => {
+    await sendMessage({ action: 'OPEN_SIDE_PANEL' }, { tab: { id: 42 } });
+    expect(chrome.sidePanel.open).toHaveBeenCalledWith({ tabId: 42 });
+  });
+
+  it('OPEN_SIDE_PANEL prefers an explicit tabId over the sender tab', async () => {
+    await sendMessage({ action: 'OPEN_SIDE_PANEL', tabId: 7 }, { tab: { id: 42 } });
+    expect(chrome.sidePanel.open).toHaveBeenLastCalledWith({ tabId: 7 });
+  });
+
+  it('SELECTION_CHANGED is acknowledged rather than rejected as unknown', async () => {
+    const res = await sendMessage({ action: 'SELECTION_CHANGED', text: 'hello' }, { tab: { id: 1 } });
+    expect(res).toEqual({ ok: true });
+  });
+
+  it('registers a context menu item that opens the panel', () => {
+    const ids = chrome.contextMenus.create.mock.calls.map(c => c[0].id);
+    expect(ids).toContain('parsipad-open-side-panel');
+  });
+
+  it('keeps the toolbar icon on the popup', () => {
+    expect(chrome.sidePanel.setPanelBehavior).toHaveBeenCalledWith({ openPanelOnActionClick: false });
+  });
+
+  it('opens the panel from the context menu before awaiting anything', async () => {
+    chrome.sidePanel.open.mockClear();
+    const pending = captured.onClicked({ menuItemId: 'parsipad-open-side-panel' }, { id: 5 });
+    expect(chrome.sidePanel.open).toHaveBeenCalledWith({ tabId: 5 });
+    await pending;
   });
 });

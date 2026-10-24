@@ -25,7 +25,6 @@ function functionBody(name) {
 const SECONDARY_ACTIONS = [
   'handleCardCopy',
   'handlePolishCopy',
-  'handleDictCopy',
   'handleImageCopy',
   'handleTranslationFavorite',
   'handlePolishFavorite',
@@ -40,7 +39,7 @@ describe('popup feedback channels', () => {
 
   it('defines showNotice, which never hides outputs', () => {
     const body = functionBody('showNotice');
-    expect(body).toMatch(/function showNotice\(message, tone = 'success'\)/);
+    expect(body).toMatch(/function showNotice\(message, tone = 'success', duration = 3000\)/);
     expect(body).not.toMatch(/hideAllOutputs\(/);
   });
 

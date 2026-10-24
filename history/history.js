@@ -1,4 +1,4 @@
-import { getHistory, clearHistory, removeFromHistory, getPolishHistory, clearPolishHistory, removeFromPolishHistory } from '../lib/history.js';
+import { getHistory, clearHistory, removeFromHistory, getPolishHistory, clearPolishHistory, removeFromPolishHistory, clearDictionaryHistory } from '../lib/history.js';
 import { getTheme, setTheme, getLanguage } from '../lib/storage.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 import { applyThemeToRoot } from '../lib/theme.js';
@@ -372,10 +372,13 @@ async function handleDelete(type, id) {
 }
 
 /**
- * Handle clear all button click
+ * Handle clear all button click. Under "All" this also clears the dictionary
+ * lookups the page and right-click lookups record, which have no view of
+ * their own yet and would otherwise have no way to be cleared.
  */
 async function handleClearAll() {
-  if (!confirm('Are you sure you want to clear all history?')) {
+  const question = currentFilter === 'all' ? 'confirmClearAllHistory' : 'confirmClearShownHistory';
+  if (!confirm(t(question, currentLang))) {
     return;
   }
 
@@ -383,6 +386,7 @@ async function handleClearAll() {
     if (currentFilter === 'all') {
       await clearHistory();
       await clearPolishHistory();
+      await clearDictionaryHistory();
       translationHistory = [];
       polishHistory = [];
     } else if (currentFilter === 'translations') {

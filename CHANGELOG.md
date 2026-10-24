@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-10-24
+
+### Added
+- **A side panel that stays open while you browse.** The popup closes the moment focus leaves it, which cut long jobs short: a document or a whole-page translation stopped when you clicked back into the page. ParsiPad now has a Chrome side panel with the same controls as the popup, opened from a new button in the popup header or from the right-click item "Open ParsiPad in side panel". It stays put as you switch tabs and scroll, and a long job keeps running while you read.
+- **Text selected on the page appears in the panel as a "Selected on this page" chip.** One click on Translate sends it, so there is no copying and pasting between the page and the box. The chip never reads what you type inside text fields, and the selected text stays inside the browser until you press Translate.
+- **A provider badge in the popup and panel header.** It shows which provider is active and a dot for how its last real request went: green for working, amber for rate-limited or slow, red for a rejected key or a network failure, grey when nothing has been sent yet. Clicking it opens Settings on the provider tab. It only reflects requests you actually made and never sends one of its own.
+- **First run is one panel, and the key is tested before it is kept.** Provider choice, the key field and a "How do I get a key?" guide now sit together. The guide gives the key page link, what the key starts with and a note on cost for each provider, with a Persian and English toggle for just those steps. "Save and test key" makes one tiny real request and stores the key only if it works, so a mistyped or rejected key is caught on the spot instead of on your first translation. Translate stays disabled until a key has passed. Settings has the same guide and a "Save & Test" button that shows the result inline.
+- **Screenshot in the side panel says what to do when Chrome blocks it.** Chrome only lets an extension capture a page after a toolbar click, a keyboard shortcut or a context menu choice, and a click inside the side panel is none of those. The panel now shows a notice that names your screenshot shortcut and the right-click "Screenshot & Translate" item instead of doing nothing.
+
+### Changed
+- **The popup now leads with the text box.** Opening it focuses the textarea. A three-way switch at the top picks Translate, Polish or Doc & Image, where Doc & Image holds both the document and image uploads that used to be separate tabs. The Translate button shows its submit shortcut (Cmd+Enter, or Ctrl+Enter on Windows and Linux).
+- **Page actions moved below the form.** Translate page and Screenshot sit in a quiet "This page" list, each with its real shortcut, instead of competing with the text box for attention.
+- **The history sections in the popup became one line.** A Recent row shows the latest item and reopens it in one click, with a Library link to the full History page.
+- **History's Clear All now clears dictionary lookups too.** Lookups are kept in their own list, so the button could leave them behind after the popup stopped offering a way to clear them.
+
+### Removed
+- **The Dictionary tab in the popup.** A single word typed into Translate already returns the full word card, so the tab repeated it. Alt+D and the right-click lookup on web pages are unchanged.
+- **The usage stats section in the popup.** It lives on the Analytics page, reachable from Settings under More.
+
 ## [3.2.0] - 2026-10-23
 
 ### Fixed
