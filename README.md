@@ -50,6 +50,7 @@
 - **Favorites System** - Star translations and polished text to save them
 - **New Tab Flashcards** - Learn vocabulary on every new tab with interactive flashcards
 - **Dictionary Lookup** - Look up definitions, phonetics, synonyms, and antonyms
+- **Side Panel** - Keep ParsiPad open beside the page while you browse
 
 ### Quick Access
 - **Selection Popup** - Quick action icons when selecting text on webpages
@@ -61,7 +62,7 @@
 - **Welcome/Onboarding Page** - Beautiful first-time setup with feature showcase
 - **Dark Mode** - Beautiful dark theme that syncs with system preferences
 - **Bilingual Support** - Full English and Persian (فارسی) interface
-- **Usage Statistics** - Track your translation and token usage
+- **Usage Analytics** - Track your translation and token usage on the Analytics page, opened from Settings > More
 - **Offline Caching** - Previously translated text loads instantly
 
 ## Installation
@@ -98,14 +99,18 @@
 
 2. **Configure the Extension**
    - Click the ParsiPad icon in your toolbar
-   - Go to Settings (gear icon)
-   - Select your preferred AI provider
-   - Enter the API key for that provider and save
+   - On first run, choose your AI provider and paste the key (the "How do I get a key?" guide has the link and key format for each provider)
+   - Click "Save and test key": ParsiPad makes one tiny real request and stores the key only if it works
+   - Later, change provider or key from Settings (gear icon) with "Save & Test"
 
 3. **Start Translating**
-   - **Option 1:** Type or paste text in the popup and click Translate
+   - **Option 1:** Type or paste text in the popup and click Translate (or press `Ctrl+Enter`, `Cmd+Enter` on Mac)
    - **Option 2:** Select text on any webpage and press `Alt+T`
    - **Option 3:** Select text, right-click, and choose "Translate with ParsiPad"
+
+### Side Panel
+
+Click the sidebar button in the popup header, or right-click a page and choose "Open ParsiPad in side panel", to open ParsiPad in Chrome's side panel. It stays open while you switch tabs and scroll, and long jobs such as documents and whole-page translations keep running. Text you select on the page shows up as a "Selected on this page" chip with a one-click Translate button; it never reads inside text fields, and the text stays in your browser until you translate it. The provider name in the header has a dot showing how the last real request went (green working, amber rate-limited or slow, red key rejected or network error, grey no requests yet), and clicking it opens the provider settings.
 
 ### Translation Mode
 
@@ -149,12 +154,12 @@ Look up any word to see:
 Access via:
 - Select a word and press `Alt+D`
 - Right-click and choose "Look up in Dictionary"
-- Use the Dictionary tab in the popup
+- Type a single word in the popup's Translate box to get the full word card
 
 ### Document Mode (NEW in v2.0)
 
 Translate entire documents:
-1. Click the "Document" tab in the popup
+1. Open the popup, choose "Doc & Image" and use the Document area
 2. Upload a TXT file (max 100KB)
 3. Watch the progress as chunks are translated
 4. Download the translated file when complete
@@ -164,7 +169,7 @@ You can cancel long translations at any time.
 ### Image Mode (NEW in v2.2)
 
 Translate text directly from images:
-1. Click the "Image" tab in the popup
+1. Open the popup, choose "Doc & Image" and use the Image area
 2. Upload an image (JPG, PNG, WebP up to 5MB)
    - Or paste from clipboard with `Ctrl+V`
 3. Click "Translate Image"
@@ -180,7 +185,7 @@ Useful for translating:
 
 Translate text directly from any area on a webpage:
 1. Press `Alt+S` or right-click and select "Screenshot & Translate"
-   - Or click the "Screenshot" button in the Image tab
+   - Or click "Screenshot" in the popup's "This page" list
 2. The page freezes with a crosshair cursor
 3. Drag to select the region containing text you want to translate
 4. Release to capture - AI extracts and translates the text

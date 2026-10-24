@@ -38,7 +38,16 @@ Screenshots, images, and documents
 
 Dictionary
 
-Look up any word with Alt+D or the right-click menu for definitions with example sentences, IPA pronunciation, synonyms and antonyms, and the Persian or English equivalent. You choose which directions the dictionary works in.
+Look up any word with Alt+D or the right-click menu for definitions with example sentences, IPA pronunciation, synonyms and antonyms, and the Persian or English equivalent. You choose which directions the dictionary works in. Type a single word into the popup and you get the same full word card.
+
+
+A side panel that stays open
+
+The toolbar popup closes the moment you click back into the page. The side panel is the same ParsiPad, docked beside the page, so it stays open while you browse and long jobs such as a document or a whole-page translation keep running while you read.
+
+- Open it from the button in the popup header or from the right-click menu
+- Text you select on the page appears as a "Selected on this page" chip with a one-click Translate button
+- It never reads inside text fields, and the selected text stays in your browser until you press Translate
 
 
 Grammar, built for Persian speakers learning English
@@ -81,12 +90,14 @@ Choose your AI
 - Gemini by Google, for speed
 - ChatGPT by OpenAI, for versatility
 
+A small badge in the popup and the side panel names the provider you are using, with a dot showing how its last real request went: green when it worked, amber when it was rate-limited or slow, red when the key was rejected or the network failed, grey when nothing has been sent yet. Click it to open the provider settings. It only reflects requests you made and never sends one of its own.
+
 Switch whenever you like. Repeated lookups are cached, so the same word costs you nothing the second time, and closing a translation before it finishes stops it at once, so you never pay for one you did not read.
 
 
 Know what you are spending
 
-A usage dashboard shows estimated cost per provider, broken down by what you actually did: translations, polishes, dictionary lookups, documents, images, and grammar lessons. View the last week, the last month, or everything, and export it as JSON.
+The Analytics page, opened from Settings, shows estimated cost per provider, broken down by what you actually did: translations, polishes, dictionary lookups, documents, images, and grammar lessons. View the last week, the last month, or everything, and export it as JSON.
 
 
 Reach it however suits you
@@ -94,7 +105,8 @@ Reach it however suits you
 - The floating popup when you select text, which you can switch off
 - The right-click menu, for translating, polishing, dictionary lookups, whole pages, and screenshots
 - Keyboard shortcuts: Alt+T to translate, Alt+D for the dictionary, Alt+P for the page, Alt+S for a screenshot region, Alt+B for the block you are pointing at, all of them remappable
-- The toolbar popup, with tabs for text, dictionary, documents, and images
+- The toolbar popup, which opens with the cursor in the text box and switches between Translate, Polish, and Doc & Image for documents and images, with page translation and screenshots a click away
+- The side panel, docked beside the page and open as long as you want it
 
 
 Made to live with
@@ -113,10 +125,10 @@ Privacy
 
 Getting started
 
-1. Get an API key from the provider you prefer:
+1. Get an API key from the provider you prefer. The "How do I get a key?" guide in ParsiPad walks through it in Persian or English, with the link, what the key starts with, and what it costs:
    Claude: console.anthropic.com
    Gemini: aistudio.google.com/apikey
    ChatGPT: platform.openai.com/api-keys
-2. Choose that provider in Settings
-3. Paste your key and save
+2. Choose that provider when ParsiPad first opens
+3. Paste your key and press "Save and test key". ParsiPad sends one tiny real request and keeps the key only if it works, so a mistake is caught straight away
 4. Start translating

@@ -1,0 +1,104 @@
+ParsiPad - Chrome Web Store permission justifications
+Paste these into Privacy practices > "Permission justification" for each item.
+
+====================================================================
+favicon  (REQUIRED - flagged at submission)
+====================================================================
+ParsiPad's New Tab page can show the user's most visited sites as shortcut
+tiles. The favicon permission is used solely to draw each site's own icon on
+its tile, by loading chrome-extension://<id>/_favicon/?pageUrl=... . That URL
+is served by the browser from its own local favicon cache and makes no
+network request.
+
+It is used in exactly one function, faviconUrl() in lib/top-sites.js, and
+nowhere else in the extension. We chose it deliberately over a third-party
+favicon service, because sending page URLs to such a service would disclose
+the user's list of visited sites to an external server. Reading icons locally
+means that list never leaves the browser.
+
+====================================================================
+topSites  (OPTIONAL - flagged at submission)
+====================================================================
+ParsiPad replaces the New Tab page, and one of its optional panels shows the
+user's most visited sites as shortcut tiles, the same way Chrome's own New
+Tab does. chrome.topSites.get() provides the URL and title used to build
+those tiles.
+
+This is declared under optional_permissions, not permissions. It is requested
+only when the user explicitly switches the "Most visited" panel on, from that
+click. Before every read the extension calls chrome.permissions.contains()
+and renders nothing if the permission was never granted or was later revoked.
+
+The returned data is used only to render tiles in that New Tab and is never
+stored, logged, transmitted, or sent to any server. No network request is
+made anywhere in this code path.
+
+====================================================================
+The other declared permissions, for reference
+====================================================================
+storage
+  Stores the user's own settings, their saved favorites, translation history
+  and the local translation cache, using chrome.storage.local. All of it stays
+  on the user's device.
+
+contextMenus
+  Adds ParsiPad's right-click entries ("Translate selection", "Polish text",
+  "Look up in dictionary") so the user can act on selected text.
+
+sidePanel
+  Lets the user open ParsiPad in Chrome's side panel, from a button in the
+  popup or from the right-click menu, so it stays open beside the page while
+  they browse. The panel is the same packaged ParsiPad interface as the popup.
+  It is opened only by the user's click and adds no new data access.
+
+activeTab + scripting
+  Used to read the text the user selected and to show ParsiPad's translation
+  box on the page, only on the tab the user invoked ParsiPad on, and only in
+  response to that action.
+
+bookmarks
+  The New Tab page includes a read-only bookmark browser with search. Read
+  access only: ParsiPad never creates, edits or deletes bookmarks, and never
+  sends them anywhere.
+
+Host permissions (api.anthropic.com, generativelanguage.googleapis.com,
+api.openai.com)
+  ParsiPad sends the text the user asked to translate directly to whichever
+  AI provider the user configured, using the user's own API key. These three
+  hosts are the providers' API endpoints. There is no ParsiPad server and no
+  intermediary: the request goes from the user's browser to the provider they
+  chose.
+
+Content script on <all_urls>
+  ParsiPad's core feature is translating text the user selects on any page,
+  so the content script has to be able to run wherever the user is reading.
+  It does nothing until the user acts: it listens for a selection and only
+  then offers the translate/polish/dictionary controls. It does not read,
+  collect or transmit page content on its own, and injects no code from any
+  remote source.
+
+====================================================================
+Store listing URLs
+====================================================================
+Privacy policy URL: https://www.parsipad.com/privacy.html
+  Use the www form. The bare domain 307-redirects to it, and /privacy
+  without the .html extension is a 404.
+
+====================================================================
+Data usage disclosures
+====================================================================
+Remote code: No. Everything executed is packaged in the extension.
+
+Data collected: the text the user explicitly submits for translation is sent
+to the AI provider the user configured, with the user's own API key, in order
+to perform the translation the user asked for. Nothing else is collected.
+ParsiPad operates no server, has no account system, and stores settings,
+favorites, history and cache only in the user's local browser storage.
+
+Certifications: data is not sold to third parties; is not used or transferred
+for any purpose unrelated to the item's single purpose; and is not used or
+transferred to determine creditworthiness or for lending purposes.
+
+Single purpose: ParsiPad is a Persian-English translator. Everything it does
+serves translating text between Persian and English and helping the user
+learn from those translations.
