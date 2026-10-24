@@ -85,7 +85,7 @@ describe('this page', () => {
     for (const [id, command] of [['translate-page-btn', 'translate-page'], ['screenshot-translate-btn', 'screenshot-translate']]) {
       const button = source.match(new RegExp(`<button id="${id}"[\\s\\S]*?</button>`))[0];
       expect(button, id).toMatch(new RegExp(`data-shortcut-for="${command}"`));
-      expect(button, id).toMatch(/<kbd class="page-action-kbd" hidden><\/kbd>/);
+      expect(button, id).toMatch(/<kbd class="page-action-kbd" aria-hidden="true" hidden><\/kbd>/);
     }
   });
 
@@ -106,6 +106,17 @@ describe('recent row', () => {
     for (const id of ['history-section', 'polish-history-section', 'history-toggle', 'clear-history-btn']) {
       expect(source, id).not.toMatch(new RegExp(`id="${id}"`));
     }
+  });
+
+  it('reopening a polish clears what was on screen first', () => {
+    const body = js.slice(js.indexOf('function reopenRecent'), js.indexOf('\n}\n', js.indexOf('function reopenRecent')));
+    const polish = body.slice(body.indexOf('if (polish) {'), body.indexOf('displayPolishResults('));
+    expect(polish).toMatch(/hideAllOutputs\(\);/);
+    expect(polish).toMatch(/hideError\(\);/);
+  });
+
+  it.each(pages)('%s: ends with a newline', (_, source) => {
+    expect(source.endsWith('</html>\n')).toBe(true);
   });
 
   it('marks Persian runs in the recent item', () => {
@@ -129,7 +140,7 @@ describe('submit shortcut', () => {
 
 describe('new strings', () => {
   it('exist in both locales', () => {
-    for (const key of ['docAndImage', 'thisPage', 'recent', 'library', 'screenshot']) {
+    for (const key of ['modeLabel', 'docAndImage', 'thisPage', 'recent', 'library', 'screenshot']) {
       expect(translations.en[key], `en.${key}`).toBeTruthy();
       expect(translations.fa[key], `fa.${key}`).toBeTruthy();
     }

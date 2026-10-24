@@ -347,6 +347,9 @@ function reopenRecent() {
   updateInputDirection();
 
   if (polish) {
+    // Same clean slate the translate path gets from updateMode
+    hideAllOutputs();
+    hideError();
     const { professional, conversational, concise } = entry;
     displayPolishResults({ professional, conversational, concise }, entry.original, entry.id);
     return;
