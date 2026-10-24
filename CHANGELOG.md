@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-10-24
+
 ### Added
 - **Muted sites: quiet the hover button and selection toolbar on pages you choose.** The only way to stop the hover translate button and the selection toolbar was to switch them off everywhere, which is a poor trade for one noisy site. Settings now has a Muted sites list under Reading on web pages. Add a site and ParsiPad shows no hover translate button, no selection toolbar and no Alt+B block translation there, on its subdomains too. Only those three are silenced: translating the whole page, the screenshot and the right-click menu still work on a muted site. The change applies to open tabs at once with no reload, and removing the site brings all three back. The list is stored only in your browser.
 - **Save & test for every provider in Settings.** Each provider now has its own card with its own key field, a show key button, Save & test and Clear. Save & test checks the key format first and sends nothing for a malformed key. Otherwise it tests the key you typed and stores it only when it works. If the test could not reach a verdict, for example because the network was down, the key is kept and the message says the test was inconclusive. A rejected key never replaces a key that already works, and the result is shown in your interface language.
