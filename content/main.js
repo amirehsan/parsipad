@@ -111,6 +111,9 @@ let pageProgressShadow = null;
 let pageToggleButton = null;
 let pageToggleShadow = null;
 let pageTranslationAbortController = null;
+// The pending look at the page after an address change (see
+// installSpaNavigationListener).
+let routeCheckTimer = null;
 // Aborted when the floating box closes, so a translation nobody will see
 // stops streaming, and stops being billed, at once.
 let boxAbortController = null;
@@ -195,47 +198,34 @@ function init() {
   installSpaNavigationListener();
 }
 
+// How long a router gets to draw the new view after the address changes
+// before ParsiPad looks at what left the page. Most routers render within a
+// frame or two of the address change, before or after it.
+const ROUTE_SETTLE_MS = 250;
+// The share of the text nodes a page translation took that must have left
+// the page for an address change to count as a new page. A third rather
+// than half: on a site with a large header, menu and footer, the content a
+// route swaps can be well under half of the text ParsiPad translated, while
+// a feed rewriting its address as it scrolls rarely drops that much at once.
+const ROUTE_LEFT_SHARE = 1 / 3;
+
 /**
  * Patch history pushState/replaceState to emit a navigation event and listen
- * for popstate; on a route change put the original text back and reset
- * stale page-translation state.
+ * for popstate and the Navigation API. Any change of address, the hash
+ * included, is only a trigger: what decides a new page is the page itself,
+ * looked at once the router has had time to draw (see hasLeftPage).
  */
 function installSpaNavigationListener() {
-  // A route is its origin, path and query. A hash change, or the same-URL
-  // replaceState many sites call as the reader scrolls, is the same page,
-  // and resetting on it would silently revert a translated page.
-  const routeOf = () => location.origin + location.pathname + location.search;
-  let lastRoute = routeOf();
+  let lastHref = location.href;
 
   const handleNav = () => {
-    const route = routeOf();
-    if (route === lastRoute) return;
-    lastRoute = route;
-
-    // A running translation is discarded: its run sees it no longer owns
-    // pageTranslationState and stops without applying or saying anything.
-    if (pageTranslationAbortController) {
-      pageTranslationAbortController.abort();
-      pageTranslationAbortController = null;
-    }
-
-    // Put back the text of nodes the SPA kept; restorePageOriginals skips
-    // the ones it took away.
-    if (pageTranslationState?.isShowingTranslated) {
-      restorePageOriginals();
-    }
-    // A summary's Retry failed would act on the page that is gone.
-    pageTranslationState?.closeSummary?.();
-
-    if (pageProgressOverlay) {
-      hidePageProgressOverlay();
-    }
-    if (pageToggleButton) {
-      pageToggleButton.remove();
-      pageToggleButton = null;
-      pageToggleShadow = null;
-    }
-    pageTranslationState = null;
+    // The same-URL replaceState many sites call as the reader scrolls is no
+    // change at all.
+    if (location.href === lastHref) return;
+    lastHref = location.href;
+    if (!pageTranslationState) return;
+    clearTimeout(routeCheckTimer);
+    routeCheckTimer = setTimeout(checkRouteChange, ROUTE_SETTLE_MS);
   };
 
   window.addEventListener('popstate', handleNav);
@@ -258,10 +248,78 @@ function installSpaNavigationListener() {
   // The Navigation API is shared DOM state, so it reports a pushState the
   // page makes in its own world, which the patch above (in this isolated
   // world) never sees. The patch and popstate stay for browsers without it;
-  // handleNav's route comparison ignores the duplicate events.
+  // handleNav's address comparison ignores the duplicate events.
   if (typeof window.navigation?.addEventListener === 'function') {
     window.navigation.addEventListener('currententrychange', handleNav);
   }
+}
+
+/**
+ * The look at the page an address change scheduled, run when its timer
+ * fires or at once when Translate Page is pressed before then. Resets page
+ * translation only when the page translated is no longer there.
+ */
+function checkRouteChange() {
+  clearTimeout(routeCheckTimer);
+  routeCheckTimer = null;
+  if (pageTranslationState && hasLeftPage(pageTranslationState)) {
+    resetPageTranslation();
+  }
+}
+
+/**
+ * Whether the page a translation was made on has gone: at least
+ * ROUTE_LEFT_SHARE of its text nodes are out of the document, or now hold
+ * text that is neither what ParsiPad read nor what it wrote (a router that
+ * redraws the new view into the same nodes). A hash link, a scroll-driven
+ * address rewrite or a live counter leaves most of them in place.
+ * @param {object} state - a pageTranslationState
+ * @returns {boolean}
+ */
+function hasLeftPage(state) {
+  const nodes = state.textNodes;
+  if (nodes.length === 0) return false;
+  let left = 0;
+  for (const { node } of nodes) {
+    const current = node.textContent;
+    if (!node.isConnected ||
+        (current !== state.originalTexts.get(node) && current !== state.translatedTexts.get(node))) {
+      left++;
+    }
+  }
+  return left >= nodes.length * ROUTE_LEFT_SHARE;
+}
+
+/**
+ * Drop page translation for a page that has gone: stop a running
+ * translation, put back the original text where ParsiPad's translation still
+ * shows, and remove the overlay, the summary and the toggle.
+ */
+function resetPageTranslation() {
+  // A running translation is discarded: its run sees it no longer owns
+  // pageTranslationState and stops without applying or saying anything.
+  if (pageTranslationAbortController) {
+    pageTranslationAbortController.abort();
+    pageTranslationAbortController = null;
+  }
+
+  // Put back the text of nodes the SPA kept; restorePageOriginals skips
+  // the ones it took away or wrote over.
+  if (pageTranslationState?.isShowingTranslated) {
+    restorePageOriginals();
+  }
+  // A summary's Retry failed would act on the page that is gone.
+  pageTranslationState?.closeSummary?.();
+
+  if (pageProgressOverlay) {
+    hidePageProgressOverlay();
+  }
+  if (pageToggleButton) {
+    pageToggleButton.remove();
+    pageToggleButton = null;
+    pageToggleShadow = null;
+  }
+  pageTranslationState = null;
 }
 
 /**
@@ -2518,6 +2576,12 @@ const PAGE_BATCH_GAP_MS = 200;
  * @param {{retry?: {state: object, indexes: number[]}}} [options]
  */
 async function handleTranslatePage({ retry = null } = {}) {
+  // The address changed and the router may have drawn a new view: look now
+  // rather than toggle a page that is gone.
+  if (!retry && routeCheckTimer !== null) {
+    checkRouteChange();
+  }
+
   // If already translating, ignore
   if (pageTranslationState?.isTranslating) {
     return;
@@ -2665,6 +2729,12 @@ async function handleTranslatePage({ retry = null } = {}) {
       if (step > 0) {
         await new Promise(resolve => setTimeout(resolve, PAGE_BATCH_GAP_MS));
         if (pageTranslationState !== state) return;
+      }
+      // The address changed and the page this run translates has already
+      // gone: no more requests for it, without waiting out the settle time.
+      if (routeCheckTimer !== null && hasLeftPage(state)) {
+        checkRouteChange();
+        return;
       }
       if (state.stopReason || abortSignal.aborted) break;
 
@@ -2905,58 +2975,67 @@ function injectPageTranslationStyles() {
 }
 
 /**
- * Apply translations to the DOM
+ * Apply translations to the DOM. A translation is written only over the text
+ * ParsiPad read, or the translation it wrote there before: a node the page
+ * has changed since (a live counter, a view redrawn in place) keeps the
+ * page's text.
  */
 function applyPageTranslations() {
-  if (!pageTranslationState) return;
+  const state = pageTranslationState;
+  if (!state) return;
 
   // Inject Vazir font styles for Persian text
   injectPageTranslationStyles();
 
   const rtlLangs = ['fa', 'ar', 'he'];
-  const targetDir = rtlLangs.includes(pageTranslationState.targetLanguage) ? 'rtl' : 'ltr';
+  const targetDir = rtlLangs.includes(state.targetLanguage) ? 'rtl' : 'ltr';
 
-  for (const { node, parent } of pageTranslationState.textNodes) {
-    const translatedText = pageTranslationState.translatedTexts.get(node);
-    if (translatedText) {
-      node.textContent = translatedText;
+  for (const { node, parent } of state.textNodes) {
+    const translatedText = state.translatedTexts.get(node);
+    if (!translatedText) continue;
+    const current = node.textContent;
+    if (current !== state.originalTexts.get(node) && current !== translatedText) continue;
+    node.textContent = translatedText;
 
-      if (parent) {
-        if (!pageTranslationState.originalDirections.has(parent)) {
-          pageTranslationState.originalDirections.set(parent, parent.getAttribute('dir'));
-        }
-        parent.setAttribute('dir', targetDir);
-        // Mark as translated for Vazir font styling
-        parent.setAttribute('data-parsipad-translated', 'true');
+    if (parent) {
+      if (!state.originalDirections.has(parent)) {
+        state.originalDirections.set(parent, parent.getAttribute('dir'));
       }
+      parent.setAttribute('dir', targetDir);
+      // Mark as translated for Vazir font styling
+      parent.setAttribute('data-parsipad-translated', 'true');
     }
   }
 }
 
 /**
- * Restore original text to the DOM. Text nodes no longer on the page (an
- * SPA replaced them) are not written to; their element, if the SPA kept it,
- * still loses the translated marker and gets its direction back.
+ * Restore original text to the DOM, only where the page still shows the
+ * translation ParsiPad wrote. Text nodes no longer on the page (an SPA
+ * replaced them) or holding the page's own newer text are not written to;
+ * their element, if it is still on the page, loses the translated marker
+ * and gets its direction back.
  */
 function restorePageOriginals() {
-  if (!pageTranslationState) return;
+  const state = pageTranslationState;
+  if (!state) return;
 
-  for (const { node, parent } of pageTranslationState.textNodes) {
-    const originalText = pageTranslationState.originalTexts.get(node);
-    if (originalText) {
-      if (node.isConnected) node.textContent = originalText;
+  for (const { node, parent } of state.textNodes) {
+    const originalText = state.originalTexts.get(node);
+    if (!originalText) continue;
+    if (node.isConnected && node.textContent === state.translatedTexts.get(node)) {
+      node.textContent = originalText;
+    }
 
-      if (parent?.isConnected) {
-        // Remove translated marker
-        parent.removeAttribute('data-parsipad-translated');
+    if (parent?.isConnected) {
+      // Remove translated marker
+      parent.removeAttribute('data-parsipad-translated');
 
-        if (pageTranslationState.originalDirections.has(parent)) {
-          const originalDir = pageTranslationState.originalDirections.get(parent);
-          if (originalDir) {
-            parent.setAttribute('dir', originalDir);
-          } else {
-            parent.removeAttribute('dir');
-          }
+      if (state.originalDirections.has(parent)) {
+        const originalDir = state.originalDirections.get(parent);
+        if (originalDir) {
+          parent.setAttribute('dir', originalDir);
+        } else {
+          parent.removeAttribute('dir');
         }
       }
     }

@@ -37,12 +37,16 @@ describe('page run', () => {
     expect(fn('retryFailedBatches')).toMatch(/failedIndexes\(/);
   });
 
-  it('Escape cancels a running translation and SPA navigation restores originals', () => {
+  it('Escape cancels a running translation and a route change restores originals', () => {
     expect(fn('handleKeyDown')).toMatch(/pageTranslationState\?\.isTranslating/);
     expect(fn('handleKeyDown')).not.toMatch(/stopPropagation/);
-    const nav = fn('installSpaNavigationListener');
-    expect(nav.indexOf('restorePageOriginals()')).toBeGreaterThan(-1);
-    expect(nav.indexOf('restorePageOriginals()')).toBeLessThan(nav.indexOf('pageTranslationState = null'));
+    // An address change only schedules the look at the page; the reset
+    // restores before it drops the state.
+    expect(fn('installSpaNavigationListener')).toMatch(/setTimeout\(checkRouteChange, ROUTE_SETTLE_MS\)/);
+    expect(fn('checkRouteChange')).toMatch(/hasLeftPage\(/);
+    const reset = fn('resetPageTranslation');
+    expect(reset.indexOf('restorePageOriginals()')).toBeGreaterThan(-1);
+    expect(reset.indexOf('restorePageOriginals()')).toBeLessThan(reset.indexOf('pageTranslationState = null'));
     expect(fn('restorePageOriginals')).toMatch(/isConnected/);
   });
 

@@ -2,9 +2,10 @@
 // @vitest-environment-options {"url": "https://www.example.com/article"}
 // What a whole-page translation keeps, in the real content script: a failed
 // batch leaves the rest translated and can be retried on its own, a stop
-// (Escape, the Cancel button, the popup) keeps what finished, a navigation
-// discards a run without touching the new page, and a real route change
-// puts the original text back.
+// (Escape, the Cancel button, the popup) keeps what finished, a route change
+// discards a run without touching the new page and puts the original text
+// back, and an address change that leaves the content in place changes
+// nothing. Text the page changed itself is never overwritten.
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { translations } from '../lib/i18n.js';
 import { loadContentScript, translateLines } from './helpers/content-script.js';
@@ -20,6 +21,12 @@ const navigation = new EventTarget();
 // patches only the history instance. Calling the original changes the URL
 // as a page script in the main world would, unseen by the patch.
 const unpatchedPushState = (url) => History.prototype.pushState.call(history, {}, '', url);
+const unpatchedReplaceState = (url) => History.prototype.replaceState.call(history, {}, '', url);
+
+// An address change is only a trigger: the content script waits this long
+// for the router to draw the new view, then looks at what left the page.
+const ROUTE_SETTLE_MS = 250;
+const routeSettled = () => new Promise((resolve) => setTimeout(resolve, ROUTE_SETTLE_MS + 50));
 
 beforeAll(async () => {
   Object.defineProperty(window, 'navigation', { value: navigation, configurable: true });
@@ -38,11 +45,19 @@ beforeEach(() => {
   h.store.set('confirm_page_translate', false);
 });
 
-afterEach(() => {
-  history.pushState({}, '', '/reset');
-  history.pushState({}, '', '/article');
-  document.getElementById('parsipad-toast')?.remove();
-  document.getElementById('parsipad-page-toggle')?.remove();
+// Leave for another page, as an SPA route does: the content goes, then the
+// address changes, and the content script's settle timer runs. That resets
+// page translation between cases.
+afterEach(async () => {
+  document.body.innerHTML = '';
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  try {
+    history.pushState({}, '', '/reset');
+    history.pushState({}, '', '/article');
+    await vi.advanceTimersByTimeAsync(ROUTE_SETTLE_MS + 50);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 const text = (n) => document.getElementById(`p${n}`).textContent;
@@ -283,18 +298,18 @@ describe('progress and the toggle', () => {
 });
 
 describe('navigation', () => {
-  it('a navigation mid-run applies nothing and says nothing', async () => {
+  it('a route change mid-run that swaps the view applies nothing and says nothing', async () => {
     const release = holdBatch(1);
     translatePage();
     await vi.waitFor(() => expect(h.ports).toHaveLength(2));
     history.pushState({}, '', '/elsewhere');
+    document.body.innerHTML = '<p id="n1">Another page.</p>';
     release();
     await new Promise((resolve) => setTimeout(resolve, 400));
     expect(h.ports).toHaveLength(2);
-    expect(text(1)).toBe('Paragraph 1.');
+    expect(document.getElementById('n1').textContent).toBe('Another page.');
     expect(toastHost()).toBeNull();
     expect(toggleButton()).toBeNull();
-    expect(overlayHost()).toBeNull();
     expect(pageState()).toEqual({ isTranslated: false, isTranslating: false, isShowingTranslated: false });
   });
 
@@ -309,6 +324,7 @@ describe('navigation', () => {
     window.addEventListener('error', onError);
     try {
       history.pushState({}, '', '/next');
+      await routeSettled();
     } finally {
       window.removeEventListener('error', onError);
     }
@@ -322,25 +338,143 @@ describe('navigation', () => {
     expect(pageState().isTranslated).toBe(false);
   });
 
-  it('a hash change or a same-URL replaceState keeps the translation', async () => {
+  it('an address change that takes nothing away keeps the translation: a hash, a same-URL replaceState, or a scroll-driven rewrite of the path or query', async () => {
     document.body.innerHTML = paragraphs(3);
     translatePage();
     await vi.waitFor(() => expect(pageState().isTranslated).toBe(true));
     history.pushState({}, '', '#section-2');
     history.replaceState({ scrolled: 1 }, '', location.href);
     window.dispatchEvent(new PopStateEvent('popstate'));
-    await settle();
+    // A site rewriting its own address as the reader scrolls, from the page
+    // world (seen through window.navigation) and from this one.
+    unpatchedReplaceState('/article-2');
+    navigation.dispatchEvent(new Event('currententrychange'));
+    unpatchedReplaceState('/article-2?page=3');
+    navigation.dispatchEvent(new Event('currententrychange'));
+    history.replaceState({}, '', '/article-3');
+    await routeSettled();
     expect(text(1)).toBe('FA:Paragraph 1.');
     expect(toggleButton()).not.toBeNull();
+    expect(pageState()).toEqual({ isTranslated: true, isTranslating: false, isShowingTranslated: true });
+    // The toggle still works on the same nodes.
+    toggleButton().click();
+    expect(text(1)).toBe('Paragraph 1.');
+  });
+
+  it('an address change that takes away under a third of the translated text keeps the translation', async () => {
+    document.body.innerHTML = paragraphs(4);
+    translatePage();
+    await vi.waitFor(() => expect(pageState().isTranslated).toBe(true));
+    // A feed dropping one old item off the top as it loads the next.
+    document.getElementById('p1').remove();
+    document.body.insertAdjacentHTML('beforeend', '<p id="p5">Paragraph 5.</p>');
+    unpatchedReplaceState('/article?item=5');
+    navigation.dispatchEvent(new Event('currententrychange'));
+    await routeSettled();
+    expect(text(2)).toBe('FA:Paragraph 2.');
+    expect(text(5)).toBe('Paragraph 5.');
+    expect(toggleButton()).not.toBeNull();
     expect(pageState().isTranslated).toBe(true);
+  });
+
+  it('a hash route that swaps the view resets, and Translate Page then asks again and sends', async () => {
+    history.pushState({}, '', '/mail#inbox');
+    document.body.innerHTML = paragraphs(3);
+    translatePage();
+    await vi.waitFor(() => expect(pageState().isTranslated).toBe(true));
+
+    // The app swaps the view, then moves the hash from the page world.
+    document.body.innerHTML = '<p id="m1">New email body.</p>';
+    unpatchedPushState('/mail#inbox/abc');
+    navigation.dispatchEvent(new Event('currententrychange'));
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await routeSettled();
+    expect(pageState()).toEqual({ isTranslated: false, isTranslating: false, isShowingTranslated: false });
+    expect(toggleButton()).toBeNull();
+
+    h.store.delete('confirm_page_translate');
+    const before = h.ports.length;
+    translatePage();
+    const go = () => overlay()?.querySelector('[role="dialog"] [data-action="go"]');
+    await vi.waitFor(() => expect(go()).toBeTruthy());
+    go().click();
+    await vi.waitFor(() => expect(document.getElementById('m1').textContent).toBe('FA:New email body.'));
+    expect(h.ports.length - before).toBe(1);
+  });
+
+  it('Translate Page pressed before the settle time looks at the page at once', async () => {
+    history.pushState({}, '', '/mail#inbox');
+    document.body.innerHTML = paragraphs(3);
+    translatePage();
+    await vi.waitFor(() => expect(pageState().isTranslated).toBe(true));
+    document.body.innerHTML = '<p id="m1">New email body.</p>';
+    history.pushState({}, '', '/mail#inbox/abc');
+    const before = h.ports.length;
+    translatePage();
+    await vi.waitFor(() => expect(document.getElementById('m1').textContent).toBe('FA:New email body.'));
+    expect(h.ports.length - before).toBe(1);
+  });
+
+  it('a view the router redraws in place, reusing the text nodes, counts as a new page', async () => {
+    document.body.innerHTML = paragraphs(3);
+    translatePage();
+    await vi.waitFor(() => expect(pageState().isTranslated).toBe(true));
+    for (const n of [1, 2, 3]) document.getElementById(`p${n}`).firstChild.nodeValue = `Second article, part ${n}.`;
+    unpatchedPushState('/article-2');
+    navigation.dispatchEvent(new Event('currententrychange'));
+    await routeSettled();
+    expect(text(1)).toBe('Second article, part 1.');
+    expect(document.getElementById('p1').hasAttribute('data-parsipad-translated')).toBe(false);
+    expect(toggleButton()).toBeNull();
+    expect(pageState().isTranslated).toBe(false);
   });
 
   it('a navigation closes a summary whose Retry would act on the old page', async () => {
     h.answer = (msg, port) => (h.ports.indexOf(port) === 1 ? failure : translateLines(msg));
     translatePage();
     await vi.waitFor(() => expect(toastAction()?.hidden).toBe(false));
+    for (const p of document.querySelectorAll('p')) p.remove();
     history.pushState({}, '', '/elsewhere');
+    await routeSettled();
     expect(toastHost()).toBeNull();
+  });
+});
+
+describe('the page\'s own updates', () => {
+  it('a reused Text node whose text the SPA changed before the URL keeps the SPA\'s text', async () => {
+    document.body.innerHTML = paragraphs(3);
+    translatePage();
+    await vi.waitFor(() => expect(pageState().isTranslated).toBe(true));
+    // The router renders the new route first, reusing the title's Text node
+    // and replacing the rest, then updates the URL from the page world.
+    document.getElementById('p1').firstChild.nodeValue = 'Second article title.';
+    document.getElementById('p2').remove();
+    document.getElementById('p3').remove();
+    document.body.insertAdjacentHTML('beforeend', '<p id="p4">Second article body.</p>');
+    unpatchedPushState('/article-2');
+    navigation.dispatchEvent(new Event('currententrychange'));
+    await routeSettled();
+    expect(text(1)).toBe('Second article title.');
+    expect(text(4)).toBe('Second article body.');
+    expect(pageState().isTranslated).toBe(false);
+  });
+
+  it('a live counter updated between translate and toggle keeps its new value', async () => {
+    document.body.innerHTML = '<p id="p1">Paragraph 1.</p><p id="count">3 new</p>';
+    translatePage();
+    await vi.waitFor(() => expect(pageState().isTranslated).toBe(true));
+    const count = document.getElementById('count');
+    expect(count.textContent).toBe('FA:3 new');
+
+    count.firstChild.nodeValue = '4 new';
+    toggleButton().click();
+    expect(text(1)).toBe('Paragraph 1.');
+    expect(count.textContent).toBe('4 new');
+
+    count.firstChild.nodeValue = '5 new';
+    toggleButton().click();
+    expect(text(1)).toBe('FA:Paragraph 1.');
+    expect(count.textContent).toBe('5 new');
   });
 });
 
@@ -452,6 +586,7 @@ describe('restoring after a route change', () => {
     kept.firstChild.remove();
     kept.append('Fresh content.');
     history.pushState({}, '', '/next');
+    await routeSettled();
     expect(kept.textContent).toBe('Fresh content.');
     expect(kept.hasAttribute('dir')).toBe(false);
     expect(kept.hasAttribute('data-parsipad-translated')).toBe(false);
@@ -462,8 +597,10 @@ describe('restoring after a route change', () => {
     document.body.innerHTML = paragraphs(3);
     translatePage();
     await vi.waitFor(() => expect(pageState().isTranslated).toBe(true));
+    document.getElementById('p3').remove();
     unpatchedPushState('/from-the-page');
     navigation.dispatchEvent(new Event('currententrychange'));
+    await routeSettled();
     expect(text(1)).toBe('Paragraph 1.');
     expect(toggleButton()).toBeNull();
     expect(pageState().isTranslated).toBe(false);
