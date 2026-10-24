@@ -46,3 +46,5 @@ For transparency, the security posture of ParsiPad is:
 2. **The content script runs on `<all_urls>`.** It uses Shadow DOM to isolate its UI from host pages but inevitably has DOM access to the host page when the user invokes a translation. We do not read DOM content unless the user explicitly invokes translate.
 
 3. **No backend server.** Translation requests go directly from the user's browser to the chosen provider (Anthropic, Google, or OpenAI). ParsiPad has no servers and does not see or proxy any user data.
+
+4. **Bookmarks permission is read-only in spirit.** It is used to populate the New Tab page's bookmarks drawer; we do not modify bookmarks. The Chrome API surface technically allows writes, but no code path in the extension writes to bookmarks. The optional `topSites` permission is requested only when the user turns on Most visited and is removed when they turn it off.

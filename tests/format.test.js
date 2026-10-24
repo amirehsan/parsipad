@@ -1,6 +1,6 @@
 process.env.TZ = 'America/Los_Angeles';
 import { describe, it, expect } from 'vitest';
-import { INTL_LOCALE, localDayKey, formatRelativeTime, dayGroup, dayGroupLabel, formatNumber, formatCurrency } from '../lib/format.js';
+import { INTL_LOCALE, localDayKey, formatTime, formatDate, formatRelativeTime, dayGroup, dayGroupLabel, formatNumber, formatCurrency } from '../lib/format.js';
 const now = Date.parse('2026-10-24T18:00:00Z'); // 11:00 in Los Angeles
 const min = 60e3, day = 864e5;
 describe('format', () => {
@@ -28,5 +28,18 @@ describe('format', () => {
     expect(formatCurrency(0.00042, 'en')).toBe('$0.0004');
     expect(formatCurrency(1.5, 'en')).toBe('$1.50');
     expect(INTL_LOCALE.fa).toBe('fa-u-ca-gregory-nu-latn');
+  });
+  it('formats a clock time with Latin digits in both languages', () => {
+    const ts = Date.parse('2026-10-24T16:41:00Z'); // 09:41 in Los Angeles
+    expect(formatTime(ts, 'en')).toMatch(/9:41/);
+    const fa = formatTime(ts, 'fa');
+    expect(fa).toMatch(/9:41|09:41/);
+    expect(fa).not.toMatch(/[۰-۹]/);
+    expect(formatTime(new Date(ts), 'en')).toBe(formatTime(ts, 'en'));
+  });
+  it('formats a long date on request, keeping the medium date as the default', () => {
+    expect(formatDate(now, 'en')).toBe('Oct 24, 2026');
+    expect(formatDate(now, 'en', { dateStyle: 'full' })).toBe('Saturday, October 24, 2026');
+    expect(formatDate(now, 'fa', { dateStyle: 'full' })).not.toMatch(/[۰-۹]/);
   });
 });

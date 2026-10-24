@@ -1,13 +1,15 @@
-# Remaining work after 3.7.0
+# Remaining work after 3.8.0
 
 The UI/UX redesign shipped in four releases on 2026-10-24: 3.3.0 (side panel),
 3.4.0 (Library and Practice), 3.5.0 (Settings and Welcome) and 3.6.0 (in-page
-reading). 3.7.0 added a "Manage muted sites" shortcut to the mute toast. This file lists what was planned but not started, and the small
+reading). 3.7.0 added a "Manage muted sites" shortcut to the mute toast. 3.8.0 brought the
+New Tab back on the new design, put Doc & Image behind one drop zone and
+lined up Settings > Shortcuts. This file lists what was planned but not started, and the small
 findings the reviews deferred, so the work can be picked up later.
 
 ## Not started
 
-### Plan F, the next minor release after 3.7.0: lessons and polish
+### Plan F, the next minor release after 3.8.0: lessons and polish
 
 The full plan is `docs/superpowers/plans/2026-10-24-lessons-and-polish.md`
 and its spec section is Phase F in
@@ -28,7 +30,7 @@ task.
 6. One theme hook and no `transition: all` anywhere.
 7. Page controls on the shared `pp-*` classes.
 8. Remaining 3.2.0 minors.
-9. Release it as the next minor version (3.8.0 unless something ships first).
+9. Release it as the next minor version (3.9.0 unless something ships first).
 
 ### Persian-interface RTL rework (Phase 3)
 
@@ -94,6 +96,16 @@ deferred items below come from that.
 - When page translation starts from the side panel, keyboard focus stays in
   the panel. A content script cannot move it.
 
+### New Tab
+
+- The Bookmarks and Most visited switches in Settings stay live while "Show
+  ParsiPad on new tabs" is off, so they look like they do something.
+- The phrase count from the 3.3.x New Tab was not brought back.
+- On a short window the page scrolls rather than fitting.
+- Welcome does not mention the New Tab.
+- The Persian copy on the page and its Settings card has not had a native
+  read.
+
 ### Tests and code health
 
 - Three copies of the `functionBody` test helper predate
@@ -107,7 +119,7 @@ deferred items below come from that.
 
 ## Store and release notes
 
-- The 3.4.0 to 3.7.0 zips are in `store-assets/` (git-ignored) for
+- The 3.4.0 to 3.8.0 zips are in `store-assets/` (git-ignored) for
   the Chrome Web Store upload.
 - The provider price table in `lib/cost-estimate.js` was checked against
   published rates on 2026-10-24. Re-check it when providers change prices.

@@ -14,6 +14,7 @@ import { formatRelativeTime } from '../lib/format.js';
 import { getProviderHealth, healthTone } from '../lib/provider-health.js';
 import { createFirstRun } from './first-run.js';
 import { screenshotCaptureFailed, screenshotGuidance } from './screenshot-guidance.js';
+import { classifyFile } from './file-kind.js';
 
 // The popup script also runs inside the side panel, which must stay open.
 const isPanel = document.body.dataset.surface === 'panel';
@@ -48,10 +49,12 @@ const statusLine = document.getElementById('status-line');
 // Recent row: the latest history item and the Library link
 const recentLabel = document.getElementById('recent-label');
 const recentItem = document.getElementById('recent-item');
-// Document elements
-const uploadArea = document.getElementById('upload-area');
+// Doc & Image: one drop zone and file picker for both translators
+const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
-const selectFileBtn = document.getElementById('select-file-btn');
+const documentPart = docImageSection.querySelector('.document-section');
+const imagePart = docImageSection.querySelector('.image-section');
+// Document elements
 const documentInfo = document.getElementById('document-info');
 const docName = document.getElementById('doc-name');
 const docSize = document.getElementById('doc-size');
@@ -80,9 +83,6 @@ let manualSourceOverride = null;
 // drawn in a known state rather than left stateless until the check returns.
 let translationIsSaved = false;
 // Image elements
-const imageUploadArea = document.getElementById('image-upload-area');
-const imageInput = document.getElementById('image-input');
-const selectImageBtn = document.getElementById('select-image-btn');
 const screenshotTranslateBtn = document.getElementById('screenshot-translate-btn');
 const imagePreview = document.getElementById('image-preview');
 const previewImg = document.getElementById('preview-img');
@@ -509,19 +509,25 @@ function setupEventListeners() {
   // so middle-click and "open in new tab" work without a handler.
   recentItem.addEventListener('click', reopenRecent);
 
+  // Doc & Image: choose, drop or paste one file
+  dropZone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', handleFileInputChange);
+  docImageSection.addEventListener('dragover', handleDragOver);
+  docImageSection.addEventListener('dragleave', handleDragLeave);
+  docImageSection.addEventListener('drop', handleDrop);
+  // A file let go anywhere else must not replace the popup with the file.
+  document.addEventListener('dragover', blockStrayDrop);
+  document.addEventListener('drop', blockStrayDrop);
+
   // Document buttons
-  selectFileBtn.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', handleFileSelect);
-  removeFileBtn.addEventListener('click', clearFile);
+  removeFileBtn.addEventListener('click', () => { clearFile(); dropZone.focus(); });
   downloadBtn.addEventListener('click', downloadTranslation);
   cancelTranslationBtn.addEventListener('click', handleCancelTranslation);
   translateDocBtn.addEventListener('click', handleDocumentTranslate);
 
   // Image buttons
-  selectImageBtn.addEventListener('click', () => imageInput.click());
   screenshotTranslateBtn.addEventListener('click', handleScreenshotTranslate);
-  imageInput.addEventListener('change', handleImageFileSelect);
-  removeImageBtn.addEventListener('click', clearImage);
+  removeImageBtn.addEventListener('click', () => { clearImage(); dropZone.focus(); });
   translateImageBtn.addEventListener('click', handleImageTranslate);
   imageCopyBtn.addEventListener('click', handleImageCopy);
 
@@ -530,7 +536,7 @@ function setupEventListeners() {
   // navigator.clipboard.read(), and requesting it on update would
   // trigger a permission-change warning for every existing user.
   // The document-level Ctrl+V handler below (handlePaste) covers paste
-  // and the inline tip in popup.html tells users about it.
+  // and the drop zone's hint tells users about it.
 
   // Translate Page button
   const translatePageBtn = document.getElementById('translate-page-btn');
@@ -1141,37 +1147,102 @@ function hideAllOutputs() {
 // ============================================
 
 /**
- * Handle file selection
+ * Send a chosen, dropped or pasted file to the translator its type belongs
+ * to. One file at a time: the drop zone, and with it drop and paste, is gone
+ * while a file is loaded, until Remove brings it back.
+ * @param {File} file
  */
-function handleFileSelect(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
+function routeFile(file) {
   hideError();
-
-  // Validate file type
-  if (!file.name.endsWith('.txt')) {
-    showError(t('unsupportedFormat', currentLang) || 'Only .txt files are supported');
+  const kind = classifyFile(file);
+  if (!kind) {
+    showError(t('unsupportedFileType', currentLang));
     return;
   }
 
+  if (kind.kind === 'document') {
+    if (!loadDocument(file)) return;
+    showNotice(t('documentReady', currentLang));
+  } else {
+    // A file the browser could not type is passed on with the type its
+    // extension implies, which is what the image request sends.
+    const image = file.type === kind.mimeType ? file : new File([file], file.name, { type: kind.mimeType });
+    if (!handleImageSelect(image)) return;
+    showNotice(t('imageReady', currentLang));
+  }
+  updateDropZone();
+  // The drop zone is gone now; a text file is ready at once, so focus moves
+  // on to its Translate button (an image's moves once its preview is drawn).
+  if (kind.kind === 'document') translateDocBtn.focus();
+}
+
+/** The drop zone shows until a file is loaded, and each part only with its file. */
+function updateDropZone() {
+  dropZone.hidden = Boolean(uploadedFile || selectedImage);
+  documentPart.hidden = !uploadedFile;
+  imagePart.hidden = !selectedImage;
+  if (dropZone.hidden) dropZone.classList.remove('is-dragover');
+}
+
+function handleFileInputChange(event) {
+  const file = event.target.files[0];
+  // The same file chosen again after Remove still fires change.
+  fileInput.value = '';
+  if (file) routeFile(file);
+}
+
+function draggingFiles(event) {
+  return Array.from(event.dataTransfer?.types || []).includes('Files');
+}
+
+function handleDragOver(event) {
+  if (!draggingFiles(event) || dropZone.hidden) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'copy';
+  dropZone.classList.add('is-dragover');
+}
+
+function handleDragLeave(event) {
+  if (!docImageSection.contains(event.relatedTarget)) dropZone.classList.remove('is-dragover');
+}
+
+function handleDrop(event) {
+  if (!draggingFiles(event)) return;
+  event.preventDefault();
+  dropZone.classList.remove('is-dragover');
+  if (dropZone.hidden) return;
+  const file = event.dataTransfer.files[0];
+  if (file) routeFile(file);
+}
+
+function blockStrayDrop(event) {
+  if (!draggingFiles(event) || event.defaultPrevented) return;
+  event.preventDefault();
+  if (event.type === 'dragover') event.dataTransfer.dropEffect = 'none';
+}
+
+/**
+ * Load a text file into the document translator.
+ * @param {File} file
+ * @returns {boolean} Whether the file was taken
+ */
+function loadDocument(file) {
   // Validate file size (100KB max)
   if (file.size > 100 * 1024) {
     showError(t('fileTooLarge', currentLang));
-    return;
+    return false;
   }
 
   // Validate file is not empty
   if (file.size === 0) {
-    showError('File is empty');
-    return;
+    showError(t('fileEmpty', currentLang));
+    return false;
   }
 
   uploadedFile = file;
   docName.textContent = file.name;
   docSize.textContent = formatFileSize(file.size);
 
-  uploadArea.hidden = true;
   documentInfo.hidden = false;
   downloadSection.hidden = true;
   translationProgress.hidden = true;
@@ -1179,6 +1250,7 @@ function handleFileSelect(event) {
 
   // Show translate button for document
   translateDocBtn.hidden = false;
+  return true;
 }
 
 /**
@@ -1189,11 +1261,11 @@ function clearFile() {
   translatedContent = null;
   fileInput.value = '';
 
-  uploadArea.hidden = false;
   documentInfo.hidden = true;
   downloadSection.hidden = true;
   translationProgress.hidden = true;
   translateDocBtn.hidden = true;
+  updateDropZone();
 }
 
 /**
@@ -1203,6 +1275,9 @@ function clearFile() {
 function setDocLoadingState(loading) {
   isProcessing = loading;
   translateDocBtn.disabled = loading;
+  // Removing the file mid-run would leave the run going behind the drop
+  // zone; Cancel stops it first.
+  removeFileBtn.disabled = loading;
   const btnTextEl = translateDocBtn.querySelector('.btn-text');
   const btnLoadingEl = translateDocBtn.querySelector('.btn-loading');
   if (btnTextEl) btnTextEl.hidden = loading;
@@ -1214,13 +1289,7 @@ function setDocLoadingState(loading) {
  */
 async function handleDocumentTranslate() {
   if (!uploadedFile) {
-    showError('Please select a file');
-    return;
-  }
-
-  // Validate file type
-  if (!uploadedFile.name.endsWith('.txt')) {
-    showError(t('unsupportedFormat', currentLang) || 'Only .txt files are supported');
+    showError(t('selectFileFirst', currentLang));
     return;
   }
 
@@ -1237,7 +1306,7 @@ async function handleDocumentTranslate() {
   }
 
   if (!content || content.trim().length === 0) {
-    showError('File is empty');
+    showError(t('fileEmpty', currentLang));
     return;
   }
 
@@ -1350,7 +1419,7 @@ function downloadTranslation() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = uploadedFile.name.replace('.txt', '_translated.txt');
+  a.download = uploadedFile.name.replace(/(\.txt)?$/i, '_translated.txt');
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1371,30 +1440,20 @@ function formatFileSize(bytes) {
 // ============================================
 
 /**
- * Handle image file selection
- */
-function handleImageFileSelect(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  handleImageSelect(file);
-}
-
-/**
  * Handle paste event for clipboard images
  */
 function handlePaste(event) {
-  // Only handle paste while the image area is showing
-  if (currentMode !== 'docImage') return;
+  // Only while Doc & Image is showing and nothing is loaded yet
+  if (currentMode !== 'docImage' || dropZone.hidden) return;
 
   const items = event.clipboardData?.items;
   if (!items) return;
 
   for (const item of items) {
-    if (item.type.startsWith('image/')) {
+    if (item.kind === 'file') {
       const file = item.getAsFile();
       if (file) {
-        handleImageSelect(file);
+        routeFile(file);
         event.preventDefault();
         break;
       }
@@ -1404,21 +1463,22 @@ function handlePaste(event) {
 
 
 /**
- * Handle image selection (from file input or paste)
+ * Load an image into image translation (from the drop zone, picker or paste)
  * @param {File} file - Image file
+ * @returns {boolean} Whether the image was taken
  */
 function handleImageSelect(file) {
   // Validate file type
   const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
   if (!validTypes.includes(file.type)) {
     showError(t('unsupportedFormat', currentLang));
-    return;
+    return false;
   }
 
   // Validate file size (5MB max)
   if (file.size > 5 * 1024 * 1024) {
     showError(t('imageTooLarge', currentLang));
-    return;
+    return false;
   }
 
   selectedImage = file;
@@ -1427,12 +1487,14 @@ function handleImageSelect(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
     previewImg.src = e.target.result;
-    imageUploadArea.hidden = true;
     imagePreview.hidden = false;
     translateImageBtn.hidden = false;
     imageResult.hidden = true;
+    // The drop zone that had focus is gone; carry it to the next step.
+    if (document.activeElement === document.body) translateImageBtn.focus();
   };
   reader.readAsDataURL(file);
+  return true;
 }
 
 /**
@@ -1440,13 +1502,13 @@ function handleImageSelect(file) {
  */
 function clearImage() {
   selectedImage = null;
-  imageInput.value = '';
+  fileInput.value = '';
   previewImg.src = '';
 
-  imageUploadArea.hidden = false;
   imagePreview.hidden = true;
   translateImageBtn.hidden = true;
   imageResult.hidden = true;
+  updateDropZone();
 }
 
 /**
@@ -1588,6 +1650,8 @@ async function displayImageResult(result) {
 function setImageLoadingState(loading) {
   isProcessing = loading;
   translateImageBtn.disabled = loading;
+  // The request is short and cannot be cancelled, so the image stays until it answers.
+  removeImageBtn.disabled = loading;
   const btnTextEl = translateImageBtn.querySelector('.btn-text');
   const btnLoadingEl = translateImageBtn.querySelector('.btn-loading');
   if (btnTextEl) btnTextEl.hidden = loading;

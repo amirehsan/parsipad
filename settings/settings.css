@@ -514,6 +514,18 @@ html {
   color: var(--color-text-muted);
 }
 
+/* A live line under a switch's hint, such as why Most visited went back
+   off. Empty, it takes no room but stays in the page for screen readers. */
+.setting-status {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.setting-status:empty {
+  margin: 0;
+}
+
 /* Slider Row */
 .slider-row {
   display: flex;
@@ -874,8 +886,12 @@ a.btn {
   color: var(--color-gray-50);
 }
 
-/* Keyboard Shortcuts Section */
+/* Keyboard Shortcuts Section. Every row in every group shares one grid:
+   a fixed keys column wide enough for a three-key binding, then the
+   description, left-aligned and wrapping under itself. The note under a
+   list starts where the descriptions start. */
 .shortcuts-section {
+  --shortcut-keys-width: 10rem;
   margin-bottom: 1.25rem;
 }
 
@@ -899,21 +915,25 @@ a.btn {
 .shortcuts-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .shortcut-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: var(--shortcut-keys-width) minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-inline-actions);
-  padding: 0.5rem 0.75rem;
+  column-gap: var(--space-stack-item);
+  padding: var(--space-2) var(--space-stack-item);
   background: var(--gray-50);
   border-radius: 0.5rem;
 }
 
 .dark .shortcut-item {
   background: var(--gray-800);
+}
+
+[dir="rtl"] .shortcut-keys {
+  justify-content: flex-end;
 }
 
 /* An unbound command: plain muted text, never styled as a key the user
@@ -923,10 +943,14 @@ a.btn {
   opacity: 0.7;
 }
 
+/* The keys of one binding read left to right on a Persian page too, "Alt + B"
+   rather than "B + Alt", while still sitting at the start of the row. */
 .shortcut-keys {
   display: flex;
-  flex-shrink: 0;
+  flex-wrap: wrap;
   align-items: center;
+  direction: ltr;
+  unicode-bidi: isolate;
   gap: 0.25rem;
 }
 
@@ -940,6 +964,10 @@ a.btn {
   font-family: inherit;
   font-size: 0.75rem;
   font-weight: 500;
+  /* A key name reads left to right even on a Persian page: "⌥T" must not
+     turn into "T⌥". */
+  direction: ltr;
+  unicode-bidi: isolate;
   color: var(--gray-700);
   background: var(--color-bg-elevated);
   border: 1px solid var(--gray-300);
@@ -965,6 +993,7 @@ a.btn {
 /* The note under a list: what the keys above it are not. */
 .shortcuts-note {
   margin-top: var(--space-stack-item);
+  padding-inline-start: calc(var(--shortcut-keys-width) + 2 * var(--space-stack-item));
 }
 
 /* The button under the shortcut lists sits clear of the last list. */
@@ -1264,6 +1293,19 @@ a.btn {
 
   .about-link {
     justify-content: center;
+  }
+}
+
+/* On a phone-width page the keys sit above their description instead of
+   squeezing it into a sliver, and the note lines up with both. */
+@media (max-width: 480px) {
+  .shortcut-item {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--space-1);
+  }
+
+  .shortcuts-note {
+    padding-inline-start: var(--space-stack-item);
   }
 }
 

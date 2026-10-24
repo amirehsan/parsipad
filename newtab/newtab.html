@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Tab</title>
+
+  <!-- The word is the first thing painted, set in the 600 weight. Preloading
+       the faces it can need shortens the window where it renders in the
+       fallback and then jumps. -->
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../fonts/inter-latin-600-normal.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../fonts/vazirmatn-arabic-600-normal.woff2">
+
+  <link rel="stylesheet" href="newtab.css">
+  <script src="../lib/theme-boot.js"></script>
+</head>
+<body>
+  <!-- Both views start hidden. newtab.js reads the setting first and then
+       reveals exactly one, so turning the page off never flashes it. -->
+  <div id="nt-page" class="nt-page" hidden>
+    <header class="nt-bar">
+      <button id="nt-bookmarks-btn" type="button" class="pp-btn pp-btn-ghost pp-btn-sm nt-bar-btn"
+              aria-expanded="false" aria-controls="nt-drawer" aria-keyshortcuts="/" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span data-i18n="bookmarks">Bookmarks</span>
+      </button>
+      <button id="theme-btn" type="button" class="pp-btn-icon" data-i18n-title="toggleTheme" title="Toggle theme">
+        <svg id="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/>
+          <line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/>
+          <line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <a id="nt-settings-link" class="pp-btn-icon" href="../settings/settings.html#flashcards" data-i18n-title="settings" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </a>
+    </header>
+
+    <main class="nt-stage">
+      <!-- The glance: the time, then a greeting in both languages, the
+           reader's own first. -->
+      <div class="nt-glance">
+        <p id="nt-clock" class="nt-clock"></p>
+        <p class="nt-greeting">
+          <span id="nt-greeting-primary"></span>
+          <span class="nt-sep" aria-hidden="true">&middot;</span>
+          <span id="nt-greeting-secondary"></span>
+        </p>
+        <p id="nt-date" class="nt-date"></p>
+      </div>
+
+      <div id="nt-word" class="nt-word" hidden>
+        <!-- One button holds both faces, as on the Practice page: Space and
+             Enter flip it natively, aria-pressed says which face is up. -->
+        <button id="nt-card" type="button" class="nt-card" aria-pressed="false">
+          <span class="nt-card-inner">
+            <span id="nt-face-front" class="nt-face nt-face-front" aria-hidden="false">
+              <span id="nt-front-text" class="nt-text"></span>
+              <span class="nt-hint" data-i18n="practiceShowAnswer">Show answer</span>
+            </span>
+            <span id="nt-face-back" class="nt-face nt-face-back" aria-hidden="true">
+              <span id="nt-back-text" class="nt-text"></span>
+              <span class="nt-hint" data-i18n="practiceHideAnswer">Hide answer</span>
+            </span>
+          </span>
+        </button>
+
+        <div class="nt-actions">
+          <button id="nt-copy" type="button" class="pp-btn pp-btn-secondary pp-btn-sm" data-i18n="practiceCopy">Copy</button>
+          <button id="nt-another" type="button" class="pp-btn pp-btn-secondary pp-btn-sm" data-i18n="newTabShowAnother">Show another</button>
+          <a id="nt-practice-link" class="pp-btn pp-btn-ghost pp-btn-sm nt-link" href="../practice/practice.html" data-i18n="practiceTitle">Practice</a>
+          <a id="nt-favorites-link" class="pp-btn pp-btn-ghost pp-btn-sm nt-link" href="../library/library.html?tab=favorites" data-i18n="favorites">Favorites</a>
+        </div>
+      </div>
+
+      <div id="nt-empty" class="nt-empty" hidden>
+        <p class="nt-empty-text" data-i18n="newTabEmpty">No saved words yet.</p>
+        <a class="pp-btn pp-btn-secondary nt-link" href="../library/library.html?tab=favorites" data-i18n="practiceEmptyLink">Go to your favorites</a>
+      </div>
+    </main>
+
+    <!-- Most visited. Chrome exposes no page thumbnail to extensions, so a
+         tile is the site's favicon from the browser's own cache, with its
+         initial as the fallback. -->
+    <section id="nt-recents" class="nt-dock" data-i18n-aria-label="panelRecents" aria-label="Most visited" hidden>
+      <ul id="nt-tiles" class="nt-tiles"></ul>
+    </section>
+
+    <p id="nt-status" class="nt-toast" role="status"></p>
+  </div>
+
+  <!-- Off: the page background, a quiet clock and the way back. -->
+  <main id="nt-off" class="nt-off" hidden>
+    <p id="nt-off-clock" class="nt-off-clock"></p>
+    <button id="nt-open-chrome" type="button" class="pp-btn pp-btn-secondary" data-i18n="newTabOpenChrome">Open Chrome's New Tab</button>
+    <div id="nt-off-fallback" class="nt-off-fallback" role="status" hidden>
+      <p class="nt-off-text" data-i18n="newTabOpenChromeFailed">Chrome did not open its own New Tab from here.</p>
+      <a class="pp-btn pp-btn-ghost pp-btn-sm nt-link" href="../settings/settings.html#flashcards" data-i18n="newTabOpenSettings">Open Settings</a>
+    </div>
+  </main>
+
+  <!-- Bookmarks. The closed drawer is inert and moved off screen with a
+       transform, never the hidden attribute: the shared [hidden] rule is
+       display: none !important and would take the slide with it. Nothing is
+       trapped: Tab leaves it like any other region. -->
+  <div id="nt-scrim" class="nt-scrim"></div>
+  <aside id="nt-drawer" class="nt-drawer" aria-labelledby="nt-drawer-title" inert>
+    <div class="nt-drawer-head">
+      <h2 id="nt-drawer-title" class="nt-drawer-title" data-i18n="bookmarks">Bookmarks</h2>
+      <button type="button" id="nt-drawer-close" class="pp-btn-icon" data-i18n-title="closeBookmarks" title="Close bookmarks">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <input type="search" id="nt-bookmark-search" class="pp-input nt-bookmark-search" autocomplete="off" spellcheck="false"
+           data-i18n-placeholder="searchBookmarks" data-i18n-aria-label="searchBookmarks" placeholder="Search bookmarks" aria-label="Search bookmarks">
+    <div id="nt-bookmark-tree" class="nt-bookmark-tree"></div>
+    <p id="nt-bookmark-empty" class="nt-bookmark-empty" data-i18n="noBookmarksFound" hidden>No bookmarks found</p>
+  </aside>
+
+  <script type="module" src="newtab.js"></script>
+</body>
+</html>

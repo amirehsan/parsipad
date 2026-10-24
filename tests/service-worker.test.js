@@ -154,33 +154,19 @@ beforeEach(() => {
   translate.mockReset();
 });
 
-describe('retiring the New Tab settings', () => {
-  it('drops the New Tab keys on update and leaves favorites alone', async () => {
-    store.set('newtab_enabled', true);
-    store.set('newtab_phrase_count', 5);
-    store.set('newtab_panels', {});
+describe('the New Tab settings survive an update', () => {
+  it('leaves the New Tab keys and favorites alone on update', async () => {
+    // 3.4.0 deleted these on every update while the page was gone. The page
+    // is back, so a user who turned it off must stay off after the next one.
+    store.set('newtab_enabled', false);
+    store.set('newtab_panels', { bookmarks: false, recents: true });
     store.set('favorites', [{ id: 'keep' }]);
 
     await captured.onInstalled({ reason: 'update' });
 
-    expect(store.has('newtab_enabled')).toBe(false);
-    expect(store.has('newtab_phrase_count')).toBe(false);
-    expect(store.has('newtab_panels')).toBe(false);
+    expect(store.get('newtab_enabled')).toBe(false);
+    expect(store.get('newtab_panels')).toEqual({ bookmarks: false, recents: true });
     expect(store.get('favorites')).toEqual([{ id: 'keep' }]);
-  });
-
-  it('still sets up the context menus when the cleanup fails', async () => {
-    const remove = vi.spyOn(chrome.storage.local, 'remove').mockRejectedValueOnce(new Error('storage unavailable'));
-    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
-    // Other tests read the menus registered at startup, so count rather than clear.
-    const before = chrome.contextMenus.create.mock.calls.length;
-
-    await expect(captured.onInstalled({ reason: 'update' })).resolves.toBeUndefined();
-
-    expect(chrome.contextMenus.create.mock.calls.length).toBeGreaterThan(before);
-    expect(logged).toHaveBeenCalled();
-    remove.mockRestore();
-    logged.mockRestore();
   });
 });
 

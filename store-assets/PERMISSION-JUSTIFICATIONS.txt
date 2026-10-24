@@ -2,6 +2,41 @@ ParsiPad - Chrome Web Store permission justifications
 Paste these into Privacy practices > "Permission justification" for each item.
 
 ====================================================================
+favicon  (REQUIRED - flagged at submission)
+====================================================================
+ParsiPad's New Tab page shows the user's bookmarks in a drawer and, if the
+user switches it on, their most visited sites as shortcut tiles. The favicon
+permission is used solely to draw each site's own icon next to its bookmark
+or on its tile, by loading chrome-extension://<id>/_favicon/?pageUrl=... .
+That URL is served by the browser from its own local favicon cache and makes
+no network request.
+
+It is built in exactly one function, faviconUrl() in lib/top-sites.js, and
+used nowhere outside the New Tab page. We chose it deliberately over a
+third-party favicon service, because sending page URLs to such a service
+would disclose the user's bookmarks and visited sites to an external server.
+Reading icons locally means that list never leaves the browser.
+
+====================================================================
+topSites  (OPTIONAL - flagged at submission)
+====================================================================
+ParsiPad replaces the New Tab page, and one of its optional panels shows the
+user's most visited sites as shortcut tiles, the same way Chrome's own New
+Tab does. chrome.topSites.get() provides the URL and title used to build
+those tiles.
+
+This is declared under optional_permissions, not permissions. It is requested
+only when the user explicitly switches the "Most visited" panel on in
+Settings, from that click, and it is given back with
+chrome.permissions.remove() when the user switches the panel off. Before
+every read the extension calls chrome.permissions.contains() and renders
+nothing if the permission was never granted or was later revoked.
+
+The returned data is used only to render tiles in that New Tab and is never
+stored, logged, transmitted, or sent to any server. No network request is
+made anywhere in this code path.
+
+====================================================================
 The other declared permissions, for reference
 ====================================================================
 storage
@@ -23,6 +58,11 @@ activeTab + scripting
   Used to read the text the user selected and to show ParsiPad's translation
   box on the page, only on the tab the user invoked ParsiPad on, and only in
   response to that action.
+
+bookmarks
+  The New Tab page includes a read-only bookmark browser with search, in a
+  drawer the user opens. Read access only: ParsiPad never creates, edits or
+  deletes bookmarks, and never sends them anywhere.
 
 Host permissions (api.anthropic.com, generativelanguage.googleapis.com,
 api.openai.com)

@@ -40,8 +40,9 @@ Translate an entire page in place with Alt+P or the right-click menu, then toggl
 Screenshots, images, and documents
 
 - Screenshot region: press Alt+S, drag a box around anything on screen, and the text inside it is read and translated. Works on images, banners, and text you cannot select
-- Images: upload a file or paste one straight from your clipboard. JPG, PNG, and WebP up to 5MB
-- Documents: upload a .txt file and translate it in full, with progress as it works and the finished file ready to download
+- Images and documents share one drop zone in Doc & Image: drop a file, click to choose one, or paste an image from your clipboard, and ParsiPad sends it where it belongs
+- Images: JPG, PNG, and WebP up to 5MB
+- Documents: a .txt file up to 100KB, translated in full, with progress as it works and the finished file ready to download
 
 
 Dictionary
@@ -81,6 +82,8 @@ Save what is worth keeping
 Star any translation, polished passage, or grammar lesson, and it goes to your favourites.
 
 Practice turns your saved words into flashcards. Each session deals a handful of cards, one at a time. A card shows the saved translation, and flipping it reveals the original. Space or Enter flips it, the arrow keys move between cards, and C copies what is showing. Choose how many cards a session holds, from 5 to 30, in Settings. Open Practice from the side panel or from the Library. Grammar lessons stay in the Library for reading and are not dealt as cards. Flipping stays still if your system is set to reduce motion.
+
+Your saved words also come to every new tab. Each new tab shows one of them in large Persian or English type, under the time, the date and a greeting in both languages. Click it, or press Space or Enter, to reveal the original, and C copies it. Your bookmarks open in a searchable drawer with the "/" key and stay out of the way otherwise. Your most visited sites can appear as tiles, but only if you switch that on; Chrome asks first, and switching it off gives the permission back. Site icons come from your browser's own cache, so the sites you visit are never sent anywhere. Prefer Chrome's own New Tab? Turn ParsiPad's off in Settings, and the page offers a button back to Chrome's.
 
 
 Library

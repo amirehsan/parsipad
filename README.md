@@ -33,7 +33,7 @@
 - **Screenshot Region Translate** - Select any area on a webpage and translate text from images (NEW in v2.8)
 - **Full Page Translation** - Translate entire webpages; it asks first with the paragraph count and an estimated cost, and reports any sections that failed so you can retry just those
 - **Image Translation** - Extract and translate text from images using OCR
-- **Document Translation** - Upload and translate TXT files with progress tracking
+- **Document Translation** - Drop, choose or paste a TXT file and translate it with progress tracking
 - **Text Polishing** - Get 3 versions: Professional, Conversational, and Concise
 
 ### Grammar Learning (NEW in v2.7)
@@ -50,6 +50,7 @@
 - **Favorites System** - Star translations and polished text to save them
 - **Library** - History, Favorites and saved grammar Lessons in one searchable page, with Undo for deletes
 - **Practice** - Review your favorites as flashcards, from the side panel or the Library
+- **New Tab** - One of your saved words on every new tab, with the time, a greeting and an optional bookmarks drawer and Most visited tiles
 - **Dictionary Lookup** - Look up definitions, phonetics, synonyms, and antonyms
 - **Side Panel** - Keep ParsiPad open beside the page while you browse
 
@@ -170,8 +171,8 @@ Access via:
 ### Document Mode (NEW in v2.0)
 
 Translate entire documents:
-1. Open the popup, choose "Doc & Image" and use the Document area
-2. Upload a TXT file (max 100KB)
+1. Open the popup, choose "Doc & Image"
+2. Drop a TXT file (max 100KB) on the drop zone, or click it to choose one
 3. Watch the progress as chunks are translated
 4. Download the translated file when complete
 
@@ -180,9 +181,11 @@ You can cancel long translations at any time.
 ### Image Mode (NEW in v2.2)
 
 Translate text directly from images:
-1. Open the popup, choose "Doc & Image" and use the Image area
-2. Upload an image (JPG, PNG, WebP up to 5MB)
+1. Open the popup, choose "Doc & Image"
+2. Drop an image (JPG, PNG, WebP up to 5MB) on the drop zone, or click it to choose one
    - Or paste from clipboard with `Ctrl+V`
+
+The drop zone takes either kind of file and sends it where it belongs: a text file to document translation, an image to image translation.
 3. Click "Translate Image"
 4. View extracted text and translation
 5. Copy translation to clipboard
@@ -235,6 +238,14 @@ Review your favorites as flashcards:
    - `C` - Copy text
 4. Choose how many cards a session holds (5 to 30) in Settings
 
+### New Tab
+
+ParsiPad shows one of your saved words on every new tab:
+1. The word sits under the time, the date and a greeting in both languages. Click it, or press `Space` or `Enter`, to flip it; `C` copies what is showing
+2. Press `/` (or the Bookmarks button) to open your bookmarks in a searchable drawer
+3. Turn on Most visited in Settings > Flashcards to show your most used sites as tiles. Chrome asks for permission the first time, and switching it off gives the permission back
+4. Turn the whole page off in Settings > Flashcards. The page then offers a button back to Chrome's own New Tab
+
 ### Page Translation (NEW in v2.7)
 
 Translate entire webpages:
@@ -279,6 +290,7 @@ parsipad/
 ├── settings/           # Settings page
 ├── library/            # Library page: History, Favorites and Lessons tabs
 ├── practice/           # Practice flashcards page
+├── newtab/             # New Tab page: a saved word, bookmarks and Most visited
 ├── history/            # Redirects the old History page to the Library
 ├── favorites/          # Redirects the old Favorites page to the Library
 ├── welcome/            # Welcome/onboarding page
@@ -323,6 +335,7 @@ ParsiPad is designed with privacy as a core principle:
 - **No analytics** - No tracking or usage analytics
 - **Local storage only** - All data stays on your device
 - **Direct API calls** - Text is sent directly to Anthropic, never through our servers
+- **Bookmarks and Most visited stay on your device** - The New Tab reads them to draw the page and never sends them anywhere
 - **Open source** - Verify our practices yourself
 
 Your API key and translation history are stored locally using Chrome's secure storage API.

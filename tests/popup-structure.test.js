@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { translations } from '../lib/i18n.js';
 import { submitShortcut } from '../shared/shortcuts.js';
+import { FILE_INPUT_ACCEPT } from '../popup/file-kind.js';
 
 /**
  * The popup used to open on a full-width Translate Page button, two rows of
@@ -59,11 +60,18 @@ describe('mode pill', () => {
     }
   });
 
-  it.each(pages)('%s: Doc & Image holds the document and the image areas together', (_, source) => {
+  it.each(pages)('%s: Doc & Image takes every file through one drop zone', (_, source) => {
     const panel = source.slice(source.indexOf('id="doc-image-section"'));
     expect(source).toMatch(/id="doc-image-section"[^>]*role="tabpanel"[^>]*hidden/);
-    expect(panel.indexOf('id="upload-area"')).toBeGreaterThan(-1);
-    expect(panel.indexOf('id="image-upload-area"')).toBeGreaterThan(panel.indexOf('id="upload-area"'));
+    expect(panel).toMatch(/<button type="button" id="drop-zone"[^>]*aria-labelledby="drop-zone-title"[^>]*aria-describedby="drop-zone-hint"/);
+    expect(panel.match(/type="file"/g)).toHaveLength(1);
+    expect(panel).toMatch(new RegExp(`id="file-input" accept="${FILE_INPUT_ACCEPT}"`));
+    for (const id of ['upload-area', 'image-upload-area', 'image-input', 'select-file-btn', 'select-image-btn']) {
+      expect(panel, id).not.toMatch(new RegExp(`id="${id}"`));
+    }
+    // The document and image parts wait, hidden, for a file of their kind.
+    expect(panel).toMatch(/class="doc-image-part document-section" role="group" hidden/);
+    expect(panel).toMatch(/class="doc-image-part image-section" role="group" hidden/);
   });
 
   it('moves between the three modes with the arrow keys', () => {
@@ -169,5 +177,14 @@ describe('popup dates and links', () => {
 
   it('opens favorites on the Library page', () => {
     expect(js).toMatch(/chrome\.runtime\.getURL\('library\/library\.html\?tab=favorites'\)/);
+  });
+});
+
+describe('popup key hints', () => {
+  const css = fs.readFileSync(path.resolve(__dirname, '..', 'popup/popup.css'), 'utf8');
+  it.each(['.action-kbd', '.page-action-kbd'])('%s keeps a key name left to right on a Persian page', (selector) => {
+    const body = css.slice(css.indexOf(`${selector} {`), css.indexOf('}', css.indexOf(`${selector} {`)));
+    expect(body).toMatch(/direction:\s*ltr/);
+    expect(body).toMatch(/unicode-bidi:\s*isolate/);
   });
 });
