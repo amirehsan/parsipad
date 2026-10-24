@@ -486,6 +486,81 @@ git commit -m "fix(settings): confirm before clearing a key, replacing data or r
 
 ---
 
+### Task 9: Spacing rhythm
+
+**Files:**
+- Modify: `lib/design-tokens.css` (`:root`: add semantic spacing tokens)
+- Modify: `popup/popup.css` (`.popup`, `.header`, `.section`, `.output-section`, `.polish-card`, `.polish-section`, `.history-item`, `.input-footer`)
+- Modify: `shared/card/styles.js` (every `gap` and the footer action padding)
+- Modify: `history/history.css`, `favorites/favorites.css` (card inset and the gaps inside a card and between cards)
+- Modify: `settings/settings.css` (`.toggle-row` vertical padding, `.card-content` gap)
+- Test: `tests/spacing-rhythm.test.js` (create)
+
+**Interfaces:**
+- Produces in `lib/design-tokens.css`: `--space-inset-card: var(--space-5)` (20px, inside any card), `--space-stack-section: var(--space-6)` (24px, between sections), `--space-stack-group: var(--space-4)` (16px, between related blocks), `--space-stack-item: var(--space-3)` (12px, between items in a list), `--space-inline-actions: var(--space-2)` (8px, between buttons in a row). The mockups on the ParsiPad UI Proposals canvas use these values.
+- The shared card cannot read page tokens (it also renders in the content script's shadow root), so it keeps literal px values on the same scale.
+
+- [ ] **Step 1: Write the failing test**
+
+```js
+// tests/spacing-rhythm.test.js
+import { describe, it, expect } from 'vitest';
+import fs from 'fs'; import path from 'path';
+import { CARD_STYLES } from '../shared/card/styles.js';
+const root = path.resolve(__dirname, '..');
+const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
+const tokens = read('lib/design-tokens.css');
+const rule = (css, sel) => (css.match(new RegExp(sel.replace(/[.]/g, '\\.') + '\\s*\\{([^}]*)\\}')) || [, ''])[1];
+describe('spacing rhythm', () => {
+  it('defines the semantic spacing tokens', () => {
+    for (const t of ['--space-inset-card', '--space-stack-section', '--space-stack-group', '--space-stack-item', '--space-inline-actions'])
+      expect(tokens, t).toMatch(new RegExp(t + ':\\s*var\\(--space-\\d\\)'));
+  });
+  it('the card never packs things closer than 8px', () => {
+    const gaps = [...CARD_STYLES.matchAll(/gap:\s*(\d+)px/g)].map(m => Number(m[1]));
+    expect(gaps.length).toBeGreaterThan(0);
+    for (const g of gaps) expect(g).toBeGreaterThanOrEqual(8);
+  });
+  it('cards on every page use the card inset', () => {
+    expect(rule(read('popup/popup.css'), '.popup')).toMatch(/padding:\s*var\(--space-inset-card\)/);
+    expect(rule(read('popup/popup.css'), '.polish-card')).toMatch(/padding:\s*var\(--space-inset-card\)/);
+    expect(rule(read('history/history.css'), '.history-card')).toMatch(/padding:\s*var\(--space-inset-card\)/);
+    expect(rule(read('favorites/favorites.css'), '.favorite-card')).toMatch(/padding:\s*var\(--space-inset-card\)/);
+  });
+  it('settings rows have room to breathe', () => {
+    expect(rule(read('settings/settings.css'), '.toggle-row')).toMatch(/padding:\s*1\.125rem 0/);
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run tests/spacing-rhythm.test.js`
+Expected: FAIL, tokens missing and card gaps of 4, 5 and 6px.
+
+- [ ] **Step 3: Apply the rhythm**
+
+Tokens per Interfaces. Popup: `.popup` padding `var(--space-inset-card)`; `.header` margin-bottom `var(--space-stack-section)`; sections separated by `var(--space-stack-section)`; `.input-footer` margin-top `var(--space-stack-item)`; `.polish-card` padding `var(--space-inset-card)`; `.polish-section` and `.history-list` gap `var(--space-stack-item)`. Card: raise every gap below 8px to 8px, card-level gaps of 10 to 12px to 16px, footer action buttons padding `6px 10px` with an 8px gap so each target is at least 32px tall. History and Favorites: card padding `var(--space-inset-card)`, the list between cards `var(--space-stack-item)`, inside a card `var(--space-stack-item)` between header, original and translation. Settings: `.toggle-row` padding `1.125rem 0`, `.card-content` gap `1.25rem`.
+
+- [ ] **Step 4: Run test and the suite**
+
+Run: `npx vitest run tests/spacing-rhythm.test.js && npm test`
+Expected: PASS; no other test regresses (card tests assert structure, not spacing).
+
+- [ ] **Step 5: Compare against the mockups**
+
+Run: `npm run build`, load `dist/`, screenshot the popup with a word result, Settings General, History with three items. Compare with the canvas.
+Expected: no two interactive controls closer than 8px; card content inset 20px; sections visibly separated.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add lib/design-tokens.css popup/popup.css shared/card/styles.js history/history.css favorites/favorites.css settings/settings.css tests/spacing-rhythm.test.js
+git commit -m "fix(ui): give cards, rows and action groups consistent breathing room"
+```
+
+---
+
 ### Task 10: Review prompt that actually fires
 
 **Files:**
