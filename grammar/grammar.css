@@ -930,36 +930,10 @@ body.dark {
    RTL Support - Comprehensive Persian/Arabic RTL
    ============================================ */
 
-/* Base RTL direction - Only applies to main content, header stays LTR */
-#lesson-content[dir="rtl"],
-#loading-section[dir="rtl"],
-#error-section[dir="rtl"] {
-  direction: rtl;
-  text-align: right;
-}
-
-/* Persian font for ALL text elements in RTL context */
+/* Persian font wherever Persian text is marked, and for the Persian
+   interface as a whole. English lesson text is never forced into it. */
 [dir="rtl"],
-[dir="rtl"] * {
-  font-family: var(--font-persian);
-}
-
-/* Specific elements that MUST have Persian font in RTL */
-[dir="rtl"] .grammar-point-title,
-[dir="rtl"] .explanation-text,
-[dir="rtl"] .section-title span,
-[dir="rtl"] .quiz-question,
-[dir="rtl"] .quiz-option-text,
-[dir="rtl"] .quiz-feedback,
-[dir="rtl"] .quiz-explanation,
-[dir="rtl"] .compare-text,
-[dir="rtl"] .compare-label,
-[dir="rtl"] .mistake-item,
-[dir="rtl"] .related-tag,
-[dir="rtl"] .source-label,
-[dir="rtl"] .btn,
-[dir="rtl"] .loading-text,
-[dir="rtl"] .error-text {
+[lang="fa"] {
   font-family: var(--font-persian);
 }
 
@@ -970,13 +944,7 @@ body.dark {
   text-align: right;
 }
 
-/* Example target text in RTL context (Persian translation) */
-[dir="rtl"] .example-target {
-  font-family: var(--font-persian);
-  text-align: right;
-}
-
-/* Example source text in RTL context (English original) - Keep English */
+/* Example source stays English even under the Persian interface */
 [dir="rtl"] .example-source {
   font-family: var(--font-sans);
   direction: ltr;
