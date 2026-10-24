@@ -412,7 +412,7 @@ describe.each(['en', 'fa'])('welcome try-it and Done in %s', (lang) => {
     tryButton().click();
 
     await vi.waitFor(() => expect(tryResult().dataset.state).toBe('error'));
-    expect(tryResult().textContent).toBe(`${tr.errorInvalidApiKey} ${tr.welcomeTryAgainHint}`);
+    expect(tryResult().textContent).toBe(`${tr.keyRejected} ${tr.welcomeTryAgainHint}`);
     expect(tryResult().getAttribute('lang')).toBe(lang);
     expect(tryResult().getAttribute('dir')).toBe(uiDir);
     expect(tryButton().disabled).toBe(false);
@@ -614,6 +614,52 @@ describe.each(['en', 'fa'])('welcome try-it and Done in %s', (lang) => {
     keyInput().value = 'sk-ant-typed';
     doneButton().click();
 
+    await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it('Done restores the provider you came in with when the one you picked has no key', async () => {
+    await loadWelcome(lang, {
+      [STORAGE_KEYS.selectedProvider]: 'claude',
+      [STORAGE_KEYS.apiKey]: 'sk-ant-stored'
+    });
+    const close = vi.spyOn(window, 'close').mockImplementation(() => {});
+    radio('gemini').click();
+    await vi.waitFor(() => expect(store.get(STORAGE_KEYS.selectedProvider)).toBe('gemini'));
+
+    doneButton().click();
+    await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(store.get(STORAGE_KEYS.selectedProvider)).toBe('claude');
+    expect(store.get(STORAGE_KEYS.onboardingComplete)).toBe(true);
+  });
+
+  it('Done keeps the provider you picked when it has a key', async () => {
+    await loadWelcome(lang, {
+      [STORAGE_KEYS.selectedProvider]: 'claude',
+      [STORAGE_KEYS.apiKey]: 'sk-ant-stored',
+      [STORAGE_KEYS.geminiApiKey]: 'AIzaStoredKey'
+    });
+    const close = vi.spyOn(window, 'close').mockImplementation(() => {});
+    radio('gemini').click();
+    await vi.waitFor(() => expect(store.get(STORAGE_KEYS.selectedProvider)).toBe('gemini'));
+
+    doneButton().click();
+    await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(store.get(STORAGE_KEYS.selectedProvider)).toBe('gemini');
+  });
+
+  it('Done still finishes when restoring the provider fails', async () => {
+    await loadWelcome(lang, {
+      [STORAGE_KEYS.selectedProvider]: 'claude',
+      [STORAGE_KEYS.apiKey]: 'sk-ant-stored'
+    });
+    const close = vi.spyOn(window, 'close').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    radio('gemini').click();
+    await vi.waitFor(() => expect(store.get(STORAGE_KEYS.selectedProvider)).toBe('gemini'));
+    chrome.storage.local.set.mockRejectedValue(new Error('QUOTA_BYTES quota exceeded'));
+
+    doneButton().click();
     await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(1));
     expect(warn).toHaveBeenCalled();
   });

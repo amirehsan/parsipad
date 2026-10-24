@@ -44,6 +44,9 @@ const doneLabelEl = doneBtn.querySelector('.done-btn-label');
 // State
 let currentLang = 'en';
 let currentProvider = 'claude';
+// The provider that was selected when the page loaded, which Done goes back
+// to when the one chosen here never got a key.
+let entryProvider = 'claude';
 let testing = false;
 let translating = false;
 let finishing = false;
@@ -89,6 +92,7 @@ async function init() {
   initTheme();
   await loadLanguage();
   currentProvider = await getSelectedProvider();
+  entryProvider = currentProvider;
   const radio = [...providerRadios].find(r => r.value === currentProvider);
   if (radio) radio.checked = true;
   setKeyRevealed(apiKeyInput, toggleVisibilityBtn, false, currentLang);
@@ -384,7 +388,11 @@ function showTryResult(translation) {
 function showTryError(response) {
   const code = response?.errorCode;
   const useWorkerMessage = (!code || code === ERROR_CODES.UNKNOWN) && response?.error;
-  const message = useWorkerMessage ? response.error : t(errorI18nKey(code), currentLang);
+  // The general errorInvalidApiKey sends people to settings; Settings and the
+  // key help already use keyRejected for a provider rejection, so Welcome does too.
+  const message = code === ERROR_CODES.INVALID_API_KEY
+    ? t('keyRejected', currentLang)
+    : useWorkerMessage ? response.error : t(errorI18nKey(code), currentLang);
   tryResultEl.setAttribute('lang', currentLang);
   tryResultEl.setAttribute('dir', document.documentElement.dir || 'ltr');
   tryResultEl.dataset.state = 'error';
@@ -427,8 +435,23 @@ function setDoneBusy(busy) {
 }
 
 /**
+ * Choosing a provider stores it at once, so a provider picked here and never
+ * given a key would leave a working setup pointing at one that cannot
+ * translate. When the selected provider has no key and the one selected on
+ * entry has, the entry provider is selected again.
+ */
+async function keepWorkingProvider() {
+  const selected = await getSelectedProvider();
+  if (selected === entryProvider) return;
+  if (await hasProviderApiKey(selected)) return;
+  if (!(await hasProviderApiKey(entryProvider))) return;
+  await setSelectedProvider(entryProvider);
+}
+
+/**
  * Finish onboarding: Done never strands the user. The typed key is saved
- * when it can be, onboarding is marked complete whatever happened before,
+ * when it can be, a provider without a key does not replace one with a key,
+ * onboarding is marked complete whatever happened before,
  * then the page returns to Settings when Settings opened it, and closes
  * otherwise. Done does not wait for the sample translation.
  */
@@ -440,6 +463,12 @@ async function handleDone() {
     await saveTypedKey();
   } catch (error) {
     console.warn('[ParsiPad] Could not store the typed key:', error);
+  }
+
+  try {
+    await keepWorkingProvider();
+  } catch (error) {
+    console.warn('[ParsiPad] Could not restore the provider:', error);
   }
 
   try {
