@@ -29,8 +29,9 @@ export function translateLines(msg) {
  * - `respond(message)`: answers any other sendMessage; returning undefined
  *   falls through to the default (a promise of undefined).
  * - `invalidated`: the extension was reloaded or updated under the page, so
- *   sendMessage and connect throw as Chrome makes them throw in an orphaned
- *   content script.
+ *   chrome.runtime.id, getURL, sendMessage and connect throw, as they can in
+ *   an orphaned content script.
+ * - `enableToolbar()`: turn the selection toolbar on, as Settings would.
  * - `keyCheckGate`: when set, CHECK_API_KEY waits for it.
  * - `onMessage(message)`: deliver a message as the service worker would,
  *   and return what the content script answered.
@@ -56,6 +57,9 @@ export async function loadContentScript() {
     },
     setUiLanguage(lang) {
       for (const fn of harness.storageListeners) fn({ ui_language: { newValue: lang } }, 'local');
+    },
+    enableToolbar() {
+      for (const fn of harness.storageListeners) fn({ selection_popup_enabled: { newValue: true } }, 'local');
     },
     reset() {
       harness.sent.length = 0;
@@ -92,12 +96,17 @@ export async function loadContentScript() {
     return root;
   };
 
+  const orphaned = () => new Error('Extension context invalidated.');
+
   globalThis.chrome = {
     runtime: {
-      id: 'parsipad',
+      get id() {
+        if (harness.invalidated) throw orphaned();
+        return 'parsipad';
+      },
       onMessage: { addListener: (fn) => { harness.listener = fn; } },
       sendMessage: (message) => {
-        if (harness.invalidated) throw new Error('Extension context invalidated.');
+        if (harness.invalidated) throw orphaned();
         harness.sent.push(message);
         const answered = harness.respond?.(message);
         if (answered !== undefined) return Promise.resolve(answered);
@@ -109,7 +118,7 @@ export async function loadContentScript() {
       },
       // Batches stream over a port; every one is recorded and answered.
       connect: () => {
-        if (harness.invalidated) throw new Error('Extension context invalidated.');
+        if (harness.invalidated) throw orphaned();
         const listeners = [];
         const port = {
           started: null,
@@ -128,7 +137,10 @@ export async function loadContentScript() {
         harness.ports.push(port);
         return port;
       },
-      getURL: (p) => p
+      getURL: (p) => {
+        if (harness.invalidated) throw orphaned();
+        return p;
+      }
     },
     storage: {
       local: { get: storageGet, set: storageSet },

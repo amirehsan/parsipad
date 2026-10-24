@@ -5,7 +5,7 @@
 // under it offers to reload the page, every known failure is said in the
 // reader's language with a tone chosen by its code, and the rating line is
 // asked for only once a translation is on screen.
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { translations } from '../lib/i18n.js';
 import { loadContentScript } from './helpers/content-script.js';
 
@@ -38,42 +38,104 @@ const reloadButton = () => box()?.querySelector('.parsipad-reload-page');
 const alertText = () => box()?.querySelector('[role="alert"]')?.textContent ?? '';
 const errorEl = () => box()?.querySelector('.parsipad-error');
 
-// One sentence translates in one shot; a passage with a line break streams.
 const SENTENCE = 'The cat sat on the mat.';
-const PASSAGE = 'First line of the passage.\nSecond line of the passage.';
 
 describe('a page whose extension was reloaded under it', () => {
-  it('offers to reload the page from the translation box', async () => {
+  // What the page logs as uncaught: a throw that escapes a click handler or
+  // an async entry point.
+  const uncaught = [];
+  const onRejection = (reason) => uncaught.push(reason);
+  const onError = (event) => uncaught.push(event.error ?? event.message);
+
+  beforeAll(() => {
+    process.on('unhandledRejection', onRejection);
+    window.addEventListener('error', onError);
+  });
+
+  afterAll(() => {
+    process.off('unhandledRejection', onRejection);
+    window.removeEventListener('error', onError);
+  });
+
+  beforeEach(() => {
+    uncaught.length = 0;
+    h.enableToolbar();
+    // A fresh page has not loaded the Persian faces yet, so the first box
+    // asks for their URLs.
+    document.getElementById('parsipad-persian-font')?.remove();
+    document.body.innerHTML = '<p id="text">serendipity is a happy accident</p><p id="passage">First line.<br>Second line.</p>';
+  });
+
+  afterEach(() => {
+    document.getElementById('parsipad-selection-popup')?.remove();
+    document.getSelection().removeAllRanges();
+  });
+
+  // Select text, wait for the toolbar, then lose the extension under the
+  // page and press one of the toolbar's buttons.
+  async function pressAfterReload(action, { id = 'text', length } = {}) {
+    const node = document.getElementById(id);
+    const range = document.createRange();
+    range.setStart(node.firstChild, 0);
+    if (length) range.setEnd(node.firstChild, length);
+    else range.setEnd(node.lastChild, node.lastChild.textContent.length);
+    const selection = document.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    document.dispatchEvent(new Event('selectionchange'));
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    const toolbar = document.getElementById('parsipad-selection-popup');
+    expect(toolbar, 'toolbar').not.toBeNull();
+    const button = h.roots.get(toolbar).querySelector(`[data-action="${action}"]`);
+    expect(button, action).not.toBeNull();
+
     h.invalidated = true;
-    h.onMessage({ action: 'SHOW_TRANSLATION', text: SENTENCE });
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, detail: 1 }));
     await settle();
+  }
+
+  it('offers to reload the page from the translation box', async () => {
+    await pressAfterReload('translate', { length: 11 + 9 });
     expect(alertText()).toBe(en.errorContextInvalidated);
     expect(reloadButton().textContent).toBe(en.blockTranslateReload);
     expect(box().querySelector('.parsipad-content .parsipad-loading')).toBeNull();
+    expect(uncaught).toEqual([]);
   });
 
-  it('offers it when the stream cannot connect', async () => {
-    h.invalidated = true;
-    h.onMessage({ action: 'SHOW_TRANSLATION', text: PASSAGE });
-    await settle();
+  it('offers it for a selection that spans lines', async () => {
+    await pressAfterReload('translate', { id: 'passage' });
     expect(alertText()).toBe(en.errorContextInvalidated);
     expect(reloadButton()).not.toBeNull();
+    expect(uncaught).toEqual([]);
   });
 
   it('offers it from the polish box', async () => {
-    h.invalidated = true;
-    h.onMessage({ action: 'SHOW_POLISH', text: 'make this better' });
-    await settle();
+    await pressAfterReload('polish', { length: 11 + 9 });
     expect(box().querySelector('.parsipad-polish-content [role="alert"]').textContent).toBe(en.errorContextInvalidated);
     expect(reloadButton()).not.toBeNull();
+    expect(uncaught).toEqual([]);
   });
 
   it('offers it from the dictionary box', async () => {
-    h.invalidated = true;
-    h.onMessage({ action: 'SHOW_DICTIONARY', word: 'serendipity' });
-    await settle();
+    await pressAfterReload('dictionary', { length: 11 });
     expect(box().querySelector('.parsipad-dictionary-content [role="alert"]').textContent).toBe(en.errorContextInvalidated);
     expect(reloadButton()).not.toBeNull();
+    expect(uncaught).toEqual([]);
+  });
+
+  it('says it in Persian in a Persian box', async () => {
+    h.setUiLanguage('fa');
+    await pressAfterReload('dictionary', { length: 11 });
+    expect(alertText()).toBe(fa.errorContextInvalidated);
+    expect(reloadButton().textContent).toBe(fa.blockTranslateReload);
+    expect(uncaught).toEqual([]);
+  });
+
+  it('asks the worker nothing once the connection is gone', async () => {
+    await pressAfterReload('translate', { length: 11 + 9 });
+    expect(h.sent.filter((m) => ['TRANSLATE', 'POLISH', 'DICTIONARY_LOOKUP'].includes(m.action))).toEqual([]);
+    expect(h.ports).toHaveLength(0);
   });
 
   it('recognizes the message when it arrives with no code of its own', async () => {
@@ -83,15 +145,6 @@ describe('a page whose extension was reloaded under it', () => {
     h.onMessage({ action: 'SHOW_TRANSLATION', text: SENTENCE });
     await settle();
     expect(reloadButton()).not.toBeNull();
-  });
-
-  it('says it in Persian in a Persian box', async () => {
-    h.setUiLanguage('fa');
-    h.invalidated = true;
-    h.onMessage({ action: 'SHOW_DICTIONARY', word: 'serendipity' });
-    await settle();
-    expect(alertText()).toBe(fa.errorContextInvalidated);
-    expect(reloadButton().textContent).toBe(fa.blockTranslateReload);
   });
 });
 
@@ -195,6 +248,28 @@ describe('the rating line', () => {
     const line = box().querySelector('.parsipad-review-slot .parsipad-review-line');
     expect(line).not.toBeNull();
     expect(box().querySelector('.parsipad-content .parsipad-review-line')).toBeNull();
+  });
+
+  it('closes quietly when Later is pressed after the extension was reloaded', async () => {
+    h.respond = (message) => {
+      if (message.action === 'TRANSLATE') return result;
+      if (message.action === 'REVIEW_PROMPT_STATE') return { show: true };
+      return undefined;
+    };
+    h.onMessage({ action: 'SHOW_TRANSLATION', text: SENTENCE });
+    await settle();
+    const later = box().querySelector('.parsipad-review-later');
+    h.invalidated = true;
+    const errors = [];
+    const onError = (event) => errors.push(event.error ?? event.message);
+    window.addEventListener('error', onError);
+    try {
+      expect(() => later.click()).not.toThrow();
+    } finally {
+      window.removeEventListener('error', onError);
+    }
+    expect(errors).toEqual([]);
+    expect(box().querySelector('.parsipad-review-line')).toBeNull();
   });
 
   it('is not shown in a box that closed while the worker was asked', async () => {
