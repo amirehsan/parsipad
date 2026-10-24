@@ -7,6 +7,14 @@ beforeEach(() => { store.clear(); globalThis.chrome = { storage: { local: {
   get: async (k) => ({ [k]: store.get(k) }), set: async (o) => { for (const [k, v] of Object.entries(o)) store.set(k, v); } } } }; });
 const html = fs.readFileSync(path.resolve(__dirname, '../settings/settings.html'), 'utf8');
 describe('reading section', () => {
+  it('shows the English hints in the page itself, before the strings load', async () => {
+    const { translations } = await import('../lib/i18n.js');
+    for (const key of ['selectionToolbarHint', 'confirmPageTranslateHint']) {
+      const match = html.match(new RegExp(`data-i18n="${key}">([^<]*)<`));
+      expect(match, key).not.toBeNull();
+      expect(match[1], key).toBe(translations.en[key]);
+    }
+  });
   it('asks before a whole-page translation by default', async () => {
     expect(await storage.getConfirmPageTranslate()).toBe(true);
     await storage.setConfirmPageTranslate(false);

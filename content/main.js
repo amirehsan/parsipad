@@ -25,7 +25,7 @@ import { renderCard, injectCardStyles } from '../shared/card/index.js';
 import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils/batch.js';
-import { createPageRun, markBatch, failedIndexes, unfinishedIndexes, summarizeRun, summaryMessageKey } from './utils/page-run.js';
+import { createPageRun, markBatch, failedIndexes, resumableIndexes, summarizeRun, summaryMessageKey } from './utils/page-run.js';
 import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
 import { selectionToReport, createSelectionReporter, isEditableSelection, MAX_REPORT_LENGTH } from './selection-report.js';
 import { createToolbarTrigger, selectionAnchor, isSameAnchor } from './toolbar-trigger.js';
@@ -1612,6 +1612,21 @@ function showMissingApiKeyToast() {
 }
 
 /**
+ * ParsiPad was reloaded or updated under the page, which only a page reload
+ * fixes: the boxes' reload message, as an alert that stays until the user
+ * reloads or closes it.
+ */
+function showReloadToast() {
+  showToast({
+    message: t('errorContextInvalidated', userLang),
+    withSettings: false,
+    role: 'alert',
+    persist: true,
+    action: { label: t('blockTranslateReload', userLang), onClick: () => location.reload() }
+  });
+}
+
+/**
  * The toast's message with the host as its own left-to-right run, so a
  * Persian sentence does not reorder the dots of a domain. Built with DOM
  * nodes: the host is never parsed as markup.
@@ -2588,11 +2603,14 @@ async function handleTranslatePage({ retry = null } = {}) {
   }
 
   if (!retry && pageTranslationState?.run) {
-    // Sections that failed or were never sent (a stop) are picked up where
-    // the run left off: the user already agreed to translate this page.
-    const unfinished = unfinishedIndexes(pageTranslationState.run);
-    if (unfinished.length > 0) {
-      return handleTranslatePage({ retry: { state: pageTranslationState, indexes: unfinished } });
+    // Sections never sent (a stop) and sections that failed only once are
+    // picked up where the run left off: the user already agreed to
+    // translate this page. A section that failed again after a retry is
+    // left to Retry failed, so pressing Translate Page on a page with a
+    // section that keeps failing toggles instead of paying for it again.
+    const resumable = resumableIndexes(pageTranslationState.run);
+    if (resumable.length > 0) {
+      return handleTranslatePage({ retry: { state: pageTranslationState, indexes: resumable } });
     }
   }
 
@@ -2742,8 +2760,8 @@ async function handleTranslatePage({ retry = null } = {}) {
       const outcome = await translatePageBatch(state, index, abortSignal);
       if (pageTranslationState !== state) return;
       if (outcome === 'stopped') break;
-      if (outcome === 'missingKey') {
-        state.stopReason = 'missingKey';
+      if (outcome === 'missingKey' || outcome === 'invalidated') {
+        state.stopReason = outcome;
         break;
       }
       markBatch(state.run, index, outcome);
@@ -2772,8 +2790,8 @@ async function handleTranslatePage({ retry = null } = {}) {
  * @param {object} state - the run's pageTranslationState
  * @param {number} index - which of state.batches
  * @param {AbortSignal} abortSignal - aborted by a stop or a navigation
- * @returns {Promise<'ok'|'failed'|'stopped'|'missingKey'>} 'stopped' only
- *   when the signal was aborted
+ * @returns {Promise<'ok'|'failed'|'stopped'|'missingKey'|'invalidated'>}
+ *   'stopped' only when the signal was aborted
  */
 async function translatePageBatch(state, index, abortSignal) {
   const batch = state.batches[index];
@@ -2798,6 +2816,9 @@ async function translatePageBatch(state, index, abortSignal) {
   if (abortSignal.aborted) return 'stopped';
   if (response?.error) {
     if (isMissingApiKeyResponse(response)) return 'missingKey';
+    // ParsiPad was reloaded or updated under the page: every later batch
+    // would fail the same way, and only a page reload helps.
+    if (response.errorCode === ERROR_CODES.CONTEXT_INVALIDATED) return 'invalidated';
     console.error('Batch translation error:', response.error);
     return 'failed';
   }
@@ -2814,7 +2835,8 @@ async function translatePageBatch(state, index, abortSignal) {
 /**
  * End a run that still owns the page: apply every batch that came back,
  * show the toggle once anything is translated, and say how it went. A
- * missing key says only that, in its own alert, never under a summary.
+ * missing key or an extension updated under the page says only that, in
+ * its own alert, never under a summary.
  * @param {object} state
  */
 function finishPageRun(state) {
@@ -2829,6 +2851,10 @@ function finishPageRun(state) {
 
   if (state.stopReason === 'missingKey') {
     showMissingApiKeyToast();
+    return;
+  }
+  if (state.stopReason === 'invalidated') {
+    showReloadToast();
     return;
   }
 
@@ -3347,11 +3373,12 @@ function handleKeyDown(event) {
   // does not eat the compose character for a resolution that would fail
   // anyway, since resolveBlock hard-rejects editable regions; and the enabled
   // check runs before preventDefault so a user who turned the feature off
-  // keeps the shortcut everywhere else.
+  // keeps the shortcut everywhere else. A key a page script dispatched is
+  // never taken: it would send a request the user did not ask for.
   const isEditableTarget = isEditableKeyTarget(event.target);
 
   if (event.altKey && !event.ctrlKey && !event.metaKey && !isEditableTarget &&
-      isBlockTranslateEnabled() &&
+      !isSyntheticKey(event) && isBlockTranslateEnabled() &&
       (event.code === 'KeyB' || event.key === 'b' || event.key === 'B')) {
     event.preventDefault();
     translateFocusedBlock();
@@ -3359,13 +3386,17 @@ function handleKeyDown(event) {
   }
 
   if (event.key === 'Escape') {
-    // A running page translation stops first and keeps what finished. The
-    // key is not consumed: the page's own Escape handling still runs, and so
-    // do the branches below. In a text field Escape belongs to the field
-    // (clearing a search, say), so it is left alone there; Cancel stops the
-    // run from anywhere. The question before a run handles its own Escape,
-    // so this acts only once the requests are going.
-    if (!isEditableTarget && pageTranslationState?.isTranslating && pageTranslationState.phase === 'running') {
+    // Escape dismisses the topmost thing first: an open box, the selection
+    // toolbar or the screenshot overlay closes, and a running page
+    // translation stops only when none of them is open (the toast handles
+    // its own Escape). A stop keeps what finished. The key is not consumed:
+    // the page's own Escape handling still runs. In a text field Escape
+    // belongs to the field (clearing a search, say), so it is left alone
+    // there; Cancel stops the run from anywhere. The question before a run
+    // handles its own Escape, so this acts only once the requests are going.
+    const somethingOpen = Boolean(floatingBox || selectionPopup || screenshotOverlay);
+    if (!isEditableTarget && !somethingOpen &&
+        pageTranslationState?.isTranslating && pageTranslationState.phase === 'running') {
       stopPageTranslation();
     }
     hideBlockIcon();
@@ -3387,6 +3418,19 @@ function handleKeyDown(event) {
       removeSelectionPopup();
     }
   }
+}
+
+/**
+ * Whether a page script dispatched this key event rather than the user
+ * pressing it. This content script runs on every page, so a page could
+ * otherwise start a provider request (Alt+B) or pull focus into the
+ * toolbar (Tab) on the user's behalf. Strictly false: only the browser sets
+ * isTrusted, and an environment that leaves it unset is not a page script.
+ * @param {Event} event
+ * @returns {boolean}
+ */
+function isSyntheticKey(event) {
+  return event.isTrusted === false;
 }
 
 /**
@@ -3418,6 +3462,7 @@ function isEditableKeyTarget(target) {
  */
 function shouldTabIntoSelectionPopup(event) {
   if (event.key !== 'Tab' || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return false;
+  if (isSyntheticKey(event)) return false;
   if (!selectionPopup || selectionPopupFocusLeft || event.defaultPrevented) return false;
   const path = event.composedPath();
   if (isEditableKeyTarget(path[0])) return false;
