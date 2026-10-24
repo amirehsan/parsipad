@@ -592,6 +592,74 @@ function createBoxHost(selectionRect) {
   return host;
 }
 
+// The boxes' icons. Every one is decorative: the control around it carries
+// the name, so the icon is hidden from assistive technology and never takes
+// focus of its own (focusable="false" for the SVG focus quirk in old engines).
+const PP_COPY_ICON = `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+  </svg>
+`;
+const PP_CHECK_ICON = `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+`;
+const PP_REGENERATE_ICON = `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+    <path d="M23 4v6h-6"/>
+    <path d="M1 20v-6h6"/>
+    <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+  </svg>
+`;
+
+/**
+ * The star on a favourite control, filled while the item is saved.
+ * @param {boolean} filled
+ * @returns {string}
+ */
+function starIcon(filled) {
+  return `
+    <svg viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </svg>
+  `;
+}
+
+/**
+ * Name a control in the reader's language: one string for its tooltip and
+ * its accessible name. Set on the element, not written into markup, so no
+ * translation has to be escaped for an attribute.
+ * @param {HTMLElement} el
+ * @param {string} key - i18n key
+ */
+function nameControl(el, key) {
+  const label = t(key, userLang);
+  el.title = label;
+  el.setAttribute('aria-label', label);
+}
+
+/**
+ * Tell a screen reader what a box's content area holds. It is a polite live
+ * region, so what changes in it is read out. While a skeleton or streamed
+ * text fills it the region is busy, and nothing is read until the result is
+ * in; the busy flag is cleared before the result is written, so the result
+ * is announced once, as an ordinary change. The reload state carries its
+ * own role="alert", so the region stops being live while it shows rather
+ * than announcing the same words twice.
+ * @param {HTMLElement} content
+ * @param {'loading'|'ready'|'alert'} state
+ */
+function setContentLiveState(content, state) {
+  content.setAttribute('aria-live', state === 'alert' ? 'off' : 'polite');
+  if (state === 'loading') {
+    content.setAttribute('aria-busy', 'true');
+  } else {
+    content.removeAttribute('aria-busy');
+  }
+}
+
 /**
  * The ParsiPad logo for a box header, or nothing once the extension was
  * reloaded under the page: a box without its logo can still say what
@@ -628,7 +696,7 @@ function createFloatingBox(selectionRect) {
   const box = document.createElement('div');
   box.className = 'parsipad-box';
   box.setAttribute('role', 'dialog');
-  box.setAttribute('aria-label', 'ParsiPad translation');
+  box.setAttribute('aria-label', t('boxTranslationLabel', userLang));
   // Focusable by script but not in the tab order: focus is moved here when
   // the box opens and handed back when it closes.
   box.setAttribute('tabindex', '-1');
@@ -642,7 +710,7 @@ function createFloatingBox(selectionRect) {
         <span class="parsipad-badge"></span>
         <span class="parsipad-provider-badge"></span>
       </div>
-      <button class="parsipad-close" type="button" title="Close" aria-label="Close translation">×</button>
+      <button class="parsipad-close" type="button">×</button>
     </div>
     <div class="parsipad-content" aria-live="polite" aria-atomic="true">
       <div class="parsipad-text"></div>
@@ -651,21 +719,16 @@ function createFloatingBox(selectionRect) {
     <div class="parsipad-footer">
       <span class="parsipad-cache-badge"></span>
       <div class="parsipad-footer-actions">
-        <button class="parsipad-favorite" type="button" title="Add to favorites" aria-label="Add to favorites" aria-pressed="false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
-        </button>
-        <button class="parsipad-copy" type="button" aria-label="Copy translation">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>
-          Copy
-        </button>
+        <button class="parsipad-favorite" type="button" aria-pressed="false">${starIcon(false)}</button>
+        <button class="parsipad-copy" type="button"></button>
       </div>
     </div>
   `;
+
+  nameControl(box.querySelector('.parsipad-close'), 'cardClose');
+  nameControl(box.querySelector('.parsipad-favorite'), 'addToFavorites');
+  nameControl(box.querySelector('.parsipad-copy'), 'copyTranslation');
+  setCopyLabel(box.querySelector('.parsipad-copy'), false);
 
   shadowRoot.appendChild(box);
   document.body.appendChild(host);
@@ -748,13 +811,15 @@ function showLoading() {
   if (!shadowRoot) return;
 
   const content = shadowRoot.querySelector('.parsipad-content');
+  setContentLiveState(content, 'loading');
   content.innerHTML = `
-    <div class="parsipad-loading" role="status" aria-label="Translating">
+    <div class="parsipad-loading" role="status">
       <div class="parsipad-skeleton"></div>
       <div class="parsipad-skeleton"></div>
       <div class="parsipad-skeleton"></div>
     </div>
   `;
+  content.querySelector('.parsipad-loading').setAttribute('aria-label', t('translating', userLang));
 
   // Hide footer during loading
   const footer = shadowRoot.querySelector('.parsipad-footer');
@@ -935,7 +1000,7 @@ function buildGrammarHandler(result, originalText) {
     const loading = document.createElement('div');
     loading.className = 'parsipad-grammar-empty';
     loading.setAttribute('role', 'status');
-    loading.textContent = t('loadingLesson', userLang) || 'Loading...';
+    loading.textContent = t('loadingLesson', userLang);
     slot.replaceChildren(loading);
     keepFloatingBoxInViewport();
 
@@ -999,6 +1064,7 @@ function showTranslation(result, originalText) {
   badge.textContent = '';
 
   const content = shadowRoot.querySelector('.parsipad-content');
+  setContentLiveState(content, 'ready');
   currentCardEl = renderCard(result, {
     lang: userLang,
     doc: document,
@@ -1152,7 +1218,7 @@ const PP_DESTRUCTIVE_ERROR_CODES = new Set([
 
 // The info icon every box error carries; decorative, the text says it all.
 const PP_ERROR_ICON = `
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
     <circle cx="12" cy="12" r="10"/>
     <line x1="12" y1="8" x2="12" y2="12"/>
     <line x1="12" y1="16" x2="12.01" y2="16"/>
@@ -1196,16 +1262,15 @@ function describeBoxError(errorOrResponse) {
  * and for a missing key a button to Settings. Text the reader's language
  * did not produce carries dir="auto", so English inside a Persian box keeps
  * its own direction.
+ * Every box's content area is a polite live region, which reads the failure
+ * out; the error needs no role of its own.
  * @param {HTMLElement} content
  * @param {{code: string, message: string, untranslated: boolean}} error
- * @param {{role?: string}} [options] - a role for a box whose content area
- *   is not a live region of its own
  */
-function renderBoxError(content, { code, message, untranslated }, { role } = {}) {
+function renderBoxError(content, { code, message, untranslated }) {
   const errorEl = document.createElement('div');
   errorEl.className = PP_DESTRUCTIVE_ERROR_CODES.has(code) ? 'parsipad-error is-destructive' : 'parsipad-error';
   errorEl.setAttribute('dir', userLang === 'fa' ? 'rtl' : 'ltr');
-  if (role) errorEl.setAttribute('role', role);
   errorEl.innerHTML = PP_ERROR_ICON;
 
   const body = document.createElement('div');
@@ -1244,8 +1309,10 @@ function showError(errorOrResponse) {
   const content = shadowRoot.querySelector('.parsipad-content');
   const error = describeBoxError(errorOrResponse);
   if (error.code === ERROR_CODES.CONTEXT_INVALIDATED) {
+    setContentLiveState(content, 'alert');
     renderReloadState(content, userLang);
   } else {
+    setContentLiveState(content, 'ready');
     renderBoxError(content, error);
   }
 
@@ -1542,6 +1609,20 @@ async function muteThisSite({ fromKeyboard }) {
 }
 
 /**
+ * The box footer's Copy button face: the copy icon and "Copy", or a check
+ * and "Copied" for a moment after it worked. Its accessible name stays
+ * "Copy translation" throughout.
+ * @param {HTMLElement} btn
+ * @param {boolean} copied
+ */
+function setCopyLabel(btn, copied) {
+  btn.innerHTML = copied ? PP_CHECK_ICON : PP_COPY_ICON;
+  const label = document.createElement('span');
+  label.textContent = t(copied ? 'copied' : 'copy', userLang);
+  btn.appendChild(label);
+}
+
+/**
  * Handle copy button click
  */
 async function handleCopy() {
@@ -1558,22 +1639,11 @@ async function handleCopy() {
     // Visual feedback
     const copyBtn = shadowRoot.querySelector('.parsipad-copy');
     copyBtn.classList.add('copied');
-    copyBtn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-      Copied!
-    `;
+    setCopyLabel(copyBtn, true);
 
     setTimeout(() => {
       copyBtn.classList.remove('copied');
-      copyBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-        </svg>
-        Copy
-      `;
+      setCopyLabel(copyBtn, false);
     }, 1500);
   } catch (error) {
     // Silently handle copy errors
@@ -1631,11 +1701,7 @@ function setFavoriteState(btn, favorited) {
   if (!btn.classList.contains('parsipad-favorite')) return;
 
   btn.classList.toggle('favorited', favorited);
-  btn.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="${favorited ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-    </svg>
-  `;
+  btn.innerHTML = starIcon(favorited);
 }
 
 /**
@@ -1718,6 +1784,10 @@ function removeFloatingBox() {
   currentDictionaryData = null;
 }
 
+// The polish box's three versions, in the order the cards show them; each
+// is also the i18n key of its title.
+const POLISH_VARIANTS = ['professional', 'conversational', 'concise'];
+
 /**
  * Create the floating polish box with Shadow DOM
  */
@@ -1737,24 +1807,26 @@ function createPolishBox(selectionRect) {
   const box = document.createElement('div');
   box.className = 'parsipad-box parsipad-polish-box';
   box.setAttribute('role', 'dialog');
-  box.setAttribute('aria-label', 'ParsiPad polish');
+  box.setAttribute('aria-label', t('boxPolishLabel', userLang));
   box.setAttribute('tabindex', '-1');
   box.innerHTML = `
     <div class="parsipad-header">
       <div class="parsipad-logo">
-        ${logoImg('alt="ParsiPad" class="parsipad-logo-icon"')}
+        ${logoImg('class="parsipad-logo-icon" alt="" aria-hidden="true"')}
         <span class="parsipad-logo-text">ParsiPad</span>
       </div>
       <div class="parsipad-badges">
-        <span class="parsipad-badge parsipad-badge-polish">Polish</span>
+        <span class="parsipad-badge parsipad-badge-polish"></span>
         <span class="parsipad-provider-badge"></span>
       </div>
-      <button class="parsipad-close" type="button" title="Close" aria-label="Close polish">×</button>
+      <button class="parsipad-close" type="button">×</button>
     </div>
-    <div class="parsipad-polish-content">
+    <div class="parsipad-polish-content" aria-live="polite">
       <!-- Polish cards will be inserted here -->
     </div>
   `;
+  box.querySelector('.parsipad-badge-polish').textContent = t('polish', userLang);
+  nameControl(box.querySelector('.parsipad-close'), 'cardClose');
 
   shadowRoot.appendChild(box);
   document.body.appendChild(host);
@@ -1780,34 +1852,18 @@ function showPolishLoading() {
   if (!shadowRoot) return;
 
   const content = shadowRoot.querySelector('.parsipad-polish-content');
-  content.innerHTML = `
+  setContentLiveState(content, 'loading');
+  content.innerHTML = POLISH_VARIANTS.map((variant, i) => `
     <div class="parsipad-polish-card">
       <div class="parsipad-polish-card-header">
-        <span class="parsipad-polish-title">Professional</span>
+        <span class="parsipad-polish-title">${escapeHtml(t(variant, userLang))}</span>
       </div>
       <div class="parsipad-loading">
         <div class="parsipad-skeleton"></div>
-        <div class="parsipad-skeleton"></div>
+        ${i < 2 ? '<div class="parsipad-skeleton"></div>' : ''}
       </div>
     </div>
-    <div class="parsipad-polish-card">
-      <div class="parsipad-polish-card-header">
-        <span class="parsipad-polish-title">Conversational</span>
-      </div>
-      <div class="parsipad-loading">
-        <div class="parsipad-skeleton"></div>
-        <div class="parsipad-skeleton"></div>
-      </div>
-    </div>
-    <div class="parsipad-polish-card">
-      <div class="parsipad-polish-card-header">
-        <span class="parsipad-polish-title">Concise</span>
-      </div>
-      <div class="parsipad-loading">
-        <div class="parsipad-skeleton"></div>
-      </div>
-    </div>
-  `;
+  `).join('');
 }
 
 /**
@@ -1833,86 +1889,23 @@ function showPolishResults(result) {
   };
 
   const content = shadowRoot.querySelector('.parsipad-polish-content');
-  content.innerHTML = `
-    <div class="parsipad-polish-card" data-variant="professional">
+  setContentLiveState(content, 'ready');
+  content.innerHTML = POLISH_VARIANTS.map((variant) => `
+    <div class="parsipad-polish-card" data-variant="${variant}">
       <div class="parsipad-polish-card-header">
-        <span class="parsipad-polish-title">Professional</span>
+        <span class="parsipad-polish-title">${escapeHtml(t(variant, userLang))}</span>
         <div class="parsipad-polish-actions">
-          <button class="parsipad-polish-favorite" data-version="professional" type="button" title="Add to favorites" aria-label="Add to favorites">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          </button>
-          <button class="parsipad-polish-regenerate" data-version="professional" type="button" title="Regenerate" aria-label="Regenerate">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 4v6h-6"/>
-              <path d="M1 20v-6h6"/>
-              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-            </svg>
-          </button>
-          <button class="parsipad-polish-copy" data-version="professional" type="button" title="Copy" aria-label="Copy">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-          </button>
+          <button class="parsipad-polish-favorite" data-version="${variant}" type="button" aria-pressed="false">${starIcon(false)}</button>
+          <button class="parsipad-polish-regenerate" data-version="${variant}" type="button">${PP_REGENERATE_ICON}</button>
+          <button class="parsipad-polish-copy" data-version="${variant}" type="button">${PP_COPY_ICON}</button>
         </div>
       </div>
-      <div class="parsipad-polish-text">${escapeHtml(professional)}</div>
+      <div class="parsipad-polish-text">${escapeHtml(result[variant])}</div>
     </div>
-    <div class="parsipad-polish-card" data-variant="conversational">
-      <div class="parsipad-polish-card-header">
-        <span class="parsipad-polish-title">Conversational</span>
-        <div class="parsipad-polish-actions">
-          <button class="parsipad-polish-favorite" data-version="conversational" type="button" title="Add to favorites" aria-label="Add to favorites">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          </button>
-          <button class="parsipad-polish-regenerate" data-version="conversational" type="button" title="Regenerate" aria-label="Regenerate">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 4v6h-6"/>
-              <path d="M1 20v-6h6"/>
-              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-            </svg>
-          </button>
-          <button class="parsipad-polish-copy" data-version="conversational" type="button" title="Copy" aria-label="Copy">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div class="parsipad-polish-text">${escapeHtml(conversational)}</div>
-    </div>
-    <div class="parsipad-polish-card" data-variant="concise">
-      <div class="parsipad-polish-card-header">
-        <span class="parsipad-polish-title">Concise</span>
-        <div class="parsipad-polish-actions">
-          <button class="parsipad-polish-favorite" data-version="concise" type="button" title="Add to favorites" aria-label="Add to favorites">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          </button>
-          <button class="parsipad-polish-regenerate" data-version="concise" type="button" title="Regenerate" aria-label="Regenerate">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 4v6h-6"/>
-              <path d="M1 20v-6h6"/>
-              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-            </svg>
-          </button>
-          <button class="parsipad-polish-copy" data-version="concise" type="button" title="Copy" aria-label="Copy">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div class="parsipad-polish-text">${escapeHtml(concise)}</div>
-    </div>
-  `;
+  `).join('');
+  content.querySelectorAll('.parsipad-polish-favorite').forEach((btn) => nameControl(btn, 'addToFavorites'));
+  content.querySelectorAll('.parsipad-polish-regenerate').forEach((btn) => nameControl(btn, 'regenerate'));
+  content.querySelectorAll('.parsipad-polish-copy').forEach((btn) => nameControl(btn, 'copy'));
 
   // Add copy handlers
   content.querySelectorAll('.parsipad-polish-copy').forEach(btn => {
@@ -1948,11 +1941,7 @@ async function handlePolishCopy(btn, result) {
     // Visual feedback
     btn.classList.add('copied');
     const originalSvg = btn.innerHTML;
-    btn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-    `;
+    btn.innerHTML = PP_CHECK_ICON;
 
     setTimeout(() => {
       btn.classList.remove('copied');
@@ -1980,6 +1969,8 @@ async function handlePolishRegenerate(btn) {
   // Show skeleton in the text area
   const textEl = card.querySelector('.parsipad-polish-text');
   const originalText = textEl.textContent;
+  // Busy while the skeleton shows, so only the new version is read out.
+  textEl.setAttribute('aria-busy', 'true');
   textEl.innerHTML = `
     <div class="parsipad-loading">
       <div class="parsipad-skeleton" style="width: 90%;"></div>
@@ -2010,11 +2001,7 @@ async function handlePolishRegenerate(btn) {
             await navigator.clipboard.writeText(response.text);
             copyBtn.classList.add('copied');
             const originalSvg = copyBtn.innerHTML;
-            copyBtn.innerHTML = `
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-            `;
+            copyBtn.innerHTML = PP_CHECK_ICON;
             setTimeout(() => {
               copyBtn.classList.remove('copied');
               copyBtn.innerHTML = originalSvg;
@@ -2030,6 +2017,7 @@ async function handlePolishRegenerate(btn) {
     textEl.textContent = originalText;
   } finally {
     // Remove loading state
+    textEl.removeAttribute('aria-busy');
     btn.classList.remove('loading');
     btn.disabled = false;
   }
@@ -2041,9 +2029,7 @@ async function handlePolishRegenerate(btn) {
 async function checkPolishFavoriteStatus(polishData) {
   if (!shadowRoot) return;
 
-  const variants = ['professional', 'conversational', 'concise'];
-
-  for (const variant of variants) {
+  for (const variant of POLISH_VARIANTS) {
     try {
       const response = await chrome.runtime.sendMessage({
         action: 'CHECK_FAVORITE',
@@ -2055,11 +2041,8 @@ async function checkPolishFavoriteStatus(polishData) {
         const favBtn = shadowRoot.querySelector(`.parsipad-polish-favorite[data-version="${variant}"]`);
         if (favBtn) {
           favBtn.classList.add('favorited');
-          favBtn.innerHTML = `
-            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          `;
+          favBtn.setAttribute('aria-pressed', 'true');
+          favBtn.innerHTML = starIcon(true);
         }
       }
     } catch (error) {
@@ -2088,11 +2071,8 @@ async function handlePolishFavorite(btn, polishData) {
       });
 
       btn.classList.remove('favorited');
-      btn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-        </svg>
-      `;
+      btn.setAttribute('aria-pressed', 'false');
+      btn.innerHTML = starIcon(false);
     } else {
       // Add to favorites
       await chrome.runtime.sendMessage({
@@ -2107,11 +2087,8 @@ async function handlePolishFavorite(btn, polishData) {
       });
 
       btn.classList.add('favorited');
-      btn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-        </svg>
-      `;
+      btn.setAttribute('aria-pressed', 'true');
+      btn.innerHTML = starIcon(true);
     }
   } catch (error) {
     // Silently handle errors
@@ -2130,9 +2107,11 @@ function showPolishError(errorOrResponse) {
   const content = shadowRoot.querySelector('.parsipad-polish-content');
   const error = describeBoxError(errorOrResponse);
   if (error.code === ERROR_CODES.CONTEXT_INVALIDATED) {
+    setContentLiveState(content, 'alert');
     renderReloadState(content, userLang);
   } else {
-    renderBoxError(content, error, { role: 'alert' });
+    setContentLiveState(content, 'ready');
+    renderBoxError(content, error);
   }
 
   placeFloatingBox();
@@ -2210,24 +2189,26 @@ function createDictionaryBox(selectionRect) {
   const box = document.createElement('div');
   box.className = 'parsipad-box parsipad-dictionary-box';
   box.setAttribute('role', 'dialog');
-  box.setAttribute('aria-label', 'ParsiPad dictionary');
+  box.setAttribute('aria-label', t('boxDictionaryLabel', userLang));
   box.setAttribute('tabindex', '-1');
   box.innerHTML = `
     <div class="parsipad-header">
       <div class="parsipad-logo">
-        ${logoImg('alt="ParsiPad" class="parsipad-logo-icon"')}
+        ${logoImg('class="parsipad-logo-icon" alt="" aria-hidden="true"')}
         <span class="parsipad-logo-text">ParsiPad</span>
       </div>
       <div class="parsipad-badges">
-        <span class="parsipad-badge parsipad-badge-dictionary">Dictionary</span>
+        <span class="parsipad-badge parsipad-badge-dictionary"></span>
         <span class="parsipad-provider-badge"></span>
       </div>
-      <button class="parsipad-close" type="button" title="Close" aria-label="Close dictionary">×</button>
+      <button class="parsipad-close" type="button">×</button>
     </div>
-    <div class="parsipad-dictionary-content">
+    <div class="parsipad-dictionary-content" aria-live="polite">
       <!-- Dictionary result will be inserted here -->
     </div>
   `;
+  box.querySelector('.parsipad-badge-dictionary').textContent = t('dictionary', userLang);
+  nameControl(box.querySelector('.parsipad-close'), 'cardClose');
 
   shadowRoot.appendChild(box);
   document.body.appendChild(host);
@@ -2253,6 +2234,7 @@ function showDictionaryLoading() {
   if (!shadowRoot) return;
 
   const content = shadowRoot.querySelector('.parsipad-dictionary-content');
+  setContentLiveState(content, 'loading');
   content.innerHTML = `
     <div class="parsipad-loading">
       <div class="parsipad-skeleton" style="width: 40%;"></div>
@@ -2304,7 +2286,7 @@ function showDictionaryResult(result) {
   if (synonyms && synonyms.length > 0) {
     synonymsHtml = `
       <div class="parsipad-dict-section">
-        <div class="parsipad-dict-section-title">Synonyms</div>
+        <div class="parsipad-dict-section-title">${escapeHtml(t('synonyms', userLang))}</div>
         <div class="parsipad-dict-tags">
           ${synonyms.slice(0, 5).map(s => `<span class="parsipad-dict-tag">${escapeHtml(s)}</span>`).join('')}
         </div>
@@ -2316,7 +2298,7 @@ function showDictionaryResult(result) {
   if (antonyms && antonyms.length > 0) {
     antonymsHtml = `
       <div class="parsipad-dict-section">
-        <div class="parsipad-dict-section-title">Antonyms</div>
+        <div class="parsipad-dict-section-title">${escapeHtml(t('antonyms', userLang))}</div>
         <div class="parsipad-dict-tags">
           ${antonyms.slice(0, 3).map(a => `<span class="parsipad-dict-tag parsipad-dict-tag-antonym">${escapeHtml(a)}</span>`).join('')}
         </div>
@@ -2325,6 +2307,7 @@ function showDictionaryResult(result) {
   }
 
   const content = shadowRoot.querySelector('.parsipad-dictionary-content');
+  setContentLiveState(content, 'ready');
   content.innerHTML = `
     <div class="parsipad-dict-header">
       <div class="parsipad-dict-word">${escapeHtml(word)}</div>
@@ -2334,7 +2317,7 @@ function showDictionaryResult(result) {
 
     ${definitionsHtml ? `
       <div class="parsipad-dict-section">
-        <div class="parsipad-dict-section-title">Definitions</div>
+        <div class="parsipad-dict-section-title">${escapeHtml(t('definitions', userLang))}</div>
         ${definitionsHtml}
       </div>
     ` : ''}
@@ -2344,20 +2327,11 @@ function showDictionaryResult(result) {
 
     ${translation ? `
       <div class="parsipad-dict-translation">
-        <div class="parsipad-dict-section-title">Translation</div>
+        <div class="parsipad-dict-section-title">${escapeHtml(t('translation', userLang))}</div>
         <div class="parsipad-dict-translation-text" ${isTargetRTL ? 'dir="rtl"' : ''}>${escapeHtml(translation)}</div>
         <div class="parsipad-dict-translation-actions">
-          <button class="parsipad-dict-favorite-translation" type="button" title="Add to favorites" aria-label="Add to favorites">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-          </button>
-          <button class="parsipad-dict-copy-translation" type="button" title="Copy translation" aria-label="Copy translation">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-          </button>
+          <button class="parsipad-dict-favorite-translation" type="button" aria-pressed="false">${starIcon(false)}</button>
+          <button class="parsipad-dict-copy-translation" type="button">${PP_COPY_ICON}</button>
         </div>
       </div>
     ` : ''}
@@ -2366,12 +2340,14 @@ function showDictionaryResult(result) {
   // Add copy handler for translation
   const copyBtn = shadowRoot.querySelector('.parsipad-dict-copy-translation');
   if (copyBtn) {
+    nameControl(copyBtn, 'copyTranslation');
     copyBtn.addEventListener('click', () => handleDictionaryCopy(copyBtn, translation));
   }
 
   // Add favorite handler for translation
   const favBtn = shadowRoot.querySelector('.parsipad-dict-favorite-translation');
   if (favBtn) {
+    nameControl(favBtn, 'addToFavorites');
     favBtn.addEventListener('click', handleDictionaryFavorite);
     // Check if already favorited
     checkDictionaryFavoriteStatus();
@@ -2390,11 +2366,7 @@ async function handleDictionaryCopy(btn, text) {
     // Visual feedback
     btn.classList.add('copied');
     const originalSvg = btn.innerHTML;
-    btn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-    `;
+    btn.innerHTML = PP_CHECK_ICON;
 
     setTimeout(() => {
       btn.classList.remove('copied');
@@ -2422,11 +2394,8 @@ async function checkDictionaryFavoriteStatus() {
       const favBtn = shadowRoot.querySelector('.parsipad-dict-favorite-translation');
       if (favBtn) {
         favBtn.classList.add('favorited');
-        favBtn.innerHTML = `
-          <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
-        `;
+        favBtn.setAttribute('aria-pressed', 'true');
+        favBtn.innerHTML = starIcon(true);
       }
     }
   } catch (error) {
@@ -2455,11 +2424,8 @@ async function handleDictionaryFavorite() {
       });
 
       favBtn.classList.remove('favorited');
-      favBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-        </svg>
-      `;
+      favBtn.setAttribute('aria-pressed', 'false');
+      favBtn.innerHTML = starIcon(false);
     } else {
       // Add to favorites
       await chrome.runtime.sendMessage({
@@ -2468,11 +2434,8 @@ async function handleDictionaryFavorite() {
       });
 
       favBtn.classList.add('favorited');
-      favBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-        </svg>
-      `;
+      favBtn.setAttribute('aria-pressed', 'true');
+      favBtn.innerHTML = starIcon(true);
     }
   } catch (error) {
     // Silently handle errors
@@ -2491,9 +2454,11 @@ function showDictionaryError(errorOrResponse) {
   const content = shadowRoot.querySelector('.parsipad-dictionary-content');
   const error = describeBoxError(errorOrResponse);
   if (error.code === ERROR_CODES.CONTEXT_INVALIDATED) {
+    setContentLiveState(content, 'alert');
     renderReloadState(content, userLang);
   } else {
-    renderBoxError(content, error, { role: 'alert' });
+    setContentLiveState(content, 'ready');
+    renderBoxError(content, error);
   }
 
   placeFloatingBox();
@@ -3116,19 +3081,22 @@ function showPageProgress() {
   // In-page UI is not mirrored, but Persian text still reads right to left.
   overlay.setAttribute('dir', userLang === 'fa' ? 'rtl' : 'ltr');
   // Static markup only; every piece of text is set below with textContent.
+  // The bar is named by the title and says its count in aria-valuetext; the
+  // line under it is the live region, since a progressbar is not one.
   overlay.innerHTML = `
     <div class="parsipad-progress-header">
-      ${logoImg('alt="ParsiPad" class="parsipad-progress-logo"')}
-      <span class="parsipad-progress-title"></span>
+      ${logoImg('class="parsipad-progress-logo" alt="" aria-hidden="true"')}
+      <span class="parsipad-progress-title" id="parsipad-progress-title"></span>
     </div>
-    <div class="parsipad-progress-bar-container">
-      <div class="parsipad-progress-bar" style="width: 0%"></div>
+    <div class="parsipad-progress-bar-container" role="progressbar" aria-labelledby="parsipad-progress-title" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="parsipad-progress-bar" style="transform: scaleX(0)"></div>
     </div>
-    <div class="parsipad-progress-text"></div>
+    <div class="parsipad-progress-text" role="status"></div>
     <button class="parsipad-progress-cancel" type="button"></button>
   `;
   overlay.querySelector('.parsipad-progress-title').textContent = t('translatingPage', userLang);
   overlay.querySelector('.parsipad-progress-text').textContent = t('pagePreparing', userLang);
+  overlay.querySelector('[role="progressbar"]').setAttribute('aria-valuetext', t('pagePreparing', userLang));
 
   pageProgressShadow.appendChild(overlay);
 
@@ -3146,19 +3114,27 @@ function showPageProgress() {
 function updatePageProgress(current, total) {
   if (!pageProgressShadow) return;
 
-  const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+  const percent = total > 0 ? Math.round((Math.min(current, total) / total) * 100) : 0;
+  // The section being translated, so the count starts at 1, not 0.
+  const said = t('pageTranslateProgress', userLang)
+    .replace('{n}', String(Math.min(current + 1, total)))
+    .replace('{total}', String(total));
 
+  const meter = pageProgressShadow.querySelector('[role="progressbar"]');
   const progressBar = pageProgressShadow.querySelector('.parsipad-progress-bar');
   const progressText = pageProgressShadow.querySelector('.parsipad-progress-text');
 
+  if (meter) {
+    meter.setAttribute('aria-valuenow', String(percent));
+    meter.setAttribute('aria-valuetext', said);
+  }
   if (progressBar) {
-    progressBar.style.width = `${percent}%`;
+    // A transform, not a width: it is composited, and its transition sits
+    // in the stylesheet's no-preference motion guard.
+    progressBar.style.transform = `scaleX(${percent / 100})`;
   }
   if (progressText) {
-    // The section being translated, so the count starts at 1, not 0.
-    progressText.textContent = t('pageTranslateProgress', userLang)
-      .replace('{n}', String(Math.min(current + 1, total)))
-      .replace('{total}', String(total));
+    progressText.textContent = said;
   }
 }
 
@@ -3207,7 +3183,7 @@ function showPageToggleButton() {
   button.setAttribute('aria-label', t('showOriginal', userLang));
   button.setAttribute('aria-pressed', 'false');
   button.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
       <path d="M4.545 6.714 4.11 8H3l1.862-5h1.284L8 8H6.833l-.435-1.286zm1.634-.736L5.5 3.956h-.049l-.679 2.022z"/>
       <path d="M0 2a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v3h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm7.138 9.995q.289.451.63.846c-.748.575-1.673 1.001-2.768 1.292.178.217.451.635.555.867 1.125-.359 2.08-.844 2.886-1.494.777.665 1.739 1.165 2.93 1.472.133-.254.414-.673.629-.89-1.125-.253-2.057-.694-2.82-1.284.681-.747 1.222-1.651 1.621-2.757H14V8h-3v1.047h.765c-.318.844-.74 1.546-1.272 2.13a6 6 0 0 1-.415-.492 2 2 0 0 1-.94.31"/>
     </svg>
@@ -3636,6 +3612,7 @@ function showImageTranslationResult(response) {
     html = '<div class="parsipad-text" style="color:#6B7280;">No text found in selected region.</div>';
   }
 
+  setContentLiveState(content, 'ready');
   content.innerHTML = html;
 
   // Show footer
@@ -3887,6 +3864,7 @@ function createSelectionPopup(selectionRect, selectedText) {
     svg.setAttribute('stroke', 'currentColor');
     svg.setAttribute('stroke-width', '2');
     svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
     const path = document.createElementNS(ns, 'path');
     path.setAttribute('d', cfg.svgPath);
     svg.appendChild(path);
