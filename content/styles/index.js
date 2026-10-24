@@ -828,6 +828,21 @@ export function getStyles() {
       line-height: 1.75;
     }
 
+    /* Holds the rating line under a translation, outside the content area's
+       live region, so a later skeleton or result does not wipe it. */
+    .parsipad-review-slot {
+      padding: 0 16px;
+    }
+
+    .parsipad-review-slot:empty {
+      display: none;
+    }
+
+    .parsipad-review-slot .parsipad-review-line {
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+
     .parsipad-review-line {
       display: flex;
       align-items: center;
@@ -1002,7 +1017,8 @@ export function getStyles() {
       color: var(--pp-error);
     }
 
-    .parsipad-open-settings {
+    .parsipad-open-settings,
+    .parsipad-reload-page {
       margin-top: 8px;
       padding: 6px 12px;
       background: var(--pp-accent);
@@ -1014,8 +1030,15 @@ export function getStyles() {
       font-size: 12px;
     }
 
-    .parsipad-open-settings:hover {
+    .parsipad-open-settings:hover,
+    .parsipad-reload-page:hover {
       background: var(--pp-accent-strong);
+    }
+
+    .parsipad-open-settings:focus-visible,
+    .parsipad-reload-page:focus-visible {
+      outline: 2px solid var(--pp-accent);
+      outline-offset: 2px;
     }
 
     .parsipad-content::-webkit-scrollbar {

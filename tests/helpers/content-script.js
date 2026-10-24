@@ -26,6 +26,11 @@ export function translateLines(msg) {
  *   send ({ type: 'done' | 'error', ... }), or a promise of it. Defaults to
  *   translateLines.
  * - `missingKey`: CHECK_API_KEY answers no key.
+ * - `respond(message)`: answers any other sendMessage; returning undefined
+ *   falls through to the default (a promise of undefined).
+ * - `invalidated`: the extension was reloaded or updated under the page, so
+ *   sendMessage and connect throw as Chrome makes them throw in an orphaned
+ *   content script.
  * - `keyCheckGate`: when set, CHECK_API_KEY waits for it.
  * - `onMessage(message)`: deliver a message as the service worker would,
  *   and return what the content script answered.
@@ -41,6 +46,8 @@ export async function loadContentScript() {
     answer: translateLines,
     missingKey: false,
     keyCheckGate: null,
+    respond: null,
+    invalidated: false,
     listener: null,
     onMessage(message) {
       let response;
@@ -56,6 +63,8 @@ export async function loadContentScript() {
       harness.answer = translateLines;
       harness.missingKey = false;
       harness.keyCheckGate = null;
+      harness.respond = null;
+      harness.invalidated = false;
       harness.store.clear();
     }
   };
@@ -88,7 +97,10 @@ export async function loadContentScript() {
       id: 'parsipad',
       onMessage: { addListener: (fn) => { harness.listener = fn; } },
       sendMessage: (message) => {
+        if (harness.invalidated) throw new Error('Extension context invalidated.');
         harness.sent.push(message);
+        const answered = harness.respond?.(message);
+        if (answered !== undefined) return Promise.resolve(answered);
         if (message.action === 'CHECK_API_KEY') {
           const reply = { hasApiKey: !harness.missingKey };
           return harness.keyCheckGate ? harness.keyCheckGate.then(() => reply) : Promise.resolve(reply);
@@ -97,6 +109,7 @@ export async function loadContentScript() {
       },
       // Batches stream over a port; every one is recorded and answered.
       connect: () => {
+        if (harness.invalidated) throw new Error('Extension context invalidated.');
         const listeners = [];
         const port = {
           started: null,

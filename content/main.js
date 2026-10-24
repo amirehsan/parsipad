@@ -3,7 +3,7 @@
  * Handles text selection detection and floating translation box
  */
 
-import { escapeHtml, isMissingApiKeyResponse } from './utils/text.js';
+import { escapeHtml, isMissingApiKeyError, isMissingApiKeyResponse } from './utils/text.js';
 import {
   getPageConfirmStyles,
   getPageProgressStyles,
@@ -16,6 +16,8 @@ import {
 import { t } from '../lib/i18n.js';
 import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
+import { ERROR_CODES, errorI18nKey, isContextInvalidated, toTranslationError } from '../lib/translation/errors.js';
+import { renderReloadState } from './reload-state.js';
 import { captureSelectionContext, sentenceAround } from './context.js';
 import { computeBoxPosition } from './placement.js';
 import { renderCard, injectCardStyles } from '../shared/card/index.js';
@@ -401,7 +403,7 @@ async function translateAndShow(text, { sourceLang } = {}) {
       showTranslation(response, text);
     }
   } catch (error) {
-    showError(error.message || 'Translation failed');
+    showError(error);
   }
 }
 
@@ -456,7 +458,7 @@ async function polishAndShow(text) {
       showPolishResults(response);
     }
   } catch (error) {
-    showPolishError(error.message || 'Polish failed');
+    showPolishError(error);
   }
 }
 
@@ -620,6 +622,7 @@ function createFloatingBox(selectionRect) {
     <div class="parsipad-content" aria-live="polite" aria-atomic="true">
       <div class="parsipad-text"></div>
     </div>
+    <div class="parsipad-review-slot"></div>
     <div class="parsipad-footer">
       <span class="parsipad-cache-badge"></span>
       <div class="parsipad-footer-actions">
@@ -816,7 +819,7 @@ function buildSentenceHandler(result, originalText) {
       showTranslation(response, sentence);
       highlightInSource(originalText);
     } catch (error) {
-      showError(error.message || 'Translation failed');
+      showError(error);
     }
   };
 }
@@ -993,24 +996,35 @@ function showTranslation(result, originalText) {
 
   // Check if already favorited
   checkTranslationFavoriteStatus();
-  maybeShowReviewLine(content);
+  maybeShowReviewLine(currentCardEl);
 }
 
 /**
  * One quiet rating ask under a translation, when the service worker says it
- * is time. The worker records the show, so a second box in the same window
- * does not ask again. "Rate" opens the store in a new tab from the worker;
- * "Later" snoozes.
- * @param {HTMLElement} content - the floating box's content area
+ * is time. The worker records the show when it answers, so a second box in
+ * the same window does not ask again, and so every check that could skip
+ * the line runs before the question is sent: a skeleton on screen or a card
+ * that has been replaced means no ask at all. The line goes in its own slot
+ * below the content area, outside the live region, so a later skeleton or
+ * result does not wipe it. "Rate" opens the store in a new tab from the
+ * worker; "Later" snoozes.
+ * @param {HTMLElement} card - the translation card the line is for
  */
-async function maybeShowReviewLine(content) {
+async function maybeShowReviewLine(card) {
+  if (!shadowRoot || !card || card !== currentCardEl) return;
+  const content = shadowRoot.querySelector('.parsipad-content');
+  const slot = shadowRoot.querySelector('.parsipad-review-slot');
+  if (!content || !slot) return;
+  if (content.querySelector('.parsipad-loading')) return;
+  if (slot.querySelector('.parsipad-review-line')) return;
+
   let show = false;
   try {
     ({ show } = await chrome.runtime.sendMessage({ action: 'REVIEW_PROMPT_STATE' }));
   } catch (error) {
     return;
   }
-  if (!show || !content.isConnected) return;
+  if (!show || !slot.isConnected) return;
 
   const line = document.createElement('div');
   line.className = 'parsipad-review-line';
@@ -1033,7 +1047,7 @@ async function maybeShowReviewLine(content) {
   later.addEventListener('click', () => answer('later'));
 
   line.append(rate, later);
-  content.appendChild(line);
+  slot.appendChild(line);
   placeFloatingBox();
 }
 
@@ -1093,55 +1107,110 @@ function renderInlineGrammar(slot, points, originalText, translation, direction)
   slot.appendChild(learnMore);
 }
 
-// Errors that warrant the alarming red tone vs. the friendly amber default.
-// Misspellings / unsupported language / "please enter text" stay informational.
-const PP_DESTRUCTIVE_ERROR_PATTERN = /(network|invalid api key|api key|server|rate limit|failed to fetch|timeout)/i;
+// Failures the reader has to act on (the key, the connection, the provider)
+// take the red tone; the rest (nothing to translate, a language ParsiPad does
+// not cover, a reply that was cut off) stay the friendly amber. Chosen by
+// code, so a localized message is toned the same as its English original.
+const PP_DESTRUCTIVE_ERROR_CODES = new Set([
+  ERROR_CODES.INVALID_API_KEY,
+  ERROR_CODES.API_KEY_NOT_SET,
+  ERROR_CODES.NETWORK,
+  ERROR_CODES.TIMEOUT,
+  ERROR_CODES.RATE_LIMITED,
+  ERROR_CODES.SERVER_ERROR
+]);
+
+// The info icon every box error carries; decorative, the text says it all.
+const PP_ERROR_ICON = `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="12"/>
+    <line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+`;
+
+/**
+ * What a box says about a failure. Every known code is said in the reader's
+ * language; only a message with no known code (a provider's own words) is
+ * shown as it came. An extension reloaded under the page is recognized by
+ * its code or, when it arrives without one, by Chrome's message.
+ * @param {unknown} errorOrResponse - a service worker or stream response
+ *   ({ error, errorCode }), or what a catch caught
+ * @returns {{code: string, message: string, untranslated: boolean}}
+ */
+function describeBoxError(errorOrResponse) {
+  const isResponse = errorOrResponse !== null && typeof errorOrResponse === 'object' && !(errorOrResponse instanceof Error);
+  const raw = isResponse ? errorOrResponse.error : errorOrResponse;
+  const rawMessage = typeof raw === 'string' ? raw : (typeof raw?.message === 'string' ? raw.message : '');
+  const reported = isResponse && Object.hasOwn(ERROR_CODES, errorOrResponse.errorCode) ? errorOrResponse.errorCode : ERROR_CODES.UNKNOWN;
+
+  let code = reported === ERROR_CODES.UNKNOWN ? toTranslationError(raw ?? '').code : reported;
+  if (reported === ERROR_CODES.CONTEXT_INVALIDATED || isContextInvalidated(rawMessage)) {
+    code = ERROR_CODES.CONTEXT_INVALIDATED;
+  } else if (code === ERROR_CODES.UNKNOWN && isMissingApiKeyError(rawMessage)) {
+    code = ERROR_CODES.API_KEY_NOT_SET;
+  }
+
+  if (code === ERROR_CODES.UNKNOWN && rawMessage.trim()) {
+    return { code, message: rawMessage, untranslated: true };
+  }
+  return { code, message: t(errorI18nKey(code), userLang), untranslated: false };
+}
+
+/**
+ * Put a failure into a box's content area: the icon, the message as text,
+ * and for a missing key a button to Settings. Text the reader's language
+ * did not produce carries dir="auto", so English inside a Persian box keeps
+ * its own direction.
+ * @param {HTMLElement} content
+ * @param {{code: string, message: string, untranslated: boolean}} error
+ * @param {{role?: string}} [options] - a role for a box whose content area
+ *   is not a live region of its own
+ */
+function renderBoxError(content, { code, message, untranslated }, { role } = {}) {
+  const errorEl = document.createElement('div');
+  errorEl.className = PP_DESTRUCTIVE_ERROR_CODES.has(code) ? 'parsipad-error is-destructive' : 'parsipad-error';
+  errorEl.setAttribute('dir', userLang === 'fa' ? 'rtl' : 'ltr');
+  if (role) errorEl.setAttribute('role', role);
+  errorEl.innerHTML = PP_ERROR_ICON;
+
+  const body = document.createElement('div');
+  const text = document.createElement('div');
+  if (untranslated) text.setAttribute('dir', 'auto');
+  text.textContent = message;
+  body.appendChild(text);
+
+  if (code === ERROR_CODES.API_KEY_NOT_SET) {
+    const settings = document.createElement('button');
+    settings.type = 'button';
+    settings.className = 'parsipad-open-settings';
+    settings.textContent = t('openSettings', userLang);
+    settings.addEventListener('click', () => {
+      chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' });
+    });
+    body.appendChild(settings);
+  }
+
+  errorEl.appendChild(body);
+  content.replaceChildren(errorEl);
+}
 
 /**
  * Show error state inside the floating box. Default tone is informational
- * (amber); real failures (network/invalid key/etc) upgrade to destructive
- * (red). Missing-API-key shows an extra "Open Settings" CTA.
- * @param {string|{error?: string, errorCode?: string}} errorOrResponse - A
- *   plain message string (thrown JS errors) or a service worker response
- *   object, which carries errorCode for reliable missing-key detection
- *   even when the message itself is localized.
+ * (amber); real failures (network, key, provider) upgrade to destructive
+ * (red). A missing key adds an "Open Settings" button, and an extension
+ * reloaded under the page offers to reload it instead.
+ * @param {unknown} errorOrResponse - a service worker or stream response
+ *   ({ error, errorCode }), or what a catch caught
  */
 function showError(errorOrResponse) {
   if (!shadowRoot) return;
-  const response = typeof errorOrResponse === 'string' ? { error: errorOrResponse } : (errorOrResponse || {});
-  const message = response.error || '';
   const content = shadowRoot.querySelector('.parsipad-content');
-  const destructive = PP_DESTRUCTIVE_ERROR_PATTERN.test(String(message || ''));
-  const errorClass = destructive ? 'parsipad-error is-destructive' : 'parsipad-error';
-
-  if (isMissingApiKeyResponse(response)) {
-    content.innerHTML = `
-      <div class="${errorClass}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <div>
-          <div>${escapeHtml(message)}</div>
-          <button class="parsipad-open-settings" type="button">Open Settings</button>
-        </div>
-      </div>
-    `;
-    content.querySelector('.parsipad-open-settings')?.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' });
-    });
+  const error = describeBoxError(errorOrResponse);
+  if (error.code === ERROR_CODES.CONTEXT_INVALIDATED) {
+    renderReloadState(content, userLang);
   } else {
-    content.innerHTML = `
-      <div class="${errorClass}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        ${escapeHtml(message)}
-      </div>
-    `;
+    renderBoxError(content, error);
   }
 
   // Hide footer on error
@@ -2014,46 +2083,20 @@ async function handlePolishFavorite(btn, polishData) {
 }
 
 /**
- * Show error in polish box. Missing-API-key errors get the same CTA as showError().
- * @param {string|{error?: string, errorCode?: string}} errorOrResponse - A
- *   plain message string (thrown JS errors) or a service worker response
- *   object, which carries errorCode for reliable missing-key detection
- *   even when the message itself is localized.
+ * Show error in polish box, the same way showError() does in the
+ * translation box.
+ * @param {unknown} errorOrResponse - a service worker response
+ *   ({ error, errorCode }), or what a catch caught
  */
 function showPolishError(errorOrResponse) {
   if (!shadowRoot) return;
 
-  const response = typeof errorOrResponse === 'string' ? { error: errorOrResponse } : (errorOrResponse || {});
-  const message = response.error || '';
   const content = shadowRoot.querySelector('.parsipad-polish-content');
-  if (isMissingApiKeyResponse(response)) {
-    content.innerHTML = `
-      <div class="parsipad-error">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <div>
-          <div>${escapeHtml(message)}</div>
-          <button class="parsipad-open-settings" type="button">Open Settings</button>
-        </div>
-      </div>
-    `;
-    content.querySelector('.parsipad-open-settings')?.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' });
-    });
+  const error = describeBoxError(errorOrResponse);
+  if (error.code === ERROR_CODES.CONTEXT_INVALIDATED) {
+    renderReloadState(content, userLang);
   } else {
-    content.innerHTML = `
-      <div class="parsipad-error">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        ${escapeHtml(message)}
-      </div>
-    `;
+    renderBoxError(content, error, { role: 'alert' });
   }
 
   placeFloatingBox();
@@ -2094,12 +2137,12 @@ async function dictionaryAndShow(word) {
     });
 
     if (response.error) {
-      showDictionaryError(response.error);
+      showDictionaryError(response);
     } else {
       showDictionaryResult(response);
     }
   } catch (error) {
-    showDictionaryError(error.message || 'Lookup failed');
+    showDictionaryError(error);
   }
 }
 
@@ -2396,22 +2439,21 @@ async function handleDictionaryFavorite() {
 }
 
 /**
- * Show error in dictionary box
+ * Show error in dictionary box, the same way showError() does in the
+ * translation box.
+ * @param {unknown} errorOrResponse - a service worker response
+ *   ({ error, errorCode }), or what a catch caught
  */
-function showDictionaryError(message) {
+function showDictionaryError(errorOrResponse) {
   if (!shadowRoot) return;
 
   const content = shadowRoot.querySelector('.parsipad-dictionary-content');
-  content.innerHTML = `
-    <div class="parsipad-error" role="alert">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="12" y1="8" x2="12" y2="12"/>
-        <line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      ${escapeHtml(message)}
-    </div>
-  `;
+  const error = describeBoxError(errorOrResponse);
+  if (error.code === ERROR_CODES.CONTEXT_INVALIDATED) {
+    renderReloadState(content, userLang);
+  } else {
+    renderBoxError(content, error, { role: 'alert' });
+  }
 
   placeFloatingBox();
 }
@@ -3507,12 +3549,12 @@ async function cropAndTranslate(rect, screenshotDataUrl) {
     });
 
     if (response.error) {
-      showError(response.error);
+      showError(response);
     } else {
       showImageTranslationResult(response);
     }
   } catch (error) {
-    showError(error.message || 'Screenshot translation failed');
+    showError(error);
   }
 }
 
