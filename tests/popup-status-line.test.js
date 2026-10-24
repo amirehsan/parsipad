@@ -25,7 +25,6 @@ function functionBody(name) {
 const SECONDARY_ACTIONS = [
   'handleCardCopy',
   'handlePolishCopy',
-  'handleDictCopy',
   'handleImageCopy',
   'handleTranslationFavorite',
   'handlePolishFavorite',
