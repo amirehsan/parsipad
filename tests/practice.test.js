@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs'; import path from 'path';
 import { buildDeck, clampSessionSize } from '../lib/practice.js';
+import { toFavoriteEntries } from '../lib/library-model.js';
 const favs = [
   { id: 'a', type: 'translation', originalText: 'apple', savedText: 'سیب' },
   { id: 'b', type: 'grammar', originalText: 'x', savedText: 'y', lesson: {} },
@@ -14,18 +15,25 @@ describe('practice', () => {
     const deck = buildDeck(favs, { size: 10, rng: () => 0 });
     expect(deck.map(c => c.id).sort()).toEqual(['a', 'c']);
     const c = deck.find(x => x.id === 'c');
-    expect(c).toMatchObject({ front: 'کتاب', back: 'book', frontLang: 'fa', backLang: 'en' });
+    expect(c).toMatchObject({ front: 'book', back: 'کتاب', frontLang: 'en', backLang: 'fa' });
+  });
+  it('shows the saved result first and keeps the original for the back', () => {
+    const [card] = buildDeck([favs[0]], { size: 10, rng: () => 0 });
+    expect(card).toMatchObject({ front: 'سیب', back: 'apple', frontLang: 'fa', backLang: 'en' });
+  });
+  it('gives a card the language most of its text is in, as the Library cards do', () => {
+    const mixed = [{ id: 'm', type: 'polish', originalText: 'I really like the word دوست in Persian', savedText: 'The word دوست means friend in English' }];
+    const [card] = buildDeck(mixed, { size: 10, rng: () => 0 });
+    expect(card.frontLang).toBe('en');
+    expect(card.backLang).toBe('en');
   });
   it('deals a legacy favorite with no type and an old direction label as a translation', () => {
-    const legacy = [
-      { id: 'l1', original: 'water', saved: 'آب', direction: 'EN -> FA' },
-      { id: 'l2', original: 'fire', saved: 'آتش', direction: 'EN → FA' }
-    ];
+    // Older versions stored the formatted label, with a real arrow.
+    const legacy = [{ id: 'l1', original: 'fire', saved: 'آتش', direction: 'EN → FA' }];
+    expect(toFavoriteEntries(legacy)[0].direction).toBe('en-fa');
     const deck = buildDeck(legacy, { size: 10, rng: () => 0 });
-    expect(deck.map(c => c.id).sort()).toEqual(['l1', 'l2']);
-    for (const card of deck) {
-      expect(card).toMatchObject({ kind: 'translation', frontLang: 'en', backLang: 'fa' });
-    }
+    expect(deck).toHaveLength(1);
+    expect(deck[0]).toMatchObject({ id: 'l1', kind: 'translation', front: 'آتش', back: 'fire', frontLang: 'fa', backLang: 'en' });
   });
   it('respects the session size', () => {
     const many = Array.from({ length: 40 }, (_, i) => ({ id: String(i), type: 'translation', originalText: `w${i}`, savedText: `t${i}` }));

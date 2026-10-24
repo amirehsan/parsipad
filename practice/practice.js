@@ -1,12 +1,13 @@
 /**
  * The Practice page: a short session of flashcards dealt from favorites.
  *
- * The card is one button holding both faces, so Space and Enter flip it with
- * no key handling of our own and aria-pressed says which face is up. The
- * arrow keys move between cards and c copies the face that is showing,
- * unless focus is in a form control. One role="status" region announces the
- * counter, the revealed answer (in its own language) and copies; it shows
- * itself only for copies.
+ * A card shows the saved translation; flipping it reveals the original. The
+ * card is one button holding both faces, so Space and Enter flip it when it
+ * has focus, and aria-pressed says which face is up. From the page (nothing
+ * focused), Space and Enter flip it too, the arrow keys move between cards
+ * and c copies the face that is showing, unless focus is in a form control.
+ * One role="status" region announces the counter, the revealed original (in
+ * its own language) and copies; it shows itself only for copies.
  *
  * Opened from the side panel the URL carries ?surface=panel: the page then
  * fits the panel and offers a way back to it.
@@ -206,14 +207,30 @@ async function copyShownFace() {
 // Events
 // ---------------------------------------------------------------------------
 
+const FORM_CONTROL = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
+// Space and Enter already press these, the card included, so the page leaves them be.
+const ACTIVATES_ON_KEY = `button, a[href], ${FORM_CONTROL}`;
+
 function isFormControl(node) {
-  return Boolean(node?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"])'));
+  return Boolean(node?.closest?.(FORM_CONTROL));
+}
+
+function activatesOnKey(node) {
+  return Boolean(node?.closest?.(ACTIVATES_ON_KEY));
+}
+
+/**
+ * The c key, matched by where it sits as well as by what it types, so it
+ * still copies on a Persian layout, where that key types ز.
+ */
+function isCopyKey(event) {
+  return event.code === 'KeyC' || event.key === 'c' || event.key === 'C';
 }
 
 /**
  * Arrow keys move between cards (mirrored right to left, like the reading
- * order) and c copies. Shortcuts with a modifier, such as Cmd+C, stay the
- * browser's.
+ * order), Space and Enter flip the card and c copies. Shortcuts with a
+ * modifier, such as Cmd+C, stay the browser's.
  */
 function handleKeydown(event) {
   if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -224,7 +241,13 @@ function handleKeydown(event) {
   if (step) {
     event.preventDefault();
     move(step);
-  } else if (event.key === 'c' || event.key === 'C') {
+  } else if (event.key === ' ' || event.key === 'Enter') {
+    // A focused button or link acts on the key itself; flipping here too
+    // would flip the card twice, or flip it when Next was meant.
+    if (event.shiftKey || activatesOnKey(event.target) || !deck.length) return;
+    event.preventDefault();
+    flip();
+  } else if (isCopyKey(event)) {
     copyShownFace();
   }
 }
