@@ -44,7 +44,9 @@ let captured;
 function installChromeStub() {
   const listeners = {
     onMessage: null,
-    onConnect: []
+    onConnect: [],
+    onInstalled: null,
+    onClicked: null
   };
 
   globalThis.chrome = {
@@ -52,7 +54,7 @@ function installChromeStub() {
       id: 'test-extension-id',
       onMessage: { addListener: (fn) => { listeners.onMessage = fn; } },
       onConnect: { addListener: (fn) => { listeners.onConnect.push(fn); } },
-      onInstalled: { addListener: () => {} },
+      onInstalled: { addListener: (fn) => { listeners.onInstalled = fn; } },
       onStartup: { addListener: () => {} },
       getURL: (path) => `chrome-extension://test-extension-id/${path}`,
       openOptionsPage: vi.fn(async () => {}),
@@ -92,7 +94,11 @@ function installChromeStub() {
     scripting: { executeScript: vi.fn(async () => {}) },
     contextMenus: {
       create: vi.fn(),
-      onClicked: { addListener: () => {} }
+      onClicked: { addListener: (fn) => { listeners.onClicked = fn; } }
+    },
+    sidePanel: {
+      open: vi.fn().mockResolvedValue(undefined),
+      setPanelBehavior: vi.fn().mockResolvedValue(undefined)
     },
     commands: {
       onCommand: { addListener: () => {} }
@@ -109,9 +115,9 @@ function installChromeStub() {
  * Replays chrome.runtime.onMessage the way the browser would: calls the
  * captured handler and resolves with whatever it passes to sendResponse.
  */
-function sendMessage(message) {
+function sendMessage(message, sender = {}) {
   return new Promise((resolve) => {
-    captured.onMessage(message, {}, resolve);
+    captured.onMessage(message, sender, resolve);
   });
 }
 
@@ -138,6 +144,8 @@ function connectPort(name) {
 beforeAll(async () => {
   captured = installChromeStub();
   await import('../background/service-worker.js');
+  // Replay the install event so the menu items and panel behavior are registered.
+  await captured.onInstalled({ reason: 'update' });
 });
 
 beforeEach(() => {
@@ -489,5 +497,33 @@ describe('review prompt', () => {
     translate.mockResolvedValue({ translation: 'سلام', detectedSource: 'en', inputTokens: 1, outputTokens: 1 });
     await sendMessage({ action: 'TRANSLATE', text: 'hello', sourceLang: 'auto', mode: 'word' });
     expect(store.get('review_usage').successes).toBe(1);
+  });
+});
+
+describe('side panel', () => {
+  it('OPEN_SIDE_PANEL opens the panel for the sender tab', async () => {
+    await sendMessage({ action: 'OPEN_SIDE_PANEL' }, { tab: { id: 42 } });
+    expect(chrome.sidePanel.open).toHaveBeenCalledWith({ tabId: 42 });
+  });
+
+  it('OPEN_SIDE_PANEL prefers an explicit tabId over the sender tab', async () => {
+    await sendMessage({ action: 'OPEN_SIDE_PANEL', tabId: 7 }, { tab: { id: 42 } });
+    expect(chrome.sidePanel.open).toHaveBeenLastCalledWith({ tabId: 7 });
+  });
+
+  it('registers a context menu item that opens the panel', () => {
+    const ids = chrome.contextMenus.create.mock.calls.map(c => c[0].id);
+    expect(ids).toContain('parsipad-open-side-panel');
+  });
+
+  it('keeps the toolbar icon on the popup', () => {
+    expect(chrome.sidePanel.setPanelBehavior).toHaveBeenCalledWith({ openPanelOnActionClick: false });
+  });
+
+  it('opens the panel from the context menu before awaiting anything', async () => {
+    chrome.sidePanel.open.mockClear();
+    const pending = captured.onClicked({ menuItemId: 'parsipad-open-side-panel' }, { id: 5 });
+    expect(chrome.sidePanel.open).toHaveBeenCalledWith({ tabId: 5 });
+    await pending;
   });
 });

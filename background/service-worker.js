@@ -41,7 +41,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  * @param {Object} sender - Sender information
  * @returns {Promise<Object>}
  */
-async function handleMessage(message, _sender) {
+async function handleMessage(message, sender) {
   switch (message.action) {
     case ACTIONS.TRANSLATE:
       return handleTranslate(message);
@@ -51,6 +51,9 @@ async function handleMessage(message, _sender) {
 
     case ACTIONS.DICTIONARY_LOOKUP:
       return handleDictionaryLookup(message.word, message.sourceLang);
+
+    case ACTIONS.OPEN_SIDE_PANEL:
+      return handleOpenSidePanel(message.tabId ?? sender?.tab?.id);
 
     case ACTIONS.TRANSLATE_DOCUMENT:
       return handleDocumentTranslation(message.content);
@@ -701,6 +704,20 @@ async function handleGrammarLesson(originalText, translation, direction) {
   };
 }
 
+const OPEN_SIDE_PANEL_MENU_ID = 'parsipad-open-side-panel';
+
+/**
+ * Open the side panel for a tab. Callers must invoke this inside the user
+ * gesture that triggered it, with no awaited work beforehand.
+ * @param {number|undefined} tabId
+ * @returns {Promise<{success: boolean}>}
+ */
+async function handleOpenSidePanel(tabId) {
+  if (!chrome.sidePanel || tabId === undefined) return { success: false };
+  await chrome.sidePanel.open({ tabId });
+  return { success: true };
+}
+
 /**
  * Create context menus on install and open welcome page for new installs
  */
@@ -714,6 +731,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // Drop any legacy v1 cache entries that pre-date the SHA-256 keying fix.
   // Idempotent: only runs on first start after the bump.
   runCacheMigrations();
+
+  // The toolbar icon keeps opening the popup; the panel is opt-in.
+  if (chrome.sidePanel) {
+    chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+  }
 
   // Localized context menus via chrome.i18n; falls back to English when no _locales match.
   chrome.contextMenus.create({
@@ -740,6 +762,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     id: 'screenshot-translate',
     title: chrome.i18n.getMessage('ctxScreenshotTranslate') || 'Screenshot & Translate',
     contexts: ['page']
+  });
+  chrome.contextMenus.create({
+    id: OPEN_SIDE_PANEL_MENU_ID,
+    title: chrome.i18n.getMessage('ctxOpenSidePanel') || 'Open ParsiPad in side panel',
+    contexts: ['all']
   });
 
   // Open welcome page on fresh install
@@ -795,6 +822,16 @@ async function ensureContentScript(tabId) {
  */
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!tab?.id) return;
+
+  // sidePanel.open() needs the click's user gesture, so it must run before any await.
+  if (info.menuItemId === OPEN_SIDE_PANEL_MENU_ID) {
+    try {
+      await handleOpenSidePanel(tab.id);
+    } catch (error) {
+      console.error('Could not open the side panel:', error);
+    }
+    return;
+  }
 
   try {
     // Handle screenshot-translate separately (no selection needed)
