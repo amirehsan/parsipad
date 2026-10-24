@@ -114,7 +114,8 @@ export function createFirstRun({ doc, getLang, onNeedsKeyChange, storage, testKe
     if (succeeded) {
       setTimeout(() => {
         hold = false;
-        setNeedsKey(false, provider);
+        // Re-read storage: the provider may have changed during the delay.
+        check();
       }, hideDelayMs);
     } else {
       hold = false;

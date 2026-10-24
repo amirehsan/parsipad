@@ -12,6 +12,7 @@ import { applyThemeToRoot } from '../lib/theme.js';
 import { directionLabel } from '../lib/direction-label.js';
 import { getProviderHealth, healthTone } from '../lib/provider-health.js';
 import { createFirstRun } from './first-run.js';
+import { screenshotCaptureFailed, screenshotGuidance } from './screenshot-guidance.js';
 
 // The popup script also runs inside the side panel, which must stay open.
 const isPanel = document.body.dataset.surface === 'panel';
@@ -111,6 +112,7 @@ let isProcessing = false;
 let needsKey = false;
 let currentMode = 'translate'; // 'translate', 'polish' or 'docImage'
 let currentLang = 'en';
+let currentWindowId = null;
 let uploadedFile = null;
 let translatedContent = null;
 let docTranslationPort = null;
@@ -129,6 +131,8 @@ const RECENT_PREVIEW_LENGTH = 120;
  * Initialize the popup
  */
 async function init() {
+  // Not awaited: it only has to be ready before the reader clicks Open in sidebar
+  cacheWindowId();
   await initLanguage();
   await initTheme();
   await annotateShortcuts();
@@ -223,6 +227,19 @@ function showSubmitShortcut() {
   const { label, aria } = submitShortcut();
   submitKbd.textContent = label;
   actionBtn.setAttribute('aria-keyshortcuts', aria);
+}
+
+/**
+ * Remember which window this page is in. sidePanel.open() must run inside the
+ * click's user gesture, so the click handler reads this instead of awaiting
+ * chrome.windows.getCurrent() first.
+ */
+async function cacheWindowId() {
+  try {
+    currentWindowId = (await chrome.windows.getCurrent()).id;
+  } catch (error) {
+    // The click handler falls back to asking at click time
+  }
 }
 
 /**
@@ -372,7 +389,7 @@ function setupEventListeners() {
   openSidePanelBtn.hidden = isPanel;
   openSidePanelBtn.addEventListener('click', async () => {
     try {
-      const { id: windowId } = await chrome.windows.getCurrent();
+      const windowId = currentWindowId ?? (await chrome.windows.getCurrent()).id;
       await chrome.sidePanel.open({ windowId });
       window.close();
     } catch (error) {
@@ -391,6 +408,16 @@ function setupEventListeners() {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && (STORAGE_KEYS.selectedProvider in changes || STORAGE_KEYS.providerHealth in changes)) {
       renderProviderBadge();
+    }
+  });
+
+  // The side panel stays open for hours, so a theme or language chosen in the
+  // popup or Settings has to reach it without a reload.
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && (STORAGE_KEYS.theme in changes || STORAGE_KEYS.language in changes)) {
+      if (STORAGE_KEYS.theme in changes) initTheme();
+      // The badge's label is built from a translated string, so rebuild it too
+      if (STORAGE_KEYS.language in changes) initLanguage().then(renderProviderBadge);
     }
   });
 
@@ -1083,6 +1110,8 @@ function showError(message) {
 }
 
 let statusLineTimer = null;
+// Long enough to read a sentence that says what to do instead
+const SCREENSHOT_GUIDANCE_MS = 10000;
 
 /**
  * Report the outcome of a secondary action (copy, favorite, regenerate) in
@@ -1091,13 +1120,15 @@ let statusLineTimer = null;
  *
  * @param {string} message
  * @param {'success' | 'warning'} [tone]
+ * @param {number} [duration] Milliseconds before the line clears; longer
+ *   messages that tell the reader what to do next need longer than a confirmation
  */
-function showNotice(message, tone = 'success') {
+function showNotice(message, tone = 'success', duration = 3000) {
   if (!statusLine) return;
   clearTimeout(statusLineTimer);
   statusLine.textContent = message;
   statusLine.classList.toggle('is-warning', tone === 'warning');
-  statusLineTimer = setTimeout(() => { statusLine.textContent = ''; }, 3000);
+  statusLineTimer = setTimeout(() => { statusLine.textContent = ''; }, duration);
 }
 
 /**
@@ -1467,13 +1498,19 @@ async function handleScreenshotTranslate() {
       action: 'CAPTURE_SCREENSHOT'
     });
 
-    if (response?.screenshotDataUrl) {
-      // Send to content script to start selection
-      await chrome.tabs.sendMessage(tab.id, {
-        action: 'START_SCREENSHOT_SELECT',
-        screenshotDataUrl: response.screenshotDataUrl
-      });
+    if (screenshotCaptureFailed(response)) {
+      // A click inside the side panel does not grant activeTab, so the capture
+      // is refused on most tabs. The shortcut and the context menu item do grant it.
+      const shortcut = (await getBoundShortcuts()).get('screenshot-translate');
+      showNotice(screenshotGuidance(currentLang, shortcut), 'warning', SCREENSHOT_GUIDANCE_MS);
+      return;
     }
+
+    // Send to content script to start selection
+    await chrome.tabs.sendMessage(tab.id, {
+      action: 'START_SCREENSHOT_SELECT',
+      screenshotDataUrl: response.screenshotDataUrl
+    });
 
     // Close the popup so user can interact with the page
     if (!isPanel) window.close();

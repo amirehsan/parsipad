@@ -66,3 +66,70 @@ describe('createSelectionReporter', () => {
     vi.useRealTimers();
   });
 });
+
+describe('selectionToReport inside shadow DOM', () => {
+  async function dom() {
+    const { Window } = await import('happy-dom');
+    const window = new Window();
+    return window.document;
+  }
+
+  it('rejects a focused input inside an open shadow root', async () => {
+    const doc = await dom();
+    const host = doc.createElement('search-box');
+    doc.body.appendChild(host);
+    const root = host.attachShadow({ mode: 'open' });
+    const input = doc.createElement('input');
+    root.appendChild(input);
+    input.focus();
+    // The page sees the host, not the input, as its active element.
+    expect(doc.activeElement).toBe(host);
+    expect(selectionToReport(sel('hello'), doc.activeElement)).toBeNull();
+  });
+
+  it('rejects an input nested through two open shadow roots', async () => {
+    const doc = await dom();
+    const outer = doc.createElement('outer-box');
+    doc.body.appendChild(outer);
+    const outerRoot = outer.attachShadow({ mode: 'open' });
+    const inner = doc.createElement('inner-box');
+    outerRoot.appendChild(inner);
+    const innerRoot = inner.attachShadow({ mode: 'open' });
+    const area = doc.createElement('textarea');
+    innerRoot.appendChild(area);
+    area.focus();
+    expect(selectionToReport(sel('hello'), doc.activeElement)).toBeNull();
+  });
+
+  it('rejects a focused custom element whose shadow root is closed', async () => {
+    const doc = await dom();
+    const host = doc.createElement('secret-field');
+    host.setAttribute('tabindex', '0');
+    doc.body.appendChild(host);
+    host.attachShadow({ mode: 'closed' });
+    host.focus();
+    expect(host.shadowRoot).toBeNull();
+    expect(selectionToReport(sel('hello'), doc.activeElement)).toBeNull();
+  });
+
+  it('still reports text when focus is on a non-editable element inside a shadow root', async () => {
+    const doc = await dom();
+    const host = doc.createElement('fancy-card');
+    doc.body.appendChild(host);
+    const root = host.attachShadow({ mode: 'open' });
+    const button = doc.createElement('button');
+    root.appendChild(button);
+    button.focus();
+    expect(selectionToReport(sel('hello'), doc.activeElement)).toBe('hello');
+  });
+
+  it('still reports ordinary light-DOM text', async () => {
+    const doc = await dom();
+    const p = doc.createElement('p');
+    p.setAttribute('tabindex', '0');
+    doc.body.appendChild(p);
+    p.focus();
+    expect(selectionToReport(sel('hello'), doc.activeElement)).toBe('hello');
+    expect(selectionToReport(sel('hello'), doc.body)).toBe('hello');
+  });
+});
