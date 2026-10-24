@@ -514,6 +514,18 @@ html {
   color: var(--color-text-muted);
 }
 
+/* A live line under a switch's hint, such as why Most visited went back
+   off. Empty, it takes no room but stays in the page for screen readers. */
+.setting-status {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.setting-status:empty {
+  margin: 0;
+}
+
 /* Slider Row */
 .slider-row {
   display: flex;

@@ -18,6 +18,10 @@ import {
   setConfirmPageTranslate,
   getPracticeSessionSize,
   setPracticeSessionSize,
+  getNewTabEnabled,
+  setNewTabEnabled,
+  getNewTabPanels,
+  setNewTabPanels,
   getFavorites,
   getTheme,
   setTheme
@@ -36,6 +40,7 @@ import { applyThemeToRoot } from '../lib/theme.js';
 import { formatNumber } from '../lib/format.js';
 import { setupSectionNav } from './sections.js';
 import { getMutedSites, addMutedSite, removeMutedSite } from '../lib/muted-sites.js';
+import { hasTopSitesPermission, requestTopSitesPermission } from '../lib/top-sites.js';
 
 // DOM Elements - Language
 const aboutVersionEl = document.getElementById('about-version');
@@ -65,6 +70,12 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 // DOM Elements - Practice
 const practiceSizeSlider = document.getElementById('practice-size-slider');
 const practiceSizeValue = document.getElementById('practice-size-value');
+
+// DOM Elements - New Tab
+const newTabEnabledToggle = document.getElementById('newtab-enabled-toggle');
+const newTabBookmarksToggle = document.getElementById('newtab-bookmarks-toggle');
+const newTabRecentsToggle = document.getElementById('newtab-recents-toggle');
+const newTabRecentsStatus = document.getElementById('newtab-recents-status');
 
 // DOM Elements - Theme
 const themeRadios = document.querySelectorAll('input[name="theme"]');
@@ -106,6 +117,8 @@ const EXTENSION_VERSION = chrome.runtime.getManifest().version;
 
 // State
 let currentLang = 'en';
+// Whether Chrome declined the topSites prompt the last time Most visited was turned on
+let newTabRecentsDenied = false;
 let currentTheme = 'light';
 // Per provider: whether a key is stored, and what its status line says as a
 // function of the language, so a language change rewords both in place.
@@ -131,6 +144,7 @@ async function init() {
   await loadConfirmPageTranslateSetting();
   await loadMutedSites();
   await loadPracticeSetting();
+  await loadNewTabSettings();
   await loadProviderSettings();
   await loadAllApiKeyStatuses();
   mountKeyHelp();
@@ -418,6 +432,31 @@ function showPracticeSize(size) {
 }
 
 /**
+ * Load the New Tab switches. Most visited can be stored as on while its
+ * optional permission has since been revoked from Chrome's own settings,
+ * which this page is not told about, so the switch is reconciled first and
+ * never claims to show something it cannot.
+ */
+async function loadNewTabSettings() {
+  const [enabled, panels] = await Promise.all([getNewTabEnabled(), getNewTabPanels()]);
+  newTabEnabledToggle.checked = enabled;
+  newTabBookmarksToggle.checked = panels.bookmarks;
+  let recents = panels.recents;
+  if (recents && !await hasTopSitesPermission()) {
+    recents = false;
+    await setNewTabPanels({ recents: false });
+  }
+  newTabRecentsToggle.checked = recents;
+}
+
+/**
+ * Why Most visited went back off, in the page language; empty otherwise.
+ */
+function showNewTabRecentsStatus() {
+  newTabRecentsStatus.textContent = newTabRecentsDenied ? t('newTabRecentsDenied', currentLang) : '';
+}
+
+/**
  * Check the radio of the provider Translate uses
  */
 async function loadProviderSettings() {
@@ -606,6 +645,11 @@ function setupEventListeners() {
   practiceSizeSlider.addEventListener('input', () => showPracticeSize(Number(practiceSizeSlider.value)));
   practiceSizeSlider.addEventListener('change', handlePracticeSizeChange);
 
+  // New Tab
+  newTabEnabledToggle.addEventListener('change', handleNewTabEnabledChange);
+  newTabBookmarksToggle.addEventListener('change', handleNewTabBookmarksChange);
+  newTabRecentsToggle.addEventListener('change', handleNewTabRecentsChange);
+
   // Provider selection
   providerRadios.forEach(radio => {
     radio.addEventListener('change', handleProviderChange);
@@ -676,6 +720,7 @@ async function handleLanguageChange(lang) {
   renderMutedSites(mutedSites);
   renderMutedSiteMessage();
   showPracticeSize(Number(practiceSizeSlider.value));
+  showNewTabRecentsStatus();
   await loadCacheStats();
 }
 
@@ -773,6 +818,42 @@ async function handlePracticeSizeChange() {
   const size = await setPracticeSessionSize(practiceSizeSlider.value);
   practiceSizeSlider.value = size;
   showPracticeSize(size);
+}
+
+/**
+ * Handle the "Show ParsiPad on new tabs" switch
+ */
+async function handleNewTabEnabledChange() {
+  await setNewTabEnabled(newTabEnabledToggle.checked);
+}
+
+/**
+ * Handle the New Tab bookmarks button switch
+ */
+async function handleNewTabBookmarksChange() {
+  await setNewTabPanels({ bookmarks: newTabBookmarksToggle.checked });
+}
+
+/**
+ * Handle the Most visited switch. Turning it on asks Chrome for the optional
+ * topSites permission, which only works from a user gesture, so the request
+ * is the first thing the handler does. A declined prompt turns the switch
+ * back off and says why.
+ */
+async function handleNewTabRecentsChange() {
+  newTabRecentsDenied = false;
+  showNewTabRecentsStatus();
+  if (!newTabRecentsToggle.checked) {
+    await setNewTabPanels({ recents: false });
+    return;
+  }
+  const granted = await requestTopSitesPermission();
+  if (!granted) {
+    newTabRecentsToggle.checked = false;
+    newTabRecentsDenied = true;
+    showNewTabRecentsStatus();
+  }
+  await setNewTabPanels({ recents: granted });
 }
 
 /**

@@ -378,6 +378,46 @@
             <a class="btn btn-secondary btn-full" href="../practice/practice.html" target="_blank" rel="noopener" data-i18n="openPractice">Open Practice</a>
           </div>
         </div>
+
+        <div class="settings-card">
+          <div class="card-header">
+            <div class="card-icon" aria-hidden="true">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="16" rx="2" stroke-width="2"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9h18M12 12v5m-2.5-2.5h5"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="card-title" data-i18n="newTabCardTitle">New tab</h3>
+              <p class="card-subtitle" data-i18n="newTabCardSubtitle">What you see when you open a new tab</p>
+            </div>
+          </div>
+          <div class="card-content">
+            <div class="setting-row">
+              <div class="setting-text">
+                <label for="newtab-enabled-toggle" data-i18n="newTabEnabledLabel">Show ParsiPad on new tabs</label>
+                <p id="newtab-enabled-hint" class="setting-hint" data-i18n="newTabEnabledHint">A saved word, the time and your bookmarks. When off, new tabs show a plain page with a button to Chrome's own New Tab.</p>
+              </div>
+              <input type="checkbox" role="switch" class="pp-switch" id="newtab-enabled-toggle" aria-describedby="newtab-enabled-hint" checked>
+            </div>
+            <div class="setting-row">
+              <div class="setting-text">
+                <label for="newtab-bookmarks-toggle" data-i18n="newTabBookmarksLabel">Bookmarks button</label>
+                <p id="newtab-bookmarks-hint" class="setting-hint" data-i18n="newTabBookmarksHint">Opens your bookmarks in a side drawer. Press / on a new tab to open it and search.</p>
+              </div>
+              <input type="checkbox" role="switch" class="pp-switch" id="newtab-bookmarks-toggle" aria-describedby="newtab-bookmarks-hint" checked>
+            </div>
+            <div class="setting-row">
+              <div class="setting-text">
+                <label for="newtab-recents-toggle" data-i18n="newTabRecentsLabel">Most visited sites</label>
+                <p id="newtab-recents-hint" class="setting-hint" data-i18n="newTabRecentsHint">Shows the sites you visit most as tiles. Chrome asks for permission the first time. Nothing leaves your browser.</p>
+                <!-- Says why the switch went back off when Chrome's prompt is declined -->
+                <p id="newtab-recents-status" class="setting-status" role="status" aria-live="polite"></p>
+              </div>
+              <input type="checkbox" role="switch" class="pp-switch" id="newtab-recents-toggle" aria-describedby="newtab-recents-hint">
+            </div>
+          </div>
+        </div>
       </section>
 
       <section id="data" class="settings-section" aria-labelledby="data-title">
@@ -578,6 +618,23 @@
                 <div class="shortcut-item">
                   <span class="shortcut-keys"><kbd>C</kbd></span>
                   <span class="shortcut-desc" data-i18n="shortcutCopy">Copy text</span>
+                </div>
+              </div>
+            </div>
+            <div class="shortcuts-section">
+              <h3 class="shortcuts-title" data-i18n="newTabShortcuts">New tab</h3>
+              <div class="shortcuts-list">
+                <div class="shortcut-item">
+                  <span class="shortcut-keys"><kbd>Space</kbd> <kbd>Enter</kbd></span>
+                  <span class="shortcut-desc" data-i18n="shortcutFlip">Flip card</span>
+                </div>
+                <div class="shortcut-item">
+                  <span class="shortcut-keys"><kbd>C</kbd></span>
+                  <span class="shortcut-desc" data-i18n="shortcutCopy">Copy text</span>
+                </div>
+                <div class="shortcut-item">
+                  <span class="shortcut-keys"><kbd>/</kbd></span>
+                  <span class="shortcut-desc" data-i18n="newTabShortcutBookmarks">Open and search bookmarks</span>
                 </div>
               </div>
             </div>
