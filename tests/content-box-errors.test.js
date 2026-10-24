@@ -133,9 +133,11 @@ describe('a page whose extension was reloaded under it', () => {
   });
 
   it('asks the worker nothing once the connection is gone', async () => {
-    await pressAfterReload('translate', { length: 11 + 9 });
-    expect(h.sent.filter((m) => ['TRANSLATE', 'POLISH', 'DICTIONARY_LOOKUP'].includes(m.action))).toEqual([]);
-    expect(h.ports).toHaveLength(0);
+    for (const [action, length] of [['translate', 11 + 9], ['polish', 11 + 9], ['dictionary', 11]]) {
+      await pressAfterReload(action, { length });
+      expect(h.attempts.filter((a) => a.kind === 'connect' || ['TRANSLATE', 'POLISH', 'DICTIONARY_LOOKUP'].includes(a.message?.action)), action).toEqual([]);
+      expect(reloadButton(), action).not.toBeNull();
+    }
   });
 
   it('recognizes the message when it arrives with no code of its own', async () => {
@@ -211,6 +213,23 @@ describe('a failed request', () => {
     const message = errorEl().querySelector('[dir="auto"]');
     expect(message.textContent).toBe('Provider said <img src=x onerror=alert(1)> no');
     expect(errorEl().querySelector('img')).toBeNull();
+    expect(errorEl().classList.contains('is-destructive')).toBe(false);
+  });
+
+  it('never shows the words of a thrown error it does not know', async () => {
+    h.setUiLanguage('fa');
+    h.respond = (message) => (message.action === 'TRANSLATE' ? Promise.reject(new Error('Could not establish connection.')) : undefined);
+    h.onMessage({ action: 'SHOW_TRANSLATION', text: SENTENCE });
+    await settle();
+    expect(errorEl().textContent.trim()).toBe(fa.errorUnknown);
+    expect(errorEl().querySelector('[dir="auto"]')).toBeNull();
+  });
+
+  it('treats a code it does not know as unknown, in amber', async () => {
+    failWith({ error: 'Something went wrong upstream.', errorCode: 'FOO' });
+    h.onMessage({ action: 'SHOW_POLISH', text: 'make this better' });
+    await settle();
+    expect(errorEl().textContent.trim()).toBe(en.errorUnknown);
     expect(errorEl().classList.contains('is-destructive')).toBe(false);
   });
 
@@ -335,5 +354,66 @@ describe('the rating line', () => {
     answerReview({ show: true });
     await settle();
     expect(firstBox.querySelector('.parsipad-review-line')).toBeNull();
+  });
+});
+
+describe('a click after the extension was reloaded under the page', () => {
+  const sentenceResult = { translation: 'گربه روی حصیر نشست.', direction: 'en-fa', mode: 'sentence', sourceText: SENTENCE, provider: 'claude' };
+
+  // A throw from a click handler reaches the page as an error event.
+  function clickQuietly(button) {
+    const errors = [];
+    const onError = (event) => errors.push(event.error ?? event.message);
+    window.addEventListener('error', onError);
+    try {
+      expect(() => button.click()).not.toThrow();
+    } finally {
+      window.removeEventListener('error', onError);
+    }
+    expect(errors).toEqual([]);
+  }
+
+  async function showSentence(respond) {
+    h.respond = (message) => (message.action === 'TRANSLATE' ? sentenceResult : respond(message));
+    h.onMessage({ action: 'SHOW_TRANSLATION', text: SENTENCE });
+    await settle();
+  }
+
+  it('turns Explain into the reload state, not Chrome\'s words', async () => {
+    await showSentence(() => undefined);
+    const explain = box().querySelector('[data-action="cardExplain"]');
+    expect(explain).not.toBeNull();
+    h.invalidated = true;
+    clickQuietly(explain);
+    await settle();
+    expect(alertText()).toBe(en.errorContextInvalidated);
+    expect(reloadButton()).not.toBeNull();
+    expect(box().textContent).not.toMatch(/Extension context invalidated/);
+  });
+
+  it('lets Learn More fail quietly', async () => {
+    await showSentence((message) => (message.action === 'EXPLAIN_GRAMMAR'
+      ? { grammar: [{ point: 'Past simple', explanation: 'sat is the past of sit.' }] }
+      : undefined));
+    box().querySelector('[data-action="cardExplain"]').click();
+    await settle();
+    const learnMore = box().querySelector('.parsipad-grammar-learn-more');
+    expect(learnMore).not.toBeNull();
+    h.invalidated = true;
+    clickQuietly(learnMore);
+  });
+
+  it('lets the toast\'s Open Settings fail quietly', async () => {
+    document.body.innerHTML = '<p>Some text on the page to translate.</p>';
+    h.missingKey = true;
+    h.onMessage({ action: 'TRANSLATE_PAGE' });
+    await settle();
+    const toastHost = document.getElementById('parsipad-toast');
+    expect(toastHost).not.toBeNull();
+    const open = h.roots.get(toastHost).querySelector('.open');
+    expect(open.hidden).toBe(false);
+    h.invalidated = true;
+    clickQuietly(open);
+    toastHost.remove();
   });
 });
