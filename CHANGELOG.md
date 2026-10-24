@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **ParsiPad for Firefox.** ParsiPad only worked in Chrome and Chromium-based browsers, so anyone on Firefox, or on a browser built on it such as Zen, could not use it at all. The same extension now builds for Firefox desktop, version 140 or later, from the same source, with every feature: hover and block translate, the selection toolbar, page and screenshot translation, the popup, Polish, the dictionary, the Library, Practice, grammar lessons and the New Tab. A few things follow Firefox's own ways. The side panel opens in Firefox's sidebar. Most visited tiles use the site icons Firefox keeps, and show the site's first letter where it has none. The bookmarks drawer lists only bookmarks Firefox lets an extension open. The button back to the browser's own New Tab opens Firefox Home. Customize shortcuts opens Firefox's Manage Extension Shortcuts. Rate ParsiPad leads to Firefox Add-ons. Settings and the New Tab name Firefox wherever they used to name Chrome, in English and Persian. The first time ParsiPad's New Tab appears, Firefox asks whether to keep it; "Manage New Tabs" opens Firefox's settings and leaves the rest of ParsiPad on.
+
+### Changed
+- **Building needs Node 20.** `npm run build` now writes both packages, Chrome to `dist/` and Firefox to `dist-firefox/`, and `npm run package` writes the Chrome, Firefox and source zips for a release. Mozilla's `web-ext`, which lints and runs the Firefox package, requires Node 20, so the minimum moves up from 18.
+- **The store text and privacy policy name no single browser.** Where they said Chrome asks for a permission, stores your data or remaps shortcuts, they now say your browser, since the same text serves both stores.
+
 ## [3.8.1] - 2026-10-24
 
 ### Fixed
