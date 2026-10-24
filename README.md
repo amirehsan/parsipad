@@ -48,7 +48,8 @@
 
 ### Organization & Learning
 - **Favorites System** - Star translations and polished text to save them
-- **New Tab Flashcards** - Learn vocabulary on every new tab with interactive flashcards
+- **Library** - History, Favorites and saved grammar Lessons in one searchable page, with Undo for deletes
+- **Practice** - Review your favorites as flashcards, from the side panel or the Library
 - **Dictionary Lookup** - Look up definitions, phonetics, synonyms, and antonyms
 - **Side Panel** - Keep ParsiPad open beside the page while you browse
 
@@ -132,7 +133,7 @@ Click "Learn More with Examples" on any grammar explanation to open the dedicate
 - **Compare & Contrast** - Side-by-side comparison of how grammar works in both languages
 - **Common Mistakes** - Learn what errors to avoid
 - **Interactive Quizzes** - Test your understanding with challenging questions
-- **Save to Favorites** - Save grammar lessons for later review on New Tab flashcards
+- **Save to Favorites** - Save grammar lessons for later; they reopen from the Library's Lessons tab with no new request to your provider
 
 ### Polish Mode
 
@@ -201,21 +202,28 @@ Perfect for translating:
 
 Save your best translations and polished text:
 1. Click the star icon on any translation or polish result
-2. Access all favorites from the dedicated favorites page
+2. Open the Favorites tab of the Library to see them all
 3. Remove favorites by clicking the star again
 
-### New Tab Flashcards
+### Library
 
-Learn vocabulary every time you open a new tab:
-1. Enable "Show favorites on new tab" in Settings
-2. Choose how many items to show (1-10)
-3. Open a new tab to see your favorites as flashcards
-4. Click cards to flip and reveal the original text
-5. Use keyboard shortcuts:
+Everything you translate, polish or look up is kept in the Library:
+1. Open it from the Library link in the popup or the side panel
+2. Switch between the History, Favorites and Lessons tabs
+3. Search, filter by type (translation, dictionary, polish) and by direction; entries are grouped under Today, Yesterday, This week and Earlier
+4. Star, copy, open in the side panel (a polished text opens in Polish) or delete any entry; Undo brings back a delete for five seconds
+5. Reopen a saved grammar lesson from the Lessons tab with no new request to your provider
+
+### Practice
+
+Review your favorites as flashcards:
+1. Open Practice from the side panel or the Library
+2. Each card shows the saved translation. Click it, or press `Space` or `Enter`, to flip it and reveal the original text
+3. Use keyboard shortcuts:
    - `←` / `→` - Navigate between cards
-   - `Space` - Flip card
+   - `Space` / `Enter` - Flip card
    - `C` - Copy text
-   - `R` - Refresh with different favorites
+4. Choose how many cards a session holds (5 to 30) in Settings
 
 ### Page Translation (NEW in v2.7)
 
@@ -252,9 +260,10 @@ parsipad/
 ├── manifest.json       # Chrome extension manifest (v3)
 ├── popup/              # Extension popup UI
 ├── settings/           # Settings page
-├── history/            # Translation history page
-├── favorites/          # Favorites page
-├── newtab/             # New tab flashcards page
+├── library/            # Library page: History, Favorites and Lessons tabs
+├── practice/           # Practice flashcards page
+├── history/            # Redirects the old History page to the Library
+├── favorites/          # Redirects the old Favorites page to the Library
 ├── welcome/            # Welcome/onboarding page
 ├── grammar/            # Grammar learning page (NEW in v2.6)
 ├── background/         # Service worker

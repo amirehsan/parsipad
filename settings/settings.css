@@ -546,6 +546,21 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   padding-bottom: 0;
 }
 
+/* The first row sits flush under the card header, like .toggle-row. */
+.slider-row:first-child {
+  padding-top: 0;
+}
+
+/* A row above a button hands the gap to the button, as the Cache card does. */
+.slider-row:has(+ .btn) {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.slider-row + .btn {
+  margin-top: var(--space-stack-group);
+}
+
 .slider-info {
   display: flex;
   flex-direction: column;
@@ -776,6 +791,10 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 
 .btn svg {
   flex-shrink: 0;
+}
+
+a.btn {
+  text-decoration: none;
 }
 
 .mr-2 {

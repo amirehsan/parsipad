@@ -205,42 +205,30 @@
       </div>
     </section>
 
-    <!-- New Tab Card -->
+    <!-- Flashcards Card -->
     <section class="settings-card" data-settings-tab="general">
       <div class="card-header">
         <div class="card-icon bg-primary-100 dark:bg-primary-900/30">
           <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
           </svg>
         </div>
         <div>
-          <h2 class="card-title" data-i18n="newTabPage">New Tab Page</h2>
-          <p class="card-subtitle" data-i18n="newTabSubtitle">Display favorites when opening a new browser tab</p>
+          <h2 class="card-title" data-i18n="practiceTitle">Practice</h2>
+          <p class="card-subtitle" data-i18n="practiceSubtitle">Review your favorites as flashcards</p>
         </div>
       </div>
       <div class="card-content">
-        <label class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-label-text" data-i18n="enableNewTab">Show favorites on new tab</span>
-            <span class="toggle-hint" data-i18n="newTabHint">Replace Chrome's default new tab page with your favorite translations and polished texts</span>
-          </div>
-          <div class="toggle-switch">
-            <input type="checkbox" id="newtab-toggle">
-            <span class="toggle-slider"></span>
-          </div>
-        </label>
-
-        <!-- Phrase Count Slider -->
-        <div class="slider-row" id="phrase-count-section">
+        <div class="slider-row">
           <div class="slider-info">
-            <span class="slider-label-text" data-i18n="phraseCount">Number of phrases</span>
-            <span class="slider-hint" data-i18n="phraseCountHint">How many favorite items to show on each new tab (1-10)</span>
+            <label class="slider-label-text" for="practice-size-slider" data-i18n="practiceSessionSize">Cards per session</label>
           </div>
           <div class="slider-control">
-            <input type="range" id="phrase-count-slider" min="1" max="10" value="3" class="slider-input">
-            <span class="slider-value" id="phrase-count-value">3</span>
+            <input type="range" id="practice-size-slider" min="5" max="30" step="1" value="10" class="slider-input">
+            <output class="slider-value" id="practice-size-value" for="practice-size-slider">10</output>
           </div>
         </div>
+        <a class="btn btn-secondary btn-full" href="../practice/practice.html" target="_blank" rel="noopener" data-i18n="openPractice">Open Practice</a>
       </div>
     </section>
 
@@ -590,14 +578,14 @@
           </div>
         </div>
         <div class="shortcuts-section">
-          <h3 class="shortcuts-title" data-i18n="flashcardShortcuts">Flashcards (New Tab)</h3>
+          <h3 class="shortcuts-title" data-i18n="practiceShortcuts">Practice</h3>
           <div class="shortcuts-list">
             <div class="shortcut-item">
               <span class="shortcut-keys"><kbd>←</kbd> <kbd>→</kbd></span>
               <span class="shortcut-desc" data-i18n="shortcutNavigate">Navigate cards</span>
             </div>
             <div class="shortcut-item">
-              <span class="shortcut-keys"><kbd>Space</kbd></span>
+              <span class="shortcut-keys"><kbd>Space</kbd> <kbd>Enter</kbd></span>
               <span class="shortcut-desc" data-i18n="shortcutFlip">Flip card</span>
             </div>
             <div class="shortcut-item">

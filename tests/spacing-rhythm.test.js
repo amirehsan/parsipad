@@ -37,8 +37,7 @@ describe('spacing rhythm', () => {
   it('cards on every page use the card inset', () => {
     expect(rule(read('popup/popup.css'), '.popup')).toMatch(/padding:\s*var\(--space-inset-card\)/);
     expect(rule(read('popup/popup.css'), '.polish-card')).toMatch(/padding:\s*var\(--space-inset-card\)/);
-    expect(rule(read('history/history.css'), '.history-card')).toMatch(/padding:\s*var\(--space-inset-card\)/);
-    expect(rule(read('favorites/favorites.css'), '.favorite-card')).toMatch(/padding:\s*var\(--space-inset-card\)/);
+    expect(rule(read('library/library.css'), '.lib-card')).toMatch(/padding:\s*var\(--space-inset-card\)/);
   });
 
   it('settings rows have room to breathe', () => {

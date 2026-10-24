@@ -154,6 +154,36 @@ beforeEach(() => {
   translate.mockReset();
 });
 
+describe('retiring the New Tab settings', () => {
+  it('drops the New Tab keys on update and leaves favorites alone', async () => {
+    store.set('newtab_enabled', true);
+    store.set('newtab_phrase_count', 5);
+    store.set('newtab_panels', {});
+    store.set('favorites', [{ id: 'keep' }]);
+
+    await captured.onInstalled({ reason: 'update' });
+
+    expect(store.has('newtab_enabled')).toBe(false);
+    expect(store.has('newtab_phrase_count')).toBe(false);
+    expect(store.has('newtab_panels')).toBe(false);
+    expect(store.get('favorites')).toEqual([{ id: 'keep' }]);
+  });
+
+  it('still sets up the context menus when the cleanup fails', async () => {
+    const remove = vi.spyOn(chrome.storage.local, 'remove').mockRejectedValueOnce(new Error('storage unavailable'));
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Other tests read the menus registered at startup, so count rather than clear.
+    const before = chrome.contextMenus.create.mock.calls.length;
+
+    await expect(captured.onInstalled({ reason: 'update' })).resolves.toBeUndefined();
+
+    expect(chrome.contextMenus.create.mock.calls.length).toBeGreaterThan(before);
+    expect(logged).toHaveBeenCalled();
+    remove.mockRestore();
+    logged.mockRestore();
+  });
+});
+
 describe('batch mode keeps its markers intact (the regression that shipped)', () => {
   it('sends translate the exact batch text, markers untouched, not run through the ordinary normalizer', async () => {
     translate.mockResolvedValue({ translation: 'ignored', truncated: false, detectedSource: 'en', inputTokens: 1, outputTokens: 1 });

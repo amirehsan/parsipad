@@ -10,6 +10,7 @@ import { applySourceOverride } from '../shared/source-override.js';
 import { getBoundShortcuts, submitShortcut } from '../shared/shortcuts.js';
 import { applyThemeToRoot } from '../lib/theme.js';
 import { directionLabel } from '../lib/direction-label.js';
+import { formatRelativeTime } from '../lib/format.js';
 import { getProviderHealth, healthTone } from '../lib/provider-health.js';
 import { createFirstRun } from './first-run.js';
 import { screenshotCaptureFailed, screenshotGuidance } from './screenshot-guidance.js';
@@ -154,21 +155,6 @@ async function init() {
 }
 
 /**
- * "2 minutes ago" in the interface language.
- * @param {number} at - Epoch milliseconds
- * @returns {string}
- */
-function formatAgo(at) {
-  const seconds = Math.round((at - Date.now()) / 1000);
-  const units = [['day', 86400], ['hour', 3600], ['minute', 60]];
-  const formatter = new Intl.RelativeTimeFormat(currentLang, { numeric: 'auto' });
-  for (const [unit, size] of units) {
-    if (Math.abs(seconds) >= size) return formatter.format(Math.round(seconds / size), unit);
-  }
-  return formatter.format(0, 'second');
-}
-
-/**
  * Show the active provider and how its last request went. The dot colour
  * comes from data-tone; the same sentence is the tooltip and the accessible
  * name, since colour alone cannot carry the state.
@@ -180,7 +166,7 @@ async function renderProviderBadge() {
     const tone = healthTone(record);
     const name = (PROVIDER_CONFIGS[providerId] || {}).name || providerId;
     const key = { ok: 'providerHealthOk', warn: 'providerHealthWarn', error: 'providerHealthError', unknown: 'providerHealthUnknown' }[tone];
-    const detail = t(key, currentLang).replace('{ago}', record ? formatAgo(record.at) : '');
+    const detail = t(key, currentLang).replace('{ago}', record ? formatRelativeTime(record.at, currentLang) : '');
     const label = `${name}: ${detail}`;
 
     providerBadgeName.textContent = name;
@@ -1651,10 +1637,10 @@ async function loadFavoritesCount() {
 }
 
 /**
- * Open the favorites page
+ * Open the Library on its Favorites tab
  */
 function openFavoritesPage() {
-  chrome.tabs.create({ url: chrome.runtime.getURL('favorites/favorites.html') });
+  chrome.tabs.create({ url: chrome.runtime.getURL('library/library.html?tab=favorites') });
 }
 
 /**

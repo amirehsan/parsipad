@@ -28,57 +28,6 @@ describe('translateOtherLanguages setting', () => {
   });
 });
 
-describe('New Tab panel switches', () => {
-  let storage;
-  beforeEach(async () => {
-    installChromeStub();
-    vi.resetModules();
-    storage = await import('../lib/storage.js');
-  });
-
-  it('defaults to cards and bookmarks on, most visited off', async () => {
-    // Recents is off by default because turning it on requires the optional
-    // topSites permission, which is only asked for on an explicit click.
-    expect(await storage.getNewTabPanels()).toEqual({
-      flashcard: true, bookmarks: true, recents: false
-    });
-  });
-
-  it('persists one switch without disturbing the others', async () => {
-    await storage.setNewTabPanels({ recents: true });
-    expect(await storage.getNewTabPanels()).toEqual({
-      flashcard: true, bookmarks: true, recents: true
-    });
-  });
-
-  it('allows every panel to be off', async () => {
-    // A user who wants a bare page with just the gradient is entitled to it,
-    // so this is a valid state rather than one to clamp away.
-    await storage.setNewTabPanels({ flashcard: false, bookmarks: false, recents: false });
-    expect(await storage.getNewTabPanels()).toEqual({
-      flashcard: false, bookmarks: false, recents: false
-    });
-  });
-
-  it('ignores a panel name the page cannot render', async () => {
-    await storage.setNewTabPanels({ flashcard: false, weather: true });
-    const panels = await storage.getNewTabPanels();
-    expect(panels).toEqual({ flashcard: false, bookmarks: true, recents: false });
-    expect('weather' in panels).toBe(false);
-  });
-
-  it('falls back to defaults for a corrupt or half-written value', async () => {
-    await chrome.storage.local.set({ newtab_panels: 'not an object' });
-    expect(await storage.getNewTabPanels()).toEqual({
-      flashcard: true, bookmarks: true, recents: false
-    });
-    await chrome.storage.local.set({ newtab_panels: { flashcard: 'yes' } });
-    expect(await storage.getNewTabPanels()).toEqual({
-      flashcard: true, bookmarks: true, recents: false
-    });
-  });
-});
-
 describe('block translate setting', () => {
   it('registers a storage key', () => {
     expect(STORAGE_KEYS.blockTranslate).toBe('block_translate_enabled');
@@ -123,5 +72,34 @@ describe('provider API key formats', () => {
       .rejects.toThrow(/"sk-ant-"/);
     await expect(storage.setProviderApiKey(PROVIDERS.OPENAI, 'AQ.AbPlaceholderValue'))
       .rejects.toThrow(/"sk-"/);
+  });
+});
+
+describe('practice session size', () => {
+  let storage;
+  beforeEach(async () => {
+    installChromeStub();
+    vi.resetModules();
+    storage = await import('../lib/storage.js');
+  });
+
+  it('defaults to ten cards', async () => {
+    expect(await storage.getPracticeSessionSize()).toBe(10);
+  });
+
+  it('stores the size clamped to the range and returns what it stored', async () => {
+    expect(await storage.setPracticeSessionSize(2)).toBe(5);
+    expect(await storage.getPracticeSessionSize()).toBe(5);
+    expect(await storage.setPracticeSessionSize(99)).toBe(30);
+    expect(await storage.getPracticeSessionSize()).toBe(30);
+    expect(await storage.setPracticeSessionSize('x')).toBe(10);
+    expect(await storage.getPracticeSessionSize()).toBe(10);
+    await storage.setPracticeSessionSize(17);
+    expect(await chrome.storage.local.get(STORAGE_KEYS.practiceSessionSize)).toEqual({ practice_session_size: 17 });
+  });
+
+  it('reads a corrupt stored value as the default', async () => {
+    await chrome.storage.local.set({ practice_session_size: 'lots' });
+    expect(await storage.getPracticeSessionSize()).toBe(10);
   });
 });
