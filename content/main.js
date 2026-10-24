@@ -81,6 +81,9 @@ let pageToggleButton = null;
 let pageToggleShadow = null;
 let pageTranslationCancelled = false;
 let pageTranslationAbortController = null;
+// Aborted when the floating box closes, so a translation nobody will see
+// stops streaming, and stops being billed, at once.
+let boxAbortController = null;
 
 
 /**
@@ -274,9 +277,13 @@ async function translateAndShow(text, { sourceLang } = {}) {
   showLoading();
   placeFloatingBox();
 
+  boxAbortController?.abort();
+  boxAbortController = new AbortController();
+
   let streamed = '';
   try {
     const response = await requestTranslation({ text, sourceLang: requestedSourceLang, context }, {
+      signal: boxAbortController.signal,
       onDelta: (delta) => {
         streamed += delta;
         showStreamingText(streamed);
@@ -686,6 +693,9 @@ function buildSentenceHandler(result, originalText) {
     showLoading();
     placeFloatingBox();
 
+    boxAbortController?.abort();
+    boxAbortController = new AbortController();
+
     try {
       const response = await requestTranslation({
         text: sentence,
@@ -695,7 +705,7 @@ function buildSentenceHandler(result, originalText) {
         }).sourceLang,
         mode: 'sentence',
         context
-      });
+      }, { signal: boxAbortController.signal });
 
       if (response.errorCode === 'ABORTED') return;
 
@@ -1230,6 +1240,8 @@ async function handleTranslationFavorite() {
  * Remove the floating box
  */
 function removeFloatingBox() {
+  boxAbortController?.abort();
+  boxAbortController = null;
   boxSelectionRect = null;
   currentCardEl = null;
   currentSelectionContext = null;
