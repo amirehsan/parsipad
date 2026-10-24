@@ -5,7 +5,12 @@
 // gets its toast instead of the dialog, and a navigation or a Cancel from the
 // popup closes the dialog without a request.
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
+import fs from 'fs';
+import path from 'path';
 import { translations } from '../lib/i18n.js';
+import { functionBody } from './helpers/source.js';
+
+const js = fs.readFileSync(path.resolve(__dirname, '../content/main.js'), 'utf8');
 
 // The overlay and the toast live in closed shadow roots; keep a handle on
 // each root as it is attached so the test can see inside.
@@ -16,6 +21,8 @@ const sent = [];
 const ports = [];
 let onMessage = null;
 let missingKey = false;
+// When set, the key check waits for it, holding the run before the dialog.
+let keyCheckGate = null;
 
 function storageGet(keys) {
   const list = keys === null || keys === undefined ? [...store.keys()] : [].concat(keys);
@@ -47,7 +54,10 @@ beforeAll(async () => {
       onMessage: { addListener: (fn) => { onMessage = fn; } },
       sendMessage: (message) => {
         sent.push(message);
-        if (message.action === 'CHECK_API_KEY') return Promise.resolve({ hasApiKey: !missingKey });
+        if (message.action === 'CHECK_API_KEY') {
+          const answer = { hasApiKey: !missingKey };
+          return keyCheckGate ? keyCheckGate.then(() => answer) : Promise.resolve(answer);
+        }
         return Promise.resolve();
       },
       // Batches stream over a port; every one is recorded, and answered with
@@ -90,6 +100,7 @@ beforeEach(() => {
   sent.length = 0;
   ports.length = 0;
   missingKey = false;
+  keyCheckGate = null;
   store.clear();
 });
 
@@ -172,6 +183,75 @@ describe('confirming a whole-page translation', () => {
     expect(pageState().isTranslating).toBe(false);
   });
 
+  it('says it is preparing while it reads the page and checks the key', async () => {
+    let open;
+    keyCheckGate = new Promise((resolve) => { open = resolve; });
+    translatePage();
+    await settle();
+    const status = overlay().querySelector('[role="status"]');
+    expect(status.textContent).toBe(translations.en.pagePreparing);
+    expect(translations.en.pagePreparing.endsWith('\u2026')).toBe(true);
+    expect(dialog()).toBeNull();
+    open();
+    await dialogShown();
+    expect(overlay().querySelector('[role="status"]')).toBeNull();
+  });
+
+  it('covers the page with a scrim while it asks, and a click on it is Cancel', async () => {
+    document.getElementById('before').focus();
+    translatePage();
+    await dialogShown();
+    const host = overlayHost();
+    expect(host.style.position).toBe('fixed');
+    for (const side of ['top', 'right', 'bottom', 'left']) expect(host.style[side], side).toBe('0px');
+    expect(host.style.transform).toBe('');
+    const scrim = overlay().querySelector('.parsipad-scrim');
+    expect(scrim).not.toBeNull();
+    scrim.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+    await settle();
+    expect(ports).toEqual([]);
+    expect(overlayHost()).toBeNull();
+    expect(pageState().isTranslating).toBe(false);
+    expect(document.activeElement).toBe(document.getElementById('before'));
+  });
+
+  it('a click inside the dialog is not a click on the scrim', async () => {
+    translatePage();
+    await dialogShown();
+    dialog().dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+    await settle();
+    expect(dialog()).not.toBeNull();
+  });
+
+  it('goes back to the bottom-centre progress card after Translate', async () => {
+    let finish;
+    const gate = new Promise((resolve) => { finish = resolve; });
+    translatePage();
+    await dialogShown();
+    // Hold the first batch so the progress card can be seen.
+    const connect = chrome.runtime.connect;
+    chrome.runtime.connect = () => {
+      const port = connect();
+      const post = port.postMessage;
+      port.postMessage = (msg) => { gate.then(() => post(msg)); };
+      return port;
+    };
+    try {
+      control('go').click();
+      await vi.waitFor(() => expect(ports.length).toBe(1));
+      const host = overlayHost();
+      expect(host.style.top).toBe('');
+      expect(host.style.bottom).toBe('24px');
+      expect(host.style.transform).toBe('translateX(-50%)');
+      expect(overlay().querySelector('.parsipad-scrim')).toBeNull();
+      expect(overlay().querySelector('.parsipad-progress-overlay')).not.toBeNull();
+    } finally {
+      chrome.runtime.connect = connect;
+      finish();
+    }
+    await vi.waitFor(() => expect(pageState().isTranslated).toBe(true));
+  });
+
   it('Translate starts the requests and shows the progress UI', async () => {
     translatePage();
     await dialogShown();
@@ -217,6 +297,13 @@ describe('confirming a whole-page translation', () => {
     expect(overlayHost()).toBeNull();
     expect(ports).toEqual([]);
     expect(pageState().isTranslating).toBe(false);
+  });
+
+  it('a missing key leaves no page-translation state behind', () => {
+    const body = functionBody(js, 'handleTranslatePage');
+    const branch = body.slice(body.indexOf('if (!keySet)'), body.indexOf('}', body.indexOf('if (!keySet)')));
+    expect(branch).toMatch(/discard = true;/);
+    expect(body).toMatch(/if \(discard\) pageTranslationState = null;/);
   });
 
   it('a navigation while the dialog is up closes it quietly, with no request', async () => {

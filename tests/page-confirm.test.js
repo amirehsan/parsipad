@@ -54,6 +54,21 @@ describe('page confirmation', () => {
     expect(root.querySelector('[role="dialog"]')).toBeNull();
   });
 
+  it('says paragraph, not paragraphs, for one', () => {
+    const root = $('root');
+    confirmPageTranslation(root, { ...opts, count: 1 });
+    const { dialog } = parts(root);
+    const body = root.querySelector('#' + dialog.getAttribute('aria-describedby'));
+    expect(body.textContent).toBe('1 paragraph. About <$0.01 with Claude.');
+    root.innerHTML = '';
+    confirmPageTranslation(root, { ...opts, count: 1, lang: 'fa' });
+    const faBody = root.querySelector('#' + parts(root).dialog.getAttribute('aria-describedby'));
+    expect(faBody.textContent).toBe(
+      translations.fa.pageConfirmBodyOne.replace('{count}', '1').replace('{cost}', '<$0.01').replace('{provider}', 'Claude')
+    );
+    expect(faBody.textContent).toContain('1');
+  });
+
   it('labels every control through t(), reusing cancel and dontAskAgain', () => {
     const root = $('root');
     confirmPageTranslation(root, { ...opts, lang: 'fa' });
@@ -184,14 +199,25 @@ describe('countParagraphs', () => {
       if (node.textContent.trim()) textNodes.push({ node, text: node.textContent, parent: node.parentElement });
     }
     expect(textNodes.length).toBeGreaterThan(8);
-    // h1, p, both li, td and th; the div and the span inside it each count
-    // once, as neither sits in a block container.
-    const span = document.querySelector('span');
-    expect(countParagraphs(textNodes)).toBe(new Set([
-      document.querySelector('h1'), document.querySelector('p'),
-      ...document.querySelectorAll('li'), document.querySelector('div'), span,
-      document.querySelector('td'), document.querySelector('th')
-    ]).size);
+    // h1, p, both li, the div (its loose text and its span are one), td, th.
+    expect(countParagraphs(textNodes)).toBe(7);
+  });
+
+  it('counts loose text in div-based layouts once per nearest sectioning box', () => {
+    document.body.innerHTML = `
+      <main>
+        <div class="post">Posted by <a href="#"><span>someone</span></a> today</div>
+        <div class="post">Second <b>post</b></div>
+        <section>Section text <i>here</i></section>
+        <article><p>A real paragraph with <a href="#">a link</a>.</p></article>
+      </main>`;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.textContent.trim()) textNodes.push({ node, text: node.textContent, parent: node.parentElement });
+    }
+    expect(countParagraphs(textNodes)).toBe(4);
   });
 
   it('is zero for no text', () => {

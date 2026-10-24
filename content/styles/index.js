@@ -40,6 +40,8 @@ export function themeVars() {
       --pp-error-soft: #f7dde1;
       --pp-accent-soft: rgba(99, 102, 241, 0.10);
       --pp-on-accent: #fdfcff;
+      /* Behind a modal on the page: dims it without hiding it. */
+      --pp-scrim: rgba(27, 24, 38, 0.32);
     }
     :host([data-theme='dark']) {
       --pp-bg: #1c1930;
@@ -62,6 +64,7 @@ export function themeVars() {
       --pp-error-soft: #40202a;
       --pp-accent-soft: rgba(129, 140, 248, 0.16);
       --pp-on-accent: #131120;
+      --pp-scrim: rgba(0, 0, 0, 0.5);
     }
     @media (prefers-reduced-motion: reduce) {
       :host {
@@ -150,11 +153,34 @@ export function getPageProgressStyles() {
  * rendered in the page-progress overlay's shadow root, so it relies on the
  * theme variables getPageProgressStyles() already emits there. Spacing uses
  * the literal card values: 20px inset, 12px between items, 8px between
- * actions.
+ * actions. The scrim fills the overlay host, which covers the viewport while
+ * the page asks; the status and the dialog sit above it.
  */
 export function getPageConfirmStyles() {
   return `
+    .parsipad-scrim {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      background: var(--pp-scrim);
+    }
+
+    .parsipad-page-status {
+      position: relative;
+      background: var(--pp-bg);
+      color: var(--pp-text-secondary);
+      border: 1px solid var(--pp-border);
+      border-radius: 16px;
+      box-shadow: var(--pp-shadow-card);
+      padding: 12px 20px;
+      font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+    }
+
     .parsipad-confirm {
+      position: relative;
       background: var(--pp-bg);
       color: var(--pp-text);
       border: 1px solid var(--pp-border);

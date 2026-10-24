@@ -2459,8 +2459,9 @@ async function handleTranslatePage() {
     translatedChunks: 0
   };
   pageTranslationState = state;
-  // Set when the user says no: the run ends with no state, as if never asked.
-  let declined = false;
+  // Set when the run ends before any request (the user said no, or there is
+  // no key): it leaves no state, as if never asked.
+  let discard = false;
 
   pageTranslationCancelled = false;
   pageTranslationAbortController = new AbortController();
@@ -2475,6 +2476,7 @@ async function handleTranslatePage() {
     pageTranslationState.textNodes = extractVisibleTextNodes(document.body);
 
     if (pageTranslationState.textNodes.length === 0) {
+      discard = true;
       hidePageProgressOverlay();
       pageTranslationState.isTranslating = false;
       // Page translation runs without a floating box, so there is nothing to
@@ -2500,10 +2502,12 @@ async function handleTranslatePage() {
     const [keySet, prefs] = await Promise.all([hasProviderKey(), readPageTranslatePrefs()]);
     if (pageTranslationState !== state) return;
     if (pageTranslationCancelled || abortSignal.aborted) {
-      declined = true;
+      discard = true;
       return;
     }
     if (!keySet) {
+      discard = true;
+      hidePageProgressOverlay();
       showMissingApiKeyToast();
       return;
     }
@@ -2517,7 +2521,7 @@ async function handleTranslatePage() {
         provider: prefs.provider,
         targetLang: state.targetLanguage
       });
-      if (userLang === 'fa') ensurePersianFontLoaded();
+      clearPagePreparing();
       const answer = await confirmPageTranslation(pageProgressShadow, {
         count: countParagraphs(state.textNodes),
         costText: formatEstimateUsd(estimate.usd),
@@ -2526,7 +2530,7 @@ async function handleTranslatePage() {
       });
       if (pageTranslationState !== state) return;
       if (!answer.go || pageTranslationCancelled || abortSignal.aborted) {
-        declined = true;
+        discard = true;
         return;
       }
     }
@@ -2608,7 +2612,7 @@ async function handleTranslatePage() {
     if (pageTranslationState === state) {
       hidePageProgressOverlay();
       pageTranslationAbortController = null;
-      if (declined) pageTranslationState = null;
+      if (discard) pageTranslationState = null;
     }
   }
 }
@@ -2784,9 +2788,37 @@ function handleTogglePageTranslation() {
   updatePageToggleButton();
 }
 
+// The overlay host while the page asks first: it covers the viewport so the
+// scrim keeps the page inert behind the modal dialog, which sits where the
+// progress card will. No transform, or the host would not span the viewport.
+const PAGE_OVERLAY_CONFIRM_STYLE = `
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 24px;
+  box-sizing: border-box;
+  z-index: 2147483647;
+`;
+
+// The overlay host once the requests run: a card at the bottom centre that
+// leaves the page usable.
+const PAGE_OVERLAY_PROGRESS_STYLE = `
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+`;
+
 /**
- * Create the page overlay's host and shadow root, empty: it holds the
- * confirmation first and the progress after it.
+ * Create the page overlay over the whole viewport, with a scrim and a
+ * "Preparing" status: it holds the confirmation first and the progress after
+ * it. A click on the scrim answers the dialog's Cancel.
  */
 function mountPageOverlay() {
   if (pageProgressOverlay) {
@@ -2795,31 +2827,54 @@ function mountPageOverlay() {
 
   const host = document.createElement('div');
   host.id = 'parsipad-page-progress';
-  host.style.cssText = `
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 2147483647;
-  `;
+  host.style.cssText = PAGE_OVERLAY_CONFIRM_STYLE;
 
   pageProgressShadow = host.attachShadow({ mode: 'closed' });
 
 
   applyHostTheme(host);
+  if (userLang === 'fa') ensurePersianFontLoaded();
   const style = document.createElement('style');
   style.textContent = getPageProgressStyles() + getPageConfirmStyles();
   pageProgressShadow.appendChild(style);
 
+  const scrim = document.createElement('div');
+  scrim.className = 'parsipad-scrim';
+  scrim.addEventListener('click', (event) => {
+    if (event.target !== scrim) return;
+    pageProgressShadow?.querySelector('.parsipad-confirm [data-action="cancel"]')?.click();
+  });
+
+  const status = document.createElement('div');
+  status.className = 'parsipad-page-status';
+  status.setAttribute('role', 'status');
+  status.setAttribute('lang', userLang);
+  // In-page UI is not mirrored, but Persian text still reads right to left.
+  status.setAttribute('dir', userLang === 'fa' ? 'rtl' : 'ltr');
+  status.textContent = t('pagePreparing', userLang);
+
+  pageProgressShadow.append(scrim, status);
   document.body.appendChild(host);
   pageProgressOverlay = host;
 }
 
 /**
- * Show the progress UI in the mounted overlay, once the requests start.
+ * Remove the "Preparing" status once the dialog or the progress replaces it.
+ */
+function clearPagePreparing() {
+  pageProgressShadow?.querySelector('.parsipad-page-status')?.remove();
+}
+
+/**
+ * Show the progress UI in the mounted overlay, once the requests start: the
+ * scrim goes and the host shrinks back to the bottom-centre card.
  */
 function showPageProgress() {
   if (!pageProgressShadow) return;
+
+  clearPagePreparing();
+  pageProgressShadow.querySelector('.parsipad-scrim')?.remove();
+  pageProgressOverlay.style.cssText = PAGE_OVERLAY_PROGRESS_STYLE;
 
   const overlay = document.createElement('div');
   overlay.className = 'parsipad-progress-overlay';
