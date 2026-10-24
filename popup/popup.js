@@ -12,7 +12,11 @@ import { getBoundShortcuts } from '../shared/shortcuts.js';
 import { applyThemeToRoot } from '../lib/theme.js';
 import { directionLabel } from '../lib/direction-label.js';
 
+// The popup script also runs inside the side panel, which must stay open.
+const isPanel = document.body.dataset.surface === 'panel';
+
 // DOM Elements
+const openSidePanelBtn = document.getElementById('open-sidepanel-btn');
 const settingsBtn = document.getElementById('settings-btn');
 const apiKeyWarning = document.getElementById('api-key-warning');
 const configureApiBtn = document.getElementById('configure-api-btn');
@@ -339,6 +343,19 @@ function renderHistory(history) {
  * Set up event listeners
  */
 function setupEventListeners() {
+  // Open in sidebar (not offered inside the panel itself). sidePanel.open()
+  // must run within the click's user gesture, so nothing else is awaited first.
+  openSidePanelBtn.hidden = isPanel;
+  openSidePanelBtn.addEventListener('click', async () => {
+    try {
+      const { id: windowId } = await chrome.windows.getCurrent();
+      await chrome.sidePanel.open({ windowId });
+      window.close();
+    } catch (error) {
+      console.error('Could not open the side panel:', error);
+    }
+  });
+
   // Settings button
   settingsBtn.addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
@@ -1883,7 +1900,7 @@ async function handleScreenshotTranslate() {
     }
 
     // Close the popup so user can interact with the page
-    window.close();
+    if (!isPanel) window.close();
   } catch (error) {
     showError('Could not start screenshot mode');
   }
@@ -2348,7 +2365,7 @@ async function handleTranslatePage() {
     });
 
     // Close popup after triggering (user will see progress on page)
-    window.close();
+    if (!isPanel) window.close();
   } catch (error) {
     showError(error.message || 'Failed to start page translation');
   } finally {

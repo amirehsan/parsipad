@@ -33,5 +33,8 @@
   },
   "ctxScreenshotTranslate": {
     "message": "Screenshot & Translate"
+  },
+  "ctxOpenSidePanel": {
+    "message": "Open ParsiPad in side panel"
   }
 }

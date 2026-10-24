@@ -31,5 +31,8 @@
   },
   "ctxScreenshotTranslate": {
     "message": "اسکرین‌شات و ترجمه"
+  },
+  "ctxOpenSidePanel": {
+    "message": "باز کردن پارسی‌پد در پنل کناری"
   }
 }
