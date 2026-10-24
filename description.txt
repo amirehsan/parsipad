@@ -31,7 +31,7 @@ Get 3 versions of your text: Professional, Conversational, and Concise. Regenera
 Look up words with definitions, phonetics, synonyms, and antonyms. Press Alt+D or right-click any word.
 
 ⭐ Favorites & Practice
-Star your best translations to save them. Practice deals your favorites as flashcards, a few at a time: flip a card to reveal the original, move with the arrow keys, and choose 5 to 30 cards per session in Settings. Open it from the side panel or the Library.
+Star your best translations to save them. Practice deals your favorites as flashcards, a few at a time: each card shows the saved translation, and flipping it reveals the original. Flip with Space or Enter, move with the arrow keys, and choose 5 to 30 cards per session in Settings. Open it from the side panel or the Library.
 
 🗂️ Library
 Everything you translate, polish, or look up lives in one searchable Library with History, Favorites, and Lessons tabs. Filter by type or direction, delete an entry and bring it back with Undo, and reopen a saved grammar lesson with no new request to your provider.

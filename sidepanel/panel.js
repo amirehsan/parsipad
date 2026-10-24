@@ -25,20 +25,22 @@ function hideChip() {
 }
 
 /**
- * Put text in the popup controller's Translate input. This can run before
- * popup.js has wired its listeners (a panel opened by the Library reads its
- * text while the popup controller is still starting), so it does not rely on
- * the input event alone: it sets the text direction itself, and the popup
- * counts characters when its own init finishes.
+ * Put text in the popup controller's input, in Translate or Polish (the two
+ * share it). This can run before popup.js has wired its listeners (a panel
+ * opened by the Library reads its text while the popup controller is still
+ * starting), so it does not rely on the input event alone: it sets the text
+ * direction itself, and the popup counts characters when its own init
+ * finishes.
  * @param {string} text
+ * @param {'translate'|'polish'} [mode]
  * @returns {boolean} false when the input is not on the page
  */
-function fillInput(text) {
+function fillInput(text, mode = 'translate') {
   const input = document.getElementById('input-text');
   if (!input) return false;
   // Switching modes resets the outputs and shows the text input, so it comes first.
-  const modeTranslate = document.getElementById('mode-translate');
-  if (modeTranslate && modeTranslate.getAttribute('aria-selected') !== 'true') modeTranslate.click();
+  const tab = document.getElementById(mode === 'polish' ? 'mode-polish' : 'mode-translate');
+  if (tab && tab.getAttribute('aria-selected') !== 'true') tab.click();
   input.value = text;
   input.dir = getTextDirection(text);
   input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -54,8 +56,9 @@ function translateSelection() {
 
 /**
  * Text handed over by the Library's "Open in side panel": the Library writes
- * { text, at, windowId } to chrome.storage.session and opens the panel in its
- * window. Session storage is shared by every window, so a panel in another
+ * { text, at, windowId, mode } to chrome.storage.session and opens the panel
+ * in its window. mode is 'polish' for a polish entry; a prefill without one
+ * (written by an older Library) opens in Translate. Session storage is shared by every window, so a panel in another
  * window leaves the text for the panel it was meant for. It is used once and
  * then removed. One older than PREFILL_MAX_AGE was left behind by an open
  * that never happened (the panel failed to open, or was closed first), and
@@ -67,7 +70,9 @@ const PREFILL_MAX_AGE = 60e3;
 function usePrefill(prefill) {
   if (!prefill || typeof prefill.text !== 'string') return;
   if (typeof prefill.windowId === 'number' && panelWindowId !== null && prefill.windowId !== panelWindowId) return;
-  if (Date.now() - (Number(prefill.at) || 0) <= PREFILL_MAX_AGE) fillInput(prefill.text);
+  if (Date.now() - (Number(prefill.at) || 0) <= PREFILL_MAX_AGE) {
+    fillInput(prefill.text, prefill.mode === 'polish' ? 'polish' : 'translate');
+  }
   chrome.storage.session.remove(PREFILL_KEY).catch(() => {});
 }
 

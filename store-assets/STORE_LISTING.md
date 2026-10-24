@@ -92,7 +92,7 @@ Translate entire documents with ease:
 Save your best translations and learn vocabulary:
 • Star any translation, polished text, or grammar lesson
 • Practice deals your favorites as flashcards, from the side panel or the Library
-• Flip cards to reveal the original text
+• Each card shows the saved translation; flip it to reveal the original text
 • Navigate with keyboard shortcuts: arrows to move, Space or Enter to flip, C to copy
 • Choose 5 to 30 cards per session in Settings
 
@@ -105,7 +105,7 @@ Save your best translations and learn vocabulary:
 📚 **Library**
 • One place for History, Favorites, and saved grammar Lessons, in tabs
 • Search, filter by translation, dictionary, or polish, and filter by direction
-• Grouped by Today, This week, and Earlier
+• Grouped by Today, Yesterday, This week, and Earlier
 • Delete an entry and bring it back with Undo
 • Reopen a saved grammar lesson with no new request to your provider
 

@@ -94,6 +94,7 @@ const card = (key) => [...document.querySelectorAll('.lib-card')].find(c => c.ge
 const action = (key, name) => card(key).querySelector(`[data-action="${name}"]`);
 const status = () => $('#library-status-text').textContent;
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+const asked = () => window.confirm.mock.calls.at(-1)[0];
 
 beforeEach(() => {
   vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -263,15 +264,18 @@ describe('library page: clear all', () => {
     await openLibrary('', { dictionary_history: seed().dictionary_history });
     expect($('#library-clear').hidden).toBe(false);
     $('#library-clear').click();
-    expect(window.confirm).toHaveBeenCalledWith(en.confirmClearAllHistory);
+    expect(window.confirm).toHaveBeenCalledWith(en.confirmClearAllHistory.replace('{hidden}', ''));
+    expect(asked()).toMatch(/translations, polished text and dictionary lookups/);
+    // Nothing is hidden, so the question stays short.
+    expect(asked()).not.toMatch(/hidden/);
     await vi.waitFor(() => expect(store.dictionary_history).toBeUndefined());
     await vi.waitFor(() => expect($('#library-empty').hidden).toBe(false));
   });
 
-  it('clears only the type shown, behind the narrower question', async () => {
+  it('clears only the type shown, behind a question that names it', async () => {
     await openLibrary('?type=polish');
     $('#library-clear').click();
-    expect(window.confirm).toHaveBeenCalledWith(en.confirmClearShownHistory);
+    expect(asked()).toBe('Clear all polished text in your history? This cannot be undone.');
     await vi.waitFor(() => expect(store.polish_history).toBeUndefined());
     expect(store.translation_history).toHaveLength(2);
     expect(store.dictionary_history).toHaveLength(1);
@@ -285,15 +289,39 @@ describe('library page: clear all', () => {
     expect(store.favorites).toHaveLength(2);
 
     $('#library-clear').click();
-    expect(window.confirm).toHaveBeenLastCalledWith(en.confirmClearFavorites);
+    expect(asked()).toBe('Clear all favorites except saved lessons? This cannot be undone.');
     await vi.waitFor(() => expect(store.favorites.map(f => f.id)).toEqual(['grammar_1']));
   });
 
-  it('ignores search and direction when choosing what to clear', async () => {
+  it('names the favorite type it clears', async () => {
+    await openLibrary('?tab=favorites&type=translation');
+    $('#library-clear').click();
+    expect(asked()).toBe('Clear all favorite translations? This cannot be undone.');
+    await vi.waitFor(() => expect(store.favorites.map(f => f.id)).toEqual(['grammar_1']));
+  });
+
+  it('asks about saved lessons on the Lessons tab', async () => {
+    await openLibrary('?tab=lessons');
+    $('#library-clear').click();
+    expect(asked()).toBe('Clear all saved grammar lessons? This cannot be undone.');
+    await vi.waitFor(() => expect(store.favorites.map(f => f.id)).toEqual(['fav_1']));
+  });
+
+  it('ignores search and direction when choosing what to clear, and says so', async () => {
     await openLibrary('?type=translation&q=night');
     expect(cards()).toEqual(['translation:2']);
     $('#library-clear').click();
+    expect(asked()).toMatch(/translations/);
+    expect(asked()).toMatch(/including entries hidden by the search or the direction filter/);
     await vi.waitFor(() => expect(store.translation_history).toBeUndefined());
+  });
+
+  it('asks in Persian, naming the type and the hidden entries', async () => {
+    await openLibrary('?type=dictionary&dir=fa-en', { ...seed(), ui_language: 'fa' });
+    $('#library-clear').click();
+    expect(asked()).toMatch(/جستجوهای فرهنگ لغت/);
+    expect(asked()).toMatch(/پنهان/);
+    expect(asked()).not.toMatch(/\{/);
   });
 });
 
@@ -317,7 +345,18 @@ describe('library page: card actions', () => {
     const { panel_prefill: prefill } = sessionSet.mock.calls[0][0];
     expect(prefill.text).toBe('Good night');
     expect(prefill.windowId).toBe(5);
+    expect(prefill.mode).toBe('translate');
     expect(Math.abs(prefill.at - Date.now())).toBeLessThan(5000);
+  });
+
+  it('opens a polish entry in the panel\'s Polish mode', async () => {
+    await openLibrary();
+    await vi.waitFor(() => expect(chrome.windows.getCurrent).toHaveBeenCalled());
+    await settle();
+    action('polish:1', 'open-in-panel').click();
+    const { panel_prefill: prefill } = sessionSet.mock.calls[0][0];
+    expect(prefill).toMatchObject({ text: 'hey there', mode: 'polish', windowId: 5 });
+    expect(sidePanelOpen).toHaveBeenCalledWith({ windowId: 5 });
   });
 
   it('stars and unstars a history entry', async () => {
