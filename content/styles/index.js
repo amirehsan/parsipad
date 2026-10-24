@@ -425,6 +425,19 @@ export function getSelectionPopupStyles() {
       visibility: visible;
     }
 
+    /* Mute is the last button and its label is the longest: end the tooltip
+       at the button so it does not run past the toolbar's edge. */
+    .selection-btn[data-action='mute'] .pp-tooltip {
+      left: auto;
+      right: 0;
+      transform: none;
+    }
+
+    .selection-btn[data-action='mute'] .pp-tooltip::after {
+      left: auto;
+      right: 13px;
+      transform: none;
+    }
   `;
 }
 

@@ -9,7 +9,8 @@ import {
   getPageToggleStyles,
   getScreenshotStyles,
   getSelectionPopupStyles,
-  getStyles
+  getStyles,
+  themeVars
 } from './styles/index.js';
 import { t } from '../lib/i18n.js';
 import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
@@ -23,7 +24,7 @@ import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils
 import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
 import { selectionToReport, createSelectionReporter, isEditableSelection, MAX_REPORT_LENGTH } from './selection-report.js';
 import { createToolbarTrigger, selectionAnchor, isSameAnchor } from './toolbar-trigger.js';
-import { MUTED_SITES_KEY, isHostMuted } from '../lib/muted-sites.js';
+import { MUTED_SITES_KEY, isHostMuted, normalizeHost, addMutedSite, removeMutedSite } from '../lib/muted-sites.js';
 import { rovingIndex, applyRovingTabindex } from '../lib/roving.js';
 import { initBlockTranslate, translateFocusedBlock, hideBlockIcon, isBlockTranslateEnabled } from './blocks/index.js';
 
@@ -42,8 +43,11 @@ let selectionPopup = null;
 let selectionPopupShadow = null;
 let selectionPopupEnabled = false;
 // True when this page's host is on the muted-sites list. Loaded on init and
-// kept current by the chrome.storage.onChanged listener below.
+// kept current by the chrome.storage.onChanged listener below. mutedLoaded
+// turns true at the first write (a change, a mute from the toolbar, or the
+// initial load), so the initial load never overwrites a newer value.
 let siteMuted = false;
+let mutedLoaded = false;
 // Cached user-language preference for translating floating-box copy. Read once
 // on init and kept fresh by the chrome.storage.onChanged listener below.
 let userLang = 'en';
@@ -163,6 +167,7 @@ function init() {
       userLang = changes.ui_language.newValue || 'en';
     }
     if (changes[MUTED_SITES_KEY]) {
+      mutedLoaded = true;
       siteMuted = isHostMuted(changes[MUTED_SITES_KEY].newValue, location.hostname);
       if (siteMuted) removeSelectionPopup();
     }
@@ -1110,80 +1115,230 @@ function showError(errorOrResponse) {
   placeFloatingBox();
 }
 
+// The one in-page toast. A new toast replaces the one on screen.
+const TOAST_ID = 'parsipad-toast';
+// How long a toast stays when the pointer and focus are elsewhere.
+const TOAST_DURATION_MS = 10000;
+
 /**
- * Floating toast used when no floating box is on-screen (e.g. during page
- * translation).
+ * The toast, for news when no floating box is on screen (page translation,
+ * block translate, a mute from the toolbar).
+ *
+ * Its message is a live region: role="status" for news, role="alert" for a
+ * problem the user has to fix. It closes itself after TOAST_DURATION_MS,
+ * but never while the pointer or focus is inside it, so an Undo does not
+ * vanish under the user's hand. Escape closes it. Text is set with
+ * textContent; a message that needs markup is passed as DOM nodes.
  *
  * @param {Object} [options]
- * @param {string} [options.message] - what to say
+ * @param {string|Node} [options.message] - what to say
  * @param {boolean} [options.withSettings] - offer the settings shortcut
+ * @param {{label: string, onClick: () => void, focus?: boolean}} [options.action] -
+ *   one button that closes the toast and runs onClick; with focus, focus
+ *   moves to it (for a keyboard user) and returns when the toast closes
+ * @param {'status'|'alert'} [options.role]
  */
-function showToast({ message = 'API key not configured.', withSettings = true } = {}) {
-  const existing = document.getElementById('parsipad-missing-key-toast');
-  if (existing) existing.remove();
+function showToast({
+  message = t('apiKeyNotConfigured', userLang),
+  withSettings = true,
+  action = null,
+  role = 'status'
+} = {}) {
+  document.getElementById(TOAST_ID)?.remove();
 
   const host = document.createElement('div');
-  host.id = 'parsipad-missing-key-toast';
+  host.id = TOAST_ID;
   host.style.cssText = 'position:fixed;top:20px;right:20px;z-index:2147483647;';
   const root = host.attachShadow({ mode: 'closed' });
   applyHostTheme(host);
+  if (userLang === 'fa') ensurePersianFontLoaded();
+  // Static markup only; every piece of text is set below with textContent.
   root.innerHTML = `
     <style>
+      ${themeVars()}
       :host { all: initial; }
       .toast {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        background: #1f2937;
-        color: #fff;
+        font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 14px;
+        line-height: 1.4;
+        /* The inverse of the page surfaces, as the toolbar tooltips are. */
+        background: var(--pp-text);
+        color: var(--pp-bg);
         padding: 12px 16px;
         border-radius: 8px;
-        box-shadow: 0 10px 25px rgba(0,0,0,.2);
+        box-shadow: var(--pp-shadow-card);
         display: flex;
         align-items: center;
         gap: 12px;
         max-width: 360px;
       }
       .toast button {
-        background: var(--pp-accent, #ff4f00);
-        color: #fff;
+        background: var(--pp-accent);
+        color: var(--pp-on-accent);
         border: 0;
         padding: 6px 10px;
         border-radius: 6px;
         cursor: pointer;
         font: inherit;
+        white-space: nowrap;
+      }
+      .toast button:hover {
+        background: var(--pp-accent-strong);
+      }
+      .toast button:focus-visible {
+        outline: 2px solid var(--pp-bg);
+        outline-offset: 2px;
       }
       .toast button.close {
         background: transparent;
         padding: 4px;
-        color: #9ca3af;
+        color: inherit;
+        opacity: 0.75;
+      }
+      .toast button.close:hover {
+        opacity: 1;
       }
     </style>
-    <div class="toast" role="alert">
+    <div class="toast">
       <span class="message"></span>
-      <button class="open" type="button" hidden>Open Settings</button>
-      <button class="close" type="button" aria-label="Dismiss">×</button>
+      <button class="action" type="button" hidden></button>
+      <button class="open" type="button" hidden></button>
+      <button class="close" type="button">×</button>
     </div>
   `;
-  root.querySelector('.message').textContent = message;
-  document.body.appendChild(host);
+
+  const box = root.querySelector('.toast');
+  const messageEl = root.querySelector('.message');
+  messageEl.setAttribute('role', role);
+  // In-page UI is not mirrored, but Persian text still reads right to left.
+  messageEl.setAttribute('dir', userLang === 'fa' ? 'rtl' : 'ltr');
+  if (typeof message === 'string') {
+    messageEl.textContent = message;
+  } else {
+    messageEl.append(message);
+  }
+  const closeBtn = root.querySelector('.close');
+  closeBtn.setAttribute('aria-label', t('cardClose', userLang));
+
+  // Where focus goes back to when the toast took it and then closes.
+  const returnFocus = action?.focus ? document.activeElement : null;
+  let timer = null;
+  let pointerInside = false;
+  let focusInside = false;
+
+  const close = () => {
+    clearTimeout(timer);
+    if (!host.isConnected) return;
+    const hadFocus = document.activeElement === host;
+    host.remove();
+    if (hadFocus && returnFocus && returnFocus !== document.body && returnFocus.isConnected) {
+      returnFocus.focus();
+    }
+  };
+  const schedule = () => {
+    clearTimeout(timer);
+    timer = pointerInside || focusInside ? null : setTimeout(close, TOAST_DURATION_MS);
+  };
+
+  box.addEventListener('pointerenter', () => { pointerInside = true; schedule(); });
+  box.addEventListener('pointerleave', () => { pointerInside = false; schedule(); });
+  box.addEventListener('focusin', () => { focusInside = true; schedule(); });
+  box.addEventListener('focusout', (event) => {
+    if (box.contains(event.relatedTarget)) return;
+    focusInside = false;
+    schedule();
+  });
+  box.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    // Handled: the page and the floating box should not also act on it.
+    event.stopPropagation();
+    close();
+  });
+
+  const actionBtn = root.querySelector('.action');
+  if (action) {
+    actionBtn.textContent = action.label;
+    actionBtn.hidden = false;
+    actionBtn.addEventListener('click', () => {
+      close();
+      action.onClick();
+    });
+  }
 
   const openBtn = root.querySelector('.open');
   if (withSettings) {
+    openBtn.textContent = t('openSettings', userLang);
     openBtn.hidden = false;
     openBtn.addEventListener('click', () => {
       chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' });
-      host.remove();
+      close();
     });
   }
-  root.querySelector('.close').addEventListener('click', () => host.remove());
-  setTimeout(() => host.remove(), 10000);
+  closeBtn.addEventListener('click', close);
+
+  document.body.appendChild(host);
+  schedule();
+  if (action?.focus) actionBtn.focus();
 }
 
 /**
  * The missing-API-key case, which is the toast's original and most common
- * caller. Kept as its own name so the call sites still read as intent.
+ * caller. Kept as its own name so the call sites still read as intent. An
+ * alert: nothing translates until the user fixes it.
  */
 function showMissingApiKeyToast() {
-  showToast({ message: 'API key not configured.', withSettings: true });
+  showToast({ message: t('apiKeyNotConfigured', userLang), withSettings: true, role: 'alert' });
+}
+
+/**
+ * The toast's message with the host as its own left-to-right run, so a
+ * Persian sentence does not reorder the dots of a domain. Built with DOM
+ * nodes: the host is never parsed as markup.
+ * @param {string} template - a translated string containing {host}
+ * @param {string} hostName
+ * @returns {DocumentFragment}
+ */
+function messageWithHost(template, hostName) {
+  const fragment = document.createDocumentFragment();
+  const [before, after = ''] = template.split('{host}');
+  const run = document.createElement('bdi');
+  run.setAttribute('dir', 'ltr');
+  run.textContent = hostName;
+  fragment.append(before, run, after);
+  return fragment;
+}
+
+/**
+ * Mute ParsiPad on this site, from the selection toolbar. The list stores a
+ * normalized host (example.com for www.example.com), and the toast names and
+ * Undo removes exactly that host. Settings and block translate pick the
+ * change up through chrome.storage.onChanged.
+ * @param {{fromKeyboard: boolean}} options - focus moves to Undo when the
+ *   button was pressed from the keyboard
+ */
+async function muteThisSite({ fromKeyboard }) {
+  let mutedHost = null;
+  try {
+    mutedHost = await addMutedSite(location.hostname);
+  } catch {
+    // Extension context invalidated: nothing was stored, so nothing to undo.
+    return;
+  }
+  if (!mutedHost) return;
+  mutedLoaded = true;
+  siteMuted = true;
+  removeSelectionPopup();
+  showToast({
+    message: messageWithHost(t('mutedOnSite', userLang), mutedHost),
+    withSettings: false,
+    action: {
+      label: t('libraryUndo', userLang),
+      focus: fromKeyboard,
+      onClick: () => {
+        removeMutedSite(mutedHost).catch(() => {});
+      }
+    }
+  });
 }
 
 /**
@@ -3081,13 +3236,22 @@ async function loadSelectionPopupSetting() {
   }
 }
 
+/**
+ * Load whether this page's host is muted. Yields to a value written while the
+ * read was pending (a storage change or a mute from the toolbar), which is
+ * newer than what it read.
+ */
 async function loadMutedSites() {
+  let muted = false;
   try {
     const result = await chrome.storage.local.get(MUTED_SITES_KEY);
-    siteMuted = isHostMuted(result[MUTED_SITES_KEY], location.hostname);
-  } catch (error) {
-    siteMuted = false;
+    muted = isHostMuted(result[MUTED_SITES_KEY], location.hostname);
+  } catch {
+    muted = false;
   }
+  if (mutedLoaded) return;
+  mutedLoaded = true;
+  siteMuted = muted;
 }
 
 /**
@@ -3231,6 +3395,16 @@ function createSelectionPopup(selectionRect, selectedText) {
       svgPath: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253'
     }
   ];
+  // Only a host the muted-sites list can hold (not localhost or an intranet
+  // name without a dot) gets the button; anywhere else it would do nothing.
+  if (normalizeHost(location.hostname)) {
+    buttons.push({
+      action: 'mute',
+      label: t('toolbarMute', userLang),
+      ariaLabel: t('toolbarMute', userLang),
+      svgPath: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636'
+    });
+  }
   const buttonEls = [];
   for (const cfg of buttons) {
     const btn = document.createElement('button');
@@ -3301,6 +3475,9 @@ function createSelectionPopup(selectionRect, selectedText) {
         polishAndShow(selectedText);
       } else if (action === 'dictionary' && isSingleWord) {
         dictionaryAndShow(selectedText);
+      } else if (action === 'mute') {
+        // detail is the click count, 0 when Enter or Space pressed the button.
+        muteThisSite({ fromKeyboard: e.detail === 0 });
       }
     });
   });
