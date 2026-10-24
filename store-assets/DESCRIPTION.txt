@@ -12,7 +12,7 @@ Rest your pointer on a paragraph, a post, or a heading, and a small icon appears
 - Point at a heading and the whole section translates, each paragraph's Persian sitting under that paragraph rather than piling up at the end
 - The translation takes its colours from the page behind it, so it stays readable on dark sites and light ones alike
 - Your original page is never altered. The translation is added beside it, never on top of it
-- Works everywhere with no setup. Press Alt+B to translate without a mouse, and switch the whole thing off in Settings if you would rather
+- Works everywhere with no setup. Press Alt+B to translate without a mouse, and switch the whole thing off in Settings if you would rather, or mute it on just the sites where it gets in the way
 
 
 Select any text
@@ -99,7 +99,7 @@ Switch whenever you like. Repeated lookups are cached, so the same word costs yo
 
 Know what you are spending
 
-The Analytics page, opened from Settings, shows estimated cost per provider, broken down by what you actually did: translations, polishes, dictionary lookups, documents, images, and grammar lessons. View the last week, the last month, or everything, and export it as JSON.
+The Analytics page, opened from Data & backup in Settings, shows estimated cost per provider, broken down by what you actually did: translations, polishes, dictionary lookups, documents, images, and grammar lessons. View the last week, the last month, or everything, and export it as JSON.
 
 
 Reach it however suits you
@@ -116,11 +116,18 @@ Made to live with
 Dark mode that follows your system, an interface you can read in English or Persian, and Persian text laid out right-to-left wherever it appears, with English kept left-to-right beside it. Export your favourites, history, and cache to a JSON file and import it again on another machine, merging with what is there or replacing it. Anything that removes data, your key included, asks before it acts, and a failed copy or save never clears the translation you were reading.
 
 
+Settings that stay out of the way
+
+Settings is one page with a list of sections beside it: your AI provider and key, reading on web pages, language and appearance, flashcards, data and backup, shortcuts, and About. Each provider has its own card with its own key field, a show-key button, Save & test and Clear. Save & test checks the key looks right first, then makes one tiny real request with the key you typed and keeps it only if it works. A key that is rejected never replaces one that already works. Every on/off option is a clear switch with a short hint, and the theme can be Light, Dark, or System.
+
+Under Reading on web pages, Muted sites lets you add the sites where you do not want the translate icon or the selection toolbar. ParsiPad stays quiet there, subdomains included, with no page reload needed, and the list stays in your browser.
+
+
 Privacy
 
 - Your API keys never leave your device
 - No accounts, no tracking, no analytics of you
-- History and favourites are stored locally in your browser
+- History, favourites, and your muted sites list are stored locally in your browser
 - To decide where to offer a translate icon, ParsiPad reads the page you are on, entirely inside your browser. That text is never sent anywhere. Text goes to your provider only when you ask for a translation, and only the part you asked about
 
 
@@ -131,5 +138,6 @@ Getting started
    Gemini: aistudio.google.com/apikey
    ChatGPT: platform.openai.com/api-keys
 2. Choose that provider when ParsiPad first opens
-3. Paste your key and press "Save and test key". ParsiPad sends one tiny real request and keeps the key only if it works, so a mistake is caught straight away
-4. Start translating
+3. Paste your key and press "Save & test". ParsiPad sends one tiny real request and keeps the key only if it works, so a mistake is caught straight away
+4. Try a sample sentence on the welcome page to see it work with your own key, then press Done
+5. Start translating
