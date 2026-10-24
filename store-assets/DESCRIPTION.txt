@@ -72,16 +72,18 @@ Save what is worth keeping
 
 Star any translation, polished passage, or grammar lesson, and it goes to your favourites.
 
-Your saved words then become your new tab page. Each new tab shows one of them in large Persian or English type, with the time and a greeting in both languages above it. Click the word to reveal the original. Three panels turn on and off independently, so the page shows what you want and nothing more:
-
-- Cards: your saved translations, one per tab, navigable from the keyboard
-- Bookmarks: your Chrome bookmarks as a searchable folder tree, tucked into a drawer that opens with the "/" key and stays out of the way otherwise
-- Most visited: your most used sites as tiles. This one is optional and is only switched on if you ask for it. Site icons come from your browser's own cache rather than an outside service, so the list of sites you visit is never sent anywhere
+Practice turns your saved words into flashcards. Each session deals a handful of cards, one at a time, with the original hidden until you flip the card. Space or Enter flips it, the arrow keys move between cards, and C copies what is showing. Choose how many cards a session holds, from 5 to 30, in Settings. Open Practice from the side panel or from the Library. Grammar lessons stay in the Library for reading and are not dealt as cards. Flipping stays still if your system is set to reduce motion.
 
 
-History
+Library
 
-Everything you translate, polish, or look up stays in a searchable history, organised by date. Click any entry to bring it back.
+Everything you translate, polish, or look up is kept in one searchable Library, with tabs for History, Favourites, and Lessons.
+
+- Search it, narrow it to translations, dictionary lookups, or polished text, or to one direction, and results are grouped under Today, This week, and Earlier
+- Star, copy, or open any entry in the side panel, or delete it. A deleted entry can be brought back with Undo for five seconds
+- Saved grammar lessons reopen from the Lessons tab exactly as you saved them, with no new request to your provider, so reopening one costs nothing
+- Clear all empties only the tab and type you are looking at
+- What you are looking at stays in the page address, so a reload or a saved link brings you back to the same place
 
 
 Choose your AI
@@ -120,7 +122,6 @@ Privacy
 - No accounts, no tracking, no analytics of you
 - History and favourites are stored locally in your browser
 - To decide where to offer a translate icon, ParsiPad reads the page you are on, entirely inside your browser. That text is never sent anywhere. Text goes to your provider only when you ask for a translation, and only the part you asked about
-- Bookmark and most-visited access is read-only and never leaves your device
 
 
 Getting started
