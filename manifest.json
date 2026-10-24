@@ -102,6 +102,7 @@
         "lib/i18n.js",
         "lib/language-detect.js",
         "lib/muted-sites.js",
+        "lib/roving.js",
         "lib/translation/*.js"
       ],
       "matches": [
