@@ -39,6 +39,7 @@ const polishConversational = document.getElementById('polish-conversational');
 const polishConcise = document.getElementById('polish-concise');
 const errorSection = document.getElementById('error-section');
 const errorMessage = document.getElementById('error-message');
+const statusLine = document.getElementById('status-line');
 const historySection = document.getElementById('history-section');
 const historyList = document.getElementById('history-list');
 const clearHistoryBtn = document.getElementById('clear-history-btn');
@@ -1064,7 +1065,7 @@ async function handleCardCopy(text) {
   try {
     await navigator.clipboard.writeText(text);
   } catch (error) {
-    showError('Failed to copy to clipboard');
+    showNotice(t('copyFailed', currentLang), 'warning');
     return;
   }
 
@@ -1073,6 +1074,7 @@ async function handleCardCopy(text) {
 
   const label = btn.textContent;
   btn.textContent = t('copied', currentLang);
+  showNotice(t('copied', currentLang));
   setTimeout(() => { btn.textContent = label; }, 1500);
 }
 
@@ -1095,11 +1097,12 @@ async function handlePolishCopy(btn) {
   try {
     await navigator.clipboard.writeText(text);
     btn.classList.add('copied');
+    showNotice(t('copied', currentLang));
     setTimeout(() => {
       btn.classList.remove('copied');
     }, 1500);
   } catch (error) {
-    showError('Failed to copy to clipboard');
+    showNotice(t('copyFailed', currentLang), 'warning');
   }
 }
 
@@ -1277,6 +1280,24 @@ function showError(message) {
   hideAllOutputs();
 }
 
+let statusLineTimer = null;
+
+/**
+ * Report the outcome of a secondary action (copy, favorite, regenerate) in
+ * the status line. Unlike showError it leaves the result on screen: a failed
+ * copy is no reason to lose the translation the user was reading.
+ *
+ * @param {string} message
+ * @param {'success' | 'warning'} [tone]
+ */
+function showNotice(message, tone = 'success') {
+  if (!statusLine) return;
+  clearTimeout(statusLineTimer);
+  statusLine.textContent = message;
+  statusLine.classList.toggle('is-warning', tone === 'warning');
+  statusLineTimer = setTimeout(() => { statusLine.textContent = ''; }, 3000);
+}
+
 /**
  * Hide error section
  */
@@ -1436,11 +1457,12 @@ async function handleDictCopy() {
   try {
     await navigator.clipboard.writeText(text);
     dictCopyBtn.classList.add('copied');
+    showNotice(t('copied', currentLang));
     setTimeout(() => {
       dictCopyBtn.classList.remove('copied');
     }, 1500);
   } catch (error) {
-    showError('Failed to copy to clipboard');
+    showNotice(t('copyFailed', currentLang), 'warning');
   }
 }
 
@@ -1962,11 +1984,12 @@ async function handleImageCopy() {
   try {
     await navigator.clipboard.writeText(text);
     imageCopyBtn.classList.add('copied');
+    showNotice(t('copied', currentLang));
     setTimeout(() => {
       imageCopyBtn.classList.remove('copied');
     }, 1500);
   } catch (error) {
-    showError('Failed to copy to clipboard');
+    showNotice(t('copyFailed', currentLang), 'warning');
   }
 }
 
@@ -2064,7 +2087,7 @@ async function handleTranslationFavorite() {
 
     await loadFavoritesCount();
   } catch (error) {
-    showError('Failed to update favorites');
+    showNotice(t('favoriteFailed', currentLang), 'warning');
   }
 }
 
@@ -2125,7 +2148,7 @@ async function handlePolishFavorite(btn) {
 
     await loadFavoritesCount();
   } catch (error) {
-    showError('Failed to update favorites');
+    showNotice(t('favoriteFailed', currentLang), 'warning');
   }
 }
 
@@ -2187,7 +2210,7 @@ async function handlePolishRegenerate(btn) {
   const original = currentPolishOriginalText || inputText.value.trim();
 
   if (!original) {
-    showError('No text to regenerate');
+    showNotice(t('regenerateFailed', currentLang), 'warning');
     return;
   }
 
@@ -2206,7 +2229,7 @@ async function handlePolishRegenerate(btn) {
     });
 
     if (response.error) {
-      showError(response.error);
+      showNotice(response.error, 'warning');
       return;
     }
 
@@ -2230,7 +2253,7 @@ async function handlePolishRegenerate(btn) {
     // Update favorite state for this variant
     await updatePolishFavoriteStates();
   } catch (error) {
-    showError(error.message || 'Regenerate failed');
+    showNotice(error.message || t('regenerateFailed', currentLang), 'warning');
   } finally {
     btn.classList.remove('loading');
     btn.disabled = false;
