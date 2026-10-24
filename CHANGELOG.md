@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.9.0] - 2026-10-24
+
 ### Added
 - **ParsiPad for Firefox.** ParsiPad only worked in Chrome and Chromium-based browsers, so anyone on Firefox, or on a browser built on it such as Zen, could not use it at all. The same extension now builds for Firefox desktop, version 140 or later, from the same source, with every feature: hover and block translate, the selection toolbar, page and screenshot translation, the popup, Polish, the dictionary, the Library, Practice, grammar lessons and the New Tab. A few things follow Firefox's own ways. The side panel opens in Firefox's sidebar. Most visited tiles use the site icons Firefox keeps, and show the site's first letter where it has none. The bookmarks drawer lists only bookmarks Firefox lets an extension open. The button back to the browser's own New Tab opens Firefox Home. Customize shortcuts opens Firefox's Manage Extension Shortcuts. Rate ParsiPad leads to Firefox Add-ons. Settings and the New Tab name Firefox wherever they used to name Chrome, in English and Persian. The first time ParsiPad's New Tab appears, Firefox asks whether to keep it; "Manage New Tabs" opens Firefox's settings and leaves the rest of ParsiPad on.
 
