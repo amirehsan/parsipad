@@ -8,7 +8,10 @@ const MIN_REPORT_LENGTH = 2;
 // select-all on a long page never pushes megabytes through messaging.
 export const MAX_REPORT_LENGTH = 2000;
 const EDITABLE_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
-// An editable region, but not a read-only island inside one marked "false".
+// An editable region. A contenteditable="false" element is not one itself,
+// but closest() walks past it, so an island nested inside an editor still
+// counts as part of that editor (the conservative choice for rich editors).
+// Only a "false" region with no editor around it is offered.
 const EDITABLE_REGION = '[contenteditable]:not([contenteditable="false"])';
 
 /**

@@ -13,11 +13,15 @@
  * @param {{ evaluate: () => void, hide: () => void, delay?: number }} options
  *   evaluate looks at the current selection and shows, moves or hides the
  *   toolbar; hide removes the toolbar at once.
- * @returns {{ onPointerDown(): void, onPointerUp(): void, onSelectionChange(): void }}
+ * @returns {{ onPointerDown(onOwnUi?: boolean): void, onPointerUp(): void, onSelectionChange(): void }}
  */
 export function createToolbarTrigger({ evaluate, hide, delay = 250 }) {
   let timer = null;
   let pointerActive = false;
+  // The current gesture started on ParsiPad's own UI (a toolbar button):
+  // its end must not evaluate, or the toolbar would come back over the
+  // selection the button just acted on.
+  let ownGesture = false;
 
   const cancel = () => {
     if (timer !== null) {
@@ -35,16 +39,28 @@ export function createToolbarTrigger({ evaluate, hide, delay = 250 }) {
   };
 
   return {
-    // A new gesture starts: hide the toolbar and ignore selectionchange
-    // until the pointer lifts, so a drag does not rebuild it on every move.
-    onPointerDown() {
+    // A new gesture starts on the page: hide the toolbar and ignore
+    // selectionchange until the pointer lifts, so a drag does not rebuild it
+    // on every move. A gesture on ParsiPad's own UI changes nothing.
+    onPointerDown(onOwnUi = false) {
+      if (onOwnUi) {
+        ownGesture = true;
+        return;
+      }
+      ownGesture = false;
       pointerActive = true;
       cancel();
       hide();
     },
-    // pointerup, or pointercancel after a touch long-press.
+    // pointerup, or pointercancel after a touch long-press, wherever it
+    // lands. Always lifts the suppression; evaluates unless the gesture
+    // started on ParsiPad's own UI.
     onPointerUp() {
       pointerActive = false;
+      if (ownGesture) {
+        ownGesture = false;
+        return;
+      }
       schedule();
     },
     // Keyboard selection and touch selection handles.
