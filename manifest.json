@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "__MSG_extensionDescription__",
   "default_locale": "en",
   "permissions": [
@@ -10,7 +10,8 @@
     "activeTab",
     "scripting",
     "bookmarks",
-    "favicon"
+    "favicon",
+    "sidePanel"
   ],
   "host_permissions": [
     "https://api.anthropic.com/*",
@@ -40,6 +41,9 @@
       "48": "icons/icon-48.png",
       "128": "icons/icon-128.png"
     }
+  },
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
   },
   "options_page": "settings/settings.html",
   "chrome_url_overrides": {
@@ -92,6 +96,7 @@
         "content/context.js",
         "content/placement.js",
         "content/host-page.js",
+        "content/selection-report.js",
         "content/utils/*.js",
         "content/blocks/*.js",
         "content/styles/*.js",

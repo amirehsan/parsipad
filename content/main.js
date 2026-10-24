@@ -21,6 +21,7 @@ import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils/batch.js';
 import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
+import { selectionToReport, createSelectionReporter } from './selection-report.js';
 import { initBlockTranslate, translateFocusedBlock, hideBlockIcon, isBlockTranslateEnabled } from './blocks/index.js';
 
 // Re-injection guard: skip if the script has already run in this isolated world.
@@ -102,6 +103,21 @@ function init() {
   // Listen for text selection (mouseup)
   document.addEventListener('mouseup', handleTextSelection);
 
+  // Tell the side panel what is selected so it can offer a one-click translate
+  const reportSelection = createSelectionReporter((text) => {
+    // Rejects when no panel is listening or the extension was reloaded under
+    // this page; neither is worth surfacing.
+    try {
+      // Action name literal: content modules cannot import ACTIONS (lib/constants.js)
+      chrome.runtime.sendMessage({ action: 'SELECTION_CHANGED', text }).catch(() => {});
+    } catch {
+      // Extension context invalidated
+    }
+  });
+  document.addEventListener('selectionchange', () => {
+    reportSelection(() => selectionToReport(document.getSelection(), document.activeElement));
+  });
+
   // Load selection popup setting
   loadSelectionPopupSetting();
   loadUserLang();
@@ -182,6 +198,13 @@ function handleMessage(message, sender, sendResponse) {
       // Service worker checking if content script is loaded
       sendResponse({ success: true });
       return true;
+
+    case 'GET_SELECTION':
+      // The side panel pulls the current selection when it opens or the tab
+      // changes; the push path alone misses text selected beforehand.
+      // Action name literal: content modules cannot import ACTIONS (lib/constants.js)
+      sendResponse({ text: selectionToReport(document.getSelection(), document.activeElement) });
+      return false;
 
     case 'SHOW_TRANSLATION':
       // Context menu triggered - translate the text

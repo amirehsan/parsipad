@@ -57,3 +57,20 @@ export function shortcutKeys(shortcut) {
   if (!value.includes('+')) return [value];
   return value.split('+').map(key => key.trim()).filter(Boolean);
 }
+
+/**
+ * The key that submits a form field on this platform: Command+Return on a
+ * Mac, Ctrl+Enter elsewhere. `label` is what a <kbd> shows, `aria` the
+ * aria-keyshortcuts value, which names keys rather than drawing glyphs.
+ * userAgentData is preferred where Chrome offers it, since navigator.platform
+ * is frozen and may stop being reported.
+ *
+ * @param {Navigator|{platform?: string, userAgentData?: {platform?: string}}} [nav]
+ * @returns {{label: string, aria: string}}
+ */
+export function submitShortcut(nav = globalThis.navigator) {
+  const platform = (nav && nav.userAgentData && nav.userAgentData.platform) || (nav && nav.platform) || '';
+  return /mac/i.test(platform)
+    ? { label: '⌘↵', aria: 'Meta+Enter' }
+    : { label: 'Ctrl+Enter', aria: 'Control+Enter' };
+}
