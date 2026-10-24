@@ -756,6 +756,12 @@ async function handleOpenSidePanel(tabId) {
 chrome.runtime.onStartup.addListener(() => { runCacheMigrations(); });
 
 chrome.runtime.onInstalled.addListener(async (details) => {
+  // The New Tab page was removed; its settings are dead weight. Removal is
+  // idempotent, and favorites are a separate key that this never touches.
+  if (details.reason === 'update') {
+    await chrome.storage.local.remove(['newtab_enabled', 'newtab_phrase_count', 'newtab_panels']);
+  }
+
   // Drop any legacy v1 cache entries that pre-date the SHA-256 keying fix.
   // Idempotent: only runs on first start after the bump.
   runCacheMigrations();

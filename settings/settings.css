@@ -778,6 +778,10 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   flex-shrink: 0;
 }
 
+a.btn {
+  text-decoration: none;
+}
+
 .mr-2 {
   margin-right: 0.5rem;
 }
