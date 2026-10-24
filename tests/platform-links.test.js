@@ -33,6 +33,18 @@ describe('rating links', () => {
   });
 });
 
+describe('asking for the top sites permission', () => {
+  it('asks before awaiting anything, since Firefox only allows it inside the click', () => {
+    const body = functionBody(read('settings/settings.js'), 'async function handleNewTabRecentsChange()');
+    const checked = body.slice(body.indexOf('if (!newTabRecentsToggle.checked)'));
+    const afterOff = checked.slice(checked.indexOf('\n  }\n'));
+    expect(afterOff.indexOf('await requestTopSitesPermission()')).toBeGreaterThan(-1);
+    expect(afterOff.indexOf('await ')).toBe(afterOff.indexOf('await requestTopSitesPermission()'));
+    const beforeBranch = body.slice(0, body.indexOf('if (!newTabRecentsToggle.checked)'));
+    expect(beforeBranch).not.toMatch(/await /);
+  });
+});
+
 describe("the browser's own pages", () => {
   it('opens shortcut settings through the platform module', () => {
     const settings = read('settings/settings.js');

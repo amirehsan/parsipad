@@ -54,7 +54,7 @@ function detachPage() {
   }
 }
 
-function installChrome({ permission = false, grant = false, updateFails = false, base = 'chrome-extension://parsipad' } = {}) {
+function installChrome({ permission = false, grant = false, updateFails = false, base = 'chrome-extension://parsipad', sites, tree = TREE } = {}) {
   listeners = [];
   globalThis.chrome = {
     storage: {
@@ -78,13 +78,13 @@ function installChrome({ permission = false, grant = false, updateFails = false,
       id: 'parsipad',
       getURL: (p) => `${base}${p.startsWith('/') ? '' : '/'}${p}`
     },
-    bookmarks: { getTree: vi.fn(async () => structuredClone(TREE)) },
+    bookmarks: { getTree: vi.fn(async () => structuredClone(tree)) },
     permissions: {
       contains: vi.fn(async () => permission),
       request: vi.fn(async () => grant)
     },
     topSites: {
-      get: vi.fn(async () => [
+      get: vi.fn(async () => sites ? structuredClone(sites) : [
         { url: 'https://github.com/', title: 'GitHub' },
         { url: 'https://github.com/settings', title: 'GitHub settings' },
         { url: 'chrome://settings/', title: 'Settings' },
@@ -464,6 +464,52 @@ describe('new tab: most visited', () => {
     expect(tiles[1].textContent).toContain('<b>Example</b>');
     expect(document.querySelector('#nt-tiles b')).toBeNull();
     expect(tiles[0].querySelector('img').getAttribute('src')).toMatch(/^chrome-extension:\/\/parsipad\/_favicon\/\?pageUrl=https%3A%2F%2Fgithub\.com/);
+  });
+});
+
+describe('new tab: Firefox', () => {
+  const FIREFOX = 'moz-extension://parsipad';
+  const ICON = 'data:image/png;base64,iVBORw0KGgo=';
+  const FIREFOX_TREE = [{
+    id: 'root________',
+    children: [{
+      id: 'menu________', title: 'Bookmarks Menu', children: [
+        { id: 'a', title: 'Recent Tags', url: 'place:type=6&sort=14&maxResults=10' },
+        { id: 'b', title: 'Smart', children: [{ id: 'b1', title: 'Most Visited', url: 'place:sort=8&maxResults=10' }] },
+        { id: 'c', title: 'Notes', url: 'file:///Users/me/notes.txt' },
+        { id: 'd', title: 'Persian news', url: 'https://www.bbc.com/persian' }
+      ]
+    }]
+  }];
+
+  it("shows Firefox's own favicon on a tile, and the letter where it has none", async () => {
+    const sites = [
+      { url: 'https://github.com/', title: 'GitHub', favicon: ICON },
+      { url: 'https://example.com/', title: 'Example' }
+    ];
+    await openNewTab({ ...seed(), newtab_panels: { bookmarks: true, recents: true } }, { permission: true, base: FIREFOX, sites });
+    await vi.waitFor(() => expect($('#nt-recents').hidden).toBe(false));
+    const [github, example] = document.querySelectorAll('#nt-tiles a');
+    expect(github.querySelector('img').getAttribute('src')).toBe(ICON);
+    expect(example.querySelector('img')).toBeNull();
+    expect(example.querySelector('.nt-tile-initial').hidden).toBe(false);
+    expect(example.querySelector('.nt-tile-initial').textContent).toBe('E');
+    expect(document.querySelector('[src*="_favicon"]')).toBeNull();
+  });
+
+  it('lists only bookmarks Firefox can open, each with its initial', async () => {
+    await openNewTab(seed(), { base: FIREFOX, tree: FIREFOX_TREE });
+    $('#nt-bookmarks-btn').click();
+    await vi.waitFor(() => expect(document.activeElement).toBe($('#nt-bookmark-search')));
+    const tree = $('#nt-bookmark-tree');
+    expect(tree.textContent).toContain('Persian news');
+    expect(tree.textContent).not.toContain('Recent Tags');
+    expect(tree.textContent).not.toContain('Smart');
+    expect(tree.textContent).not.toContain('Notes');
+    const link = tree.querySelector('a.nt-bookmark');
+    expect(link.querySelector('img')).toBeNull();
+    expect(link.querySelector('.nt-bookmark-initial').textContent).toBe('P');
+    expect(document.querySelector('[src*="_favicon"]')).toBeNull();
   });
 });
 
