@@ -8,6 +8,8 @@
  * its own.
  */
 
+import { extensionUrl } from './utils/extension.js';
+
 // Every Shadow DOM host we own. The theme observer iterates over this to
 // re-apply data-theme when the host page toggles between dark and light.
 const themedHosts = new Set();
@@ -84,9 +86,12 @@ function ensureHostThemeObserver() {
 export function ensurePersianFontLoaded() {
   const styleId = 'parsipad-persian-font';
   if (document.getElementById(styleId)) return;
+  // Cut off from the extension, there is no font to point at; the box falls
+  // back to the page's own Persian type rather than failing to open.
+  if (!extensionUrl('fonts/')) return;
 
   const face = (weight) => {
-    const url = chrome.runtime.getURL(`fonts/vazirmatn-arabic-${weight}-normal.woff2`);
+    const url = extensionUrl(`fonts/vazirmatn-arabic-${weight}-normal.woff2`);
     return `@font-face { font-family: 'Vazirmatn'; font-weight: ${weight}; font-display: swap; src: url('${url}') format('woff2'); }`;
   };
 

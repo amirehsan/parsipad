@@ -18,6 +18,7 @@ import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
 import { ERROR_CODES, errorI18nKey, isContextInvalidated, toTranslationError } from '../lib/translation/errors.js';
 import { renderReloadState } from './reload-state.js';
+import { isContextAlive, extensionUrl, notifyWorker } from './utils/extension.js';
 import { captureSelectionContext, sentenceAround } from './context.js';
 import { computeBoxPosition } from './placement.js';
 import { renderCard, injectCardStyles } from '../shared/card/index.js';
@@ -378,6 +379,12 @@ async function translateAndShow(text, { sourceLang } = {}) {
   showLoading();
   placeFloatingBox();
 
+  // Cut off from the extension, every request would throw; say so instead.
+  if (!isContextAlive()) {
+    showError({ errorCode: ERROR_CODES.CONTEXT_INVALIDATED });
+    return;
+  }
+
   boxAbortController?.abort();
   boxAbortController = new AbortController();
 
@@ -444,6 +451,11 @@ async function polishAndShow(text) {
   createPolishBox(selectionRect);
   showPolishLoading();
   placeFloatingBox();
+
+  if (!isContextAlive()) {
+    showPolishError({ errorCode: ERROR_CODES.CONTEXT_INVALIDATED });
+    return;
+  }
 
   try {
     // Send polish request to background script
@@ -580,6 +592,18 @@ function createBoxHost(selectionRect) {
 }
 
 /**
+ * The ParsiPad logo for a box header, or nothing once the extension was
+ * reloaded under the page: a box without its logo can still say what
+ * happened, a box that failed to build cannot.
+ * @param {string} attributes - static attribute markup for the img
+ * @returns {string}
+ */
+function logoImg(attributes) {
+  const src = extensionUrl('icons/icon-48.png');
+  return src ? `<img src="${escapeHtml(src)}" ${attributes}>` : '';
+}
+
+/**
  * Create the floating translation box with Shadow DOM
  */
 function createFloatingBox(selectionRect) {
@@ -610,7 +634,7 @@ function createFloatingBox(selectionRect) {
   box.innerHTML = `
     <div class="parsipad-header">
       <div class="parsipad-logo">
-        <img src="${chrome.runtime.getURL('icons/icon-48.png')}" alt="" class="parsipad-logo-icon" aria-hidden="true">
+        ${logoImg('class="parsipad-logo-icon" alt="" aria-hidden="true"')}
         <span class="parsipad-logo-text">ParsiPad</span>
       </div>
       <div class="parsipad-badges">
@@ -982,7 +1006,7 @@ function showTranslation(result, originalText) {
     onTranslateSentence: buildSentenceHandler(result, originalText),
     onExplainGrammar: buildGrammarHandler(result, originalText),
     onSwapDirection: (nextSourceLang) => translateAndShow(originalText, { sourceLang: nextSourceLang }),
-    onOpenSettings: () => chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' })
+    onOpenSettings: () => notifyWorker({ action: 'OPEN_OPTIONS' })
   });
   content.replaceChildren(currentCardEl);
 
@@ -1041,7 +1065,7 @@ async function maybeShowReviewLine(card) {
 
   const answer = (response) => {
     line.remove();
-    chrome.runtime.sendMessage({ action: 'REVIEW_PROMPT_RESPONSE', response }).catch(() => {});
+    notifyWorker({ action: 'REVIEW_PROMPT_RESPONSE', response });
   };
   rate.addEventListener('click', () => answer('rated'));
   later.addEventListener('click', () => answer('later'));
@@ -1186,7 +1210,7 @@ function renderBoxError(content, { code, message, untranslated }, { role } = {})
     settings.className = 'parsipad-open-settings';
     settings.textContent = t('openSettings', userLang);
     settings.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' });
+      notifyWorker({ action: 'OPEN_OPTIONS' });
     });
     body.appendChild(settings);
   }
@@ -1205,6 +1229,8 @@ function renderBoxError(content, { code, message, untranslated }, { role } = {})
  */
 function showError(errorOrResponse) {
   if (!shadowRoot) return;
+  // The rating ask belongs under a translation, never under a failure.
+  shadowRoot.querySelector('.parsipad-review-slot')?.replaceChildren();
   const content = shadowRoot.querySelector('.parsipad-content');
   const error = describeBoxError(errorOrResponse);
   if (error.code === ERROR_CODES.CONTEXT_INVALIDATED) {
@@ -1706,7 +1732,7 @@ function createPolishBox(selectionRect) {
   box.innerHTML = `
     <div class="parsipad-header">
       <div class="parsipad-logo">
-        <img src="${chrome.runtime.getURL('icons/icon-48.png')}" alt="ParsiPad" class="parsipad-logo-icon">
+        ${logoImg('alt="ParsiPad" class="parsipad-logo-icon"')}
         <span class="parsipad-logo-text">ParsiPad</span>
       </div>
       <div class="parsipad-badges">
@@ -2128,6 +2154,11 @@ async function dictionaryAndShow(word) {
   showDictionaryLoading();
   placeFloatingBox();
 
+  if (!isContextAlive()) {
+    showDictionaryError({ errorCode: ERROR_CODES.CONTEXT_INVALIDATED });
+    return;
+  }
+
   try {
     // Send dictionary lookup request to background script
     const response = await chrome.runtime.sendMessage({
@@ -2174,7 +2205,7 @@ function createDictionaryBox(selectionRect) {
   box.innerHTML = `
     <div class="parsipad-header">
       <div class="parsipad-logo">
-        <img src="${chrome.runtime.getURL('icons/icon-48.png')}" alt="ParsiPad" class="parsipad-logo-icon">
+        ${logoImg('alt="ParsiPad" class="parsipad-logo-icon"')}
         <span class="parsipad-logo-text">ParsiPad</span>
       </div>
       <div class="parsipad-badges">
@@ -3077,7 +3108,7 @@ function showPageProgress() {
   // Static markup only; every piece of text is set below with textContent.
   overlay.innerHTML = `
     <div class="parsipad-progress-header">
-      <img src="${chrome.runtime.getURL('icons/icon-48.png')}" alt="ParsiPad" class="parsipad-progress-logo">
+      ${logoImg('alt="ParsiPad" class="parsipad-progress-logo"')}
       <span class="parsipad-progress-title"></span>
     </div>
     <div class="parsipad-progress-bar-container">
