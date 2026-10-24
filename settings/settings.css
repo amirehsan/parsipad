@@ -64,12 +64,17 @@ body {
 :root {
   /* The sticky header's height. In-page links land below it. */
   --settings-header-height: 3.5rem;
-  /* The nav column from 720px wide. */
-  --settings-nav-width: 200px;
+  /* The nav strip below 720px, pinned under the header. */
+  --settings-strip-height: 3rem;
+  /* The nav column from 720px wide: room for the longest label, in Persian
+     too, on one line. */
+  --settings-nav-width: 220px;
 }
 
+/* In-page links land below everything pinned over the page: the header and,
+   below 720px, the nav strip. */
 html {
-  scroll-padding-top: calc(var(--settings-header-height) + var(--space-stack-group));
+  scroll-padding-top: calc(var(--settings-header-height) + var(--settings-strip-height) + var(--space-stack-group));
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -110,12 +115,12 @@ html {
 
 .settings-title {
   margin-inline-start: var(--space-inline-actions);
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
   color: var(--color-text);
 }
 
-/* Layout: below 720px the nav is a strip above the sections */
+/* Layout: below 720px the nav is a strip pinned under the header */
 .settings-layout {
   max-width: 960px;
   margin: 0 auto;
@@ -123,16 +128,25 @@ html {
 }
 
 .settings-nav {
+  position: sticky;
+  top: var(--settings-header-height);
+  z-index: 9;
+  height: var(--settings-strip-height);
   margin-bottom: var(--space-stack-section);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-divider);
 }
 
 .settings-nav-list {
   display: flex;
+  align-items: center;
   gap: var(--space-1);
+  height: 100%;
   /* Room for each link's focus ring inside the scrolling strip. */
   padding: var(--space-1);
   list-style: none;
   overflow-x: auto;
+  overflow-y: hidden;
   overscroll-behavior-x: contain;
   scrollbar-width: thin;
 }
@@ -168,6 +182,10 @@ html {
 }
 
 @media (min-width: 720px) {
+  html {
+    scroll-padding-top: calc(var(--settings-header-height) + var(--space-stack-group));
+  }
+
   .settings-layout {
     display: grid;
     grid-template-columns: var(--settings-nav-width) minmax(0, 1fr);
@@ -178,13 +196,18 @@ html {
   .settings-nav {
     position: sticky;
     top: calc(var(--settings-header-height) + var(--space-stack-section));
+    height: auto;
     margin-bottom: 0;
+    background: none;
+    border-bottom: 0;
   }
 
   .settings-nav-list {
     flex-direction: column;
+    align-items: stretch;
+    height: auto;
     padding: 0;
-    overflow-x: visible;
+    overflow: visible;
   }
 
   .settings-nav-link {
@@ -205,7 +228,7 @@ html {
 }
 
 .settings-section-title {
-  font-size: var(--text-xl);
+  font-size: var(--text-2xl);
   font-weight: var(--weight-semibold);
   line-height: var(--leading-tight);
   color: var(--color-text);
@@ -294,7 +317,7 @@ html {
 }
 
 .card-title {
-  font-size: 1.125rem;
+  font-size: var(--text-lg);
   font-weight: 600;
   color: var(--gray-900);
   margin-bottom: 0.25rem;
@@ -627,6 +650,11 @@ html {
   border-radius: 3px;
   outline: none;
   cursor: pointer;
+}
+
+.slider-input:focus-visible {
+  outline: var(--ring-width) solid var(--ring-color);
+  outline-offset: var(--ring-offset);
 }
 
 .dark .slider-input {
