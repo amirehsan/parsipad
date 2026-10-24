@@ -6,9 +6,11 @@
  *   parsipad-vX.Y.Z-firefox.zip  addons.mozilla.org upload (dist-firefox/)
  *   parsipad-vX.Y.Z-source.zip   the source AMO reviewers rebuild it from
  *
- * Run `npm run build` first. The source zip is `git archive` of HEAD, so
- * untracked files such as landing/ never reach it, and a dirty tree is
- * refused: the source has to be exactly what was built. A zip that already
+ * It runs its own production build of both browsers first, so a stale,
+ * dev or one-browser build in dist/ can never be what ships. The source zip
+ * is `git archive` of HEAD, so untracked files such as landing/ never reach
+ * it, and a dirty tree is refused: the source has to be exactly what was
+ * built. A zip that already
  * exists for this version is the one a store may already have, so it is
  * kept unless --force says otherwise.
  */
@@ -39,10 +41,15 @@ if (existing.length && !FORCE) {
   fail(`Already packaged for ${version}: ${existing.join(', ')}. Bump the version, or pass --force to replace them.`);
 }
 
+execFileSync(process.execPath, [join(ROOT, 'scripts/build.mjs'), '--browser=all'], { cwd: ROOT, stdio: 'inherit' });
+for (const dir of ['dist', 'dist-firefox']) {
+  const built = JSON.parse(readFileSync(join(ROOT, dir, 'manifest.json'), 'utf8')).version;
+  if (built !== version) fail(`${dir}/ holds ${built}, not ${version}.`);
+}
+
 /** Zip a build directory with its files at the zip root, not under the folder. */
 function zipDir(dir, name) {
   const src = join(ROOT, dir);
-  if (!existsSync(join(src, 'manifest.json'))) fail(`${dir}/ has no build. Run npm run build first.`);
   const out = join(OUT, name);
   rmSync(out, { force: true });
   execFileSync('zip', ['-r', '-X', '-q', out, '.'], { cwd: src });
