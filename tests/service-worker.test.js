@@ -23,10 +23,11 @@ vi.mock('../lib/api.js', () => ({
   polish: vi.fn(),
   translateImage: vi.fn(),
   regeneratePolishVariant: vi.fn(),
-  getGrammarLesson: vi.fn()
+  getGrammarLesson: vi.fn(),
+  testApiKey: vi.fn()
 }));
 
-import { translate } from '../lib/api.js';
+import { translate, testApiKey } from '../lib/api.js';
 import { getHistory } from '../lib/history.js';
 import { translationCache } from '../lib/cache.js';
 import { setLanguage } from '../lib/storage.js';
@@ -413,6 +414,36 @@ describe('error localization', () => {
 
     expect(res.errorCode).toBe('UNKNOWN');
     expect(res.error).toBe('a very specific provider failure');
+  });
+});
+
+describe('TEST_API_KEY', () => {
+  it('returns the outcome and records health', async () => {
+    testApiKey.mockResolvedValue({ ok: true, model: 'm', ms: 50 });
+
+    const r = await sendMessage({ action: 'TEST_API_KEY', provider: 'claude', key: 'sk-ant-x' });
+
+    expect(testApiKey).toHaveBeenCalledWith('claude', 'sk-ant-x');
+    expect(r.ok).toBe(true);
+    expect(store.get('provider_health').claude.ok).toBe(true);
+    expect(store.get('provider_health').claude.ms).toBe(50);
+  });
+
+  it('records a failed test with its code', async () => {
+    testApiKey.mockResolvedValue({ ok: false, code: 'INVALID_API_KEY', message: 'Invalid API key. Please check settings.' });
+
+    const r = await sendMessage({ action: 'TEST_API_KEY', provider: 'gemini', key: 'AIza-bad' });
+
+    expect(r).toMatchObject({ ok: false, code: 'INVALID_API_KEY' });
+    expect(store.get('provider_health').gemini).toMatchObject({ ok: false, code: 'INVALID_API_KEY' });
+  });
+
+  it('does not record health for a provider it does not know', async () => {
+    testApiKey.mockResolvedValue({ ok: false, code: 'UNKNOWN', message: 'Unknown provider: nope' });
+
+    await sendMessage({ action: 'TEST_API_KEY', provider: 'nope', key: 'k' });
+
+    expect(store.get('provider_health')?.nope).toBeUndefined();
   });
 });
 

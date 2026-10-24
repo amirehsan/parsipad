@@ -54,11 +54,30 @@
       </div>
     </header>
 
-    <!-- API Key Warning (shown when not configured) -->
-    <div id="api-key-warning" class="warning" hidden>
-      <p data-i18n="apiKeyNotConfigured">API key not configured.</p>
-      <button id="configure-api-btn" class="link-btn" data-i18n="configureInSettings">Configure in Settings</button>
-    </div>
+    <!-- First run (shown while the selected provider has no key) -->
+    <section id="first-run" class="first-run" aria-labelledby="first-run-title" hidden>
+      <h2 id="first-run-title" class="first-run-title" data-i18n="firstRunTitle">Add your API key to start</h2>
+      <p class="first-run-body" data-i18n="firstRunBody">Pick a provider and paste its key. Requests go straight from your browser to that provider.</p>
+      <fieldset class="first-run-providers">
+        <legend class="first-run-label" data-i18n="firstRunProvider">Provider</legend>
+        <label class="first-run-provider"><input type="radio" name="first-run-provider" value="claude"><span>Claude</span></label>
+        <label class="first-run-provider"><input type="radio" name="first-run-provider" value="gemini"><span>Gemini</span></label>
+        <label class="first-run-provider"><input type="radio" name="first-run-provider" value="openai"><span>ChatGPT</span></label>
+      </fieldset>
+      <label for="first-run-key" class="first-run-label" data-i18n="firstRunKeyLabel">API key</label>
+      <div class="first-run-field">
+        <input type="password" id="first-run-key" class="first-run-input" dir="ltr" autocomplete="off" spellcheck="false">
+        <button type="button" id="first-run-reveal" class="icon-btn first-run-reveal" data-i18n-title="showHide" title="Show/Hide" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+      <p id="first-run-status" class="first-run-status" role="status" aria-live="polite"></p>
+      <div id="first-run-help"></div>
+      <button type="button" id="first-run-test" class="action-btn first-run-test" data-i18n="firstRunSave">Save and test key</button>
+    </section>
 
     <!-- Translate Page Quick Action -->
     <button id="translate-page-btn" class="translate-page-btn" data-shortcut-for="translate-page">
