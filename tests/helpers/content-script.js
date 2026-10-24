@@ -21,6 +21,8 @@ export function translateLines(msg) {
  * - `roots`: every shadow root attached, by host, so a test can see inside
  *   the closed ones (the overlay, the toast, the page toggle).
  * - `sent`: every chrome.runtime.sendMessage.
+ * - `attempts`: every sendMessage and connect call, recorded before an
+ *   invalidated context makes it throw, as { kind, message }.
  * - `ports`: every batch port, in order; `port.started` is the request.
  * - `answer(msg, port)`: how a batch port answers; returns the message to
  *   send ({ type: 'done' | 'error', ... }), or a promise of it. Defaults to
@@ -43,6 +45,7 @@ export async function loadContentScript() {
     store: new Map(),
     storageListeners: [],
     sent: [],
+    attempts: [],
     ports: [],
     answer: translateLines,
     missingKey: false,
@@ -63,6 +66,7 @@ export async function loadContentScript() {
     },
     reset() {
       harness.sent.length = 0;
+      harness.attempts.length = 0;
       harness.ports.length = 0;
       harness.answer = translateLines;
       harness.missingKey = false;
@@ -106,6 +110,7 @@ export async function loadContentScript() {
       },
       onMessage: { addListener: (fn) => { harness.listener = fn; } },
       sendMessage: (message) => {
+        harness.attempts.push({ kind: 'sendMessage', message });
         if (harness.invalidated) throw orphaned();
         harness.sent.push(message);
         const answered = harness.respond?.(message);
@@ -117,7 +122,8 @@ export async function loadContentScript() {
         return Promise.resolve();
       },
       // Batches stream over a port; every one is recorded and answered.
-      connect: () => {
+      connect: (info) => {
+        harness.attempts.push({ kind: 'connect', message: info });
         if (harness.invalidated) throw orphaned();
         const listeners = [];
         const port = {

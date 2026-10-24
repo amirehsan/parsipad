@@ -955,6 +955,11 @@ function buildGrammarHandler(result, originalText) {
       renderInlineGrammar(slot, (response && response.grammar) || [], source, result.translation, result.direction);
       keepFloatingBoxInViewport();
     } catch (error) {
+      // Cut off from the extension, the whole box has one thing left to say.
+      if (isContextInvalidated(error)) {
+        showError(error);
+        return;
+      }
       showGrammarError(slot, (error && error.message) || 'Failed to load grammar.');
     }
   };
@@ -1122,7 +1127,7 @@ function renderInlineGrammar(slot, points, originalText, translation, direction)
   learnMore.className = 'parsipad-grammar-learn-more';
   learnMore.textContent = t('learnMore', userLang) || 'Learn More with Examples';
   learnMore.addEventListener('click', () => {
-    chrome.runtime.sendMessage({
+    notifyWorker({
       action: 'OPEN_GRAMMAR_PAGE',
       original: originalText,
       translation,
@@ -1156,9 +1161,12 @@ const PP_ERROR_ICON = `
 
 /**
  * What a box says about a failure. Every known code is said in the reader's
- * language; only a message with no known code (a provider's own words) is
- * shown as it came. An extension reloaded under the page is recognized by
- * its code or, when it arrives without one, by Chrome's message.
+ * language. Only a service worker response that reports UNKNOWN (or no code)
+ * shows its own message as it came, since that is the provider's own words;
+ * a thrown error or an unrecognized code says errorUnknown instead, so
+ * Chrome's and JavaScript's internals never reach the reader. An extension
+ * reloaded under the page is recognized by its code or, when it arrives
+ * without one, by Chrome's message.
  * @param {unknown} errorOrResponse - a service worker or stream response
  *   ({ error, errorCode }), or what a catch caught
  * @returns {{code: string, message: string, untranslated: boolean}}
@@ -1176,7 +1184,8 @@ function describeBoxError(errorOrResponse) {
     code = ERROR_CODES.API_KEY_NOT_SET;
   }
 
-  if (code === ERROR_CODES.UNKNOWN && rawMessage.trim()) {
+  const reportsUnknown = isResponse && [undefined, null, ERROR_CODES.UNKNOWN].includes(errorOrResponse.errorCode);
+  if (code === ERROR_CODES.UNKNOWN && reportsUnknown && rawMessage.trim()) {
     return { code, message: rawMessage, untranslated: true };
   }
   return { code, message: t(errorI18nKey(code), userLang), untranslated: false };
@@ -1442,7 +1451,7 @@ function showToast({
     openBtn.textContent = t('openSettings', userLang);
     openBtn.hidden = false;
     openBtn.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' });
+      notifyWorker({ action: 'OPEN_OPTIONS' });
       close();
     });
   }
