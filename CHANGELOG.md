@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.7.0] - 2026-10-24
+
 ### Changed
 - **The mute toast now points to where muted sites are managed.** Muting a site from the selection toolbar showed only Undo, so there was no hint that the list could be reviewed or edited later. The toast now also has a "Manage muted sites" button that opens Settings at Reading on web pages, where the Muted sites list is. Undo stays the main button.
 
