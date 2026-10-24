@@ -81,7 +81,7 @@ Choose your AI
 - Gemini by Google, for speed
 - ChatGPT by OpenAI, for versatility
 
-Switch whenever you like. Repeated lookups are cached, so the same word costs you nothing the second time.
+Switch whenever you like. Repeated lookups are cached, so the same word costs you nothing the second time, and closing a translation before it finishes stops it at once, so you never pay for one you did not read.
 
 
 Know what you are spending
@@ -99,7 +99,7 @@ Reach it however suits you
 
 Made to live with
 
-Dark mode that follows your system, full right-to-left layout for Persian, and an interface you can read in English or Persian. Export your favourites, history, and cache to a JSON file and import it again on another machine, merging with what is there or replacing it.
+Dark mode that follows your system, an interface you can read in English or Persian, and Persian text laid out right-to-left wherever it appears, with English kept left-to-right beside it. Export your favourites, history, and cache to a JSON file and import it again on another machine, merging with what is there or replacing it. Anything that removes data, your key included, asks before it acts, and a failed copy or save never clears the translation you were reading.
 
 
 Privacy

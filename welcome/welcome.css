@@ -145,11 +145,29 @@ body.dark {
 
 .dark .theme-btn {
   background: var(--gray-800);
-  color: var(--gray-300);
+  color: var(--gray-100);
 }
 
 .dark .theme-btn:hover {
   background: var(--gray-700);
+}
+
+.theme-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.theme-icon-sun {
+  display: none;
+}
+
+.dark .theme-icon-sun {
+  display: block;
+}
+
+.dark .theme-icon-moon {
+  display: none;
 }
 
 /* Hero Section */

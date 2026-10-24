@@ -111,8 +111,7 @@ body {
 
 /* Popup Container */
 .popup {
-  /* Slightly more bottom padding for the stats/history footer breathing */
-  padding: var(--space-4) var(--space-4) var(--space-5);
+  padding: var(--space-inset-card);
 }
 
 /* Header */
@@ -535,6 +534,21 @@ body {
  * This avoids alarming users when the issue is recoverable (typo, unsupported
  * language) and they just need a gentle hint.
  */
+.status-line {
+  min-height: 18px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-success);
+}
+
+.status-line:empty {
+  min-height: 0;
+}
+
+.status-line.is-warning {
+  color: var(--color-warning);
+}
+
 .error-section {
   display: flex;
   align-items: flex-start;
@@ -604,7 +618,7 @@ body {
 .history-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-inline-actions);
   max-height: 150px;
   overflow-y: auto;
 }
@@ -713,8 +727,7 @@ body {
 .polish-card {
   background-color: var(--color-bg-secondary);
   border-radius: var(--radius-md);
-  /* 16px/20px = card inset rhythm; title row now has room above content */
-  padding: var(--space-4) var(--content-pad);
+  padding: var(--space-inset-card);
   border: 1px solid var(--color-border);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -1696,25 +1709,23 @@ body {
 
 .review-prompt-banner {
   background: var(--color-warning-100);
-  border-top: 1px solid var(--color-warning-500);
-  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  padding: var(--space-stack-group);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: var(--space-md);
+  gap: var(--space-stack-item);
+  margin-top: var(--space-stack-group);
 }
 
 .review-prompt-content {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-stack-item);
   font-weight: 500;
   color: var(--color-warning-500);
 }
 
-[data-theme="dark"] .review-prompt-content {
-  color: var(--color-warning-100);
-}
 
 .review-prompt-icon {
   font-size: 18px;
@@ -1722,12 +1733,14 @@ body {
 
 .review-prompt-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-inline-actions);
 }
 
 .review-btn {
-  padding: 6px 12px;
+  white-space: nowrap;
+  padding: 8px 14px;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
@@ -1739,11 +1752,11 @@ body {
 
 .review-btn-primary {
   background: var(--color-warning-500);
-  color: var(--color-warning-500);
+  color: #ffffff;
 }
 
 .review-btn-primary:hover {
-  background: var(--color-warning-500);
+  filter: brightness(0.92);
 }
 
 .review-btn-secondary {
@@ -1752,26 +1765,33 @@ body {
 }
 
 .review-btn-secondary:hover {
-  color: var(--color-warning-500);
+  background: var(--color-warning-100);
 }
 
-[data-theme="dark"] .review-btn-secondary {
-  color: var(--color-warning-500);
+/* In dark mode the warning steps swap roles: 500 is the light amber that
+   carries text and 100 is the dark ground, so the banner's text rules above
+   already read correctly. Only the filled button needs a dark label. */
+[data-theme="dark"] .review-btn-primary {
+  color: var(--color-bg);
 }
 
 [data-theme="dark"] .review-btn-secondary:hover {
-  color: var(--color-warning-100);
+  background: rgba(232, 180, 92, 0.14);
 }
 
 .review-btn-icon {
-  margin-left: auto;
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   background: transparent;
   border: none;
+  border-radius: 6px;
   cursor: pointer;
-  opacity: 0.6;
-  font-size: 14px;
+  opacity: 0.7;
   color: var(--color-warning-500);
-  padding: 4px;
 }
 
 .review-btn-icon:hover {

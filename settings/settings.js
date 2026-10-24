@@ -704,6 +704,8 @@ async function handleClearApiKey(provider) {
   const input = getApiKeyInput(provider);
   const config = PROVIDER_CONFIGS[provider];
 
+  if (!confirm(t('confirmClearApiKey', currentLang).replace('{provider}', config.name))) return;
+
   await removeProviderApiKey(provider);
 
   if (input) {
@@ -940,6 +942,11 @@ async function processImportFile(event) {
     const strategyRadio = document.querySelector('input[name="import-strategy"]:checked');
     const strategy = strategyRadio?.value || 'merge';
     const isReplace = strategy === 'replace';
+    if (isReplace && !confirm(t('confirmReplaceImport', currentLang))) {
+      // Cleared so choosing the same file again fires change.
+      if (importFileInput) importFileInput.value = '';
+      return;
+    }
 
     let totalImported = 0;
     const { data } = importedData;

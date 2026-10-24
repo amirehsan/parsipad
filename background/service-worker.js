@@ -2,10 +2,10 @@ import { translate, explainGrammar, polish, translateImage, regeneratePolishVari
 import { lookupWord } from '../lib/dictionary.js';
 import { translateDocument } from '../lib/document-translator.js';
 import { translationCache } from '../lib/cache.js';
-import { hasApiKey, getDictionaryTranslationSettings, isTranslationCancelled, setTranslationCancelled, getSelectedProvider, getFavorites, addFavorite, removeFavorite, isFavorite, hasCompletedOnboarding, logUsageEvent, runCacheMigrations, getTranslateOtherLanguages, getLanguage } from '../lib/storage.js';
+import { hasApiKey, getDictionaryTranslationSettings, isTranslationCancelled, setTranslationCancelled, getSelectedProvider, getFavorites, addFavorite, removeFavorite, isFavorite, hasCompletedOnboarding, logUsageEvent, claimReviewPrompt, respondToReviewPrompt, runCacheMigrations, getTranslateOtherLanguages, getLanguage } from '../lib/storage.js';
 import { detectLanguageCode, isSupportedLanguage, getTranslationInfo } from '../lib/language-detect.js';
 import { addToHistory, addToPolishHistory, addToDictionaryHistory, updatePolishVariant } from '../lib/history.js';
-import { ACTIONS, PROVIDER_CONFIGS, ACTION_TYPES, ERROR_MESSAGES } from '../lib/constants.js';
+import { ACTIONS, PROVIDER_CONFIGS, ACTION_TYPES, ERROR_MESSAGES, STORE_REVIEWS_URL } from '../lib/constants.js';
 import { classifyMode, MODES } from '../lib/translation/mode.js';
 import { normalizeInput, normalizeForMode, normalizePersian } from '../lib/translation/normalize.js';
 import { buildCacheKeyParts, hashContext } from '../lib/translation/cache-key.js';
@@ -107,6 +107,18 @@ async function handleMessage(message, _sender) {
 
     case ACTIONS.OPEN_OPTIONS:
       await chrome.runtime.openOptionsPage();
+      return { success: true };
+
+    case ACTIONS.REVIEW_PROMPT_STATE:
+      return { show: await claimReviewPrompt() };
+
+    case ACTIONS.REVIEW_PROMPT_RESPONSE:
+      if (['rated', 'later', 'never'].includes(message.response)) {
+        await respondToReviewPrompt(message.response);
+      }
+      if (message.response === 'rated') {
+        await chrome.tabs.create({ url: STORE_REVIEWS_URL });
+      }
       return { success: true };
 
     case ACTIONS.OPEN_GRAMMAR_PAGE: {

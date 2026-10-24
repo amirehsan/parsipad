@@ -3,6 +3,7 @@ import { getTheme, setTheme, getLanguage } from '../lib/storage.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 import { ACTIONS } from '../lib/constants.js';
 import { applyThemeToRoot } from '../lib/theme.js';
+import { directionLabel } from '../lib/direction-label.js';
 
 // DOM Elements
 const backBtn = document.getElementById('back-btn');
@@ -158,8 +159,8 @@ function renderFavoriteCard(item) {
 
   let badges = '';
   if (item.type === 'translation') {
-    const direction = item.direction || 'EN → FA';
-    badges = `<span class="favorite-badge translation">${escapeHtml(direction)}</span>`;
+    const direction = directionLabel(item.direction);
+    badges = direction ? `<span class="favorite-badge translation" dir="ltr">${escapeHtml(direction)}</span>` : '';
   } else if (item.type === 'polish') {
     const variantKey = item.variant || 'polish';
     const variantLabel = t(variantKey, currentLang) || item.variant?.charAt(0).toUpperCase() + item.variant?.slice(1) || 'Polish';
@@ -168,10 +169,10 @@ function renderFavoriteCard(item) {
       <span class="favorite-badge variant">${escapeHtml(variantLabel)}</span>
     `;
   } else if (item.type === 'grammar') {
-    const direction = item.direction === 'en-to-fa' ? 'EN → FA' : 'FA → EN';
+    const direction = directionLabel(item.direction);
     badges = `
       <span class="favorite-badge grammar">${t('grammarLesson', currentLang) || 'Grammar'}</span>
-      <span class="favorite-badge direction">${direction}</span>
+      ${direction ? `<span class="favorite-badge direction" dir="ltr">${direction}</span>` : ''}
     `;
   }
 

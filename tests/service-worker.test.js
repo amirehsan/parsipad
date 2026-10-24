@@ -458,3 +458,36 @@ describe('the stream port (translate-stream)', () => {
     expect(last.code).toBe('ABORTED');
   });
 });
+
+describe('review prompt', () => {
+  const DAY = 86400000;
+
+  function seedEligible() {
+    store.set('review_usage', { installedAt: Date.now() - 10 * DAY, successes: 20, activeDays: ['2026-10-01', '2026-10-02'] });
+    store.set('review_schedule', { shownCount: 0, lastShownAt: null, snoozedUntil: null });
+    store.set('review_answer', { rated: false, optedOut: false });
+  }
+
+  it('answers false on a fresh install', async () => {
+    expect((await sendMessage({ action: 'REVIEW_PROMPT_STATE' })).show).toBe(false);
+  });
+
+  it('answers true once per eligibility window and records the show', async () => {
+    seedEligible();
+    expect((await sendMessage({ action: 'REVIEW_PROMPT_STATE' })).show).toBe(true);
+    expect(store.get('review_schedule').shownCount).toBe(1);
+    expect((await sendMessage({ action: 'REVIEW_PROMPT_STATE' })).show).toBe(false);
+  });
+
+  it('a response ends or snoozes the prompt', async () => {
+    seedEligible();
+    await sendMessage({ action: 'REVIEW_PROMPT_RESPONSE', response: 'never' });
+    expect(store.get('review_answer').optedOut).toBe(true);
+  });
+
+  it('a successful translation counts toward the threshold', async () => {
+    translate.mockResolvedValue({ translation: 'سلام', detectedSource: 'en', inputTokens: 1, outputTokens: 1 });
+    await sendMessage({ action: 'TRANSLATE', text: 'hello', sourceLang: 'auto', mode: 'word' });
+    expect(store.get('review_usage').successes).toBe(1);
+  });
+});
