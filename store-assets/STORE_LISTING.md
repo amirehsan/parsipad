@@ -124,18 +124,20 @@ Keep your data safe and portable:
 • Bilingual UI (English/Persian)
 
 ⚙️ **Customizable Settings**
-• Choose your AI provider (Claude, Gemini, ChatGPT)
+• One Settings page with a section nav, clear on/off switches, and Light, Dark or System theme
+• Choose your AI provider (Claude, Gemini, ChatGPT); each has its own key with Save & test
+• Muted sites: switch the translate icon and selection toolbar off on sites you choose
 • Set how many flashcards a Practice session holds (5 to 30)
 • Export and import your data
 • Control dictionary translation directions (EN→FA, FA→EN)
 • Choose UI language
 • Manage translation cache
-• View usage statistics
+• View usage statistics (Data & backup)
 
 🔒 **Privacy First**
 • Your API keys stay on your device
 • No data collection or tracking
-• All history stored locally
+• All history and muted sites stored locally
 • Offline caching for instant repeat lookups
 
 **How to Use:**
@@ -143,9 +145,10 @@ Keep your data safe and portable:
    • Claude: console.anthropic.com
    • Gemini: aistudio.google.com/apikey
    • ChatGPT: platform.openai.com/api-keys
-2. Select your provider in Settings
-3. Enter your API key and save
-4. Start translating!
+2. Select your provider on the welcome page or in Settings
+3. Enter your API key and press Save & test
+4. Try the sample sentence, then press Done
+5. Start translating!
 
 Powered by Claude, Gemini, and ChatGPT for the highest quality translations.
 
