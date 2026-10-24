@@ -24,6 +24,7 @@ Thumbs.db
 
 # Build outputs
 dist/
+dist-firefox/
 build/
 
 # Environment files
