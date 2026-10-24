@@ -2,7 +2,6 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   isFirefox, openSidebar, storeReviewsUrl, openShortcutSettings, browserNewTabUrl
 } from '../lib/platform.js';
-import { STORE_REVIEWS_URL } from '../lib/constants.js';
 
 /**
  * lib/platform.js is the one place that knows which browser it runs in. Each
@@ -82,7 +81,7 @@ describe('openSidebar', () => {
 describe('links into the browser', () => {
   it("names each browser's own review page", () => {
     stubChrome('chrome-extension://abc/');
-    expect(storeReviewsUrl()).toBe(STORE_REVIEWS_URL);
+    expect(storeReviewsUrl()).toBe('https://chromewebstore.google.com/detail/parsipad/kmifhjlofnblfogkjjcmhlmcecghhfbp/reviews');
     stubFirefox();
     expect(storeReviewsUrl()).toBe('https://addons.mozilla.org/firefox/addon/parsipad/reviews/');
   });
