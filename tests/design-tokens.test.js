@@ -182,3 +182,16 @@ describe('the warm neutral ladder', () => {
     expect(strays).toEqual([]);
   });
 });
+
+describe('color-scheme', () => {
+  /** Raw text of the first block opened after `selector`. */
+  function rawBlock(selector) {
+    const open = css.indexOf('{', css.indexOf(selector));
+    return css.slice(open + 1, css.indexOf('\n}', open));
+  }
+
+  it('is declared for both themes so native controls and scrollbars follow the theme', () => {
+    expect(rawBlock(':root {')).toMatch(/color-scheme:\s*light/);
+    expect(rawBlock(":root[data-theme='dark']")).toMatch(/color-scheme:\s*dark/);
+  });
+});

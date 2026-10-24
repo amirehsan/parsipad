@@ -1739,11 +1739,11 @@ body {
 
 .review-btn-primary {
   background: var(--color-warning-500);
-  color: var(--color-warning-500);
+  color: #ffffff;
 }
 
 .review-btn-primary:hover {
-  background: var(--color-warning-500);
+  filter: brightness(0.92);
 }
 
 .review-btn-secondary {
@@ -1752,7 +1752,7 @@ body {
 }
 
 .review-btn-secondary:hover {
-  color: var(--color-warning-500);
+  background: var(--color-warning-100);
 }
 
 [data-theme="dark"] .review-btn-secondary {

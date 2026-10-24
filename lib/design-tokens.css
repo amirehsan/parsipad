@@ -28,6 +28,8 @@
  */
 
 :root {
+  color-scheme: light;
+
   /* ----- Font families -----
      The design system specifies Inter alone. That cannot hold for a bilingual
      product: Inter has no Persian coverage, so Vazirmatn carries Persian and
@@ -248,6 +250,7 @@
  */
 :root.dark,
 :root[data-theme='dark'] {
+  color-scheme: dark;
   /* The same violet hue carried through to a near-black, so light and dark
      are one system rather than two. */
   --color-bg: #131120;            /* page */
