@@ -100,9 +100,9 @@ describe('what the page will not do', () => {
     for (const lang of ['en', 'fa']) {
       for (const key of NEW_KEYS) {
         expect(translations[lang][key], `${lang}.${key}`).toBeTruthy();
-        expect(translations[lang][key], `${lang}.${key}`).not.toMatch(/—|\p{Extended_Pictographic}/u);
+        expect(translations[lang][key], `${lang}.${key}`).not.toMatch(/\u2014|\p{Extended_Pictographic}/u);
       }
     }
-    for (const [file, src] of sources) expect(src, file).not.toMatch(/—/);
+    for (const [file, src] of sources) expect(src, file).not.toMatch(/\u2014/);
   });
 });
