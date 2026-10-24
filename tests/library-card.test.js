@@ -98,4 +98,33 @@ describe('library card', () => {
   it('carries the entry key for the page to delegate on', () => {
     expect(renderLibraryCard(tr, { lang: 'en', favorite: false, now }).getAttribute('data-key')).toBe('translation:1');
   });
+  it('uses only design tokens that exist', () => {
+    const read = f => fs.readFileSync(path.resolve(__dirname, f), 'utf8');
+    const css = read('../library/library.css');
+    const known = read('../lib/design-tokens.css') + css;
+    const used = new Set([...css.matchAll(/var\((--[\w-]+)/g)].map(m => m[1]));
+    for (const token of used) expect(known, token).toMatch(new RegExp(`${token}\\s*:`));
+  });
+  it('keeps letter-spacing off Persian labels', () => {
+    const css = fs.readFileSync(path.resolve(__dirname, '../library/library.css'), 'utf8');
+    for (const block of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+      if (/letter-spacing|text-transform/.test(block[2])) expect(block[1], block[1]).toMatch(/:lang\(en\)/);
+    }
+    const fa = renderLibraryCard(tr, { lang: 'fa', favorite: false, now });
+    expect(fa.querySelector('.lib-badge').getAttribute('lang')).toBe('fa');
+    const en = renderLibraryCard(polish, { lang: 'en', favorite: false, now });
+    expect(en.querySelector('.lib-variant-label').getAttribute('lang')).toBe('en');
+  });
+  it('names each variant copy button from a translated template', () => {
+    const en = renderLibraryCard(polish, { lang: 'en', favorite: false, now });
+    expect(en.querySelector('button[data-variant="concise"]').getAttribute('aria-label')).toBe('Copy Concise');
+    const fa = renderLibraryCard(polish, { lang: 'fa', favorite: false, now });
+    expect(fa.querySelector('button[data-variant="concise"]').getAttribute('aria-label')).not.toMatch(/\{variant\}|Copy/);
+  });
+  it('skips a polish variant that is missing or empty', () => {
+    const partial = { ...polish, variants: { professional: 'Good afternoon.', conversational: '', concise: undefined } };
+    const card = renderLibraryCard(partial, { lang: 'en', favorite: false, now });
+    expect(card.querySelectorAll('.lib-variant')).toHaveLength(1);
+    expect(card.querySelectorAll('[data-action="copy"]')).toHaveLength(1);
+  });
 });

@@ -101,7 +101,9 @@ function textBlock(className, text) {
 
 function metaRow(entry, lang, now) {
   const meta = el('div', 'lib-meta');
-  meta.appendChild(el('span', `lib-badge lib-badge-${entry.kind}`, t(KIND_LABEL_KEYS[entry.kind] || KIND_LABEL_KEYS.translation, lang)));
+  const badge = el('span', `lib-badge lib-badge-${entry.kind}`, t(KIND_LABEL_KEYS[entry.kind] || KIND_LABEL_KEYS.translation, lang));
+  badge.setAttribute('lang', lang);
+  meta.appendChild(badge);
 
   const label = directionLabel(entry.direction);
   if (label) {
@@ -124,8 +126,10 @@ function variantBlock(name, text, lang) {
   const block = el('div', 'lib-variant');
   block.setAttribute('data-variant', name);
   const head = el('div', 'lib-variant-head');
-  head.appendChild(el('span', 'lib-variant-label', t(name, lang)));
-  const copy = actionButton('copy', `${t('libraryCopy', lang)}: ${t(name, lang)}`);
+  const label = el('span', 'lib-variant-label', t(name, lang));
+  label.setAttribute('lang', lang);
+  head.appendChild(label);
+  const copy = actionButton('copy', t('libraryCopyVariant', lang).replace('{variant}', t(name, lang)));
   copy.setAttribute('data-variant', name);
   head.appendChild(copy);
   block.appendChild(head);
@@ -135,10 +139,16 @@ function variantBlock(name, text, lang) {
   return block;
 }
 
+/** The polish variants that have text; a missing or empty one gets no block and no copy button. */
+function shownVariants(entry) {
+  return entry.variants ? VARIANTS.filter(name => entry.variants[name]) : [];
+}
+
 function resultSide(entry, lang) {
-  if (!entry.variants) return textBlock('lib-result', entry.result);
+  const names = shownVariants(entry);
+  if (!names.length) return textBlock('lib-result', entry.result);
   const side = el('div', 'lib-result lib-variants');
-  for (const name of VARIANTS) side.appendChild(variantBlock(name, entry.variants[name] || '', lang));
+  for (const name of names) side.appendChild(variantBlock(name, entry.variants[name], lang));
   return side;
 }
 
@@ -154,7 +164,7 @@ function actionsRow(entry, lang, favorite) {
   }
 
   // A polish entry copies per variant, from the variant blocks.
-  if (!entry.variants) actions.appendChild(actionButton('copy', t('libraryCopy', lang)));
+  if (!shownVariants(entry).length) actions.appendChild(actionButton('copy', t('libraryCopy', lang)));
 
   if (entry.kind === 'grammar') {
     const link = el('a', 'lib-action lib-action-link', t('libraryOpenLesson', lang));
