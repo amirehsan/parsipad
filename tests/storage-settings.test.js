@@ -125,3 +125,32 @@ describe('provider API key formats', () => {
       .rejects.toThrow(/"sk-"/);
   });
 });
+
+describe('practice session size', () => {
+  let storage;
+  beforeEach(async () => {
+    installChromeStub();
+    vi.resetModules();
+    storage = await import('../lib/storage.js');
+  });
+
+  it('defaults to ten cards', async () => {
+    expect(await storage.getPracticeSessionSize()).toBe(10);
+  });
+
+  it('stores the size clamped to the range and returns what it stored', async () => {
+    expect(await storage.setPracticeSessionSize(2)).toBe(5);
+    expect(await storage.getPracticeSessionSize()).toBe(5);
+    expect(await storage.setPracticeSessionSize(99)).toBe(30);
+    expect(await storage.getPracticeSessionSize()).toBe(30);
+    expect(await storage.setPracticeSessionSize('x')).toBe(10);
+    expect(await storage.getPracticeSessionSize()).toBe(10);
+    await storage.setPracticeSessionSize(17);
+    expect(await chrome.storage.local.get(STORAGE_KEYS.practiceSessionSize)).toEqual({ practice_session_size: 17 });
+  });
+
+  it('reads a corrupt stored value as the default', async () => {
+    await chrome.storage.local.set({ practice_session_size: 'lots' });
+    expect(await storage.getPracticeSessionSize()).toBe(10);
+  });
+});

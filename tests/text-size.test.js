@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { heroSizeStep, stepBelow, HERO_STEPS } from '../newtab/hero-scale.js';
+import { textSizeStep, stepBelow, TEXT_SIZE_STEPS } from '../lib/text-size.js';
 
-describe('heroSizeStep', () => {
-  const of = n => heroSizeStep('x'.repeat(n));
+describe('textSizeStep', () => {
+  const of = n => textSizeStep('x'.repeat(n));
 
   it.each([
     [1, 'xl'], [24, 'xl'],
@@ -21,29 +21,29 @@ describe('heroSizeStep', () => {
     const text = '😀'.repeat(13);
     expect([...text].length).toBe(13);
     expect(text.length).toBe(26);
-    expect(heroSizeStep(text)).toBe('xl');
+    expect(textSizeStep(text)).toBe('xl');
   });
 
   it('measures Persian the same as Latin', () => {
-    expect(heroSizeStep('سیب')).toBe('xl');
-    expect(heroSizeStep('س'.repeat(70))).toBe('md');
+    expect(textSizeStep('سیب')).toBe('xl');
+    expect(textSizeStep('س'.repeat(70))).toBe('md');
   });
 
   it('accepts a length directly as well as a string', () => {
-    expect(heroSizeStep(24)).toBe('xl');
-    expect(heroSizeStep(141)).toBe('sm');
+    expect(textSizeStep(24)).toBe('xl');
+    expect(textSizeStep(141)).toBe('sm');
   });
 
   it('gives an empty or missing value the largest step, not a crash', () => {
-    // An empty hero is a rendering bug elsewhere; it should still lay out.
-    expect(heroSizeStep('')).toBe('xl');
-    expect(heroSizeStep(null)).toBe('xl');
-    expect(heroSizeStep(undefined)).toBe('xl');
+    // Empty text is a rendering bug elsewhere; it should still lay out.
+    expect(textSizeStep('')).toBe('xl');
+    expect(textSizeStep(null)).toBe('xl');
+    expect(textSizeStep(undefined)).toBe('xl');
   });
 
   it('only ever returns a step the stylesheet defines', () => {
     for (const n of [0, 1, 24, 25, 60, 61, 140, 141, 5000]) {
-      expect(HERO_STEPS).toContain(of(n));
+      expect(TEXT_SIZE_STEPS).toContain(of(n));
     }
   });
 });
