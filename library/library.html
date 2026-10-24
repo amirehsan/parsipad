@@ -36,35 +36,39 @@
       </div>
     </header>
 
-    <div class="pp-tablist lib-tabs" role="tablist" data-i18n-aria-label="libraryTitle" aria-label="Library">
-      <button type="button" role="tab" id="library-tab-history" class="pp-tab" data-tab="history" aria-controls="library-panel" aria-selected="true" tabindex="0" data-i18n="libraryTabHistory">History</button>
-      <button type="button" role="tab" id="library-tab-favorites" class="pp-tab" data-tab="favorites" aria-controls="library-panel" aria-selected="false" tabindex="-1" data-i18n="libraryTabFavorites">Favorites</button>
-      <button type="button" role="tab" id="library-tab-lessons" class="pp-tab" data-tab="lessons" aria-controls="library-panel" aria-selected="false" tabindex="-1" data-i18n="libraryTabLessons">Lessons</button>
-    </div>
-
-    <main id="library-panel" class="lib-panel" role="tabpanel" aria-labelledby="library-tab-history">
-      <div class="lib-filters">
-        <div class="lib-field lib-field-search">
-          <label class="lib-label" for="library-search" data-i18n="librarySearchLabel">Search the library</label>
-          <input type="search" id="library-search" class="pp-input" autocomplete="off" data-i18n-placeholder="librarySearchPlaceholder" placeholder="Search…">
-        </div>
-        <div class="lib-field">
-          <label class="lib-label" for="library-direction" data-i18n="libraryDirectionLabel">Direction</label>
-          <select id="library-direction" class="pp-input lib-select">
-            <option value="all" data-i18n="libraryDirectionAll">All directions</option>
-          </select>
-        </div>
-        <div id="library-types" class="lib-types" role="group" data-i18n-aria-label="libraryTypeLabel" aria-label="Type">
-          <button type="button" class="lib-chip" data-type="all" aria-pressed="true" data-i18n="libraryTypeAll">All</button>
-          <button type="button" class="lib-chip" data-type="translation" aria-pressed="false" data-i18n="libraryKindTranslation">Translation</button>
-          <button type="button" class="lib-chip" data-type="dictionary" aria-pressed="false" data-i18n="libraryKindDictionary">Dictionary</button>
-          <button type="button" class="lib-chip" data-type="polish" aria-pressed="false" data-i18n="libraryKindPolish">Polish</button>
-        </div>
-        <button id="library-clear" type="button" class="pp-btn pp-btn-secondary pp-btn-sm lib-clear" data-i18n="clearAll" hidden>Clear All</button>
+    <main class="lib-main">
+      <div class="pp-tablist lib-tabs" role="tablist" data-i18n-aria-label="libraryTitle" aria-label="Library">
+        <button type="button" role="tab" id="library-tab-history" class="pp-tab" data-tab="history" aria-controls="library-panel" aria-selected="true" tabindex="0" data-i18n="libraryTabHistory">History</button>
+        <button type="button" role="tab" id="library-tab-favorites" class="pp-tab" data-tab="favorites" aria-controls="library-panel" aria-selected="false" tabindex="-1" data-i18n="libraryTabFavorites">Favorites</button>
+        <button type="button" role="tab" id="library-tab-lessons" class="pp-tab" data-tab="lessons" aria-controls="library-panel" aria-selected="false" tabindex="-1" data-i18n="libraryTabLessons">Lessons</button>
       </div>
 
-      <p id="library-empty" class="lib-empty" hidden></p>
-      <div id="library-list" class="lib-list"></div>
+      <div id="library-panel" class="lib-panel" role="tabpanel" aria-labelledby="library-tab-history">
+        <div class="lib-filters">
+          <div class="lib-field lib-field-search">
+            <label class="lib-label" for="library-search" data-i18n="librarySearchLabel">Search the library</label>
+            <input type="search" id="library-search" class="pp-input" autocomplete="off" data-i18n-placeholder="librarySearchPlaceholder" placeholder="Search…">
+          </div>
+          <div class="lib-field">
+            <label class="lib-label" for="library-direction" data-i18n="libraryDirectionLabel">Direction</label>
+            <select id="library-direction" class="pp-input lib-select">
+              <option value="all" data-i18n="libraryDirectionAll">All directions</option>
+            </select>
+          </div>
+          <div class="lib-filter-actions">
+            <div id="library-types" class="lib-types" role="group" data-i18n-aria-label="libraryTypeLabel" aria-label="Type">
+              <button type="button" class="lib-chip" data-type="all" aria-pressed="true" data-i18n="libraryTypeAll">All</button>
+              <button type="button" class="lib-chip" data-type="translation" aria-pressed="false" data-i18n="libraryKindTranslation">Translation</button>
+              <button type="button" class="lib-chip" data-type="dictionary" aria-pressed="false" data-i18n="libraryKindDictionary">Dictionary</button>
+              <button type="button" class="lib-chip" data-type="polish" aria-pressed="false" data-i18n="libraryKindPolish">Polish</button>
+            </div>
+            <button id="library-clear" type="button" class="lib-clear" data-i18n="clearAll" hidden>Clear All</button>
+          </div>
+        </div>
+
+        <p id="library-empty" class="lib-empty" hidden></p>
+        <div id="library-list" class="lib-list"></div>
+      </div>
     </main>
 
     <div id="library-status" class="lib-toast" role="status">

@@ -2,6 +2,7 @@
 // popup DOM the way a reader would (type, pick Translate, press the button), so
 // the panel needs no API from popup.js and the two surfaces cannot drift.
 import { chipPreview } from './chip-preview.js';
+import { getTextDirection } from '../lib/language-detect.js';
 
 const chip = document.getElementById('selection-chip');
 const chipText = document.getElementById('selection-chip-text');
@@ -24,27 +25,30 @@ function hideChip() {
 }
 
 /**
- * Put text in the popup controller's input the way typing would, so its
- * character count and text direction follow.
+ * Put text in the popup controller's Translate input. This can run before
+ * popup.js has wired its listeners (a panel opened by the Library reads its
+ * text while the popup controller is still starting), so it does not rely on
+ * the input event alone: it sets the text direction itself, and the popup
+ * counts characters when its own init finishes.
  * @param {string} text
  * @returns {boolean} false when the input is not on the page
  */
 function fillInput(text) {
   const input = document.getElementById('input-text');
   if (!input) return false;
+  // Switching modes resets the outputs and shows the text input, so it comes first.
+  const modeTranslate = document.getElementById('mode-translate');
+  if (modeTranslate && modeTranslate.getAttribute('aria-selected') !== 'true') modeTranslate.click();
   input.value = text;
+  input.dir = getTextDirection(text);
   input.dispatchEvent(new Event('input', { bubbles: true }));
   return true;
 }
 
 function translateSelection() {
   if (!selectedText) return;
-  const modeTranslate = document.getElementById('mode-translate');
   const actionBtn = document.getElementById('action-btn');
-  if (!modeTranslate || !actionBtn) return;
-
-  // Switching modes resets the outputs, so do it before filling the input.
-  if (modeTranslate.getAttribute('aria-selected') !== 'true') modeTranslate.click();
+  if (!actionBtn) return;
   if (fillInput(selectedText)) actionBtn.click();
 }
 

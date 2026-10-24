@@ -38,3 +38,56 @@ describe('library page', () => {
     }
   });
 });
+
+describe('library page layout', () => {
+  const html = read('library/library.html');
+  const css = read('library/library.css');
+  /** Declarations of the rule whose selector list is exactly `selector`, outside media queries. */
+  const rule = (selector) => {
+    const escaped = selector.replace(/[.[\]()"=:]/g, '\\$&').replace(/,\s*/g, ',\\s*');
+    const match = css.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]*)\\}`));
+    return match ? match[1] : '';
+  };
+  const narrow = css.slice(css.indexOf('@media (max-width: 560px)'));
+  const narrowBlock = narrow.slice(0, narrow.indexOf('\n}\n'));
+
+  it('keeps the main landmark around the tabs and an inner tab panel', () => {
+    expect(html).toMatch(/<main[^>]*>\s*<div class="[^"]*" role="tablist"/);
+    expect(html).not.toMatch(/<main[^>]*role=/);
+    expect(html).toMatch(/<div id="library-panel"[^>]*role="tabpanel"/);
+    expect(html.indexOf('role="tabpanel"')).toBeLessThan(html.indexOf('</main>'));
+  });
+
+  it('lines every filter control up on one row of one height', () => {
+    expect(rule('.lib-filters')).toMatch(/align-items:\s*flex-end/);
+    expect(rule('.lib-filters .pp-input')).toMatch(/height:\s*var\(--lib-control-height\)/);
+    expect(rule('.lib-filter-actions')).toMatch(/min-height:\s*var\(--lib-control-height\)/);
+    expect(rule('.lib-filter-actions')).toMatch(/align-items:\s*center/);
+    const actions = html.slice(html.indexOf('class="lib-filter-actions"'));
+    expect(actions.indexOf('id="library-types"')).toBeGreaterThan(-1);
+    expect(actions.indexOf('id="library-clear"')).toBeGreaterThan(actions.indexOf('id="library-types"'));
+  });
+
+  it('sizes Clear All like the type chips', () => {
+    const shared = rule('.lib-chip,\n.lib-clear');
+    expect(shared).toMatch(/min-height:/);
+    expect(shared).toMatch(/font-size:/);
+    expect(shared).toMatch(/padding:/);
+    expect(html).not.toMatch(/id="library-clear"[^>]*pp-btn/);
+    expect(rule('.lib-chip')).not.toMatch(/min-height|font-size|padding/);
+  });
+
+  it('separates the result column from the original with a divider on the side they meet', () => {
+    expect(rule('.lib-pair > .lib-result')).toMatch(/border-left:\s*1px solid var\(--color-border\)/);
+    expect(rule('.lib-pair > .lib-result')).toMatch(/padding-left:\s*var\(--space-stack-group\)/);
+    const rtl = rule(':root[dir="rtl"] .lib-pair > .lib-result');
+    expect(rtl).toMatch(/border-right:\s*1px solid var\(--color-border\)/);
+    expect(rtl).toMatch(/border-left:\s*0/);
+    expect(narrowBlock).toMatch(/\.lib-pair > \.lib-result[^{]*\{[^}]*border-(left|right):\s*0[^}]*border-top:\s*1px solid var\(--color-border\)/);
+  });
+
+  it('spaces with the semantic tokens or the two smallest steps only', () => {
+    const steps = [...css.matchAll(/var\(--space-(\d+)\)/g)].map(m => Number(m[1]));
+    for (const step of steps) expect([1, 2], `--space-${step}`).toContain(step);
+  });
+});
