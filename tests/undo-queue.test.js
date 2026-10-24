@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createUndoQueue } from '../lib/undo-queue.js';
 
 beforeEach(() => vi.useFakeTimers());
-afterEach(() => vi.useRealTimers());
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
 function makeQueue(options = {}) {
   const commit = vi.fn().mockResolvedValue(undefined);
@@ -92,6 +92,16 @@ describe('undo queue', () => {
     expect(onError).toHaveBeenCalledWith(failure, { key: 'a' });
     expect(restore).not.toHaveBeenCalled();
     expect(commit).toHaveBeenCalledTimes(2);
+    expect(queue.isPending('a')).toBe(false);
+    expect(queue.isPending('b')).toBe(true);
+  });
+
+  it('a failed commit closes the undo window at once, with no Undo called', async () => {
+    const { queue, commit } = makeQueue({ onError: vi.fn() });
+    commit.mockRejectedValueOnce(new Error('quota'));
+    await queue.remove({ key: 'a' });
+    expect(queue.isPending('a')).toBe(false);
+    expect(queue.undo('a')).toBe(false);
   });
 
   it('a failed restore is reported and later writes still run', async () => {
@@ -113,5 +123,70 @@ describe('undo queue', () => {
     queue.remove({ key: 'a' });
     await queue.flushWrites();
     expect(commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('remove returns the write, which settles true on success and false on failure', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { queue, commit } = makeQueue();
+    await expect(queue.remove({ key: 'a' })).resolves.toBe(true);
+    commit.mockRejectedValueOnce(new Error('quota'));
+    await expect(queue.remove({ key: 'b' })).resolves.toBe(false);
+  });
+
+  it('undoAndWait settles true once restored, false when the window is closed or the restore fails', async () => {
+    const { queue, restore } = makeQueue({ onError: vi.fn() });
+    queue.remove({ key: 'a' });
+    await expect(queue.undoAndWait('a')).resolves.toBe(true);
+    await expect(queue.undoAndWait('a')).resolves.toBe(false);
+    restore.mockRejectedValueOnce(new Error('quota'));
+    queue.remove({ key: 'b' });
+    await expect(queue.undoAndWait('b')).resolves.toBe(false);
+  });
+
+  it('reports every settled write through onSettled', async () => {
+    const onSettled = vi.fn();
+    const failure = new Error('quota');
+    const { queue, commit, restore } = makeQueue({ onSettled, onError: vi.fn() });
+    queue.remove({ key: 'a' });
+    queue.undo('a');
+    commit.mockImplementation(async entry => { if (entry.key === 'b') throw failure; });
+    restore.mockImplementation(async entry => { if (entry.key === 'c') throw failure; });
+    queue.remove({ key: 'b' });
+    queue.remove({ key: 'c' });
+    queue.undo('c');
+    await queue.flushWrites();
+    expect(onSettled.mock.calls.map(([event]) => event)).toEqual([
+      { key: 'a', action: 'remove', ok: true },
+      { key: 'a', action: 'restore', ok: true },
+      { key: 'b', action: 'remove', ok: false, error: failure },
+      { key: 'c', action: 'remove', ok: true },
+      { key: 'c', action: 'restore', ok: false, error: failure }
+    ]);
+  });
+
+  it('a failing commit leaves storage untouched (nothing is restored for it)', async () => {
+    const onSettled = vi.fn();
+    const { queue, commit, restore } = makeQueue({ onSettled, onError: vi.fn() });
+    commit.mockRejectedValueOnce(new Error('quota'));
+    queue.remove({ key: 'a' });
+    queue.undo('a');
+    await queue.flushWrites();
+    expect(restore).not.toHaveBeenCalled();
+    expect(onSettled).toHaveBeenCalledTimes(1);
+    expect(onSettled).toHaveBeenCalledWith(expect.objectContaining({ key: 'a', action: 'remove', ok: false }));
+  });
+
+  it('a throwing onError or onSettled does not break the chain', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const onError = vi.fn(() => { throw new Error('onError bug'); });
+    const onSettled = vi.fn(() => { throw new Error('onSettled bug'); });
+    const { queue, commit, restore } = makeQueue({ onError, onSettled });
+    commit.mockRejectedValueOnce(new Error('quota'));
+    queue.remove({ key: 'a' });
+    queue.remove({ key: 'b' });
+    queue.undo('b');
+    await expect(queue.flushWrites()).resolves.toBeUndefined();
+    expect(commit).toHaveBeenCalledWith({ key: 'b' });
+    expect(restore).toHaveBeenCalledWith({ key: 'b' }, undefined);
   });
 });
