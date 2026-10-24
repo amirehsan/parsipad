@@ -31,6 +31,7 @@ import {
 } from '../lib/history.js';
 import { applyThemeToRoot } from '../lib/theme.js';
 import { formatNumber } from '../lib/format.js';
+import { setupSectionNav } from './sections.js';
 
 // DOM Elements - Language
 const aboutVersionEl = document.getElementById('about-version');
@@ -53,7 +54,8 @@ const practiceSizeSlider = document.getElementById('practice-size-slider');
 const practiceSizeValue = document.getElementById('practice-size-value');
 
 // DOM Elements - Theme
-const themeToggle = document.getElementById('theme-toggle');
+const themeRadios = document.querySelectorAll('input[name="theme"]');
+const systemDarkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
 // DOM Elements - Provider Selection
 const providerRadios = document.querySelectorAll('input[name="provider"]');
@@ -108,12 +110,13 @@ const EXTENSION_VERSION = chrome.runtime.getManifest().version;
 // State
 let currentLang = 'en';
 let currentProvider = PROVIDERS.CLAUDE;
+let currentTheme = 'light';
 
 /**
  * Initialize the settings page
  */
 async function init() {
-  initTheme();
+  await initTheme();
   await loadLanguage();
   await loadDictionarySettings();
   await loadSelectionPopupSetting();
@@ -131,24 +134,35 @@ async function init() {
 }
 
 /**
- * Initialize theme from chrome.storage (shared across all extension surfaces)
- * or system preference if unset.
+ * Apply the stored theme (shared across all extension surfaces) and check
+ * its radio.
  */
 async function initTheme() {
   // Both conventions, always. This page styles dark with the class, but
   // lib/design-tokens.css also answers to [data-theme], and theme-boot sets
   // both. Clearing only the class leaves data-theme="dark" behind and the
   // tokens stay dark while the page's own rules go light.
-  applyThemeToRoot(await getTheme());
+  currentTheme = await getTheme();
+  applyThemeToRoot(currentTheme);
+  themeRadios.forEach((radio) => { radio.checked = radio.value === currentTheme; });
 }
 
 /**
- * Toggle dark/light theme; persisted to chrome.storage so popup/grammar stay in sync.
+ * Store the chosen theme, then show it. Stored in chrome.storage so the
+ * popup, side panel and other pages follow.
  */
-async function toggleTheme() {
-  const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-  applyThemeToRoot(next);
-  await setTheme(next);
+async function handleThemeChange(event) {
+  currentTheme = event.target.value;
+  await setTheme(currentTheme);
+  applyThemeToRoot(currentTheme);
+}
+
+/**
+ * System follows the operating system while the page is open, not only when
+ * it loads.
+ */
+function handleSystemThemeChange() {
+  if (currentTheme === 'system') applyThemeToRoot('system');
 }
 
 /**
@@ -412,60 +426,14 @@ async function loadCacheStats() {
 /**
  * Set up event listeners
  */
-/**
- * Settings tab navigation. Each tab button has data-tab-target; <main> carries
- * data-settings-active and CSS hides cards whose data-settings-tab doesn't
- * match. Pure presentation - no card state mutates.
- */
-function setupSettingsTabs() {
-  const tabs = document.querySelectorAll('.settings-tab');
-  const main = document.querySelector('main');
-  if (!main || tabs.length === 0) return;
-
-  const names = Array.from(tabs, (tab) => tab.dataset.tabTarget);
-
-  const setActive = (name) => {
-    main.dataset.settingsActive = name;
-    tabs.forEach((t) => {
-      const active = t.dataset.tabTarget === name;
-      t.classList.toggle('is-active', active);
-      t.setAttribute('aria-selected', active ? 'true' : 'false');
-      t.tabIndex = active ? 0 : -1;
-    });
-    // Scroll to top so users land at the start of the new tab's content.
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // Open on the tab named by the URL hash (e.g. #providers from the popup
-  // badge), falling back to General.
-  const fromHash = location.hash.slice(1);
-  setActive(names.includes(fromHash) ? fromHash : 'general');
-
-  // Record the tab in the hash without adding a history entry.
-  const select = (name) => {
-    setActive(name);
-    history.replaceState(null, '', `#${name}`);
-  };
-
-  tabs.forEach((tab) => {
-    tab.addEventListener('click', () => select(tab.dataset.tabTarget));
-    tab.addEventListener('keydown', (e) => {
-      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-      e.preventDefault();
-      const order = Array.from(tabs);
-      const i = order.indexOf(e.currentTarget);
-      const next = order[(i + (e.key === 'ArrowRight' ? 1 : -1) + order.length) % order.length];
-      select(next.dataset.tabTarget);
-      next.focus();
-    });
-  });
-}
-
 function setupEventListeners() {
-  setupSettingsTabs();
+  // Section nav and deep links. Wired after init's loads, so the page has its
+  // final height before it scrolls to the section the URL names.
+  setupSectionNav();
 
-  // Theme toggle
-  themeToggle.addEventListener('click', toggleTheme);
+  // Theme
+  themeRadios.forEach((radio) => radio.addEventListener('change', handleThemeChange));
+  systemDarkQuery.addEventListener('change', handleSystemThemeChange);
 
   // Language selection
   langEnRadio.addEventListener('change', () => handleLanguageChange('en'));
@@ -545,14 +513,6 @@ function setupEventListeners() {
   if (customizeShortcutsBtn) {
     customizeShortcutsBtn.addEventListener('click', () => {
       chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
-    });
-  }
-
-  // Analytics button
-  const openAnalyticsBtn = document.getElementById('openAnalyticsBtn');
-  if (openAnalyticsBtn) {
-    openAnalyticsBtn.addEventListener('click', () => {
-      chrome.tabs.create({ url: chrome.runtime.getURL('analytics/analytics.html') });
     });
   }
 

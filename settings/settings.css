@@ -1,5 +1,6 @@
 /* ============================================
-   ParsiPad Settings - Landing Page Style
+   ParsiPad Settings: one page, a section nav on the left (a strip above
+   the content below 720px), and the settings cards in seven sections.
    ============================================ */
 
 @import url('../fonts/fonts.css');
@@ -53,220 +54,187 @@ body {
   font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.6;
+  color: var(--color-text);
+  background-color: var(--color-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color var(--motion-base) ease, color var(--motion-base) ease;
 }
 
-/* Utility Classes - Matching Tailwind from landing */
-.bg-gray-50 { background-color: var(--gray-50); }
-.bg-white { background-color: var(--color-bg-elevated); }
-.dark .dark\:bg-gray-900 { background-color: var(--color-bg); }
-.dark .dark\:bg-gray-800 { background-color: var(--color-bg-elevated); }
+:root {
+  /* The sticky header's height. In-page links land below it. */
+  --settings-header-height: 3.5rem;
+  /* The nav column from 720px wide. */
+  --settings-nav-width: 200px;
+}
 
-.text-gray-900 { color: var(--gray-900); }
-.text-gray-500 { color: var(--gray-500); }
-.text-gray-400 { color: var(--gray-400); }
-.dark .dark\:text-white { color: var(--color-gray-50); }
-.dark .dark\:text-gray-400 { color: var(--gray-400); }
+html {
+  scroll-padding-top: calc(var(--settings-header-height) + var(--space-stack-group));
+}
 
-.border-gray-200 { border-color: var(--gray-200); }
-.border-gray-800 { border-color: var(--gray-800); }
-.dark .dark\:border-gray-800 { border-color: var(--gray-800); }
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
 
-/* Navigation Bar */
-nav {
+/* Header: logo and title, pinned while the page scrolls under it */
+.settings-header {
   position: sticky;
   top: 0;
-  z-index: 50;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--gray-200);
+  z-index: 10;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-divider);
 }
 
-.dark nav {
-  background: rgba(19, 17, 32, 0.8);
-  border-color: var(--gray-800);
-}
-
-nav .max-w-3xl {
-  max-width: 48rem;
-  margin: 0 auto;
-  padding: 1rem 1.5rem;
-}
-
-nav .flex {
-  display: flex;
-}
-
-nav .items-center {
-  align-items: center;
-}
-
-nav .justify-between {
-  justify-content: space-between;
-}
-
-nav .space-x-3 > * + * {
-  margin-left: 0.75rem;
-}
-
-nav img {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.75rem;
-}
-
-nav h1 {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--gray-900);
-}
-
-.dark nav h1 {
-  color: var(--color-gray-50);
-}
-
-nav p {
-  font-size: 0.875rem;
-  color: var(--gray-500);
-}
-
-.dark nav p {
-  color: var(--gray-400);
-}
-
-/* Theme Toggle Button */
-#theme-toggle {
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  background: var(--gray-100);
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
+.settings-header-inner {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: var(--gray-600);
-}
-
-#theme-toggle:hover {
-  background: var(--gray-200);
-}
-
-.dark #theme-toggle {
-  background: var(--gray-800);
-  color: var(--gray-300);
-}
-
-.dark #theme-toggle:hover {
-  background: var(--gray-700);
-}
-
-#theme-toggle svg {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-.hidden { display: none; }
-.block { display: block; }
-.dark .dark\:block { display: block !important; }
-.dark .dark\:hidden { display: none !important; }
-
-/* Main Content */
-main {
-  max-width: 48rem;
+  gap: var(--space-inline-actions);
+  max-width: 960px;
+  height: var(--settings-header-height);
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 0 var(--space-inset-card);
 }
 
-/*
- * Settings tab bar - groups 11 cards into 4 buckets so the page stops
- * scrolling forever. Sticky just below the top nav for fast switching.
- */
-.settings-tabs {
-  /*
-   * Sticky just BELOW the top nav so the tabs stay reachable as users scroll.
-   *  - top: 88px clears the nav fully (nav renders ~78px including its
-   *    border-bottom; 88 leaves an 8px visible gap).
-   *  - z-index: 30 sits BELOW the nav's z-50 so the nav paints on top
-   *    rather than the tab bar pushing up over it.
-   *  - backdrop-blur keeps card edges legible when they scroll behind.
-   */
-  position: sticky;
-  top: 88px;
-  z-index: 30;
+.settings-logo {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-md);
+}
+
+.settings-brand-name {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+}
+
+.settings-title {
+  margin-inline-start: var(--space-inline-actions);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+
+/* Layout: below 720px the nav is a strip above the sections */
+.settings-layout {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-stack-section) var(--space-inset-card);
+}
+
+.settings-nav {
+  margin-bottom: var(--space-stack-section);
+}
+
+.settings-nav-list {
   display: flex;
-  gap: 0.25rem;
-  margin-bottom: 1.5rem;
-  padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--gray-200);
-  border-radius: 0.75rem;
-  flex-wrap: wrap;
+  gap: var(--space-1);
+  /* Room for each link's focus ring inside the scrolling strip. */
+  padding: var(--space-1);
+  list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
 }
 
-.dark .settings-tabs {
-  background: rgba(28, 25, 48, 0.85);
-  border-color: var(--gray-700);
+.settings-nav-link {
+  display: block;
+  padding: var(--space-2) var(--space-stack-item);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out);
 }
 
-.settings-tab {
-  flex: 1 1 auto;
-  min-width: max-content;
-  padding: 0.5rem 1rem;
-  font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--gray-500);
-  background: transparent;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: background-color 0.15s, color 0.15s;
+.settings-nav-link:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text);
 }
 
-.settings-tab:hover {
-  color: var(--gray-900);
-  background: var(--gray-100);
+.settings-nav-link[aria-current="location"] {
+  background: var(--color-bg-elevated);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  color: var(--color-link);
+  font-weight: var(--weight-semibold);
 }
 
-.dark .settings-tab {
-  color: var(--gray-400);
+.settings-nav-link:focus-visible {
+  outline: var(--ring-width) solid var(--ring-color);
+  outline-offset: var(--ring-offset);
 }
 
-.dark .settings-tab:hover {
-  color: var(--color-gray-50);
-  background: var(--gray-700);
+@media (min-width: 720px) {
+  .settings-layout {
+    display: grid;
+    grid-template-columns: var(--settings-nav-width) minmax(0, 1fr);
+    gap: var(--space-stack-section);
+    align-items: start;
+  }
+
+  .settings-nav {
+    position: sticky;
+    top: calc(var(--settings-header-height) + var(--space-stack-section));
+    margin-bottom: 0;
+  }
+
+  .settings-nav-list {
+    flex-direction: column;
+    padding: 0;
+    overflow-x: visible;
+  }
+
+  .settings-nav-link {
+    white-space: normal;
+  }
 }
 
-.settings-tab.is-active,
-.settings-tab[aria-selected='true'] {
-  color: var(--primary-600);
-  background: var(--primary-50);
+/* Sections */
+.settings-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-stack-section);
+  min-width: 0;
 }
 
-.dark .settings-tab.is-active,
-.dark .settings-tab[aria-selected='true'] {
-  color: var(--primary-300);
-  background: rgba(99, 102, 241, 0.18);
+.settings-section > * + * {
+  margin-top: var(--space-stack-group);
 }
 
-.settings-tab:focus-visible {
-  outline: 2px solid var(--primary-500);
-  outline-offset: 2px;
+.settings-section-title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  color: var(--color-text);
 }
 
-/* Hide cards that don't belong to the active tab. JS toggles the
-   data-settings-active attribute on <main>. */
-main[data-settings-active='general'] .settings-card:not([data-settings-tab='general']),
-main[data-settings-active='providers'] .settings-card:not([data-settings-tab='providers']),
-main[data-settings-active='data'] .settings-card:not([data-settings-tab='data']),
-main[data-settings-active='more'] .settings-card:not([data-settings-tab='more']) {
-  display: none !important;
+.settings-section-title + .settings-section-intro {
+  margin-top: var(--space-1);
+}
+
+.settings-section-intro {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* A group of radio cards inside a card, named by its legend */
+.settings-fieldset {
+  min-width: 0;
+  border: 0;
+}
+
+.settings-fieldset + .settings-fieldset {
+  margin-top: var(--space-stack-section);
+}
+
+.settings-legend {
+  margin-bottom: var(--space-stack-item);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
 }
 
 /* Settings Cards - Matching landing feature cards */
@@ -274,9 +242,8 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   background: var(--color-bg-elevated);
   border-radius: 1rem;
   border: 1px solid var(--gray-200);
-  margin-bottom: 1.5rem;
   overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: box-shadow var(--motion-base) ease;
 }
 
 .dark .settings-card {
@@ -296,8 +263,8 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 .card-header {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
-  padding: 1.5rem;
+  gap: var(--space-stack-group);
+  padding: var(--space-inset-card);
   border-bottom: 1px solid var(--gray-100);
 }
 
@@ -313,18 +280,12 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-}
-
-.bg-primary-100 {
   background: var(--primary-100);
-}
-
-.dark .dark\:bg-primary-900\/30 {
-  background: rgba(99, 102, 241, 0.16);
-}
-
-.text-primary-500 {
   color: var(--primary-500);
+}
+
+.dark .card-icon {
+  background: rgba(99, 102, 241, 0.16);
 }
 
 .card-icon svg {
@@ -354,7 +315,7 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 
 /* Card Content */
 .card-content {
-  padding: 1.5rem;
+  padding: var(--space-inset-card);
 }
 
 /* Language Options - Radio buttons as cards */
@@ -394,6 +355,13 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   border-color: var(--primary-300);
 }
 
+/* The radio itself is invisible, so its card carries the focus ring. */
+.language-option input:focus-visible + .option-content,
+.theme-option input:focus-visible + .theme-option-content {
+  outline: var(--ring-width) solid var(--ring-color);
+  outline-offset: var(--ring-offset);
+}
+
 .language-option input:checked + .option-content {
   border-color: var(--primary-500);
   background: var(--primary-50);
@@ -426,6 +394,63 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
 
 .persian-text {
   font-family: var(--font-persian);
+}
+
+/* Theme: three radio cards, Light, Dark and System */
+.theme-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-stack-item);
+}
+
+.theme-option {
+  position: relative;
+  cursor: pointer;
+}
+
+.theme-option input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.theme-option-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-inline-actions);
+  padding: var(--space-stack-item) var(--space-stack-group);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  font-weight: var(--weight-medium);
+  color: var(--gray-700);
+  transition: border-color var(--motion-fast) var(--ease-out), background-color var(--motion-fast) var(--ease-out);
+}
+
+.dark .theme-option-content {
+  border-color: var(--gray-600);
+  color: var(--gray-200);
+}
+
+.theme-option:hover .theme-option-content {
+  border-color: var(--primary-300);
+}
+
+.theme-option input:checked + .theme-option-content {
+  border-color: var(--primary-500);
+  background: var(--primary-50);
+}
+
+.dark .theme-option input:checked + .theme-option-content {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: var(--primary-500);
+}
+
+.theme-option-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
 }
 
 /* Toggle Rows */
@@ -736,10 +761,6 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   color: var(--color-gray-50);
 }
 
-.mt-4 {
-  margin-top: 1rem;
-}
-
 .input-icon-btn {
   position: absolute;
   right: 0.75rem;
@@ -779,26 +800,30 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: var(--space-inline-actions);
   padding: 0.625rem 1.25rem;
   font-size: 0.9375rem;
   font-weight: 500;
   font-family: inherit;
   border-radius: 0.75rem;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
   border: none;
 }
 
 .btn svg {
+  width: 1rem;
+  height: 1rem;
   flex-shrink: 0;
+}
+
+.btn:focus-visible {
+  outline: var(--ring-width) solid var(--ring-color);
+  outline-offset: var(--ring-offset);
 }
 
 a.btn {
   text-decoration: none;
-}
-
-.mr-2 {
-  margin-right: 0.5rem;
 }
 
 .btn-primary {
@@ -978,16 +1003,9 @@ a.btn {
   color: var(--gray-400);
 }
 
-/*
- * Both "Customize Shortcuts" and "View Analytics" used .customize-shortcuts-btn
- * with a divergent indigo-tinted ghost style. They now use the canonical
- * .btn .btn-primary .btn-full convention. The legacy class is kept here only
- * as a small top margin shim so the buttons still sit clear of the card grid
- * above them - no color/size overrides remain.
- */
-#customizeShortcutsBtn,
-#openAnalyticsBtn {
-  margin-top: 1rem;
+/* The button under the shortcut lists sits clear of the last list. */
+#customizeShortcutsBtn {
+  margin-top: var(--space-stack-group);
 }
 
 /* About Section */
@@ -1063,6 +1081,18 @@ a.btn {
   color: var(--gray-300);
 }
 
+.about-link svg,
+.about-link-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.about-link:focus-visible,
+.about-link-icon:focus-visible {
+  outline: var(--ring-width) solid var(--ring-color);
+  outline-offset: var(--ring-offset);
+}
+
 .about-link:hover {
   background: var(--gray-100);
   color: var(--color-primary-800);   /* 6.33 on that fill */
@@ -1127,40 +1157,13 @@ a.btn {
 }
 
 /* Footer */
-footer {
-  border-top: 1px solid var(--gray-200);
-  padding: 1.5rem 0;
-  margin-top: 2rem;
-}
-
-.dark footer {
-  border-color: var(--gray-800);
-}
-
-footer div {
-  max-width: 48rem;
-  margin: 0 auto;
-  padding: 0 1.5rem;
+.settings-footer {
+  border-top: 1px solid var(--color-divider);
+  padding: var(--space-stack-section) var(--space-inset-card);
   text-align: center;
-  font-size: 0.875rem;
-  color: var(--gray-500);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
-
-.dark footer div {
-  color: var(--gray-400);
-}
-
-/* Utility classes */
-.w-3 { width: 0.75rem; }
-.h-3 { height: 0.75rem; }
-.w-4 { width: 1rem; }
-.h-4 { height: 1rem; }
-.w-5 { width: 1.25rem; }
-.h-5 { height: 1.25rem; }
-.w-6 { width: 1.5rem; }
-.h-6 { height: 1.5rem; }
-.ml-1 { margin-left: 0.25rem; }
-.inline { display: inline; }
 
 /* RTL Support */
 [dir="rtl"],
@@ -1173,11 +1176,6 @@ footer div {
   direction: rtl;
 }
 
-[dir="rtl"] nav .space-x-3 > * + * {
-  margin-left: 0;
-  margin-right: 0.75rem;
-}
-
 [dir="rtl"] .text-input {
   text-align: right;
   padding-right: 1rem;
@@ -1187,16 +1185,6 @@ footer div {
 [dir="rtl"] .input-icon-btn {
   right: auto;
   left: 0.75rem;
-}
-
-[dir="rtl"] .mr-2 {
-  margin-right: 0;
-  margin-left: 0.5rem;
-}
-
-[dir="rtl"] .ml-1 {
-  margin-left: 0;
-  margin-right: 0.25rem;
 }
 
 /* Key test result and the "How do I get a key?" block under each key field */
@@ -1297,7 +1285,8 @@ footer div {
 
 /* Responsive */
 @media (max-width: 640px) {
-  .language-options {
+  .language-options,
+  .theme-options {
     grid-template-columns: 1fr;
   }
 
@@ -1317,35 +1306,6 @@ footer div {
     justify-content: center;
   }
 }
-
-/* Scroll behavior */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Animation for cards */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.settings-card {
-  animation: fadeIn 0.3s ease-out forwards;
-}
-
-.settings-card:nth-child(1) { animation-delay: 0.05s; }
-.settings-card:nth-child(2) { animation-delay: 0.1s; }
-.settings-card:nth-child(3) { animation-delay: 0.15s; }
-.settings-card:nth-child(4) { animation-delay: 0.2s; }
-.settings-card:nth-child(5) { animation-delay: 0.25s; }
-.settings-card:nth-child(6) { animation-delay: 0.3s; }
-.settings-card:nth-child(7) { animation-delay: 0.35s; }
 
 /* ============================================
    Provider Selection Styles
@@ -1696,7 +1656,3 @@ html {
 [dir="rtl"] .radio-info {
   text-align: right;
 }
-
-/* Animation delay for backup card (8th card) */
-.settings-card:nth-child(8) { animation-delay: 0.4s; }
-.settings-card:nth-child(9) { animation-delay: 0.45s; }
