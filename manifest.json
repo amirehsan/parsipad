@@ -10,7 +10,8 @@
     "activeTab",
     "scripting",
     "bookmarks",
-    "favicon"
+    "favicon",
+    "sidePanel"
   ],
   "host_permissions": [
     "https://api.anthropic.com/*",
@@ -40,6 +41,9 @@
       "48": "icons/icon-48.png",
       "128": "icons/icon-128.png"
     }
+  },
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
   },
   "options_page": "settings/settings.html",
   "chrome_url_overrides": {

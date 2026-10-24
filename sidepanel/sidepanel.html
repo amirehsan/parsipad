@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ParsiPad</title>
+  <link rel="stylesheet" href="../popup/popup.css">
+  <link rel="stylesheet" href="sidepanel.css">
+  <script src="../lib/theme-boot.js"></script>
+</head>
+<body data-surface="panel">
+  <div class="popup">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <img src="../icons/icon-48.png" alt="ParsiPad" class="logo-icon">
+        <span class="logo-text">ParsiPad</span>
+      </div>
+      <div class="header-actions">
+        <button id="view-favorites-btn" class="icon-btn favorites-header-btn" data-i18n-title="viewFavorites" title="View Favorites" hidden>
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          <span id="favorites-count" class="favorites-header-count" hidden>0</span>
+        </button>
+        <button id="theme-btn" class="icon-btn" data-i18n-title="toggleTheme" title="Toggle theme">
+          <svg id="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+        <button id="settings-btn" class="icon-btn" data-i18n-title="settings" title="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- API Key Warning (shown when not configured) -->
+    <div id="api-key-warning" class="warning" hidden>
+      <p data-i18n="apiKeyNotConfigured">API key not configured.</p>
+      <button id="configure-api-btn" class="link-btn" data-i18n="configureInSettings">Configure in Settings</button>
+    </div>
+
+    <!-- Translate Page Quick Action -->
+    <button id="translate-page-btn" class="translate-page-btn" data-shortcut-for="translate-page">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M4.545 6.714 4.11 8H3l1.862-5h1.284L8 8H6.833l-.435-1.286zm1.634-.736L5.5 3.956h-.049l-.679 2.022z"/>
+        <path d="M0 2a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v3h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm7.138 9.995q.289.451.63.846c-.748.575-1.673 1.001-2.768 1.292.178.217.451.635.555.867 1.125-.359 2.08-.844 2.886-1.494.777.665 1.739 1.165 2.93 1.472.133-.254.414-.673.629-.89-1.125-.253-2.057-.694-2.82-1.284.681-.747 1.222-1.651 1.621-2.757H14V8h-3v1.047h.765c-.318.844-.74 1.546-1.272 2.13a6 6 0 0 1-.415-.492 2 2 0 0 1-.94.31"/>
+      </svg>
+      <span data-i18n="translatePage">Translate Page</span>
+    </button>
+
+    <!-- Tab Navigation (4 tabs: Text, Dictionary, Document, Image) -->
+    <nav class="tab-nav" role="tablist" aria-label="Translation mode">
+      <button id="tab-text" class="tab active" data-mode="text" data-i18n="text" role="tab" aria-selected="true" aria-controls="text-mode-section">Text</button>
+      <button id="tab-dictionary" class="tab" data-mode="dictionary" data-i18n="dictionary" role="tab" aria-selected="false" aria-controls="dictionary-section">Dictionary</button>
+      <button id="tab-document" class="tab" data-mode="document" data-i18n="document" role="tab" aria-selected="false" aria-controls="document-upload-section">Document</button>
+      <button id="tab-image" class="tab" data-mode="image" data-i18n="image" role="tab" aria-selected="false" aria-controls="image-upload-section">Image</button>
+    </nav>
+
+    <!-- Text Mode Section (Translate/Polish with mode switcher) -->
+    <section id="text-mode-section" class="section" role="tabpanel" aria-labelledby="tab-text">
+      <!-- Mode Switcher (replaces full-width segmented control: quieter pill above input) -->
+      <div class="mode-switcher" role="tablist" aria-label="Text mode">
+        <button id="mode-translate" class="mode-switcher-btn" role="tab" aria-selected="true" data-i18n="translate">Translate</button>
+        <button id="mode-polish" class="mode-switcher-btn" role="tab" aria-selected="false" data-i18n="polish">Polish</button>
+      </div>
+
+      <!-- Text Input -->
+      <textarea
+        id="input-text"
+        class="textarea"
+        data-i18n-placeholder="enterTextTranslate"
+        placeholder="Enter text to translate..."
+        rows="4"
+      ></textarea>
+      <div class="input-footer">
+        <span id="char-count" class="char-count">0 characters</span>
+        <button id="clear-input-btn" class="link-btn" data-i18n="clear">Clear</button>
+      </div>
+
+      <!-- Grammar Toggle (only visible in translate mode) -->
+      <div id="grammar-toggle-section" class="grammar-toggle">
+        <label class="grammar-checkbox-label">
+          <input type="checkbox" id="grammar-checkbox" class="grammar-checkbox-input">
+          <span class="grammar-checkbox-text" data-i18n="explainGrammar">Explain grammar</span>
+        </label>
+      </div>
+
+      <!-- Action Button -->
+      <button id="action-btn" class="action-btn">
+        <span class="btn-text" data-i18n="translate">Translate</span>
+        <span class="btn-loading" hidden>
+          <svg class="spinner" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4" stroke-dashoffset="10"/>
+          </svg>
+        </span>
+      </button>
+    </section>
+
+    <!-- Output Section -->
+    <section id="output-section" class="section output-section" hidden>
+      <div id="card-slot"></div>
+    </section>
+
+    <!-- Polish Output Section -->
+    <section id="polish-section" class="section polish-section" hidden>
+      <div class="polish-provider-badge">
+        <span id="polish-provider-badge" class="badge provider-badge" hidden></span>
+      </div>
+      <!-- Professional Card -->
+      <div class="polish-card" data-variant="professional">
+        <div class="polish-card-header">
+          <span class="polish-card-title" data-i18n="professional">Professional</span>
+          <div class="polish-card-actions">
+            <button class="polish-favorite-btn" data-version="professional" data-i18n-title="addToFavorites" title="Add to favorites">
+              <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+              <svg class="star-filled" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </button>
+            <button class="polish-regenerate-btn" data-version="professional" data-i18n-title="regenerate" title="Regenerate">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+            </button>
+            <button class="polish-copy-btn" data-version="professional" data-i18n-title="copyToClipboard" title="Copy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div id="polish-professional" class="polish-card-text"></div>
+      </div>
+
+      <!-- Conversational Card -->
+      <div class="polish-card" data-variant="conversational">
+        <div class="polish-card-header">
+          <span class="polish-card-title" data-i18n="conversational">Conversational</span>
+          <div class="polish-card-actions">
+            <button class="polish-favorite-btn" data-version="conversational" data-i18n-title="addToFavorites" title="Add to favorites">
+              <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+              <svg class="star-filled" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </button>
+            <button class="polish-regenerate-btn" data-version="conversational" data-i18n-title="regenerate" title="Regenerate">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+            </button>
+            <button class="polish-copy-btn" data-version="conversational" data-i18n-title="copyToClipboard" title="Copy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div id="polish-conversational" class="polish-card-text"></div>
+      </div>
+
+      <!-- Concise Card -->
+      <div class="polish-card" data-variant="concise">
+        <div class="polish-card-header">
+          <span class="polish-card-title" data-i18n="concise">Concise</span>
+          <div class="polish-card-actions">
+            <button class="polish-favorite-btn" data-version="concise" data-i18n-title="addToFavorites" title="Add to favorites">
+              <svg class="star-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+              <svg class="star-filled" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </button>
+            <button class="polish-regenerate-btn" data-version="concise" data-i18n-title="regenerate" title="Regenerate">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+            </button>
+            <button class="polish-copy-btn" data-version="concise" data-i18n-title="copyToClipboard" title="Copy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div id="polish-concise" class="polish-card-text"></div>
+      </div>
+    </section>
+
+    <!-- Dictionary Output Section -->
+    <section id="dictionary-section" class="section dictionary-section" hidden>
+      <div class="dict-result">
+        <div class="dict-header">
+          <div class="dict-word-row">
+            <div class="dict-word" id="dict-word"></div>
+            <span id="dict-provider-badge" class="badge provider-badge" hidden></span>
+          </div>
+          <div class="dict-phonetic" id="dict-phonetic"></div>
+          <div class="dict-pos" id="dict-pos"></div>
+        </div>
+        <div class="dict-definitions" id="dict-definitions"></div>
+        <div class="dict-synonyms" id="dict-synonyms-section" hidden>
+          <span class="dict-label" data-i18n="synonyms">Synonyms</span>
+          <div class="dict-tags" id="dict-synonyms"></div>
+        </div>
+        <div class="dict-antonyms" id="dict-antonyms-section" hidden>
+          <span class="dict-label" data-i18n="antonyms">Antonyms</span>
+          <div class="dict-tags" id="dict-antonyms"></div>
+        </div>
+        <div class="dict-translation" id="dict-translation-section">
+          <span class="dict-label" data-i18n="translation">Translation</span>
+          <div class="dict-translation-row">
+            <span id="dict-translation"></span>
+            <button id="dict-copy-btn" class="icon-btn small" data-i18n-title="copyToClipboard" title="Copy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Document Upload Section -->
+    <section id="document-upload-section" class="section document-section" hidden>
+      <div class="upload-area" id="upload-area">
+        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p class="upload-text" data-i18n="uploadDocument">Upload Document</p>
+        <p class="upload-hint" data-i18n="supportedFormats">Supported: TXT files</p>
+        <input type="file" id="file-input" accept=".txt" hidden>
+        <button id="select-file-btn" class="action-btn secondary" data-i18n="selectFile">Select File</button>
+      </div>
+      <div id="document-info" class="document-info" hidden>
+        <div class="doc-details">
+          <span class="doc-name" id="doc-name"></span>
+          <span class="doc-size" id="doc-size"></span>
+        </div>
+        <button id="remove-file-btn" class="icon-btn small" data-i18n-title="removeFile" title="Remove file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <!-- Document Translate Button -->
+      <button id="translate-doc-btn" class="action-btn" hidden>
+        <span class="btn-text" data-i18n="translate">Translate</span>
+        <span class="btn-loading" hidden>
+          <svg class="spinner" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4" stroke-dashoffset="10"/>
+          </svg>
+        </span>
+      </button>
+      <div id="translation-progress" class="progress-section" hidden>
+        <div class="progress-label">
+          <span data-i18n="translating">Translating...</span>
+          <span id="progress-text">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="progress-chunks" id="progress-chunks"></div>
+        <button id="cancel-translation-btn" class="action-btn cancel-btn" data-i18n="cancel">Cancel</button>
+      </div>
+      <div id="download-section" class="download-section" hidden>
+        <div class="download-success" data-i18n="translationComplete">Translation complete!</div>
+        <button id="download-btn" class="action-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span data-i18n="downloadTranslation">Download Translation</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Image Upload Section -->
+    <section id="image-upload-section" class="section image-section" hidden>
+      <div class="upload-area" id="image-upload-area">
+        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+        <p class="upload-text" data-i18n="uploadImage">Upload Image</p>
+        <p class="upload-hint" data-i18n="imageFormats">JPG, PNG, WebP</p>
+        <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp" hidden>
+        <div class="image-upload-actions">
+          <button id="select-image-btn" class="action-btn secondary" data-i18n="selectFile">Select File</button>
+          <button id="screenshot-translate-btn" class="action-btn secondary" data-shortcut-for="screenshot-translate" title="Screenshot & Translate">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            Screenshot
+          </button>
+        </div>
+        <p class="upload-paste-hint" data-i18n="pasteFromClipboardHint">Tip: copy any image and paste it here with Ctrl+V (or ⌘V on Mac).</p>
+      </div>
+
+      <!-- Image Preview -->
+      <div id="image-preview" class="image-preview" hidden>
+        <img id="preview-img" src="" alt="Preview">
+        <button id="remove-image-btn" class="icon-btn small" data-i18n-title="removeFile" title="Remove file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Translate Image Button -->
+      <button id="translate-image-btn" class="action-btn" hidden>
+        <span class="btn-text" data-i18n="translateImage">Translate Image</span>
+        <span class="btn-loading" hidden>
+          <svg class="spinner" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4" stroke-dashoffset="10"/>
+          </svg>
+        </span>
+      </button>
+
+      <!-- Image Translation Results -->
+      <div id="image-result" class="image-result" hidden>
+        <div class="result-section">
+          <div class="result-header">
+            <span class="result-label" data-i18n="extractedText">Extracted Text</span>
+          </div>
+          <div id="extracted-text" class="result-text"></div>
+        </div>
+        <div class="result-section">
+          <div class="result-header">
+            <span class="result-label" data-i18n="translation">Translation</span>
+            <div class="result-actions">
+              <span id="image-direction-badge" class="badge" dir="ltr"></span>
+              <span id="image-provider-badge" class="badge provider-badge" hidden></span>
+              <button id="image-copy-btn" class="icon-btn small" data-i18n-title="copyToClipboard" title="Copy">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div id="image-translation" class="result-text"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Error Section -->
+    <div id="status-line" class="status-line" role="status" aria-live="polite"></div>
+
+    <div id="error-section" class="error-section" role="alert" hidden>
+      <p id="error-message"></p>
+    </div>
+
+    <!-- Review Prompt Banner -->
+    <section id="review-prompt-banner" class="review-prompt-banner" hidden>
+      <div class="review-prompt-content">
+        <span class="review-prompt-text" data-i18n="enjoyingParsipad">Enjoying ParsiPad? A rating helps other readers find it.</span>
+        <button id="review-dismiss-btn" type="button" class="review-btn-icon" data-i18n-aria-label="later" aria-label="Later">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="review-prompt-actions">
+        <a href="https://chromewebstore.google.com/detail/parsipad/kmifhjlofnblfogkjjcmhlmcecghhfbp/reviews"
+           target="_blank" rel="noopener" id="review-rate-btn" class="review-btn review-btn-primary" data-i18n="rateNow">Rate ParsiPad</a>
+        <button id="review-later-btn" type="button" class="review-btn review-btn-secondary" data-i18n="maybeLater">Later</button>
+        <button id="review-never-btn" type="button" class="review-btn review-btn-secondary" data-i18n="dontAskAgain">Don't ask again</button>
+      </div>
+    </section>
+
+    <!-- Translation History Section -->
+    <section id="history-section" class="history-section" hidden>
+      <div class="history-header history-toggle" id="history-toggle">
+        <span class="history-title" data-i18n="recentTranslations">Recent Translations</span>
+        <div class="history-header-right">
+          <div class="history-actions">
+            <button id="view-all-history-btn" class="link-btn" data-i18n="viewAll">View All</button>
+            <button id="clear-history-btn" class="link-btn" data-i18n="clearAll">Clear All</button>
+          </div>
+          <svg class="history-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+      </div>
+      <div id="history-list" class="history-list" hidden></div>
+    </section>
+
+    <!-- Polish History Section -->
+    <section id="polish-history-section" class="history-section" hidden>
+      <div class="history-header history-toggle" id="polish-history-toggle">
+        <span class="history-title" data-i18n="recentPolishes">Recent Polishes</span>
+        <div class="history-header-right">
+          <div class="history-actions">
+            <button id="view-all-polish-history-btn" class="link-btn" data-i18n="viewAll">View All</button>
+            <button id="clear-polish-history-btn" class="link-btn" data-i18n="clearAll">Clear All</button>
+          </div>
+          <svg class="history-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+      </div>
+      <div id="polish-history-list" class="history-list" hidden></div>
+    </section>
+
+    <!-- Dictionary History Section -->
+    <section id="dictionary-history-section" class="history-section" hidden>
+      <div class="history-header history-toggle" id="dict-history-toggle">
+        <span class="history-title" data-i18n="recentLookups">Recent Lookups</span>
+        <div class="history-header-right">
+          <div class="history-actions">
+            <button id="clear-dict-history-btn" class="link-btn" data-i18n="clearAll">Clear All</button>
+          </div>
+          <svg class="history-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+      </div>
+      <div id="dictionary-history-list" class="history-list" hidden></div>
+    </section>
+
+    <!-- Usage Stats Section -->
+    <section id="stats-section" class="stats-section">
+      <div class="stats-toggle" id="stats-toggle">
+        <span class="stats-title" data-i18n="usageStats">Usage Stats</span>
+        <svg class="stats-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+      <div id="stats-content" class="stats-content" hidden>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-value" id="stat-translations">0</span>
+            <span class="stat-label" data-i18n="translations">Translations</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-polishes">0</span>
+            <span class="stat-label" data-i18n="polishes">Polishes</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-input-tokens">0</span>
+            <span class="stat-label" data-i18n="inputTokens">Input Tokens</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-output-tokens">0</span>
+            <span class="stat-label" data-i18n="outputTokens">Output Tokens</span>
+          </div>
+        </div>
+        <div class="stats-actions">
+          <button id="reset-stats-btn" class="link-btn stats-reset" data-i18n="resetStats">Reset Stats</button>
+          <button id="analytics-btn" class="link-btn stats-analytics" data-i18n="analyticsViewAll">View Analytics</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>
