@@ -15,6 +15,7 @@ import { getProviderHealth, healthTone } from '../lib/provider-health.js';
 import { createFirstRun } from './first-run.js';
 import { screenshotCaptureFailed, screenshotGuidance } from './screenshot-guidance.js';
 import { classifyFile } from './file-kind.js';
+import { isFirefox, openSidebar } from '../lib/platform.js';
 
 // The popup script also runs inside the side panel, which must stay open.
 const isPanel = document.body.dataset.surface === 'panel';
@@ -216,9 +217,9 @@ function showSubmitShortcut() {
 }
 
 /**
- * Remember which window this page is in. sidePanel.open() must run inside the
- * click's user gesture, so the click handler reads this instead of awaiting
- * chrome.windows.getCurrent() first.
+ * Remember which window this page is in. Opening the side panel must run
+ * inside the click's user gesture, so the click handler reads this instead of
+ * awaiting chrome.windows.getCurrent() first.
  */
 async function cacheWindowId() {
   try {
@@ -383,13 +384,14 @@ function reopenRecent() {
  * Set up event listeners
  */
 function setupEventListeners() {
-  // Open in sidebar (not offered inside the panel itself). sidePanel.open()
-  // must run within the click's user gesture, so nothing else is awaited first.
+  // Open in sidebar (not offered inside the panel itself). Opening the panel
+  // must run within the click's user gesture, so nothing else is awaited
+  // first. Firefox opens its sidebar in the current window and needs no id.
   openSidePanelBtn.hidden = isPanel;
   openSidePanelBtn.addEventListener('click', async () => {
     try {
-      const windowId = currentWindowId ?? (await chrome.windows.getCurrent()).id;
-      await chrome.sidePanel.open({ windowId });
+      const windowId = isFirefox() ? undefined : currentWindowId ?? (await chrome.windows.getCurrent()).id;
+      await openSidebar({ windowId });
       window.close();
     } catch (error) {
       console.error('Could not open the side panel:', error);

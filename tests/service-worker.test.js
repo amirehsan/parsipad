@@ -572,6 +572,23 @@ describe('side panel', () => {
     expect(chrome.sidePanel.setPanelBehavior).toHaveBeenCalledWith({ openPanelOnActionClick: false });
   });
 
+  it("OPEN_SIDE_PANEL opens Firefox's sidebar where there is no side panel", async () => {
+    const { sidePanel, runtime } = chrome;
+    const getURL = runtime.getURL;
+    delete chrome.sidePanel;
+    runtime.getURL = (path) => `moz-extension://test-extension-id/${path}`;
+    globalThis.browser = { sidebarAction: { open: vi.fn(async () => {}) } };
+    try {
+      const res = await sendMessage({ action: 'OPEN_SIDE_PANEL' }, { tab: { id: 42 } });
+      expect(res).toEqual({ success: true });
+      expect(browser.sidebarAction.open).toHaveBeenCalledTimes(1);
+    } finally {
+      chrome.sidePanel = sidePanel;
+      runtime.getURL = getURL;
+      delete globalThis.browser;
+    }
+  });
+
   it('opens the panel from the context menu before awaiting anything', async () => {
     chrome.sidePanel.open.mockClear();
     const pending = captured.onClicked({ menuItemId: 'parsipad-open-side-panel' }, { id: 5 });

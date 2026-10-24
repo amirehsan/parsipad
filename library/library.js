@@ -30,6 +30,7 @@ import { dayGroupLabel } from '../lib/format.js';
 import { createUndoQueue } from '../lib/undo-queue.js';
 import { removeLibraryEntry, restoreLibraryEntry } from '../lib/library-actions.js';
 import { renderLibraryCard } from './card.js';
+import { openSidebar } from '../lib/platform.js';
 
 // How long Undo stays offered; the status message for a copy lasts as long.
 const UNDO_WINDOW_MS = 5000;
@@ -344,16 +345,16 @@ async function toggleFavorite(entry, button) {
 
 /**
  * Hand the entry's text to the side panel and open it, in Polish for a polish
- * entry and Translate otherwise. sidePanel.open() only works inside the
- * click's user gesture, so nothing is awaited before it; the panel picks the
- * text up from session storage when it loads, or through onChanged when it
- * is already open (sidepanel/panel.js).
+ * entry and Translate otherwise. Opening the panel (the sidebar in Firefox)
+ * only works inside the click's user gesture, so nothing is awaited before
+ * it; the panel picks the text up from session storage when it loads, or
+ * through onChanged when it is already open (sidepanel/panel.js).
  */
 function openInPanel(entry) {
   const mode = entry.kind === 'polish' ? 'polish' : 'translate';
   chrome.storage.session.set({ panel_prefill: { text: entry.original, at: Date.now(), windowId, mode } })
     .catch(error => console.error('ParsiPad: could not hand the text to the side panel', error));
-  chrome.sidePanel.open({ windowId })
+  openSidebar({ windowId })
     .catch(error => console.error('ParsiPad: could not open the side panel', error));
 }
 

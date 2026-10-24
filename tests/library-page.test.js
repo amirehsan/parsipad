@@ -23,8 +23,8 @@ describe('library page', () => {
   it('opens the panel before any await in the handler', () => {
     const body = js.slice(js.indexOf('function openInPanel'));
     const fn = body.slice(0, body.indexOf('\n}\n'));
-    expect(fn).toMatch(/chrome\.sidePanel\.open\(/);
-    expect(fn.indexOf('chrome.sidePanel.open(')).toBeLessThan(fn.indexOf('await') === -1 ? Infinity : fn.indexOf('await'));
+    expect(fn).toMatch(/openSidebar\(/);
+    expect(fn.indexOf('openSidebar(')).toBeLessThan(fn.indexOf('await') === -1 ? Infinity : fn.indexOf('await'));
   });
   it('redirects the old pages to the matching tab', () => {
     expect(read('history/history.html')).toMatch(/http-equiv="refresh"[^>]+url=\.\.\/library\/library\.html\?tab=history/);
