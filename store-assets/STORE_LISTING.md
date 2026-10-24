@@ -10,10 +10,11 @@ Hover any paragraph to translate it. Screenshot translate, grammar lessons, flas
 
 ParsiPad is a powerful AI-powered translation extension that makes Persian-English translation seamless and intelligent.
 
-Version 3.1.0:
-• Block Translate - Rest the pointer on any paragraph, post, or heading and a small icon appears at its corner; click it to insert the Persian directly underneath
-• The original is never touched - the translation is inserted beside it, so both can be read together
-• Works on any site with no setup, and can be switched off in Settings, where it is on by default (Alt+B)
+Version 3.4.0:
+• Library - History, Favorites and saved grammar Lessons in one page, with search, filters, and Undo on delete
+• Practice - flashcards from your favorites, in the side panel or a tab
+• Saved grammar lessons reopen with no new request to your provider
+• The New Tab page is gone, along with the bookmarks and most-visited permissions it needed
 
 🖱️ **Block Translate** (NEW!)
 Read a page in Persian without leaving it:
@@ -99,7 +100,7 @@ Save your best translations and learn vocabulary:
 • Select text and use the floating popup
 • Right-click context menu for translation, polish, dictionary, page, or screenshot translate
 • Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary), Alt+P (page), Alt+S (screenshot), Alt+B (block translate)
-• Popup interface with 4 tabs: Text, Dictionary, Document, Image
+• Popup and side panel with three modes: Translate, Polish, and Doc & Image
 
 📚 **Library**
 • One place for History, Favorites, and saved grammar Lessons, in tabs
