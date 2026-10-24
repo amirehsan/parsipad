@@ -1,6 +1,6 @@
 // tests/direction-label.test.js
 import { describe, it, expect } from 'vitest';
-import { directionLabel } from '../lib/direction-label.js';
+import { directionLabel, directionKey } from '../lib/direction-label.js';
 
 /**
  * Four pages formatted the stored direction four ways, and two of them
@@ -28,5 +28,22 @@ describe('directionLabel', () => {
     expect(directionLabel('')).toBe('');
     expect(directionLabel('english')).toBe('');
     expect(directionLabel('en-en')).toBe('');
+  });
+});
+
+describe('directionKey', () => {
+  it.each([
+    ['EN → FA', 'en-fa'],
+    ['en-to-fa', 'en-fa'],
+    ['en-fa', 'en-fa'],
+    [' FA-to-EN ', 'fa-en']
+  ])('%s -> %s', (input, expected) => {
+    expect(directionKey(input)).toBe(expected);
+  });
+
+  it('returns empty for missing or malformed input', () => {
+    expect(directionKey('nonsense')).toBe('');
+    expect(directionKey(undefined)).toBe('');
+    expect(directionKey('en-en')).toBe('');
   });
 });
