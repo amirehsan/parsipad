@@ -18,6 +18,8 @@ All data is stored locally on your device using Chrome's storage API:
 - **Page Translation Preference**: Whether ParsiPad asks before translating a whole page (the "Ask before translating a whole page" setting, which "Don't ask again" turns off) is stored locally. The estimated cost shown in that question is worked out in your browser and sends nothing.
 - **Translation History**: Recent translations (up to 50 entries) are stored locally for your convenience.
 - **Translation Cache**: Recent translations are cached locally to reduce API calls and improve response times.
+- **Bookmarks (Read-Only)**: The New Tab page reads your Chrome bookmarks to show them in a searchable drawer. Bookmark data is never modified, stored separately, or sent anywhere.
+- **Most Visited Sites (Optional)**: Only if you switch on Most visited in Settings, the New Tab page reads your most visited sites to show them as tiles. Chrome asks for this permission first, and switching the panel off gives it back. The list is never stored or sent anywhere, and site icons come from your browser's own cache, not an outside service.
 
 ### What We Do NOT Collect
 

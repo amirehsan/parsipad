@@ -66,7 +66,7 @@ Translate text from any area on a webpage:
 
 🖼️ **Image Translation**
 Extract and translate text from images:
-• Upload images or paste from clipboard
+• Drop, choose, or paste an image into the same drop zone
 • OCR extracts text automatically
 • Supports JPG, PNG, WebP (up to 5MB)
 
@@ -87,7 +87,7 @@ Look up any word to get comprehensive lexical information:
 
 📄 **Document Translation**
 Translate entire documents with ease:
-• Upload TXT files directly
+• Drop, choose, or paste a TXT file into the Doc & Image drop zone
 • Progress tracking with chunk indicator
 • Cancel anytime during long translations
 • Download translated file when complete
@@ -99,6 +99,7 @@ Save your best translations and learn vocabulary:
 • Each card shows the saved translation; flip it to reveal the original text
 • Navigate with keyboard shortcuts: arrows to move, Space or Enter to flip, C to copy
 • Choose 5 to 30 cards per session in Settings
+• A saved word on every new tab, with the time, a greeting, a bookmarks drawer ("/") and optional Most visited tiles
 
 🎯 **Multiple Ways to Use**
 • Select text and use the selection toolbar: Translate, Polish, Dictionary, and a button to mute the site. It works with mouse, touch, and keyboard (Tab to enter, arrow keys to move, Escape to close) and never appears inside text fields
@@ -169,6 +170,7 @@ English, Persian
 - This extension stores data locally on your device
 - Your API key is only sent to your chosen AI provider's servers for translation
 - No personal data is collected or shared
+- Bookmarks and most visited sites are read only to draw the New Tab page and never leave your device
 - See our privacy policy for details
 
 ---
@@ -189,6 +191,7 @@ You'll need to create these screenshots (1280x800 or 640x400):
 9. **Popup interface** - Show the main popup with translation
 10. **Settings page** - Show AI provider selection and settings
 11. **Dark mode** - Show any view in dark mode
+12. **New Tab** - Show a saved word with the clock, greeting and bookmarks drawer
 
 ---
 
