@@ -267,9 +267,13 @@ export function getScreenshotStyles() {
   `;
 }
 
-export function getSelectionPopupStyles(showBelow = false) {
-  const animFrom = showBelow ? 'translateY(-8px)' : 'translateY(8px)';
-
+/**
+ * Styles for the selection toolbar. Its entry direction is not known until
+ * it has been measured and placed, so the animation hangs off the
+ * data-placement attribute createSelectionPopup sets afterwards: while it is
+ * measured nothing animates, and it then grows away from the selection.
+ */
+export function getSelectionPopupStyles() {
   return `
     ${themeVars()}
     :host {
@@ -294,13 +298,31 @@ export function getSelectionPopupStyles(showBelow = false) {
         0 1px 3px rgba(27, 24, 38, 0.08),
         0 0 0 1px rgba(27, 24, 38, 0.04);
       padding: 6px;
-      animation: popup-spring-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    @keyframes popup-spring-in {
+    .selection-popup[data-placement='above'] {
+      animation: popup-spring-in-above 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .selection-popup[data-placement='below'] {
+      animation: popup-spring-in-below 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes popup-spring-in-above {
       from {
         opacity: 0;
-        transform: ${animFrom} scale(0.95);
+        transform: translateY(8px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes popup-spring-in-below {
+      from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.95);
       }
       to {
         opacity: 1;

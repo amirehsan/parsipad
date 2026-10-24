@@ -24,6 +24,7 @@ import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
 import { selectionToReport, createSelectionReporter, isEditableSelection, MAX_REPORT_LENGTH } from './selection-report.js';
 import { createToolbarTrigger, selectionAnchor, isSameAnchor } from './toolbar-trigger.js';
 import { MUTED_SITES_KEY, isHostMuted } from '../lib/muted-sites.js';
+import { rovingIndex, applyRovingTabindex } from '../lib/roving.js';
 import { initBlockTranslate, translateFocusedBlock, hideBlockIcon, isBlockTranslateEnabled } from './blocks/index.js';
 
 // Re-injection guard: skip if the script has already run in this isolated world.
@@ -49,6 +50,11 @@ let userLang = 'en';
 // What the selection toolbar on screen was built for (text and range
 // rectangle), so a selectionchange that moves nothing does not rebuild it.
 let selectionPopupAnchor = null;
+// The keyboard path through the toolbar: the element focused when Tab moved
+// focus in, which gets it back when the toolbar closes or Tab leaves it, and
+// whether focus has already left this toolbar, after which Tab passes it by.
+let selectionPopupReturnFocus = null;
+let selectionPopupFocusLeft = false;
 let currentPolishOriginalText = null; // Store original text for regeneration
 let currentTranslationData = null; // Store current translation for favorites
 let currentDictionaryData = null; // Store current dictionary result for favorites
@@ -2637,6 +2643,15 @@ function handleDocumentClick(event) {
  * Handle keyboard events
  */
 function handleKeyDown(event) {
+  // The keyboard path into the selection toolbar, which never takes focus on
+  // its own. Remembers where focus was so it can go back there.
+  if (shouldTabIntoSelectionPopup(event)) {
+    selectionPopupReturnFocus = document.activeElement;
+    event.preventDefault();
+    focusSelectionPopup();
+    return;
+  }
+
   // The non-pointer path into block translate. Kept here rather than in
   // manifest.commands because Chrome allows only four suggested keys and all
   // four are already assigned.
@@ -2653,10 +2668,7 @@ function handleKeyDown(event) {
   // anyway, since resolveBlock hard-rejects editable regions; and the enabled
   // check runs before preventDefault so a user who turned the feature off
   // keeps the shortcut everywhere else.
-  const keyTarget = event.target;
-  const isEditableTarget = keyTarget instanceof HTMLElement &&
-    (keyTarget.isContentEditable || keyTarget.tagName === 'INPUT' ||
-     keyTarget.tagName === 'TEXTAREA' || keyTarget.tagName === 'SELECT');
+  const isEditableTarget = isEditableKeyTarget(event.target);
 
   if (event.altKey && !event.ctrlKey && !event.metaKey && !isEditableTarget &&
       isBlockTranslateEnabled() &&
@@ -2676,9 +2688,67 @@ function handleKeyDown(event) {
       removeFloatingBox();
     }
     if (selectionPopup) {
+      // Hands focus back to where it was when Tab moved it into the toolbar.
       removeSelectionPopup();
     }
   }
+}
+
+/**
+ * Whether a key event's target takes typed text, where keys belong to it.
+ * @param {EventTarget|null} target
+ * @returns {boolean}
+ */
+function isEditableKeyTarget(target) {
+  return target instanceof HTMLElement &&
+    (target.isContentEditable || target.tagName === 'INPUT' ||
+     target.tagName === 'TEXTAREA' || target.tagName === 'SELECT');
+}
+
+/**
+ * Whether this keydown should move focus into the selection toolbar: a plain
+ * Tab while the toolbar is up, from anywhere but a text field, the toolbar
+ * itself or the floating box. keydown from inside a closed shadow root
+ * reaches the document retargeted to its host, so the composed path, not the
+ * target, says where it came from; without that check Tab could never leave
+ * the toolbar. Once focus has left the toolbar, Tab passes it by, or every
+ * Tab on the page would pull focus back into it. A page that handled Tab
+ * itself (a dialog's focus trap) keeps it.
+ * @param {KeyboardEvent} event
+ * @returns {boolean}
+ */
+function shouldTabIntoSelectionPopup(event) {
+  if (event.key !== 'Tab' || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return false;
+  if (!selectionPopup || selectionPopupFocusLeft || event.defaultPrevented) return false;
+  const path = event.composedPath();
+  if (isEditableKeyTarget(path[0])) return false;
+  return !path.includes(selectionPopup) && !(floatingBox && path.includes(floatingBox));
+}
+
+/**
+ * Focus the toolbar's current tab stop. Without scrolling: the toolbar was
+ * just placed beside the selection, which is already in view.
+ */
+function focusSelectionPopup() {
+  if (!selectionPopupShadow) return;
+  const active = selectionPopupShadow.querySelector('.selection-btn[tabindex="0"]');
+  if (active) active.focus({ preventScroll: true });
+}
+
+/**
+ * Give focus back to the element that had it when Tab moved it into the
+ * toolbar. Nothing to do when that was the page itself (the body) or the
+ * element has since left the document.
+ * @returns {boolean} whether focus moved
+ */
+function returnFocusFromSelectionPopup() {
+  const returnTo = selectionPopupReturnFocus;
+  if (!returnTo || returnTo === document.body || typeof returnTo.focus !== 'function' ||
+      !document.contains(returnTo)) {
+    return false;
+  }
+  returnTo.focus({ preventScroll: true });
+  return true;
 }
 
 
@@ -3064,91 +3134,45 @@ function evaluateSelection() {
     return;
   }
 
-  const anchor = selectionAnchor(selectedText, selection.getRangeAt(0).getBoundingClientRect());
+  const rect = selection.getRangeAt(0).getBoundingClientRect();
+  const anchor = selectionAnchor(selectedText, rect);
   if (selectionPopup && selectionPopup.isConnected && isSameAnchor(anchor, selectionPopupAnchor)) return;
 
   removeSelectionPopup();
-  createSelectionPopup(getSelectionPopupPosition(selection), selectedText);
+  createSelectionPopup(rect, selectedText);
   selectionPopupAnchor = anchor;
 }
 
 /**
- * Get position for selection popup (centered on selection)
- * Uses smart flip to position above or below based on available space
+ * Create the selection toolbar for the selected text.
+ *
+ * Laid out hidden and measured first, so it is placed from its real size:
+ * above the selection and centred on it, flipping below and clamping at the
+ * viewport edges. Its entry animation is chosen after that, from where it
+ * landed. It never takes focus on its own; Tab moves focus in (see
+ * handleKeyDown), the arrow keys move between its buttons, and Tab leaves.
+ *
+ * @param {{top: number, bottom: number, left: number, right: number}} selectionRect - viewport coordinates
+ * @param {string} selectedText
  */
-function getSelectionPopupPosition(selection) {
-  // Constants for popup dimensions
-  const POPUP_WIDTH = 120;
-  const POPUP_HEIGHT = 46;
-  const GAP = 8;
-  const VIEWPORT_PADDING = 12;
-
-  let top = 100;
-  let left = 100;
-  let showBelow = false;
-
-  if (selection && selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-
-    // Center popup horizontally on selection
-    const selectionCenterX = rect.left + (rect.width / 2);
-    left = selectionCenterX + window.scrollX - (POPUP_WIDTH / 2);
-
-    // Calculate space above and below selection
-    const spaceAbove = rect.top;
-    const spaceBelow = window.innerHeight - rect.bottom;
-
-    // Prefer above, but flip to below if not enough space above AND more space below
-    if (spaceAbove < POPUP_HEIGHT + GAP && spaceBelow > spaceAbove) {
-      // Show below selection
-      top = rect.bottom + window.scrollY + GAP;
-      showBelow = true;
-    } else {
-      // Show above selection
-      top = rect.top + window.scrollY - POPUP_HEIGHT - GAP;
-    }
-
-    // Ensure popup stays within horizontal viewport bounds
-    const maxLeft = window.innerWidth - POPUP_WIDTH - VIEWPORT_PADDING;
-    if (left > maxLeft) {
-      left = maxLeft > 0 ? maxLeft : VIEWPORT_PADDING;
-    }
-    if (left < VIEWPORT_PADDING) {
-      left = VIEWPORT_PADDING;
-    }
-
-    // Ensure popup stays within vertical viewport bounds
-    const scrollTop = window.scrollY;
-    if (top < scrollTop + VIEWPORT_PADDING) {
-      top = scrollTop + VIEWPORT_PADDING;
-    }
-  }
-
-  return { top, left, showBelow };
-}
-
-/**
- * Create the selection popup with action icons
- */
-function createSelectionPopup(position, selectedText) {
+function createSelectionPopup(selectionRect, selectedText) {
   // Create host element
   const host = document.createElement('div');
   host.id = 'parsipad-selection-popup';
   host.style.cssText = `
     position: absolute;
-    top: ${position.top}px;
-    left: ${position.left}px;
+    top: 0;
+    left: 0;
     z-index: 2147483647;
+    visibility: hidden;
   `;
 
   // Create shadow root for style isolation
   selectionPopupShadow = host.attachShadow({ mode: 'closed' });
 
   applyHostTheme(host);
-  // Inject styles with animation direction based on position
   const style = document.createElement('style');
-  style.textContent = getSelectionPopupStyles(position.showBelow);
+  style.textContent = getSelectionPopupStyles();
   selectionPopupShadow.appendChild(style);
 
   // Check if selected text is a single word (for dictionary)
@@ -3158,34 +3182,34 @@ function createSelectionPopup(position, selectedText) {
   const popup = document.createElement('div');
   popup.className = 'selection-popup';
   popup.setAttribute('role', 'toolbar');
-  popup.setAttribute('aria-label', 'Text actions');
-  // Build the three icon buttons via DOM API so we can safely append a real
+  popup.setAttribute('aria-label', t('toolbarLabel', userLang));
+  // Build the icon buttons via DOM API so we can safely append a real
   // <span class="pp-tooltip"> for each label without relying on innerHTML
   // interpolation. Tooltips use theme-aware tokens so they stay legible on
   // dark host pages (previous ::before approach was dark-on-dark).
-  const dictTooltipText = isSingleWord ? 'Dictionary' : 'Single word only';
-  const dictAria = 'Look up in dictionary' + (isSingleWord ? '' : ' (single word only)');
+  const dictionaryKey = isSingleWord ? 'toolbarDictionary' : 'toolbarDictionarySingleWord';
   const buttons = [
     {
       action: 'translate',
-      label: 'Translate',
-      ariaLabel: 'Translate selected text',
+      label: t('toolbarTranslate', userLang),
+      ariaLabel: t('toolbarTranslate', userLang),
       svgPath: 'M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129'
     },
     {
       action: 'polish',
-      label: 'Polish',
-      ariaLabel: 'Polish and improve text',
+      label: t('toolbarPolish', userLang),
+      ariaLabel: t('toolbarPolish', userLang),
       svgPath: 'M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z'
     },
     {
       action: 'dictionary',
-      label: dictTooltipText,
-      ariaLabel: dictAria,
+      label: t(dictionaryKey, userLang),
+      ariaLabel: t(dictionaryKey, userLang),
       disabled: !isSingleWord,
       svgPath: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253'
     }
   ];
+  const buttonEls = [];
   for (const cfg of buttons) {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -3213,15 +3237,34 @@ function createSelectionPopup(position, selectedText) {
     btn.appendChild(tooltip);
 
     popup.appendChild(btn);
+    buttonEls.push(btn);
   }
+  // One tab stop for the whole toolbar; the arrow keys move it.
+  applyRovingTabindex(buttonEls, 0);
 
   selectionPopupShadow.appendChild(popup);
   document.body.appendChild(host);
 
   selectionPopup = host;
 
+  // Laid out but not painted: measure, place, pick the entry direction, show.
+  const size = host.getBoundingClientRect();
+  const { top, left, placement } = computeBoxPosition({
+    selection: selectionRect,
+    box: { width: size.width, height: size.height },
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    scroll: { x: window.scrollX, y: window.scrollY },
+    gap: 8, padding: 12,
+    prefer: 'above',
+    align: 'center'
+  });
+  host.style.top = `${top}px`;
+  host.style.left = `${left}px`;
+  popup.dataset.placement = placement;
+  host.style.visibility = 'visible';
+
   // Set up event listeners
-  popup.querySelectorAll('.selection-btn').forEach(btn => {
+  buttonEls.forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const action = btn.dataset.action;
@@ -3240,19 +3283,50 @@ function createSelectionPopup(position, selectedText) {
     });
   });
 
+  popup.addEventListener('keydown', (event) => {
+    if (event.key === 'Tab') {
+      // Focus is leaving, and Tab passes this toolbar by from now on. Back on
+      // the element focus came in from, Shift+Tab stays there and Tab lets
+      // the browser move on from it, as if the toolbar sat right after it.
+      selectionPopupFocusLeft = true;
+      if (returnFocusFromSelectionPopup()) {
+        if (event.shiftKey) event.preventDefault();
+      }
+      return;
+    }
+    // Plain arrows only: Alt+Left is the browser's Back.
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    const current = buttonEls.indexOf(event.target);
+    if (current === -1) return;
+    const next = rovingIndex(current, event.key, buttonEls.length);
+    if (next === null) return;
+    // Handled here: the arrows must not also scroll the page or reach its
+    // own shortcuts.
+    event.preventDefault();
+    event.stopPropagation();
+    applyRovingTabindex(buttonEls, next);
+    buttonEls[next].focus();
+  });
+
   // Prevent clicks inside popup from triggering document click
   popup.addEventListener('click', (e) => e.stopPropagation());
 }
 
 /**
- * Remove the selection popup
+ * Remove the selection toolbar. When focus was on one of its buttons, it
+ * goes back to the element that had it before Tab moved it in, rather than
+ * dropping to <body>.
  */
 function removeSelectionPopup() {
   if (selectionPopup) {
+    const hadFocus = document.activeElement === selectionPopup;
     selectionPopup.remove();
     selectionPopup = null;
     selectionPopupShadow = null;
+    if (hadFocus) returnFocusFromSelectionPopup();
   }
+  selectionPopupReturnFocus = null;
+  selectionPopupFocusLeft = false;
   selectionPopupAnchor = null;
 }
 
