@@ -753,30 +753,6 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   height: 1.25rem;
 }
 
-.input-hint {
-  font-size: 0.875rem;
-  color: var(--gray-500);
-  margin-top: 0.5rem;
-}
-
-.dark .input-hint {
-  color: var(--gray-400);
-}
-
-.text-link {
-  color: var(--primary-500);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.text-link:hover {
-  text-decoration: underline;
-}
-
-.text-link svg {
-  vertical-align: middle;
-}
-
 /* Buttons */
 .button-group {
   display: flex;
@@ -1283,12 +1259,16 @@ footer div {
   flex: none;
   padding: var(--space-1) var(--space-stack-item);
   font-size: 0.8125rem;
-  font-family: var(--font-persian);
+  font-family: inherit;
   color: var(--color-text-secondary);
   background: transparent;
   border: 1px solid var(--color-border);
   border-radius: 999px;
   cursor: pointer;
+}
+
+.key-help-lang[lang="fa"] {
+  font-family: var(--font-persian);
 }
 
 .key-help-lang:hover {

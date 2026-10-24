@@ -744,7 +744,9 @@ async function saveAndTestApiKeys(provider) {
   if (input) {
     const apiKey = input.value.trim();
     if (!apiKey) {
+      // Nothing typed and nothing stored: there is no key to test.
       showStatus(t('pleaseEnterApiKey', currentLang), 'error');
+      setKeyTestStatus(provider, t('pleaseEnterApiKey', currentLang), 'error');
       return;
     }
     if (!savedProviders.includes(PROVIDER_CONFIGS[provider].name)) {
@@ -778,6 +780,7 @@ async function handleClearApiKey(provider) {
   if (!confirm(t('confirmClearApiKey', currentLang).replace('{provider}', config.name))) return;
 
   await removeProviderApiKey(provider);
+  setKeyTestStatus(provider, '', '');
 
   if (input) {
     input.value = '';

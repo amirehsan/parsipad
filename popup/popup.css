@@ -418,12 +418,16 @@ body {
   min-height: 28px;
   padding: 0 var(--space-stack-item);
   font-size: 12px;
-  font-family: var(--font-persian);
+  font-family: inherit;
   color: var(--color-text-secondary);
   background: transparent;
   border: 1px solid var(--color-border);
   border-radius: 999px;
   cursor: pointer;
+}
+
+.key-help-lang[lang="fa"] {
+  font-family: var(--font-persian);
 }
 
 .key-help-lang:hover {
