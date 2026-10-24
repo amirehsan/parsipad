@@ -8,6 +8,8 @@ const chipText = document.getElementById('selection-chip-text');
 const chipTranslateBtn = document.getElementById('selection-chip-translate');
 
 let selectedText = '';
+// The window this panel lives in. Set once at init; null if it cannot be read.
+let panelWindowId = null;
 
 function showChip(text) {
   selectedText = text;
@@ -57,16 +59,26 @@ async function pullSelection() {
  * Wire the page-selection chip. The text arrives from content scripts over
  * chrome.runtime and never leaves the browser.
  */
-export function initPanel() {
+export async function initPanel() {
+  try {
+    panelWindowId = (await chrome.windows.getCurrent()).id;
+  } catch {
+    // Without a window id nothing can be scoped; behave as a single window
+  }
+
   chrome.runtime.onMessage.addListener((message, sender) => {
     if (message?.action !== 'SELECTION_CHANGED' || typeof message.text !== 'string') return;
+    // Another window's page is not what this panel is showing.
+    if (panelWindowId !== null && sender?.tab && sender.tab.windowId !== panelWindowId) return;
     // A background tab can still fire selectionchange; only the tab being read counts.
     if (sender?.tab && sender.tab.active === false) return;
     showChip(message.text);
   });
 
-  // The selection belongs to the tab it was made in.
-  chrome.tabs.onActivated.addListener(() => {
+  // The selection belongs to the tab it was made in. A tab switch in another
+  // window leaves this window's chip alone.
+  chrome.tabs.onActivated.addListener((activeInfo) => {
+    if (panelWindowId !== null && activeInfo?.windowId !== panelWindowId) return;
     hideChip();
     pullSelection();
   });

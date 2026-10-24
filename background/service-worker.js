@@ -54,6 +54,9 @@ async function handleMessage(message, sender) {
       return handleDictionaryLookup(message.word, message.sourceLang);
 
     case ACTIONS.OPEN_SIDE_PANEL:
+      // Send this only from an extension page, inside a click handler.
+      // sidePanel.open() needs a user gesture, which does not survive
+      // messaging, so a content script cannot use this route.
       return handleOpenSidePanel(message.tabId ?? sender?.tab?.id);
 
     case ACTIONS.SELECTION_CHANGED:

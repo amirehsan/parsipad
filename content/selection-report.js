@@ -10,18 +10,47 @@ export const MAX_REPORT_LENGTH = 2000;
 const EDITABLE_TAGS = new Set(['INPUT', 'TEXTAREA']);
 
 /**
+ * The element that really has focus. document.activeElement stops at the
+ * shadow host when focus is inside an open shadow root, so walk down through
+ * every open root to the deepest active element.
+ * @param {Element | null} element
+ * @returns {Element | null}
+ */
+function deepestActiveElement(element) {
+  let current = element;
+  while (current && current.shadowRoot && current.shadowRoot.activeElement) {
+    current = current.shadowRoot.activeElement;
+  }
+  return current;
+}
+
+/**
+ * A custom element (its tag name contains a hyphen) with no reachable shadow
+ * root may be hiding a text field behind a closed root. That cannot be
+ * checked, so it counts as editable.
+ * @param {Element} element
+ * @returns {boolean}
+ */
+function isOpaqueCustomElement(element) {
+  return String(element.localName || '').includes('-') && !element.shadowRoot;
+}
+
+/**
  * Turn the page selection into the text worth offering, or null.
- * Selections inside form fields and editable regions are skipped, which also
- * keeps anything typed into a password field out of the report.
+ * Selections inside form fields and editable regions are skipped, including
+ * fields inside shadow DOM, which also keeps anything typed into a password
+ * field out of the report.
  * @param {Selection | null} selection
  * @param {Element | null} activeElement
  * @returns {string | null}
  */
 export function selectionToReport(selection, activeElement) {
   if (!selection) return null;
-  if (activeElement) {
-    if (EDITABLE_TAGS.has(String(activeElement.tagName).toUpperCase())) return null;
-    if (activeElement.isContentEditable) return null;
+  const focused = deepestActiveElement(activeElement);
+  if (focused) {
+    if (EDITABLE_TAGS.has(String(focused.tagName).toUpperCase())) return null;
+    if (focused.isContentEditable) return null;
+    if (isOpaqueCustomElement(focused)) return null;
   }
   const text = selection.toString().trim();
   if (text.length < MIN_REPORT_LENGTH) return null;

@@ -47,7 +47,7 @@ describe('selection chip wiring', () => {
   it('pulls the current selection from the content script on open and on tab change', () => {
     const panelJs = read('sidepanel/panel.js');
     expect(panelJs).toMatch(/action: 'GET_SELECTION'/);
-    expect(panelJs).toMatch(/onActivated\.addListener\(\(\) => \{\s*hideChip\(\);\s*pullSelection\(\);/);
+    expect(panelJs).toMatch(/onActivated\.addListener\(\(activeInfo\) => \{\s*if \([^\n]*\) return;\s*hideChip\(\);\s*pullSelection\(\);/);
     expect(read('content/main.js')).toMatch(/case 'GET_SELECTION':/);
   });
 

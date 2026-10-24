@@ -73,9 +73,12 @@ Content script on <all_urls>
   ParsiPad's core feature is translating text the user selects on any page,
   so the content script has to be able to run wherever the user is reading.
   It does nothing until the user acts: it listens for a selection and only
-  then offers the translate/polish/dictionary controls. It does not read,
-  collect or transmit page content on its own, and injects no code from any
-  remote source.
+  then offers the translate/polish/dictionary controls. When the user
+  selects text, the selection (never text inside form fields, at most 2000
+  characters) is passed to ParsiPad's own side panel so it can offer to
+  translate it; it never leaves the browser. Page text goes to the user's
+  chosen AI provider only when the user asks for a translation. The content
+  script injects no code from any remote source.
 
 ====================================================================
 Store listing URLs

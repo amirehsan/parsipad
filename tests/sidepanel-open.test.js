@@ -48,3 +48,23 @@ describe('closing the popup', () => {
     expect(guarded).toHaveLength(all.length - 1);
   });
 });
+
+describe('long-lived panel keeps up with the rest of the extension', () => {
+  it('opens the panel with a window id cached at init, awaiting nothing first', () => {
+    const start = popupJs.indexOf("openSidePanelBtn.addEventListener('click'");
+    const body = popupJs.slice(start, popupJs.indexOf('\n  });', start));
+    // Cached once at init, used directly; getCurrent is only the fallback.
+    expect(popupJs).toMatch(/async function cacheWindowId\(\)/);
+    expect(popupJs.slice(popupJs.indexOf('async function init()'), popupJs.indexOf('async function init()') + 400)).toMatch(/cacheWindowId\(\)/);
+    expect(body).toMatch(/currentWindowId \?\? \(await chrome\.windows\.getCurrent\(\)\)\.id/);
+  });
+
+  it('re-applies the theme and the language when either changes in storage', () => {
+    const match = popupJs.match(/chrome\.storage\.onChanged\.addListener\(\(changes, area\) => \{\s*if \(area === 'local' && \(STORAGE_KEYS\.theme in changes[\s\S]*?\n  \}\);/);
+    expect(match, 'theme and language listener').toBeTruthy();
+    const listener = match[0];
+    expect(listener).toMatch(/STORAGE_KEYS\.language in changes/);
+    expect(listener).toMatch(/initTheme\(\)/);
+    expect(listener).toMatch(/initLanguage\(\)/);
+  });
+});

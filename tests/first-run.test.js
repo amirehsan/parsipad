@@ -136,6 +136,26 @@ describe('first run key section', () => {
     expect(ctl.isHolding()).toBe(false);
   });
 
+  it('keeps Translate locked when the provider is switched inside the success window', async () => {
+    setup();
+    await ctl.check();
+    await type('sk-ant-good');
+    await ctl.submit();
+    expect(ctl.isHolding()).toBe(true);
+
+    radio('gemini').checked = true;
+    radio('gemini').dispatchEvent(new doc.defaultView.Event('change'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(selected).toBe('gemini');
+
+    await vi.advanceTimersByTimeAsync(1500);
+
+    // Gemini has no key, so the section stays and Translate stays off.
+    expect(doc.getElementById('first-run').hidden).toBe(false);
+    expect(actionBtn.disabled).toBe(true);
+    expect(ctl.isHolding()).toBe(false);
+  });
+
   it('locks the provider radios while a test is in flight', async () => {
     setup();
     await ctl.check();
