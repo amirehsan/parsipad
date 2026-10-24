@@ -12,6 +12,19 @@ describe('reading section', () => {
     await storage.setConfirmPageTranslate(false);
     expect(await storage.getConfirmPageTranslate()).toBe(false);
   });
+  it('treats anything but a stored false as asking', async () => {
+    for (const junk of ['no', 0, null, '', 'false', {}]) {
+      store.set('confirm_page_translate', junk);
+      expect(await storage.getConfirmPageTranslate(), JSON.stringify(junk)).toBe(true);
+    }
+  });
+  it('keeps the muted-sites status region rendered when it is empty', () => {
+    const css = fs.readFileSync(path.resolve(__dirname, '../settings/settings.css'), 'utf8');
+    const empty = css.match(/\.muted-status:empty\s*\{([^}]*)\}/);
+    expect(empty, '.muted-status:empty').not.toBeNull();
+    expect(empty[1]).not.toMatch(/display:\s*none/);
+    expect(empty[1]).toMatch(/margin-top:\s*0/);
+  });
   it('has the confirmation switch and a labelled muted-sites form', () => {
     const reading = html.slice(html.indexOf('<section id="reading"'), html.indexOf('</section>', html.indexOf('<section id="reading"')));
     expect(reading).toMatch(/id="confirm-page-translate-toggle"[^>]*role="switch"|role="switch"[^>]*id="confirm-page-translate-toggle"/);

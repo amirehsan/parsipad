@@ -346,7 +346,8 @@ body.dark {
   border: none;
 }
 
-.btn:disabled {
+.btn:disabled,
+.btn[aria-disabled="true"] {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -371,7 +372,7 @@ body.dark {
   color: var(--color-gray-50);
 }
 
-.btn-primary:hover:not(:disabled) {
+.btn-primary:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--primary-600);
   box-shadow: var(--shadow-button-hover);
 }
@@ -494,6 +495,64 @@ body.dark {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
   margin-bottom: var(--space-stack-group);
+}
+
+/* Try it: the sample, Translate, the result and Done */
+.try-section {
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-inset-card);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-card);
+  margin-bottom: var(--space-12);
+}
+
+.try-title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--space-inline-actions);
+}
+
+.try-intro {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-stack-group);
+}
+
+/* The sample is English content in both UI languages */
+.try-source {
+  font-size: var(--text-lg);
+  color: var(--color-text);
+  padding: var(--space-stack-item) var(--space-stack-group);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  margin-bottom: var(--space-stack-item);
+}
+
+.try-source[lang="en"] {
+  font-family: var(--font-sans);
+}
+
+/* The live region stays rendered when empty; only its spacing goes */
+.try-result {
+  font-size: var(--text-lg);
+  color: var(--color-text);
+  margin: var(--space-stack-item) 0 var(--space-stack-group);
+}
+
+.try-result:empty {
+  margin: 0 0 var(--space-stack-group);
+}
+
+.try-result[lang="fa"] {
+  font-family: var(--font-persian);
+}
+
+.try-result[data-state="error"] {
+  font-size: var(--text-sm);
+  color: var(--color-error-500);
 }
 
 /* Features */

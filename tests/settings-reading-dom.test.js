@@ -200,6 +200,37 @@ describe.each(['en', 'fa'])('muted sites in %s', (lang) => {
   });
 });
 
+describe('muted sites live update', () => {
+  it('a failed reload of the list is caught, not left unhandled', async () => {
+    await loadSettings('en', ['a.com']);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      chrome.storage.local.get.mockRejectedValue(new Error('storage gone'));
+      for (const listener of changeListeners) {
+        listener({ [STORAGE_KEYS.mutedSites]: { oldValue: ['a.com'], newValue: [] } }, 'local');
+      }
+      await vi.waitFor(() => expect(warn).toHaveBeenCalled());
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(unhandled).not.toHaveBeenCalled();
+      expect(chipHosts()).toEqual(['a.com']);
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
+});
+
+describe('View Welcome Guide', () => {
+  it('opens the guide in this tab, marked as coming from Settings', async () => {
+    await loadSettings('en');
+    const hrefSetter = vi.spyOn(location, 'href', 'set').mockImplementation(() => {});
+    document.getElementById('welcome-guide-btn').click();
+    expect(hrefSetter).toHaveBeenCalledWith('../welcome/welcome.html?from=settings');
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
+  });
+});
+
 describe('ask before translating a whole page', () => {
   it('is wired and stored but its row stays hidden until Plan E', async () => {
     await loadSettings('en');
