@@ -103,7 +103,7 @@ describe('computeBoxPosition, preferring above and centred (the selection toolba
 
   it('comes to rest inside the viewport when the selection is scrolled out below it', () => {
     const r = computeBoxPosition({ ...above, selection: { top: 1000, bottom: 1020, left: 400, right: 500 } });
-    expect(r.top).toBe(800 - 40 - 8);
+    expect(r.top).toBe(800 - 40 - 12);
   });
 
   it('adds the scroll offset to the centred position', () => {
@@ -120,8 +120,8 @@ describe('computeBoxPosition, preferring above and centred (the selection toolba
               const selection = { top, bottom: top + height, left, right: left + width };
               const r = computeBoxPosition({ ...above, box, selection });
               const where = JSON.stringify(selection);
-              expect(r.top, where).toBeGreaterThanOrEqual(0);
-              expect(r.top + box.height, where).toBeLessThanOrEqual(view.height);
+              expect(r.top, where).toBeGreaterThanOrEqual(12);
+              expect(r.top + box.height, where).toBeLessThanOrEqual(view.height - 12);
               expect(r.left, where).toBeGreaterThanOrEqual(12);
               expect(r.left + box.width, where).toBeLessThanOrEqual(view.width - 12);
             }
@@ -141,6 +141,37 @@ describe('computeBoxPosition defaults (the floating box)', () => {
   it('flips above instead of following a selection scrolled out below the viewport', () => {
     const r = computeBoxPosition({ ...base, selection: { top: 900, bottom: 920, left: 200 } });
     expect(r.placement).toBe('above');
-    expect(r.top).toBe(800 - 400 - 8);
+    expect(r.top).toBe(800 - 400 - 12);
+  });
+
+  it('keeps a box over a selection longer than the viewport on screen', () => {
+    const r = computeBoxPosition({ ...base, box: { width: 400, height: 400 }, viewport: { width: 1000, height: 800 },
+      selection: { top: -500, bottom: 3000, left: 200 } });
+    expect(r).toEqual({ top: 12, left: 200, placement: 'above' });
+  });
+
+  it('comes down to the top padding when the selection is scrolled out above', () => {
+    const r = computeBoxPosition({ ...base, selection: { top: -100, bottom: -80, left: 200 } });
+    expect(r.placement).toBe('below');
+    expect(r.top).toBe(12);
+  });
+
+  it('never leaves the viewport, wherever the selection is', () => {
+    const view = { width: 1000, height: 800 };
+    for (const box of [{ width: 400, height: 400 }, { width: 450, height: 600 }]) {
+      for (let top = -1200; top <= 2000; top += 37) {
+        for (const height of [16, 200, 760, 3500]) {
+          for (let left = -300; left <= 1200; left += 113) {
+            const selection = { top, bottom: top + height, left };
+            const r = computeBoxPosition({ ...base, box, viewport: view, selection });
+            const where = JSON.stringify(selection);
+            expect(r.top, where).toBeGreaterThanOrEqual(12);
+            expect(r.top + box.height, where).toBeLessThanOrEqual(view.height - 12);
+            expect(r.left, where).toBeGreaterThanOrEqual(12);
+            expect(r.left + box.width, where).toBeLessThanOrEqual(view.width - 12);
+          }
+        }
+      }
+    }
   });
 });
