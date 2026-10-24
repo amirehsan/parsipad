@@ -14,7 +14,7 @@ import { t } from '../lib/i18n.js';
  * @param {Document} options.doc
  * @param {() => string} options.getLang - UI language
  * @param {(needsKey: boolean) => void} options.onNeedsKeyChange
- * @param {{getSelectedProvider: () => Promise<string>, setSelectedProvider: (id: string) => Promise<void>, getProviderApiKey: (id: string) => Promise<string|null>, setProviderApiKey: (id: string, key: string) => Promise<void>, normalizeApiKey: (key: string) => string}} options.storage
+ * @param {{getSelectedProvider: () => Promise<string>, setSelectedProvider: (id: string) => Promise<void>, getProviderApiKey: (id: string) => Promise<string|null>, setProviderApiKey: (id: string, key: string) => Promise<void>, normalizeApiKey: (key: string) => string, checkKeyFormat: (id: string, key: string) => object|null}} options.storage
  * @param {(provider: string, key: string) => Promise<object>} options.testKey - TEST_API_KEY round trip
  * @param {number} [options.hideDelayMs]
  */
@@ -85,6 +85,14 @@ export function createFirstRun({ doc, getLang, onNeedsKeyChange, storage, testKe
     if (!provider) return;
     if (!typed) {
       setStatus(t('pleaseEnterApiKey', getLang()), 'error');
+      keyInput.focus();
+      return;
+    }
+    // A key with the wrong prefix cannot work, so it never reaches the
+    // provider; Settings checks the same way.
+    const formatProblem = storage.checkKeyFormat(provider, typed);
+    if (formatProblem) {
+      showResult(formatProblem, provider);
       keyInput.focus();
       return;
     }

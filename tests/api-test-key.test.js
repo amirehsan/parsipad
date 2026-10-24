@@ -123,7 +123,7 @@ describe('key test status text', () => {
   });
 
   it('prefixes the localized reason without repeating its advice', () => {
-    expect(describeKeyTest({ ok: false, code: 'INVALID_API_KEY', message: 'ignored' }, 'en', 'claude').text).toBe('Test failed. Invalid API key. Please check settings.');
+    expect(describeKeyTest({ ok: false, code: 'INVALID_API_KEY', message: 'ignored' }, 'en', 'claude').text).toBe(`Test failed. ${translations.en.keyRejected}`);
   });
 
   it('falls back to the unknown error text when there is no reason', () => {

@@ -1384,17 +1384,15 @@ a.btn {
   cursor: pointer;
 }
 
+/* The card carries the focus ring for its radio (see .provider-card:has()),
+   so the radio drops the browser's own and the card shows only one. */
 .provider-use input {
   width: 1rem;
   height: 1rem;
   margin: 0;
   accent-color: var(--primary-500);
   cursor: pointer;
-}
-
-.provider-use input:focus-visible {
-  outline: var(--ring-width) solid var(--ring-color);
-  outline-offset: var(--ring-offset);
+  outline: none;
 }
 
 .provider-key {

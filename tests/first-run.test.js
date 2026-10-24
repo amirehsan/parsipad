@@ -5,7 +5,7 @@ import { Window } from 'happy-dom';
 import { createFirstRun } from '../popup/first-run.js';
 import { renderKeyHelp } from '../lib/key-help.js';
 import { t } from '../lib/i18n.js';
-import { normalizeApiKey } from '../lib/storage.js';
+import { normalizeApiKey, checkKeyFormat } from '../lib/storage.js';
 
 const root = path.resolve(__dirname, '..');
 const popupHtml = fs.readFileSync(path.join(root, 'popup/popup.html'), 'utf8');
@@ -34,7 +34,8 @@ function setup({ result = { ok: true, model: 'm', ms: 12 } } = {}) {
     setSelectedProvider: vi.fn(async (id) => { selected = id; }),
     getProviderApiKey: async (id) => stored[id] || null,
     setProviderApiKey: vi.fn(async (id, key) => { stored[id] = key; }),
-    normalizeApiKey
+    normalizeApiKey,
+    checkKeyFormat
   };
   ctl = createFirstRun({
     doc,
@@ -49,6 +50,7 @@ function setup({ result = { ok: true, model: 'm', ms: 12 } } = {}) {
 
 const keyInput = () => doc.getElementById('first-run-key');
 const status = () => doc.getElementById('first-run-status');
+const testBtn = () => doc.getElementById('first-run-test');
 const radio = (value) => doc.querySelector(`input[name="first-run-provider"][value="${value}"]`);
 
 async function type(value) {
@@ -91,7 +93,7 @@ describe('first run key section', () => {
     expect(testKey).toHaveBeenCalledWith('claude', 'sk-ant-wrong');
     expect(storage.setProviderApiKey).not.toHaveBeenCalled();
     expect(keyInput().value).toBe('sk-ant-wrong');
-    expect(status().textContent).toBe('Test failed. Invalid API key. Please check settings.');
+    expect(status().textContent).toBe(`Test failed. ${t('keyRejected', 'en')}`);
     expect(status().dataset.state).toBe('error');
     expect(doc.getElementById('first-run').hidden).toBe(false);
     expect(actionBtn.disabled).toBe(true);
@@ -200,6 +202,21 @@ describe('first run key section', () => {
     expect(status().textContent).toBe(t('pleaseEnterApiKey', 'en'));
   });
 
+  it('sends no request for a key with the wrong prefix and names the prefix instead', async () => {
+    const storage = setup();
+    await ctl.check();
+    await type('AIzaNotAClaudeKey');
+
+    await ctl.submit();
+
+    expect(testKey).not.toHaveBeenCalled();
+    expect(storage.setProviderApiKey).not.toHaveBeenCalled();
+    expect(status().textContent).toBe('Test failed. A Claude key starts with sk-ant-, so check that you copied all of it.');
+    expect(status().dataset.state).toBe('error');
+    expect(doc.activeElement).toBe(keyInput());
+    expect(testBtn().disabled).toBe(false);
+  });
+
   it('reports a failed round trip with its message, through the shared helper', async () => {
     setup();
     await ctl.check();
@@ -220,7 +237,7 @@ describe('first run key section', () => {
 
     await ctl.submit();
 
-    expect(status().textContent).toBe('Test failed. Claude keys start with sk-ant-. Check you copied the whole key.');
+    expect(status().textContent).toBe('Test failed. A Claude key starts with sk-ant-, so check that you copied all of it.');
     expect(status().querySelector('bdi[dir="ltr"]').textContent).toBe('sk-ant-');
   });
 

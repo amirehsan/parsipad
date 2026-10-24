@@ -130,6 +130,15 @@ describe('provider cards markup', () => {
     expect(html).not.toMatch(/placeholder="[^"]*\.\.\."/);
   });
 
+  it('ties each card button to its provider name', () => {
+    for (const provider of ['claude', 'gemini', 'openai']) {
+      for (const cls of ['save-key-btn', 'clear-key-btn']) {
+        const button = html.match(new RegExp(`<button[^>]+class="[^"]*${cls}[^"]*" data-provider="${provider}"[^>]*>`))[0];
+        expect(button, `${provider} ${cls}`).toMatch(new RegExp(`aria-describedby="provider-${provider}-name"`));
+      }
+    }
+  });
+
   it('names its transitions and rings the card while its radio has focus', () => {
     const rules = [...css.matchAll(/(^|\n)([^{}\n]*provider[^{}]*)\{([^}]*)\}/g)];
     expect(rules.length).toBeGreaterThan(3);
@@ -137,6 +146,8 @@ describe('provider cards markup', () => {
       expect(body, selector).not.toMatch(/transition:\s*all/);
     }
     expect(css).toMatch(/\.provider-card:has\(input[^)]*:focus-visible\)\s*\{[^}]*outline:\s*var\(--ring-width\) solid var\(--ring-color\)/);
+    // One ring per card: the card's, not a second one on the radio inside it.
+    expect(css).not.toMatch(/\.provider-use input:focus-visible/);
     expect(css).toMatch(/\.provider-card\s*\{[^}]*transition:\s*border-color var\(--motion-fast\)[^;]*box-shadow var\(--motion-fast\)/);
   });
 });
@@ -175,24 +186,55 @@ describe.each(['en', 'fa'])('provider cards in %s', (lang) => {
     expect(statusLine('openai').textContent).toBe('');
   });
 
-  it('a key the provider rejects: its localized reason under that field and focus back in it', async () => {
+  it('a key the provider rejects is never stored: its reason under that field, focus back in it', async () => {
     testResult = { ok: false, code: 'INVALID_API_KEY', message: 'Invalid API key. Please check settings.' };
     keyInput('claude').value = '"sk-ant-wrong"';
     saveButton('claude').click();
 
     await vi.waitFor(() => expect(statusLine('claude').dataset.state).toBe('error'));
-    expect(statusLine('claude').textContent).toBe(tr.keyTestFailed.replace('{reason}', tr.errorInvalidApiKey));
+    expect(statusLine('claude').textContent).toBe(tr.keyTestFailed.replace('{reason}', tr.keyRejected));
     expect(document.activeElement).toBe(keyInput('claude'));
     expect(testCalls()).toEqual([[{ action: ACTIONS.TEST_API_KEY, provider: 'claude', key: 'sk-ant-wrong' }]]);
+    expect(store.has(STORAGE_KEYS.apiKey)).toBe(false);
+    expect(card('claude').querySelector('.key-state').textContent).toBe(tr.keyNotConfigured);
     expectOtherKeysUntouched();
   });
 
-  it('a good key: saved, tested once for that provider only, success under its field', async () => {
+  it('a rejected replacement leaves the stored key and its badge as they were', async () => {
+    testResult = { ok: false, code: 'INVALID_API_KEY' };
+    keyInput('gemini').value = 'AIzaRevokedKey';
+    saveButton('gemini').click();
+
+    await vi.waitFor(() => expect(statusLine('gemini').dataset.state).toBe('error'));
+    expect(store.get(STORAGE_KEYS.geminiApiKey)).toBe(GEMINI_KEY);
+    expect(card('gemini').querySelector('.key-state').textContent).toBe(tr.keyConfigured);
+    expect(keyInput('gemini').value).toBe('AIzaRevokedKey');
+  });
+
+  it('a test that reaches no verdict stores the key and says it is untested', async () => {
+    testResult = { ok: false, code: 'NETWORK', message: 'Check your internet connection.' };
+    keyInput('claude').value = 'sk-ant-offline';
+    saveButton('claude').click();
+
+    await vi.waitFor(() => expect(statusLine('claude').dataset.state).toBe('info'));
+    expect(statusLine('claude').textContent).toBe(tr.keySavedUntested.replace('{reason}', tr.errorNetwork));
+    expect(store.get(STORAGE_KEYS.apiKey)).toBe('sk-ant-offline');
+    expect(card('claude').querySelector('.key-state').textContent).toBe(tr.keyConfigured);
+    expectOtherKeysUntouched();
+  });
+
+  it('a good key: tested before it is stored, then saved, success under its field', async () => {
+    let storedAtTest = 'unset';
+    chrome.runtime.sendMessage.mockImplementation(async () => {
+      storedAtTest = store.get(STORAGE_KEYS.apiKey);
+      return testResult;
+    });
     keyInput('claude').value = 'sk-ant-good';
     saveButton('claude').click();
 
     await vi.waitFor(() => expect(statusLine('claude').dataset.state).toBe('ok'));
     expect(statusLine('claude').textContent).toBe(tr.keyTestOk.replace('{model}', 'claude-haiku-5-5').replace('{ms}', '812'));
+    expect(storedAtTest).toBeUndefined();
     expect(store.get(STORAGE_KEYS.apiKey)).toBe('sk-ant-good');
     expect(testCalls()).toEqual([[{ action: ACTIONS.TEST_API_KEY, provider: 'claude', key: 'sk-ant-good' }]]);
     expect(card('claude').querySelector('.key-state').textContent).toBe(tr.keyConfigured);
@@ -205,6 +247,47 @@ describe.each(['en', 'fa'])('provider cards in %s', (lang) => {
     await vi.waitFor(() => expect(statusLine('claude').textContent).toBe(tr.pleaseEnterApiKey));
     expect(document.activeElement).toBe(keyInput('claude'));
     expect(testCalls()).toHaveLength(0);
+  });
+
+  it('offers Clear only on a card with a stored key', async () => {
+    expect(card('claude').querySelector('.clear-key-btn').disabled).toBe(true);
+    expect(card('gemini').querySelector('.clear-key-btn').disabled).toBe(false);
+    card('gemini').querySelector('.clear-key-btn').click();
+    await vi.waitFor(() => expect(card('gemini').querySelector('.clear-key-btn').disabled).toBe(true));
+    expect(window.confirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('locks that card\'s Save & test and Clear while its test runs', async () => {
+    let finish;
+    chrome.runtime.sendMessage.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    keyInput('gemini').value = 'AIzaNewKey';
+    saveButton('gemini').click();
+
+    await vi.waitFor(() => expect(testCalls()).toHaveLength(1));
+    expect(saveButton('gemini').disabled).toBe(true);
+    expect(card('gemini').querySelector('.clear-key-btn').disabled).toBe(true);
+    expect(saveButton('openai').disabled).toBe(false);
+    expect(card('openai').querySelector('.clear-key-btn').disabled).toBe(false);
+
+    finish({ ok: true, model: 'gemini-3.5-flash-lite', ms: 300 });
+    await vi.waitFor(() => expect(statusLine('gemini').dataset.state).toBe('ok'));
+    expect(store.get(STORAGE_KEYS.geminiApiKey)).toBe('AIzaNewKey');
+    expect(saveButton('gemini').disabled).toBe(false);
+    expect(card('gemini').querySelector('.clear-key-btn').disabled).toBe(false);
+  });
+
+  it('puts the radios back when the provider choice cannot be stored', async () => {
+    const set = chrome.storage.local.set.getMockImplementation();
+    chrome.storage.local.set.mockImplementation(async (items) => {
+      if (STORAGE_KEYS.selectedProvider in items) throw new Error('QUOTA_BYTES quota exceeded');
+      return set(items);
+    });
+    const gemini = card('gemini').querySelector('input[name="provider"]');
+    gemini.click();
+
+    await vi.waitFor(() => expect(statusLine('gemini').textContent).toBe(tr.errorUnknown));
+    await vi.waitFor(() => expect(card('claude').querySelector('input[name="provider"]').checked).toBe(true));
+    expect(gemini.checked).toBe(false);
   });
 
   it('clearing one card removes only that key and says so in the UI language', async () => {
@@ -221,13 +304,18 @@ describe.each(['en', 'fa'])('provider cards in %s', (lang) => {
     const button = card('openai').querySelector('.key-reveal');
     expect(button.getAttribute('aria-pressed')).toBe('false');
     expect(button.getAttribute('aria-label')).toBe(tr.revealKey);
+    expect(button.getAttribute('title')).toBe(tr.revealKey);
     button.click();
     expect(keyInput('openai').type).toBe('text');
     expect(button.getAttribute('aria-pressed')).toBe('true');
-    expect(button.getAttribute('aria-label')).toBe(tr.hideKey);
+    // The name stays put; only the pressed state says the key is showing.
+    expect(button.getAttribute('aria-label')).toBe(tr.revealKey);
+    expect(button.getAttribute('title')).toBe(tr.hideKey);
     expect(keyInput('gemini').type).toBe('password');
     button.click();
     expect(keyInput('openai').type).toBe('password');
+    expect(button.getAttribute('aria-pressed')).toBe('false');
     expect(button.getAttribute('aria-label')).toBe(tr.revealKey);
+    expect(button.getAttribute('title')).toBe(tr.revealKey);
   });
 });

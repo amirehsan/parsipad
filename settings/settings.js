@@ -5,6 +5,7 @@ import {
   setProviderApiKey,
   removeProviderApiKey,
   normalizeApiKey,
+  checkKeyFormat,
   getLanguage,
   setLanguage,
   getDictionaryTranslationSettings,
@@ -22,7 +23,7 @@ import {
 import { PROVIDERS, PROVIDER_CONFIGS, STORAGE_KEYS, ACTIONS } from '../lib/constants.js';
 import { translationCache } from '../lib/cache.js';
 import { t, applyTranslations } from '../lib/i18n.js';
-import { renderKeyHelp, describeKeyTest, keyTestErrorResult, renderKeyTest, setKeyRevealed } from '../lib/key-help.js';
+import { renderKeyHelp, describeKeyTest, keyTestErrorResult, isKeyRejected, renderKeyTest, setKeyRevealed } from '../lib/key-help.js';
 import { COMMAND_DESCRIPTIONS, getBoundShortcuts, shortcutKeys } from '../shared/shortcuts.js';
 import {
   getHistory,
@@ -98,6 +99,8 @@ let currentTheme = 'light';
 // function of the language, so a language change rewords both in place.
 const keySaved = {};
 const keyTestMessages = {};
+// Providers whose Save & test is running; their card's buttons stay locked.
+const testingProviders = new Set();
 
 /**
  * Initialize the settings page
@@ -327,9 +330,23 @@ async function loadAllApiKeyStatuses() {
  */
 function renderKeyState(provider) {
   const el = document.getElementById(`${provider}-key-state`);
-  if (!el) return;
-  el.dataset.state = keySaved[provider] ? 'saved' : 'missing';
-  el.textContent = t(keySaved[provider] ? 'keyConfigured' : 'keyNotConfigured', currentLang);
+  if (el) {
+    el.dataset.state = keySaved[provider] ? 'saved' : 'missing';
+    el.textContent = t(keySaved[provider] ? 'keyConfigured' : 'keyNotConfigured', currentLang);
+  }
+  syncCardButtons(provider);
+}
+
+/**
+ * Lock a card's Save & test and Clear while its test runs, and offer Clear
+ * only when there is a stored key to remove.
+ */
+function syncCardButtons(provider) {
+  const testing = testingProviders.has(provider);
+  const save = document.querySelector(`.save-key-btn[data-provider="${provider}"]`);
+  const clear = document.querySelector(`.clear-key-btn[data-provider="${provider}"]`);
+  if (save) save.disabled = testing;
+  if (clear) clear.disabled = testing || !keySaved[provider];
 }
 
 /**
@@ -550,49 +567,75 @@ async function handleProviderChange(e) {
   } catch (error) {
     console.error('Could not store the provider choice:', error);
     setKeyTestStatus(provider, keyMessage('errorUnknown', 'error'));
+    // Check the radio of the provider that is still stored, so the page does
+    // not claim a choice that did not take.
+    await loadProviderSettings();
   }
 }
 
 /**
- * Save the key typed into one provider's card, then test it with one real
- * request. Only that provider's key is saved and tested, and only on this
- * click. A key with the wrong prefix is turned away before any request. The
- * result shows under the field, and focus goes back into the field when the
- * key did not work.
+ * Test the key typed into one provider's card with one real request, then
+ * store it. Only that provider is tested, and only on this click (or Enter in
+ * its field). A key with the wrong prefix is turned away before any request.
+ * The typed key is stored only when the provider accepts it, or when the test
+ * reaches no verdict (offline, timeout, rate limit, outage, unknown), and then
+ * the status says it is untested. A key the provider rejects is never stored,
+ * so the key already stored and its badge stay as they were. The result shows
+ * under the field, and focus goes back into the field when the key was not
+ * stored.
  */
 async function handleSaveApiKey(provider) {
   const input = getApiKeyInput(provider);
-  const button = document.querySelector(`.save-key-btn[data-provider="${provider}"]`);
-  if (!input || button?.disabled) return;
+  if (!input || testingProviders.has(provider)) return;
 
-  if (!normalizeApiKey(input.value)) {
+  const key = normalizeApiKey(input.value);
+  if (!key) {
     setKeyTestStatus(provider, keyMessage('pleaseEnterApiKey', 'error'));
     input.focus();
     return;
   }
 
-  if (button) button.disabled = true;
+  const formatProblem = checkKeyFormat(provider, key);
+  if (formatProblem) {
+    setKeyTestStatus(provider, (lang) => describeKeyTest(formatProblem, lang, provider));
+    input.focus();
+    return;
+  }
+
+  testingProviders.add(provider);
+  syncCardButtons(provider);
   setKeyTestStatus(provider, keyMessage('keyTesting', 'pending'));
   let result;
+  let stored = false;
   try {
-    await setProviderApiKey(provider, input.value);
-    await updateKeyStatus(provider);
-    const key = await getProviderApiKey(provider);
     result = await chrome.runtime.sendMessage({ action: ACTIONS.TEST_API_KEY, provider, key });
   } catch (error) {
     result = keyTestErrorResult(error);
+  }
+  try {
+    if (!isKeyRejected(result)) {
+      await setProviderApiKey(provider, key);
+      stored = true;
+      await updateKeyStatus(provider);
+    }
+  } catch (error) {
+    result = keyTestErrorResult(error);
   } finally {
-    if (button) button.disabled = false;
+    testingProviders.delete(provider);
+    syncCardButtons(provider);
   }
 
-  setKeyTestStatus(provider, (lang) => describeKeyTest(result, lang, provider));
-  if (!result?.ok) input.focus();
+  const untested = stored && !result?.ok;
+  setKeyTestStatus(provider, (lang) => describeKeyTest(result, lang, provider, { stored: untested }));
+  if (!stored) input.focus();
 }
 
 /**
- * Remove one provider's key after a confirmation
+ * Remove one provider's stored key after a confirmation. Clear is disabled
+ * while there is no stored key or a test is running.
  */
 async function handleClearApiKey(provider) {
+  if (!keySaved[provider] || testingProviders.has(provider)) return;
   const input = getApiKeyInput(provider);
   const config = PROVIDER_CONFIGS[provider];
 
