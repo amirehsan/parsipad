@@ -232,10 +232,10 @@ describe('View Welcome Guide', () => {
 });
 
 describe('ask before translating a whole page', () => {
-  it('is wired and stored but its row stays hidden until Plan E', async () => {
+  it('is shown, wired and stored', async () => {
     await loadSettings('en');
     const box = document.getElementById('confirm-page-translate-toggle');
-    expect(box.closest('.setting-row').hidden).toBe(true);
+    expect(box.closest('.setting-row').hidden).toBe(false);
     expect(box.checked).toBe(true);
     box.click();
     await vi.waitFor(() => expect(store.get(STORAGE_KEYS.confirmPageTranslate)).toBe(false));

@@ -74,7 +74,12 @@ beforeAll(async () => {
     runtime: {
       id: 'parsipad',
       onMessage: { addListener: (fn) => { onMessage = fn; } },
-      sendMessage: (message) => { sent.push(message); return Promise.resolve(); },
+      sendMessage: (message) => {
+        sent.push(message);
+        // Page translation asks whether a key is set before it asks the user.
+        if (message.action === 'CHECK_API_KEY') return Promise.resolve({ hasApiKey: !missingKey });
+        return Promise.resolve();
+      },
       // Page translation streams its batches over a port; answer as the
       // service worker does when no key is set.
       connect: () => {

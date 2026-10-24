@@ -145,6 +145,105 @@ export function getPageProgressStyles() {
   `;
 }
 
+/**
+ * The question a whole-page translation asks first (content/page-confirm.js),
+ * rendered in the page-progress overlay's shadow root, so it relies on the
+ * theme variables getPageProgressStyles() already emits there. Spacing uses
+ * the literal card values: 20px inset, 12px between items, 8px between
+ * actions.
+ */
+export function getPageConfirmStyles() {
+  return `
+    .parsipad-confirm {
+      background: var(--pp-bg);
+      color: var(--pp-text);
+      border: 1px solid var(--pp-border);
+      border-radius: 16px;
+      box-shadow: var(--pp-shadow-card);
+      padding: 20px;
+      width: min(360px, calc(100vw - 48px));
+      box-sizing: border-box;
+      font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .parsipad-confirm-title {
+      margin: 0 0 12px;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--pp-text);
+    }
+
+    .parsipad-confirm-body {
+      margin: 0 0 12px;
+      color: var(--pp-text-secondary);
+    }
+
+    .parsipad-confirm-dontask {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      color: var(--pp-text-strong);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .parsipad-confirm-dontask input {
+      margin: 0;
+      width: 16px;
+      height: 16px;
+      accent-color: var(--pp-accent);
+      cursor: pointer;
+    }
+
+    .parsipad-confirm-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .parsipad-confirm-actions button {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .parsipad-confirm-cancel {
+      background: var(--pp-bg-hover);
+      border: 1px solid var(--pp-border);
+      color: var(--pp-text-strong);
+    }
+
+    .parsipad-confirm-cancel:hover {
+      background: var(--pp-border);
+      border-color: var(--pp-border-strong);
+    }
+
+    .parsipad-confirm-go {
+      background: var(--pp-accent);
+      border: 1px solid var(--pp-accent);
+      color: var(--pp-on-accent);
+      font-weight: 600;
+    }
+
+    .parsipad-confirm-go:hover {
+      background: var(--pp-accent-strong);
+      border-color: var(--pp-accent-strong);
+    }
+
+    .parsipad-confirm-actions button:focus-visible,
+    .parsipad-confirm-dontask input:focus-visible {
+      outline: 2px solid var(--pp-accent);
+      outline-offset: 2px;
+    }
+  `;
+}
+
 export function getPageToggleStyles() {
   return `
     ${themeVars()}

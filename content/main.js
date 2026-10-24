@@ -5,6 +5,7 @@
 
 import { escapeHtml, isMissingApiKeyResponse } from './utils/text.js';
 import {
+  getPageConfirmStyles,
   getPageProgressStyles,
   getPageToggleStyles,
   getScreenshotStyles,
@@ -26,6 +27,14 @@ import { selectionToReport, createSelectionReporter, isEditableSelection, MAX_RE
 import { createToolbarTrigger, selectionAnchor, isSameAnchor } from './toolbar-trigger.js';
 import { MUTED_SITES_KEY, isHostMuted, normalizeHost, addMutedSite, removeMutedSite } from '../lib/muted-sites.js';
 import { rovingIndex, applyRovingTabindex } from '../lib/roving.js';
+import { confirmPageTranslation, countParagraphs, CONFIRM_PAGE_TRANSLATE_KEY } from './page-confirm.js';
+import {
+  estimateTranslationCost,
+  formatEstimateUsd,
+  PROVIDER_NAMES,
+  SELECTED_PROVIDER_KEY,
+  DEFAULT_PROVIDER_ID
+} from '../lib/cost-estimate.js';
 import { initBlockTranslate, translateFocusedBlock, hideBlockIcon, isBlockTranslateEnabled } from './blocks/index.js';
 
 // Re-injection guard: skip if the script has already run in this isolated world.
@@ -288,6 +297,11 @@ function handleMessage(message, sender, sendResponse) {
       // Cancel page translation
       pageTranslationCancelled = true;
       pageTranslationAbortController?.abort();
+      // Nothing has been requested while the page asks first; removing the
+      // overlay closes the dialog, which answers Cancel.
+      if (pageTranslationState?.phase === 'confirming') {
+        hidePageProgressOverlay();
+      }
       break;
 
     case 'TOGGLE_PAGE_TRANSLATION':
@@ -2378,6 +2392,40 @@ function showDictionaryError(message) {
 // ============================================
 
 /**
+ * Whether the selected provider has a key, asked of the service worker
+ * without a request to the provider. An unanswered check counts as yes, so
+ * the batch request still reports a missing key through its own path.
+ * @returns {Promise<boolean>}
+ */
+async function hasProviderKey() {
+  try {
+    // Action name literal: content modules cannot import ACTIONS (lib/constants.js)
+    const response = await chrome.runtime.sendMessage({ action: 'CHECK_API_KEY' });
+    return response?.hasApiKey !== false;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * The provider a page translation will use and whether it asks first. Same
+ * defaults as lib/storage.js: Claude, and asking unless the stored value is
+ * false.
+ * @returns {Promise<{provider: string, confirm: boolean}>}
+ */
+async function readPageTranslatePrefs() {
+  try {
+    const stored = await chrome.storage.local.get([SELECTED_PROVIDER_KEY, CONFIRM_PAGE_TRANSLATE_KEY]);
+    return {
+      provider: stored[SELECTED_PROVIDER_KEY] || DEFAULT_PROVIDER_ID,
+      confirm: stored[CONFIRM_PAGE_TRANSLATE_KEY] !== false
+    };
+  } catch {
+    return { provider: DEFAULT_PROVIDER_ID, confirm: true };
+  }
+}
+
+/**
  * Handle page translation request
  */
 async function handleTranslatePage() {
@@ -2392,8 +2440,12 @@ async function handleTranslatePage() {
     return;
   }
 
-  // Initialize state
-  pageTranslationState = {
+  // Initialize state. phase is 'confirming' until the first request goes
+  // out, 'running' from then on. A navigation replaces pageTranslationState,
+  // so after every await this run checks it still owns the state and
+  // otherwise stops quietly.
+  const state = {
+    phase: 'confirming',
     isTranslated: false,
     isTranslating: true,
     isShowingTranslated: false,
@@ -2406,13 +2458,17 @@ async function handleTranslatePage() {
     totalChunks: 0,
     translatedChunks: 0
   };
+  pageTranslationState = state;
+  // Set when the user says no: the run ends with no state, as if never asked.
+  let declined = false;
 
   pageTranslationCancelled = false;
   pageTranslationAbortController = new AbortController();
   const abortSignal = pageTranslationAbortController.signal;
 
-  // Show progress overlay
-  showPageProgressOverlay();
+  // The overlay exists before extraction so its host is skipped as ParsiPad's
+  // own; it shows the confirmation first and the progress only after it.
+  mountPageOverlay();
 
   try {
     // Extract text nodes
@@ -2440,6 +2496,43 @@ async function handleTranslatePage() {
     const batches = batchTextNodesForTranslation(pageTranslationState.textNodes);
     pageTranslationState.totalChunks = batches.length;
 
+    // A missing key gets its toast before any question about cost.
+    const [keySet, prefs] = await Promise.all([hasProviderKey(), readPageTranslatePrefs()]);
+    if (pageTranslationState !== state) return;
+    if (pageTranslationCancelled || abortSignal.aborted) {
+      declined = true;
+      return;
+    }
+    if (!keySet) {
+      showMissingApiKeyToast();
+      return;
+    }
+
+    // Ask before the first request, unless the user turned that off.
+    if (prefs.confirm) {
+      const chars = state.textNodes.reduce((sum, { text }) => sum + text.length, 0);
+      const estimate = estimateTranslationCost({
+        chars,
+        batches: batches.length,
+        provider: prefs.provider,
+        targetLang: state.targetLanguage
+      });
+      if (userLang === 'fa') ensurePersianFontLoaded();
+      const answer = await confirmPageTranslation(pageProgressShadow, {
+        count: countParagraphs(state.textNodes),
+        costText: formatEstimateUsd(estimate.usd),
+        providerName: PROVIDER_NAMES[prefs.provider] || PROVIDER_NAMES[DEFAULT_PROVIDER_ID],
+        lang: userLang
+      });
+      if (pageTranslationState !== state) return;
+      if (!answer.go || pageTranslationCancelled || abortSignal.aborted) {
+        declined = true;
+        return;
+      }
+    }
+
+    state.phase = 'running';
+    showPageProgress();
     updatePageProgress(0, batches.length, 0);
 
     // Translate each batch
@@ -2509,11 +2602,14 @@ async function handleTranslatePage() {
   } catch (error) {
     console.error('Page translation error:', error);
   } finally {
-    if (pageTranslationState) {
-      pageTranslationState.isTranslating = false;
+    state.isTranslating = false;
+    // A navigation already cleared the overlay and controller, and a later
+    // run may own them now.
+    if (pageTranslationState === state) {
+      hidePageProgressOverlay();
+      pageTranslationAbortController = null;
+      if (declined) pageTranslationState = null;
     }
-    hidePageProgressOverlay();
-    pageTranslationAbortController = null;
   }
 }
 
@@ -2689,9 +2785,10 @@ function handleTogglePageTranslation() {
 }
 
 /**
- * Show page progress overlay
+ * Create the page overlay's host and shadow root, empty: it holds the
+ * confirmation first and the progress after it.
  */
-function showPageProgressOverlay() {
+function mountPageOverlay() {
   if (pageProgressOverlay) {
     hidePageProgressOverlay();
   }
@@ -2711,8 +2808,18 @@ function showPageProgressOverlay() {
 
   applyHostTheme(host);
   const style = document.createElement('style');
-  style.textContent = getPageProgressStyles();
+  style.textContent = getPageProgressStyles() + getPageConfirmStyles();
   pageProgressShadow.appendChild(style);
+
+  document.body.appendChild(host);
+  pageProgressOverlay = host;
+}
+
+/**
+ * Show the progress UI in the mounted overlay, once the requests start.
+ */
+function showPageProgress() {
+  if (!pageProgressShadow) return;
 
   const overlay = document.createElement('div');
   overlay.className = 'parsipad-progress-overlay';
@@ -2729,8 +2836,6 @@ function showPageProgressOverlay() {
   `;
 
   pageProgressShadow.appendChild(overlay);
-  document.body.appendChild(host);
-  pageProgressOverlay = host;
 
   // Cancel button handler
   const cancelBtn = pageProgressShadow.querySelector('.parsipad-progress-cancel');
