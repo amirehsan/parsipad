@@ -31,8 +31,9 @@ Whole pages
 Translate an entire page in place with Alt+P or the right-click menu, then toggle between the original and the translation whenever you like.
 
 - It asks before it starts: how many paragraphs the page has and about what it will cost with your provider, so there are no surprises. Choose Translate page or Cancel, or tick "Don't ask again" (the "Ask before translating a whole page" switch in Settings turns the question back on)
-- Progress shows as it goes. Cancel, or Escape when you are not typing in a text field, stops it and keeps every section that already finished
-- If some sections fail, a summary says how many were translated and how many failed, and Retry failed sends only those. Pressing Translate page again picks up where it stopped
+- Progress shows as it goes. Cancel, or Escape when you are not typing in a text field, stops it and keeps every section that already finished. With a box or the selection toolbar open, Escape closes that first
+- If some sections fail, a summary says how many were translated and how many failed, and Retry failed sends only those. Pressing Translate page again picks up where it stopped, without sending again a section that already failed twice
+- If ParsiPad is updated while the page is open, the translation stops, keeps what finished and asks you to reload the page
 - On a site that changes pages without reloading, the original text is put back when you move on
 
 

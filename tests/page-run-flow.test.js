@@ -178,6 +178,30 @@ describe('a batch that fails', () => {
     expect(toastMessage()).toBe(en.apiKeyNotConfigured);
   });
 
+  it('an update under the page stops the run and says to reload, with no summary', async () => {
+    // ParsiPad is reloaded or updated after the first batch: every later
+    // call into the extension throws.
+    h.answer = (msg, port) => {
+      if (h.ports.indexOf(port) === 0) h.invalidated = true;
+      return translateLines(msg);
+    };
+    translatePage();
+    await vi.waitFor(() => expect(toastMessage()).toBe(en.errorContextInvalidated));
+    expect(toast().querySelector('.message').getAttribute('role')).toBe('alert');
+    expect(toastAction().hidden).toBe(false);
+    expect(toastAction().textContent).toBe(en.blockTranslateReload);
+    // One connect was refused; the third batch was never tried.
+    expect(h.attempts.filter((a) => a.kind === 'connect')).toHaveLength(2);
+    expect(text(1)).toBe('FA:Paragraph 1.');
+    expect(text(21)).toBe('Paragraph 21.');
+    // What finished stays switchable (no message can reach an orphaned
+    // script, so the page's own toggle is the way back).
+    expect(toggleButton()).not.toBeNull();
+    // No summary replaces it.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(toastMessage()).toBe(en.errorContextInvalidated);
+  });
+
   it('says the summary in Persian with Latin digits', async () => {
     h.setUiLanguage('fa');
     try {
@@ -539,6 +563,37 @@ describe('nothing finished is lost', () => {
     expect(pageState().isShowingTranslated).toBe(false);
   });
 
+  it('after a Retry that fails again, Translate Page toggles instead of paying for the same failure', async () => {
+    // The second batch fails every time it is sent.
+    h.answer = (msg) => (msg.text.startsWith('[1] Paragraph 21.') ? failure : translateLines(msg));
+    translatePage();
+    await vi.waitFor(() => expect(toastMessage()).toBe(fill(en.pageTranslatePartial, { done: 2, total: 3, failed: 1 })));
+    toastAction().click();
+    await vi.waitFor(() => expect(h.ports).toHaveLength(4));
+    await vi.waitFor(() => expect(toastMessage()).toBe(fill(en.pageTranslatePartial, { done: 2, total: 3, failed: 1 })));
+
+    translatePage();
+    await settle();
+    expect(h.ports).toHaveLength(4);
+    expect(text(1)).toBe('Paragraph 1.');
+    expect(pageState().isShowingTranslated).toBe(false);
+    // Retry failed on the summary still sends it when asked to.
+    expect(toastAction().hidden).toBe(false);
+  });
+
+  it('Translate Page resumes a failed batch once, then toggles', async () => {
+    h.answer = (msg) => (msg.text.startsWith('[1] Paragraph 21.') ? failure : translateLines(msg));
+    translatePage();
+    await vi.waitFor(() => expect(toastMessage()).toBe(fill(en.pageTranslatePartial, { done: 2, total: 3, failed: 1 })));
+    translatePage();
+    await vi.waitFor(() => expect(h.ports).toHaveLength(4));
+    await vi.waitFor(() => expect(toastMessage()).toBe(fill(en.pageTranslatePartial, { done: 2, total: 3, failed: 1 })));
+    translatePage();
+    await settle();
+    expect(h.ports).toHaveLength(4);
+    expect(pageState().isShowingTranslated).toBe(false);
+  });
+
   it('Translate Page after a Stop sends only the sections that never finished', async () => {
     const release = holdBatch(1);
     try {
@@ -556,6 +611,30 @@ describe('nothing finished is lost', () => {
     expect(firstLine(h.ports[3])).toBe('[1] Paragraph 41.');
     expect(text(1)).toBe('FA:Paragraph 1.');
     expect(text(45)).toBe('FA:Paragraph 45.');
+  });
+});
+
+describe('Escape closes the topmost thing first', () => {
+  it('with a box open, Escape closes the box and the run goes on; the next Escape stops it', async () => {
+    const release = holdBatch(1);
+    const box = () => document.getElementById('parsipad-host');
+    try {
+      translatePage();
+      await vi.waitFor(() => expect(h.ports).toHaveLength(2));
+      h.onMessage({ action: 'SHOW_TRANSLATION', text: 'The cat sat on the mat.' });
+      await vi.waitFor(() => expect(box()).not.toBeNull());
+      escapeFrom(document.body);
+      await settle();
+      expect(box()).toBeNull();
+      expect(pageState().isTranslating).toBe(true);
+      expect(toastHost()).toBeNull();
+
+      escapeFrom(document.body);
+      await vi.waitFor(() => expect(toastMessage()).toBe(fill(en.pageTranslateStopped, { done: 1, total: 3 })));
+    } finally {
+      release();
+    }
+    expect(text(1)).toBe('FA:Paragraph 1.');
   });
 });
 

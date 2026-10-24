@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { createPageRun, markBatch, failedIndexes, unfinishedIndexes, summarizeRun, summaryMessageKey } from '../content/utils/page-run.js';
+import { createPageRun, markBatch, failedIndexes, unfinishedIndexes, resumableIndexes, summarizeRun, summaryMessageKey } from '../content/utils/page-run.js';
 import { functionBody } from './helpers/source.js';
 
 const js = fs.readFileSync(path.resolve(__dirname, '../content/main.js'), 'utf8');
@@ -11,7 +11,7 @@ const fn = (name) => functionBody(js, name);
 describe('page run', () => {
   it('tracks outcomes and picks the summary', () => {
     const run = createPageRun(4);
-    expect(run).toEqual({ total: 4, status: ['pending', 'pending', 'pending', 'pending'] });
+    expect(run).toEqual({ total: 4, status: ['pending', 'pending', 'pending', 'pending'], sends: [0, 0, 0, 0] });
     markBatch(run, 0, 'ok'); markBatch(run, 1, 'failed'); markBatch(run, 2, 'ok');
     expect(failedIndexes(run)).toEqual([1]);
     expect(summarizeRun(run)).toEqual({ done: 2, failed: 1, pending: 1, total: 4 });
@@ -29,6 +29,19 @@ describe('page run', () => {
     expect(failedIndexes(run)).toEqual([1]);
     markBatch(run, 1, 'ok'); markBatch(run, 2, 'ok'); markBatch(run, 3, 'ok');
     expect(unfinishedIndexes(run)).toEqual([]);
+  });
+
+  it('Translate Page resumes what was never sent and what failed once, not what failed again', () => {
+    const run = createPageRun(4);
+    markBatch(run, 0, 'ok'); markBatch(run, 1, 'failed'); markBatch(run, 2, 'failed');
+    expect(resumableIndexes(run)).toEqual([1, 2, 3]);
+    // A retry of batch 1 fails again; batch 2 was not retried yet.
+    markBatch(run, 1, 'failed');
+    expect(resumableIndexes(run)).toEqual([2, 3]);
+    expect(failedIndexes(run)).toEqual([1, 2]);
+    markBatch(run, 2, 'failed'); markBatch(run, 3, 'ok');
+    expect(resumableIndexes(run)).toEqual([]);
+    expect(unfinishedIndexes(run)).toEqual([1, 2]);
   });
 
   it('keeps work on cancel and retries only failures', () => {

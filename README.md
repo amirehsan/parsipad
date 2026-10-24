@@ -31,7 +31,7 @@
 - **Multi-AI Provider Support** - Choose between Claude, Gemini, or ChatGPT
 - **AI-Powered Translation** - Accurate, context-aware translations using your preferred AI
 - **Screenshot Region Translate** - Select any area on a webpage and translate text from images (NEW in v2.8)
-- **Full Page Translation** - Translate entire webpages with one click; it asks first with the paragraph count and an estimated cost, and reports any sections that failed so you can retry just those
+- **Full Page Translation** - Translate entire webpages; it asks first with the paragraph count and an estimated cost, and reports any sections that failed so you can retry just those
 - **Image Translation** - Extract and translate text from images using OCR
 - **Document Translation** - Upload and translate TXT files with progress tracking
 - **Text Polishing** - Get 3 versions: Professional, Conversational, and Concise
@@ -244,9 +244,10 @@ Translate entire webpages:
 3. Watch the progress as text chunks are translated
 4. Use the floating toggle button to switch between original and translated text
 5. Persian content uses Vazirmatn font for optimal readability
-6. Stop at any time with the Cancel button or `Escape` (not while typing in a text field). Sections that already finished stay translated
-7. If some sections failed, a summary says how many were translated and how many failed, with a Retry failed button that sends only those. Pressing Translate page again also picks up sections that failed or were never sent
-8. On a site that changes pages without reloading, the original text is put back when you move to another page
+6. Stop at any time with the Cancel button or `Escape` (not while typing in a text field; with a box, the selection toolbar or the screenshot selection open, `Escape` closes that first). Sections that already finished stay translated
+7. If some sections failed, a summary says how many were translated and how many failed, with a Retry failed button that sends only those. Pressing Translate page again also picks up sections that were never sent, and sections that failed once; a section that failed again after a retry is left to Retry failed, and Translate page switches to the original instead
+8. If ParsiPad is updated while the page is open, the translation stops, keeps what finished and asks you to reload the page
+9. On a site that changes pages without reloading, the original text is put back when you move to another page. A link to a heading or an address that changes as you scroll keeps the translation
 
 Two keys work on web pages and are fixed (they do not appear in `chrome://extensions/shortcuts`): `Alt+B` translates the paragraph at the pointer or keyboard focus, and `Escape` closes a box or stops a page translation. They are listed in Settings > Shortcuts > On web pages. If ParsiPad is updated while a page is open, its boxes say so and offer a Reload page button.
 

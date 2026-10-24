@@ -40,7 +40,7 @@ Translate entire webpages in place:
 • Asks first: shows the number of paragraphs and an estimated cost with your provider, with Translate page, Cancel and "Don't ask again" (a switch in Settings turns the question back on)
 • Smart chunking for reliable translation
 • Progress overlay with real-time status
-• Cancel or press Escape at any time; sections already translated stay translated
+• Cancel or press Escape at any time (Escape closes an open box first); sections already translated stay translated
 • A summary reports how many sections were translated and how many failed, and Retry failed sends only those
 • Toggle button to switch between original/translated
 • On sites that change pages without reloading, the original text is put back when you move on
