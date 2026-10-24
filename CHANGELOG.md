@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The popup's "Rate Now" button had no visible label.** Its text and its background were set to the same colour, so it rendered as an empty brown block. The label is white now, and both buttons in the banner have a hover state that actually changes something.
+- **Scrollbars, checkboxes and other native controls stayed light in dark mode.** No page declared `color-scheme`, so the browser drew its own controls for a light page. The token file now declares it for both themes, which every extension page imports.
+- **Two dictionary settings showed the same sentence twice.** The label and the hint under it shared one translation key, so the hint overwrote itself with the label. Each hint has its own text now, in both languages.
+- **The welcome page's theme button was a grey dot in dark mode.** Its icons used class names from a utility framework the extension does not ship, so neither icon was ever styled. They use real classes now, one icon per theme.
+- **Direction badges showed storage values like "EN-TO-FA".** Four pages formatted the direction four different ways and two printed the stored value as is. One formatter handles every stored shape now, including other languages translated into Persian (for example RU → FA), and badges are marked left-to-right so they do not reverse in Persian text.
+- **English grammar lessons were laid out right-to-left.** The lesson is written in English, but the page flipped the whole lesson for English to Persian translations, so every sentence ran with its full stop at the wrong end. The lesson stays left-to-right and only the Persian text in it is marked as Persian.
+- **A failed copy, favorite or regenerate wiped the translation off the popup.** Those failures went through the same error box as a failed translation, which clears the result. They now appear in a status line under the form that leaves the result alone, with a next step in the message.
+- **Closing the floating box did not stop the translation.** The stream kept running, and kept being billed to your key, after the box was gone. Closing it now cancels the request.
+- **Removing an API key, replacing data on import and resetting stats happened on the first click.** Each asks first now.
+- **The interface was cramped.** Cards, list items and buttons were packed 4 to 6 pixels apart. A shared spacing scale now sets the distance between sections, items and buttons, and the popup, the translation card, Settings, History and Favorites all use it.
+
+### Changed
+- **The rating prompt now appears for people who use ParsiPad, and backs off.** It used to need three saved favorites, appeared only in the popup, and one "Maybe Later" ended it for good, so in practice nobody saw it. It now asks after 15 successful translations, polishes or lookups spread over at least two days and three days after install, right under a result, in the popup or as one line in the floating box. "Later", or simply ignoring it, waits 14 days and then 45; after the third ask it stops. "Rate ParsiPad" and "Don't ask again" end it at once. Anyone who pressed "Maybe Later" under the old prompt is treated as having asked for later, not never.
+
 ## [3.1.2] - 2026-10-22
 
 ### Fixed
