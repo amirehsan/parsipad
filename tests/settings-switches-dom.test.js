@@ -21,6 +21,7 @@ const SWITCHES = {
   'block-translate-toggle': STORAGE_KEYS.blockTranslate,
   'selection-popup-toggle': STORAGE_KEYS.selectionPopup,
   'translate-other-languages-toggle': STORAGE_KEYS.translateOtherLanguages,
+  'confirm-page-translate-toggle': STORAGE_KEYS.confirmPageTranslate,
   'dict-en-to-fa': STORAGE_KEYS.dictionaryEnToFa,
   'dict-fa-to-en': STORAGE_KEYS.dictionaryFaToEn
 };
