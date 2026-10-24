@@ -78,6 +78,16 @@
   --space-16: 4rem;     /* 64px */
   --space-20: 5rem;     /* 80px */
 
+  /* ----- Spacing rhythm -----
+     What the steps above are for. Pages use these names, so the distance
+     between two sections, two list items or two buttons is the same
+     everywhere rather than whatever each stylesheet picked. */
+  --space-inset-card: var(--space-5);      /* 20px - inside any card */
+  --space-stack-section: var(--space-6);   /* 24px - between sections */
+  --space-stack-group: var(--space-4);     /* 16px - between related blocks */
+  --space-stack-item: var(--space-3);      /* 12px - between items in a list */
+  --space-inline-actions: var(--space-2);  /* 8px  - between buttons in a row */
+
   /* ----- Border radius -----
      The design system commits to three values: 6px for inputs and small pills,
      12px as the canonical button and card radius, and a full pill. --radius-lg

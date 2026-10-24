@@ -111,8 +111,7 @@ body {
 
 /* Popup Container */
 .popup {
-  /* Slightly more bottom padding for the stats/history footer breathing */
-  padding: var(--space-4) var(--space-4) var(--space-5);
+  padding: var(--space-inset-card);
 }
 
 /* Header */
@@ -619,7 +618,7 @@ body {
 .history-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-inline-actions);
   max-height: 150px;
   overflow-y: auto;
 }
@@ -728,8 +727,7 @@ body {
 .polish-card {
   background-color: var(--color-bg-secondary);
   border-radius: var(--radius-md);
-  /* 16px/20px = card inset rhythm; title row now has room above content */
-  padding: var(--space-4) var(--content-pad);
+  padding: var(--space-inset-card);
   border: 1px solid var(--color-border);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }

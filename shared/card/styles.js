@@ -35,13 +35,13 @@ export const CARD_STYLES = `
     .pp-card-root {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 16px;
     }
 
     .pp-card-pill {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.3px;
@@ -74,7 +74,7 @@ export const CARD_STYLES = `
       display: flex;
       flex-wrap: wrap;
       align-items: baseline;
-      gap: 5px;
+      gap: 8px;
       font-size: 13px;
       color: var(--pp-text-secondary);
     }
@@ -139,7 +139,7 @@ export const CARD_STYLES = `
     .pp-card-disclosure-wrap {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
     }
     .pp-card-disclosure-label {
       flex: 1;
@@ -148,7 +148,7 @@ export const CARD_STYLES = `
     .pp-card-disclosure {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       width: 100%;
       background: none;
       border: none;
@@ -212,7 +212,7 @@ export const CARD_STYLES = `
     .pp-card-alternatives {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
       margin: 0;
       padding: 0;
       list-style: none;
@@ -270,7 +270,7 @@ export const CARD_STYLES = `
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 4px;
+      gap: 8px;
       padding: 6px 10px;
       border-radius: 6px;
       font-size: 12px;
@@ -313,12 +313,12 @@ export const CARD_STYLES = `
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 4px;
+      gap: 8px;
     }
     .pp-card-action {
       background: none;
       border: none;
-      padding: 4px 8px;
+      padding: 6px 10px;
       font: inherit;
       font-size: 12px;
       color: var(--pp-text-secondary);

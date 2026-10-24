@@ -433,7 +433,8 @@ main[data-settings-active='more'] .settings-card:not([data-settings-tab='more'])
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 0;
+  gap: 1.5rem;
+  padding: 1.125rem 0;
   border-bottom: 1px solid var(--gray-100);
   cursor: pointer;
 }
