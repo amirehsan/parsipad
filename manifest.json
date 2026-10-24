@@ -94,6 +94,7 @@
         "content/selection-report.js",
         "content/toolbar-trigger.js",
         "content/page-confirm.js",
+        "content/reload-state.js",
         "content/utils/*.js",
         "content/blocks/*.js",
         "content/styles/*.js",

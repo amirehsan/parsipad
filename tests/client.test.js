@@ -66,6 +66,19 @@ describe('requestTranslation', () => {
     expect(port.disconnected).toBe(true);
   });
 
+  it('reports a connect that fails because the extension was reloaded as CONTEXT_INVALIDATED', async () => {
+    chrome.runtime.connect = vi.fn(() => { throw new Error('Extension context invalidated.'); });
+    const result = await requestTranslation({ text: 'One. Two.', sourceLang: 'auto' });
+    expect(result.errorCode).toBe('CONTEXT_INVALIDATED');
+    expect(result.error).toMatch(/Reload the page/);
+  });
+
+  it('reports any other failed connect with its code and its own message', async () => {
+    chrome.runtime.connect = vi.fn(() => { throw new Error('Could not establish connection.'); });
+    const result = await requestTranslation({ text: 'One. Two.', sourceLang: 'auto' });
+    expect(result).toEqual({ error: 'Could not establish connection.', errorCode: 'UNKNOWN' });
+  });
+
   it('honors an explicit batch mode', async () => {
     requestTranslation({ text: '[1] a', mode: 'batch', sourceLang: 'en' });
     expect(port.posted[0].mode).toBe('batch');
