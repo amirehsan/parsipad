@@ -38,6 +38,20 @@ export function failedIndexes(run) {
 }
 
 /**
+ * The indexes of the batches that did not come back yet: failed, or never
+ * sent because the run stopped. What a resumed run sends.
+ * @param {{status: string[]}} run
+ * @returns {number[]}
+ */
+export function unfinishedIndexes(run) {
+  const indexes = [];
+  run.status.forEach((outcome, index) => {
+    if (outcome !== 'ok') indexes.push(index);
+  });
+  return indexes;
+}
+
+/**
  * How many batches finished, failed and never ran.
  * @param {{total: number, status: string[]}} run
  * @returns {{done: number, failed: number, pending: number, total: number}}

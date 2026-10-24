@@ -22,7 +22,7 @@ import { renderCard, injectCardStyles } from '../shared/card/index.js';
 import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
 import { batchTextNodesForTranslation, parseNumberedTranslations } from './utils/batch.js';
-import { createPageRun, markBatch, failedIndexes, summarizeRun, summaryMessageKey } from './utils/page-run.js';
+import { createPageRun, markBatch, failedIndexes, unfinishedIndexes, summarizeRun, summaryMessageKey } from './utils/page-run.js';
 import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
 import { selectionToReport, createSelectionReporter, isEditableSelection, MAX_REPORT_LENGTH } from './selection-report.js';
 import { createToolbarTrigger, selectionAnchor, isSameAnchor } from './toolbar-trigger.js';
@@ -251,6 +251,14 @@ function installSpaNavigationListener() {
   wrap('pushState');
   wrap('replaceState');
   window.addEventListener('parsipad:locationchange', handleNav);
+
+  // The Navigation API is shared DOM state, so it reports a pushState the
+  // page makes in its own world, which the patch above (in this isolated
+  // world) never sees. The patch and popstate stay for browsers without it;
+  // handleNav's route comparison ignores the duplicate events.
+  if (typeof window.navigation?.addEventListener === 'function') {
+    window.navigation.addEventListener('currententrychange', handleNav);
+  }
 }
 
 /**
@@ -1178,13 +1186,17 @@ let activeToast = null;
  *   the message, and with focus, focus moves to it (for a keyboard user)
  *   once the message is in
  * @param {'status'|'alert'} [options.role]
+ * @param {boolean} [options.persist] - never close on a timer: stays until
+ *   the user acts on it or closes it, for an action that would otherwise
+ *   be lost (Retry failed)
  * @returns {() => void} closes this toast, if it is still the one on screen
  */
 function showToast({
   message = t('apiKeyNotConfigured', userLang),
   withSettings = true,
   action = null,
-  role = 'status'
+  role = 'status',
+  persist = false
 } = {}) {
   // Where focus goes back to: if the toast being replaced holds focus, where
   // that one would have sent it; otherwise wherever focus is now.
@@ -1284,7 +1296,7 @@ function showToast({
     remaining = Math.max(0, remaining - (Date.now() - runningSince));
   };
   const resume = () => {
-    if (!shown || closeTimer !== null || pointerInside || focusInside) return;
+    if (persist || !shown || closeTimer !== null || pointerInside || focusInside) return;
     runningSince = Date.now();
     closeTimer = setTimeout(close, remaining);
   };
@@ -2448,13 +2460,23 @@ const PAGE_BATCH_GAP_MS = 200;
 /**
  * Handle page translation request. With `retry`, run again only the given
  * batches of the run that owns the page, without the question: the user
- * already agreed to translate this page.
+ * already agreed to translate this page. Retry failed and Translate Page on
+ * a page with unfinished sections both come this way.
  * @param {{retry?: {state: object, indexes: number[]}}} [options]
  */
 async function handleTranslatePage({ retry = null } = {}) {
   // If already translating, ignore
   if (pageTranslationState?.isTranslating) {
     return;
+  }
+
+  if (!retry && pageTranslationState?.run) {
+    // Sections that failed or were never sent (a stop) are picked up where
+    // the run left off: the user already agreed to translate this page.
+    const unfinished = unfinishedIndexes(pageTranslationState.run);
+    if (unfinished.length > 0) {
+      return handleTranslatePage({ retry: { state: pageTranslationState, indexes: unfinished } });
+    }
   }
 
   // If already translated, toggle instead
@@ -2487,6 +2509,9 @@ async function handleTranslatePage({ retry = null } = {}) {
   };
   state.isTranslating = true;
   state.stopReason = null;
+  // A summary from an earlier run would offer a Retry for work this run
+  // now owns.
+  pageTranslationState?.closeSummary?.();
   pageTranslationState = state;
   // Set when the run ends before any request (the user said no, or there is
   // no key): it leaves no state, as if never asked.
@@ -2690,11 +2715,12 @@ function finishPageRun(state) {
     .replace('{total}', String(summary.total))
     .replace('{failed}', String(summary.failed));
   // A stop is the user's choice, so only a run that went to the end offers
-  // to send again what failed.
+  // to send again what failed; Translate Page picks up a stopped run. The
+  // offer stays until the user acts on it, so it is never lost to a timer.
   const action = key === 'pageTranslatePartial'
     ? { label: t('pageTranslateRetryFailed', userLang), onClick: () => retryFailedBatches(state) }
     : null;
-  state.closeSummary = showToast({ message, withSettings: false, action });
+  state.closeSummary = showToast({ message, withSettings: false, action, persist: Boolean(action) });
 }
 
 /**
@@ -2855,19 +2881,19 @@ function applyPageTranslations() {
 }
 
 /**
- * Restore original text to the DOM. Nodes no longer on the page (an SPA
- * took them away) are skipped: they are not ours to write to any more.
+ * Restore original text to the DOM. Text nodes no longer on the page (an
+ * SPA replaced them) are not written to; their element, if the SPA kept it,
+ * still loses the translated marker and gets its direction back.
  */
 function restorePageOriginals() {
   if (!pageTranslationState) return;
 
   for (const { node, parent } of pageTranslationState.textNodes) {
-    if (!node.isConnected) continue;
     const originalText = pageTranslationState.originalTexts.get(node);
     if (originalText) {
-      node.textContent = originalText;
+      if (node.isConnected) node.textContent = originalText;
 
-      if (parent) {
+      if (parent?.isConnected) {
         // Remove translated marker
         parent.removeAttribute('data-parsipad-translated');
 
@@ -3192,9 +3218,11 @@ function handleKeyDown(event) {
   if (event.key === 'Escape') {
     // A running page translation stops first and keeps what finished. The
     // key is not consumed: the page's own Escape handling still runs, and so
-    // do the branches below. The question before a run handles its own
-    // Escape, so this acts only once the requests are going.
-    if (pageTranslationState?.isTranslating && pageTranslationState.phase === 'running') {
+    // do the branches below. In a text field Escape belongs to the field
+    // (clearing a search, say), so it is left alone there; Cancel stops the
+    // run from anywhere. The question before a run handles its own Escape,
+    // so this acts only once the requests are going.
+    if (!isEditableTarget && pageTranslationState?.isTranslating && pageTranslationState.phase === 'running') {
       stopPageTranslation();
     }
     hideBlockIcon();
