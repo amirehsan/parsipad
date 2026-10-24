@@ -932,6 +932,10 @@ a.btn {
   background: var(--gray-800);
 }
 
+[dir="rtl"] .shortcut-keys {
+  justify-content: flex-end;
+}
+
 /* An unbound command: plain muted text, never styled as a key the user
    could press, because there is no key to press. */
 .shortcut-keys.is-unset {
@@ -939,10 +943,14 @@ a.btn {
   opacity: 0.7;
 }
 
+/* The keys of one binding read left to right on a Persian page too, "Alt + B"
+   rather than "B + Alt", while still sitting at the start of the row. */
 .shortcut-keys {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  direction: ltr;
+  unicode-bidi: isolate;
   gap: 0.25rem;
 }
 

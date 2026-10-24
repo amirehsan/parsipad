@@ -403,7 +403,7 @@ function closeDrawer() {
   drawerInvoker = null;
   // The bookmarks button may have been switched off while the drawer was open.
   if (invoker?.isConnected && !invoker.hidden) invoker.focus();
-  else if (!pageView.hidden) cardButton.focus();
+  else if (enabled && !pageView.hidden) cardButton.focus();
 }
 
 async function loadBookmarks() {
@@ -548,9 +548,11 @@ function handleBookmarkClick(event) {
   if (!link || isLinkableUrl(link.href) || event.button > 1) return;
   event.preventDefault();
   const url = link.getAttribute('href');
-  // A modifier or the middle button means a new tab, as it does for a plain link.
-  const inNewTab = event.button === 1 || event.metaKey || event.ctrlKey || event.shiftKey;
-  const opening = inNewTab ? chrome.tabs.create({ url, active: false }) : chrome.tabs.update({ url });
+  // As for a plain link: Shift opens a window, Cmd, Ctrl or the middle button a background tab.
+  let opening;
+  if (event.shiftKey) opening = chrome.windows.create({ url });
+  else if (event.button === 1 || event.metaKey || event.ctrlKey) opening = chrome.tabs.create({ url, active: false });
+  else opening = chrome.tabs.update({ url });
   opening.catch((error) => {
     console.warn('ParsiPad: could not open the bookmark', error);
   });

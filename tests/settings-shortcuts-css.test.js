@@ -31,6 +31,12 @@ describe('Settings shortcut rows', () => {
     expect(kbd).toMatch(/unicode-bidi:\s*isolate/);
   });
 
+  it('keep the keys of one binding in reading order on a Persian page, at the row start', () => {
+    expect(rule('.shortcut-keys')).toMatch(/direction:\s*ltr/);
+    expect(rule('.shortcut-keys')).toMatch(/unicode-bidi:\s*isolate/);
+    expect(rule('[dir="rtl"] .shortcut-keys')).toMatch(/justify-content:\s*flex-end/);
+  });
+
   it('use the spacing tokens for row padding and gaps', () => {
     expect(rule('.shortcut-item')).toMatch(/padding:\s*var\(--space-2\)\s+var\(--space-stack-item\)/);
     expect(rule('.shortcuts-list')).toMatch(/gap:\s*var\(--space-2\)/);

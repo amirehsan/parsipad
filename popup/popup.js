@@ -1148,8 +1148,8 @@ function hideAllOutputs() {
 
 /**
  * Send a chosen, dropped or pasted file to the translator its type belongs
- * to. One file at a time: a new one replaces whatever was loaded, but only
- * once it has passed that translator's checks.
+ * to. One file at a time: the drop zone, and with it drop and paste, is gone
+ * while a file is loaded, until Remove brings it back.
  * @param {File} file
  */
 function routeFile(file) {
@@ -1162,14 +1162,12 @@ function routeFile(file) {
 
   if (kind.kind === 'document') {
     if (!loadDocument(file)) return;
-    if (selectedImage) clearImage();
     showNotice(t('documentReady', currentLang));
   } else {
     // A file the browser could not type is passed on with the type its
     // extension implies, which is what the image request sends.
     const image = file.type === kind.mimeType ? file : new File([file], file.name, { type: kind.mimeType });
     if (!handleImageSelect(image)) return;
-    if (uploadedFile) clearFile();
     showNotice(t('imageReady', currentLang));
   }
   updateDropZone();
@@ -1277,6 +1275,9 @@ function clearFile() {
 function setDocLoadingState(loading) {
   isProcessing = loading;
   translateDocBtn.disabled = loading;
+  // Removing the file mid-run would leave the run going behind the drop
+  // zone; Cancel stops it first.
+  removeFileBtn.disabled = loading;
   const btnTextEl = translateDocBtn.querySelector('.btn-text');
   const btnLoadingEl = translateDocBtn.querySelector('.btn-loading');
   if (btnTextEl) btnTextEl.hidden = loading;
@@ -1288,7 +1289,7 @@ function setDocLoadingState(loading) {
  */
 async function handleDocumentTranslate() {
   if (!uploadedFile) {
-    showError('Please select a file');
+    showError(t('selectFileFirst', currentLang));
     return;
   }
 
@@ -1305,7 +1306,7 @@ async function handleDocumentTranslate() {
   }
 
   if (!content || content.trim().length === 0) {
-    showError('File is empty');
+    showError(t('fileEmpty', currentLang));
     return;
   }
 
@@ -1649,6 +1650,8 @@ async function displayImageResult(result) {
 function setImageLoadingState(loading) {
   isProcessing = loading;
   translateImageBtn.disabled = loading;
+  // The request is short and cannot be cancelled, so the image stays until it answers.
+  removeImageBtn.disabled = loading;
   const btnTextEl = translateImageBtn.querySelector('.btn-text');
   const btnLoadingEl = translateImageBtn.querySelector('.btn-loading');
   if (btnTextEl) btnTextEl.hidden = loading;

@@ -98,7 +98,8 @@ function installChrome({ permission = false, grant = false, updateFails = false 
         if (updateFails) throw new Error('Not allowed to load local resource');
         return { id: 42 };
       })
-    }
+    },
+    windows: { create: vi.fn(async () => ({ id: 7 })) }
   };
 }
 
@@ -414,6 +415,8 @@ describe('new tab: the bookmarks drawer', () => {
     expect(chrome.tabs.update).not.toHaveBeenCalled();
     link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
     expect(chrome.tabs.update).toHaveBeenCalledWith({ url: 'chrome://extensions/' });
+    link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, shiftKey: true }));
+    expect(chrome.windows.create).toHaveBeenCalledWith({ url: 'chrome://extensions/' });
   });
 
   it('is gone when the bookmarks panel is switched off', async () => {
