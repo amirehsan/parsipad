@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-10-24
+
 ### Added
 - **A side panel that stays open while you browse.** The popup closes the moment focus leaves it, which cut long jobs short: a document or a whole-page translation stopped when you clicked back into the page. ParsiPad now has a Chrome side panel with the same controls as the popup, opened from a new button in the popup header or from the right-click item "Open ParsiPad in side panel". It stays put as you switch tabs and scroll, and a long job keeps running while you read.
 - **Text selected on the page appears in the panel as a "Selected on this page" chip.** One click on Translate sends it, so there is no copying and pasting between the page and the box. The chip never reads what you type inside text fields, and the selected text stays inside the browser until you press Translate.
