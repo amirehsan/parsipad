@@ -99,15 +99,17 @@ beforeAll(async () => {
     }
   };
   document.body.innerHTML = `
-    <a id="before" href="#before">before</a>
-    <p id="text">several words to select</p>`;
+    <div id="page">
+      <a id="before" href="#before">before</a>
+      <p id="text">several words to select</p>
+    </div>`;
   await import('../content/main.js');
   // Let the stored settings load.
   await new Promise((resolve) => setTimeout(resolve, 0));
 });
 
 beforeEach(() => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
 });
 
 afterEach(async () => {
@@ -154,6 +156,14 @@ async function settle() {
   for (let i = 0; i < 5; i++) await Promise.resolve();
 }
 
+// The toast enters the page empty and says its message a moment later, so
+// screen readers see the live region before its text.
+const LIVE_REGION_DELAY_MS = 100;
+async function shown() {
+  await settle();
+  vi.advanceTimersByTime(LIVE_REGION_DELAY_MS);
+}
+
 describe('mute from the toolbar', () => {
   it('adds a fourth button to the roving group, labelled through t()', () => {
     $('before').focus();
@@ -171,7 +181,7 @@ describe('mute from the toolbar', () => {
   it('stores the normalized host, closes the toolbar and names the stored host', async () => {
     selectWords();
     press(muteButton());
-    await settle();
+    await shown();
     expect(store.get('muted_sites')).toEqual(['example.com']);
     expect(toolbar()).toBeNull();
 
@@ -196,7 +206,7 @@ describe('mute from the toolbar', () => {
     await storageSet({ muted_sites: ['other.org'] });
     selectWords();
     press(muteButton());
-    await settle();
+    await shown();
     expect(store.get('muted_sites')).toEqual(['example.com', 'other.org']);
 
     toast().querySelector('.action').click();
@@ -214,7 +224,7 @@ describe('mute from the toolbar', () => {
     key($('before'), 'Tab');
     key(roots.get(toolbar()).activeElement, 'End');
     press(muteButton(), { keyboard: true });
-    await settle();
+    await shown();
     expect(document.activeElement).toBe(toastHost());
     expect(toast().activeElement).toBe(toast().querySelector('.action'));
 
@@ -227,7 +237,7 @@ describe('mute from the toolbar', () => {
     $('before').focus();
     selectWords();
     press(muteButton());
-    await settle();
+    await shown();
     expect(toastHost()).not.toBeNull();
     expect(document.activeElement).toBe($('before'));
   });
@@ -235,7 +245,7 @@ describe('mute from the toolbar', () => {
   it('keeps the toast while the pointer or focus is inside it, and closes it after 10 s otherwise', async () => {
     selectWords();
     press(muteButton());
-    await settle();
+    await shown();
     const box = toast().querySelector('.toast');
 
     box.dispatchEvent(new Event('pointerenter'));
@@ -256,6 +266,69 @@ describe('mute from the toolbar', () => {
     expect(store.get('muted_sites')).toEqual(['example.com']);
   });
 
+  it('enters the page with an empty live region, then says the message and focuses Undo', async () => {
+    $('before').focus();
+    selectWords();
+    key($('before'), 'Tab');
+    key(roots.get(toolbar()).activeElement, 'End');
+    press(muteButton(), { keyboard: true });
+    await settle();
+    const message = toast().querySelector('.message');
+    expect(message.getAttribute('role')).toBe('status');
+    expect(message.textContent).toBe('');
+    expect(document.activeElement).toBe($('before'));
+
+    vi.advanceTimersByTime(LIVE_REGION_DELAY_MS);
+    expect(message.textContent).toBe(translations.en.mutedOnSite.replace('{host}', 'example.com'));
+    const undo = toast().querySelector('.action');
+    // Focus on Undo reads the message too.
+    expect(message.id).toBeTruthy();
+    expect(undo.getAttribute('aria-describedby')).toBe(message.id);
+    expect(toast().activeElement).toBe(undo);
+  });
+
+  it('offers no Undo when the site was already on the list', async () => {
+    selectWords();
+    // Muted from another tab; the change has not reached this page yet.
+    store.set('muted_sites', ['example.com']);
+    press(muteButton());
+    await shown();
+    expect(toast().querySelector('.message').textContent)
+      .toBe(translations.en.mutedOnSite.replace('{host}', 'example.com'));
+    expect(toast().querySelector('.action').hidden).toBe(true);
+    expect(store.get('muted_sites')).toEqual(['example.com']);
+  });
+
+  it('hands focus back when closed with its close button', async () => {
+    $('before').focus();
+    selectWords();
+    key($('before'), 'Tab');
+    key(roots.get(toolbar()).activeElement, 'End');
+    press(muteButton(), { keyboard: true });
+    await shown();
+    const close = toast().querySelector('.close');
+    close.focus();
+    close.click();
+    expect(toastHost()).toBeNull();
+    expect(document.activeElement).toBe($('before'));
+  });
+
+  it('pauses its timer while the pointer is inside and resumes what was left', async () => {
+    selectWords();
+    press(muteButton());
+    await shown();
+    const box = toast().querySelector('.toast');
+    vi.advanceTimersByTime(4000);
+    box.dispatchEvent(new Event('pointerenter'));
+    vi.advanceTimersByTime(30000);
+    expect(toastHost()).not.toBeNull();
+    box.dispatchEvent(new Event('pointerleave'));
+    vi.advanceTimersByTime(5999);
+    expect(toastHost()).not.toBeNull();
+    vi.advanceTimersByTime(1);
+    expect(toastHost()).toBeNull();
+  });
+
   it('is not offered on a host that cannot be muted', () => {
     window.happyDOM.setURL('http://intranet/wiki');
     try {
@@ -274,7 +347,7 @@ describe('mute from the toolbar', () => {
       selectWords();
       expect(muteButton().getAttribute('aria-label')).toBe(translations.fa.toolbarMute);
       press(muteButton());
-      await settle();
+      await shown();
       const message = toast().querySelector('.message');
       expect(message.textContent).toBe(translations.fa.mutedOnSite.replace('{host}', 'example.com'));
       expect(message.getAttribute('dir')).toBe('rtl');
@@ -285,14 +358,41 @@ describe('mute from the toolbar', () => {
   });
 });
 
-describe('the missing-key toast', () => {
+describe('the page-translation toasts', () => {
+  it('says there is no text to translate in the interface language', async () => {
+    for (const listener of storageListeners) listener({ ui_language: { newValue: 'fa' } }, 'local');
+    $('page').style.display = 'none';
+    try {
+      onMessage({ action: 'TRANSLATE_PAGE' }, { id: 'parsipad' }, () => {});
+      await shown();
+      const message = toast().querySelector('.message');
+      expect(message.getAttribute('role')).toBe('status');
+      expect(message.textContent).toBe(translations.fa.noTextOnPage);
+      expect(message.getAttribute('dir')).toBe('rtl');
+    } finally {
+      $('page').style.display = '';
+      for (const listener of storageListeners) listener({ ui_language: { newValue: 'en' } }, 'local');
+    }
+  });
+
   it('stays an alert, in the interface language, with Open Settings', async () => {
     // Page translation has no floating box, so a missing key comes back as
     // the toast.
+    // A mute toast holds focus on Undo when the alert replaces it.
+    $('before').focus();
+    selectWords();
+    key($('before'), 'Tab');
+    key(roots.get(toolbar()).activeElement, 'End');
+    press(muteButton(), { keyboard: true });
+    await shown();
+    expect(document.activeElement).toBe(toastHost());
+
     missingKey = true;
     try {
       onMessage({ action: 'TRANSLATE_PAGE' }, { id: 'parsipad' }, () => {});
-      await settle();
+      await shown();
+      // Replaced while it held focus: focus goes back, not to <body>.
+      expect(document.activeElement).toBe($('before'));
       const message = toast().querySelector('.message');
       expect(message.getAttribute('role')).toBe('alert');
       expect(message.textContent).toBe(translations.en.apiKeyNotConfigured);
