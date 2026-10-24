@@ -5,6 +5,7 @@ import {
   MUTED_SITES_KEY, normalizeHost, isHostMuted, addMutedSite, getMutedSites, removeMutedSite
 } from '../lib/muted-sites.js';
 import { STORAGE_KEYS } from '../lib/constants.js';
+import { functionBody } from './helpers/source.js';
 
 const store = new Map();
 beforeEach(() => {
@@ -114,15 +115,10 @@ describe('muted sites', () => {
     expect(read('content/blocks/index.js')).toMatch(/isHostMuted\(/);
     const main = read('content/main.js');
     expect(main).toMatch(/from '\.\.\/lib\/muted-sites\.js'/);
-    const body = main.slice(main.indexOf('function handleTextSelection'));
-    expect(body.slice(0, 200)).toMatch(/if \(siteMuted\) return;/);
-    // A mute that lands during the 200 ms debounce still wins: the timer
-    // checks again before it builds the toolbar.
-    const timer = body.slice(body.indexOf('selectionDebounceTimer = setTimeout('));
-    const callback = timer.slice(0, timer.indexOf('}, 200);'));
-    const recheck = callback.indexOf('if (siteMuted) return;');
-    expect(recheck).toBeGreaterThan(-1);
-    expect(recheck).toBeLessThan(callback.indexOf('createSelectionPopup('));
+    // The toolbar trigger's timer calls evaluateSelection, so checking the
+    // mute first there means a mute that lands while the timer is pending
+    // still wins before the toolbar is built.
+    expect(functionBody(main, 'evaluateSelection')).toMatch(/^function evaluateSelection\(\) \{\s*if \(siteMuted\)/);
     expect(main).toMatch(/changes\[MUTED_SITES_KEY\]/);
   });
 });

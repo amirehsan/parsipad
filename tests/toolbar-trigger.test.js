@@ -1,0 +1,179 @@
+// tests/toolbar-trigger.test.js
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import fs from 'fs';
+import path from 'path';
+import { createToolbarTrigger, selectionAnchor, isSameAnchor } from '../content/toolbar-trigger.js';
+import { functionBody } from './helpers/source.js';
+
+beforeEach(() => vi.useFakeTimers()); afterEach(() => vi.useRealTimers());
+
+describe('toolbar trigger', () => {
+  it('waits for the pointer to lift, then evaluates once', () => {
+    const evaluate = vi.fn(), hide = vi.fn();
+    const t = createToolbarTrigger({ evaluate, hide, delay: 250 });
+    t.onPointerDown(); expect(hide).toHaveBeenCalled();
+    t.onSelectionChange(); t.onSelectionChange(); vi.advanceTimersByTime(1000);
+    expect(evaluate).not.toHaveBeenCalled();
+    t.onPointerUp(); vi.advanceTimersByTime(250);
+    expect(evaluate).toHaveBeenCalledTimes(1);
+  });
+
+  it('evaluates after selectionchange settles with no pointer (touch handles, keyboard)', () => {
+    const evaluate = vi.fn();
+    const t = createToolbarTrigger({ evaluate, hide: () => {}, delay: 250 });
+    t.onSelectionChange(); vi.advanceTimersByTime(200);
+    t.onSelectionChange(); vi.advanceTimersByTime(249);
+    expect(evaluate).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(evaluate).toHaveBeenCalledTimes(1);
+  });
+
+  it('evaluates after a long-press, which ends in pointercancel rather than pointerup', () => {
+    // A touch long-press sends pointerdown, then pointercancel when the
+    // browser takes the gesture over for its own selection; main.js routes
+    // pointercancel to onPointerUp so the suppression lifts.
+    const evaluate = vi.fn();
+    const t = createToolbarTrigger({ evaluate, hide: () => {}, delay: 250 });
+    t.onPointerDown();
+    t.onSelectionChange();
+    t.onPointerUp(); // pointercancel
+    t.onSelectionChange(); vi.advanceTimersByTime(100);
+    t.onSelectionChange(); vi.advanceTimersByTime(249);
+    expect(evaluate).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(evaluate).toHaveBeenCalledTimes(1);
+  });
+
+  it('follows the selection handles: each settled drag evaluates the final range', () => {
+    let range = 'word';
+    const seen = [];
+    const t = createToolbarTrigger({ evaluate: () => seen.push(range), hide: () => {}, delay: 250 });
+    t.onPointerDown(); t.onPointerUp(); // long-press, ended by pointercancel
+    t.onSelectionChange(); vi.advanceTimersByTime(250);
+    expect(seen).toEqual(['word']);
+    // Dragging a handle sends only selectionchange events, many per second.
+    for (const next of ['word and', 'word and more', 'word and more text']) {
+      range = next;
+      t.onSelectionChange(); vi.advanceTimersByTime(50);
+    }
+    expect(seen).toEqual(['word']);
+    vi.advanceTimersByTime(200);
+    expect(seen).toEqual(['word', 'word and more text']);
+  });
+
+  it('keeps at most one pending timer', () => {
+    const t = createToolbarTrigger({ evaluate: () => {}, hide: () => {}, delay: 250 });
+    t.onSelectionChange(); t.onSelectionChange(); t.onSelectionChange();
+    expect(vi.getTimerCount()).toBe(1);
+    t.onPointerDown();
+    expect(vi.getTimerCount()).toBe(0);
+    t.onPointerUp(); t.onPointerUp();
+    expect(vi.getTimerCount()).toBe(1);
+    vi.advanceTimersByTime(250);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('a new pointer gesture cancels an evaluation still pending', () => {
+    const evaluate = vi.fn(), hide = vi.fn();
+    const t = createToolbarTrigger({ evaluate, hide, delay: 250 });
+    t.onSelectionChange(); vi.advanceTimersByTime(100);
+    t.onPointerDown(); vi.advanceTimersByTime(1000);
+    expect(evaluate).not.toHaveBeenCalled();
+    expect(hide).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits 250 ms by default', () => {
+    const evaluate = vi.fn();
+    const t = createToolbarTrigger({ evaluate, hide: () => {} });
+    t.onSelectionChange(); vi.advanceTimersByTime(249);
+    expect(evaluate).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(evaluate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('toolbar anchor', () => {
+  const rect = (top, left, width, height) => ({ top, left, width, height, bottom: top + height, right: left + width });
+
+  it('is the same only when the trimmed text and the range rectangle both match', () => {
+    const a = selectionAnchor('hello', rect(10, 20, 30, 16));
+    expect(isSameAnchor(a, selectionAnchor('hello', rect(10, 20, 30, 16)))).toBe(true);
+    expect(isSameAnchor(a, selectionAnchor('hello!', rect(10, 20, 30, 16)))).toBe(false);
+    expect(isSameAnchor(a, selectionAnchor('hello', rect(10, 21, 30, 16)))).toBe(false);
+    expect(isSameAnchor(a, selectionAnchor('hello', rect(10, 20, 30, 32)))).toBe(false);
+  });
+
+  it('never matches a missing anchor (no toolbar on screen)', () => {
+    const a = selectionAnchor('hello', rect(10, 20, 30, 16));
+    expect(isSameAnchor(a, null)).toBe(false);
+    expect(isSameAnchor(null, a)).toBe(false);
+  });
+});
+
+describe('content script wiring', () => {
+  const root = path.resolve(__dirname, '..');
+  const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
+  const main = read('content/main.js');
+  const listener = (type) => {
+    const start = main.indexOf(`document.addEventListener('${type}'`);
+    expect(start, type).toBeGreaterThan(-1);
+    return main.slice(start, main.indexOf('});', start));
+  };
+
+  it('has no imports, so the content script can load it unbundled', () => {
+    expect(read('content/toolbar-trigger.js')).not.toMatch(/^\s*import\s/m);
+    expect(main).toMatch(/from '\.\/toolbar-trigger\.js'/);
+  });
+
+  it('replaces the mouseup handler with pointer and selectionchange listeners', () => {
+    expect(main).not.toMatch(/addEventListener\('mouseup'/);
+    expect(main).not.toMatch(/function handleTextSelection\(/);
+    expect(functionBody(main, 'init')).toMatch(/createToolbarTrigger\(\{\s*evaluate: evaluateSelection,\s*hide: removeSelectionPopup/);
+    expect(listener('pointerdown')).toMatch(/toolbarTrigger\.onPointerDown\(\)/);
+    expect(main).toMatch(/document\.addEventListener\('pointerup', onPointerEnd\)/);
+    expect(main).toMatch(/document\.addEventListener\('pointercancel', onPointerEnd\)/);
+    expect(main).toMatch(/document\.addEventListener\('selectionchange', toolbarTrigger\.onSelectionChange\)/);
+  });
+
+  it('ignores pointer events on the toolbar and the floating box, so their buttons still get the click', () => {
+    const down = listener('pointerdown');
+    expect(down.indexOf('if (isPointerOnOwnUi(event)) return;')).toBeGreaterThan(-1);
+    expect(down.indexOf('isPointerOnOwnUi(event)')).toBeLessThan(down.indexOf('onPointerDown()'));
+    const end = main.slice(main.indexOf('const onPointerEnd = '));
+    expect(end.slice(0, end.indexOf('};'))).toMatch(/if \(isPointerOnOwnUi\(event\)\) return;\s*toolbarTrigger\.onPointerUp\(\);/);
+    const own = functionBody(main, 'isPointerOnOwnUi');
+    expect(own).toMatch(/event\.composedPath\(\)/);
+    expect(own).toMatch(/path\.includes\(selectionPopup\)/);
+    expect(own).toMatch(/path\.includes\(floatingBox\)/);
+  });
+
+  it('checks the mute and the setting first, then focus, editable fields and its own UI', () => {
+    const body = functionBody(main, 'evaluateSelection');
+    expect(body).toMatch(/^function evaluateSelection\(\) \{\s*if \(siteMuted\) return;\s*if \(!selectionPopupEnabled\) return;/);
+    const create = body.indexOf('createSelectionPopup(');
+    expect(create).toBeGreaterThan(-1);
+    for (const guard of [
+      'document.activeElement === selectionPopup',
+      'isEditableSelection(selection, document.activeElement)',
+      'isSelectionInOwnUi(selection)',
+      'isSameAnchor(anchor, selectionPopupAnchor)'
+    ]) {
+      const at = body.indexOf(guard);
+      expect(at, guard).toBeGreaterThan(-1);
+      expect(at, guard).toBeLessThan(create);
+    }
+    // Never moves focus: a rich editor keeps its caret.
+    expect(body).not.toMatch(/\.focus\(/);
+    expect(main).toMatch(/import \{[^}]*isEditableSelection[^}]*\} from '\.\/selection-report\.js'/);
+  });
+
+  it('forgets the anchor whenever the toolbar goes, so the next selection rebuilds it', () => {
+    expect(functionBody(main, 'removeSelectionPopup')).toMatch(/selectionPopupAnchor = null;/);
+  });
+
+  it('says in Settings that the toolbar stays out of text fields, in both languages', () => {
+    const i18n = read('lib/i18n.js');
+    expect(i18n).toMatch(/selectionToolbarHint: '[^']*Never appears inside text fields\.'/);
+    expect(i18n).toMatch(/selectionToolbarHint: '[^']*هرگز داخل کادرهای متنی نمایش داده نمی‌شود\.'/);
+  });
+});
