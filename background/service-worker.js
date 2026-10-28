@@ -5,13 +5,14 @@ import { translationCache } from '../lib/cache.js';
 import { hasApiKey, getDictionaryTranslationSettings, isTranslationCancelled, setTranslationCancelled, getSelectedProvider, getFavorites, addFavorite, removeFavorite, isFavorite, hasCompletedOnboarding, logUsageEvent, claimReviewPrompt, respondToReviewPrompt, runCacheMigrations, getTranslateOtherLanguages, getLanguage } from '../lib/storage.js';
 import { detectLanguageCode, isSupportedLanguage, getTranslationInfo } from '../lib/language-detect.js';
 import { addToHistory, addToPolishHistory, addToDictionaryHistory, updatePolishVariant } from '../lib/history.js';
-import { ACTIONS, PROVIDER_CONFIGS, ACTION_TYPES, ERROR_MESSAGES, STORE_REVIEWS_URL } from '../lib/constants.js';
+import { ACTIONS, PROVIDER_CONFIGS, ACTION_TYPES, ERROR_MESSAGES } from '../lib/constants.js';
 import { classifyMode, MODES } from '../lib/translation/mode.js';
 import { normalizeInput, normalizeForMode, normalizePersian } from '../lib/translation/normalize.js';
 import { buildCacheKeyParts, hashContext } from '../lib/translation/cache-key.js';
 import { TranslationError, ERROR_CODES, toTranslationError, errorI18nKey } from '../lib/translation/errors.js';
 import { t } from '../lib/i18n.js';
 import { recordProviderHealth } from '../lib/provider-health.js';
+import { openSidebar, storeReviewsUrl } from '../lib/platform.js';
 import { SETTINGS_SECTIONS as SETTINGS_SECTION_IDS } from '../settings/sections.js';
 
 /**
@@ -56,7 +57,7 @@ async function handleMessage(message, sender) {
 
     case ACTIONS.OPEN_SIDE_PANEL:
       // Send this only from an extension page, inside a click handler.
-      // sidePanel.open() needs a user gesture, which does not survive
+      // Opening the panel needs a user gesture, which does not survive
       // messaging, so a content script cannot use this route.
       return handleOpenSidePanel(message.tabId ?? sender?.tab?.id);
 
@@ -139,7 +140,7 @@ async function handleMessage(message, sender) {
         await respondToReviewPrompt(message.response);
       }
       if (message.response === 'rated') {
-        await chrome.tabs.create({ url: STORE_REVIEWS_URL });
+        await chrome.tabs.create({ url: storeReviewsUrl() });
       }
       return { success: true };
 
@@ -742,15 +743,14 @@ async function handleTestApiKey(providerId, key) {
 }
 
 /**
- * Open the side panel for a tab. Callers must invoke this inside the user
- * gesture that triggered it, with no awaited work beforehand.
+ * Open the side panel for a tab, or the sidebar in Firefox. Callers must
+ * invoke this inside the user gesture that triggered it, with no awaited
+ * work beforehand.
  * @param {number|undefined} tabId
  * @returns {Promise<{success: boolean}>}
  */
 async function handleOpenSidePanel(tabId) {
-  if (!chrome.sidePanel || tabId === undefined) return { success: false };
-  await chrome.sidePanel.open({ tabId });
-  return { success: true };
+  return { success: tabId !== undefined && await openSidebar({ tabId }) };
 }
 
 /**
@@ -858,7 +858,7 @@ async function ensureContentScript(tabId) {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!tab?.id) return;
 
-  // sidePanel.open() needs the click's user gesture, so it must run before any await.
+  // Opening the panel needs the click's user gesture, so it must run before any await.
   if (info.menuItemId === OPEN_SIDE_PANEL_MENU_ID) {
     try {
       await handleOpenSidePanel(tab.id);

@@ -64,13 +64,19 @@ do all of the following in the same branch, without being asked:
    - `CHANGELOG.md`: rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD`
      and open a fresh empty `## [Unreleased]` above it
    Patch for fixes, minor for new features or visible changes, major for
-   breaking changes. The Chrome Web Store rejects a version it already has.
+   breaking changes. The Chrome Web Store and Firefox Add-ons both reject a
+   version they already have.
    Make the bump its own commit: `chore(release): bump version to X.Y.Z`.
 4. **Verify and package.** Run `npm test` (`tests/version.test.js` checks the
-   manifest, package.json and the changelog heading agree), `npm run lint`
-   and `npm run build`, then zip the contents of `dist/` (files at the zip
-   root, not a `dist/` folder) to `store-assets/parsipad-vX.Y.Z.zip`.
-   The zips are git-ignored; they are build output for the store upload.
+   manifest, package.json and the changelog heading agree), `npm run lint`,
+   `npm run build` (both browsers) and `npm run lint:firefox` (0 errors).
+   Then, with everything committed, run `npm run package`. It writes three
+   zips to `store-assets/`: `parsipad-vX.Y.Z.zip` for the Chrome Web Store,
+   `parsipad-vX.Y.Z-firefox.zip` for addons.mozilla.org, and
+   `parsipad-vX.Y.Z-source.zip`, which AMO requires with every version
+   because the code is bundled. It refuses to replace a zip that already
+   exists. The zips are git-ignored; they are build output for the store
+   uploads.
 5. **Landing page.** If the change affects anything `landing/` describes,
    update it on disk and deploy it as described above. Never commit it.
 

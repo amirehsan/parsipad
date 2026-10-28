@@ -10,16 +10,16 @@ ParsiPad is a browser extension for AI-powered Persian-English translation. We a
 
 ### What We Store Locally
 
-All data is stored locally on your device using Chrome's storage API:
+All data is stored locally on your device using the browser's extension storage API:
 
-- **API Keys**: Your API keys for supported providers (Anthropic, Google, OpenAI) are stored locally in Chrome's secure storage. They are never sent to any server other than their respective APIs.
+- **API Keys**: Your API keys for supported providers (Anthropic, Google, OpenAI) are stored locally in the browser's extension storage. They are never sent to any server other than their respective APIs.
 - **Provider Preference**: Your selected AI provider is stored locally.
 - **Muted Sites**: The list of sites where you muted the hover button, Alt+B and the selection toolbar is stored locally and never leaves your browser.
 - **Page Translation Preference**: Whether ParsiPad asks before translating a whole page (the "Ask before translating a whole page" setting, which "Don't ask again" turns off) is stored locally. The estimated cost shown in that question is worked out in your browser and sends nothing.
 - **Translation History**: Recent translations (up to 50 entries) are stored locally for your convenience.
 - **Translation Cache**: Recent translations are cached locally to reduce API calls and improve response times.
-- **Bookmarks (Read-Only)**: The New Tab page reads your Chrome bookmarks to show them in a searchable drawer. Bookmark data is never modified, stored separately, or sent anywhere.
-- **Most Visited Sites (Optional)**: Only if you switch on Most visited in Settings, the New Tab page reads your most visited sites to show them as tiles. Chrome asks for this permission first, and switching the panel off gives it back. The list is never stored or sent anywhere, and site icons come from your browser's own cache, not an outside service.
+- **Bookmarks (Read-Only)**: The New Tab page reads your browser bookmarks to show them in a searchable drawer. Bookmark data is never modified, stored separately, or sent anywhere.
+- **Most Visited Sites (Optional)**: Only if you switch on Most visited in Settings, the New Tab page reads your most visited sites to show them as tiles. Your browser asks for this permission first, and switching the panel off gives it back. The list is never stored or sent anywhere, and site icons come from your browser's own cache, not an outside service.
 
 ### What We Do NOT Collect
 
@@ -51,13 +51,13 @@ To decide where to offer a translate icon, ParsiPad reads the text of the page y
 
 - Your API key is sent directly to the respective provider with each request
 - Keys are never sent to any other server
-- Keys are stored securely in Chrome's local storage
+- Keys are stored in the browser's local extension storage
 
 ## Data Security
 
 - All communication with AI provider APIs uses HTTPS encryption
 - Your API keys and translation history never leave your device (except keys sent to their respective providers)
-- We use Chrome's built-in secure storage mechanisms
+- We use the browser's built-in extension storage
 
 ## User Rights
 

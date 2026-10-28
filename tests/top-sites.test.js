@@ -142,6 +142,30 @@ describe('getTopSites', () => {
   });
 });
 
+describe('Firefox favicons', () => {
+  const firefox = () => { chrome.runtime.getURL = (path = '') => `moz-extension://abc/${path}`; };
+
+  it('asks Chrome for the plain list, since its topSites.get takes no options', async () => {
+    await getTopSites();
+    expect(chrome.topSites.get).toHaveBeenCalledWith();
+  });
+
+  it("asks Firefox to include each site's favicon from its own cache", async () => {
+    firefox();
+    await getTopSites();
+    expect(chrome.topSites.get).toHaveBeenCalledWith({ includeFavicon: true });
+  });
+
+  it('keeps a favicon only when it is an inline image, so nothing is ever fetched', () => {
+    const site = { url: 'https://example.com/', title: 'Example' };
+    expect(toTile({ ...site, favicon: 'data:image/png;base64,AA' }).favicon).toBe('data:image/png;base64,AA');
+    for (const favicon of ['https://evil.example/f.ico', '', 42, 'data:text/html,<b>x</b>']) {
+      expect(toTile({ ...site, favicon }), String(favicon)).not.toHaveProperty('favicon');
+    }
+    expect(toTile(site)).not.toHaveProperty('favicon');
+  });
+});
+
 describe('hasTopSitesPermission', () => {
   it('reports false rather than throwing when the API is unavailable', async () => {
     chrome.permissions.contains = vi.fn(async () => { throw new Error('gone'); });

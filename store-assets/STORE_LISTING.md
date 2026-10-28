@@ -104,7 +104,7 @@ Save your best translations and learn vocabulary:
 🎯 **Multiple Ways to Use**
 • Select text and use the selection toolbar: Translate, Polish, Dictionary, and a button to mute the site. It works with mouse, touch, and keyboard (Tab to enter, arrow keys to move, Escape to close) and never appears inside text fields
 • Right-click context menu for translation, polish, dictionary, page, or screenshot translate
-• Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary), Alt+P (page), Alt+S (screenshot) can be remapped in Chrome; Alt+B (block translate) and Escape (close a box or stop a page translation) are fixed keys on web pages, listed in Settings under Shortcuts
+• Keyboard shortcuts: Alt+T (translate), Alt+D (dictionary), Alt+P (page), Alt+S (screenshot) can be remapped in your browser's extension shortcut settings; Alt+B (block translate) and Escape (close a box or stop a page translation) are fixed keys on web pages, listed in Settings under Shortcuts
 • Popup and side panel with three modes: Translate, Polish, and Doc & Image
 
 📚 **Library**

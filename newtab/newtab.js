@@ -24,11 +24,10 @@ import { formatTime, formatDate } from '../lib/format.js';
 import { buildDeck, PRACTICE_SIZE } from '../lib/practice.js';
 import { textSizeStep } from '../lib/text-size.js';
 import { debounce } from '../lib/debounce.js';
-import { getTopSites, faviconUrl, hasTopSitesPermission, isLinkableUrl, hostLabel } from '../lib/top-sites.js';
+import { getTopSites, faviconUrl, hasTopSitesPermission, isLinkableUrl, hostLabel, tileInitial } from '../lib/top-sites.js';
 import { greetingKeyForHour, msUntilNextMinute } from './glance.js';
+import { browserNewTabUrl, isFirefox } from '../lib/platform.js';
 
-// Chrome's own New Tab. chrome://newtab would land back on this override.
-const CHROME_NEW_TAB = 'chrome://new-tab-page/';
 // How long a copy confirmation stays on screen.
 const TOAST_MS = 3000;
 // A status message is written this long after the region is emptied, so the
@@ -271,21 +270,23 @@ function announce(message) {
 // ---------------------------------------------------------------------------
 
 /**
- * Load Chrome's own New Tab in this tab. A plain link cannot reach a chrome://
- * page from an extension page, but the tabs API can. If Chrome refuses, say
- * so and point to the switch in Settings.
+ * Load the browser's own New Tab in this tab: Chrome's New Tab, or Firefox
+ * Home. A plain link cannot reach either from an extension page, but the
+ * tabs API can. If the browser refuses, say so and point to the switch in
+ * Settings.
  */
-async function openChromeNewTab() {
+async function openBrowserNewTab() {
   offFallback.hidden = true;
+  const url = browserNewTabUrl();
   try {
     const tab = await chrome.tabs.getCurrent();
     if (tab?.id !== undefined) {
-      await chrome.tabs.update(tab.id, { url: CHROME_NEW_TAB });
+      await chrome.tabs.update(tab.id, { url });
     } else {
-      await chrome.tabs.update({ url: CHROME_NEW_TAB });
+      await chrome.tabs.update({ url });
     }
   } catch (error) {
-    console.warn("ParsiPad: could not open Chrome's New Tab", error);
+    console.warn("ParsiPad: could not open the browser's New Tab", error);
     offFallback.hidden = false;
   }
 }
@@ -334,7 +335,7 @@ function renderTile(tile) {
   initial.textContent = tile.initial;
   initial.hidden = true;
   initial.setAttribute('aria-hidden', 'true');
-  icon.append(siteIcon(tile.url, initial), initial);
+  icon.append(siteIcon(tile.url, initial, tile.favicon), initial);
 
   const label = document.createElement('span');
   label.className = 'nt-tile-label';
@@ -350,13 +351,20 @@ function renderTile(tile) {
 /**
  * The site's icon from the browser's own favicon cache. A host it has never
  * seen yields nothing, so the fallback takes its place instead of a broken
- * image glyph.
+ * image glyph. Firefox has no favicon service for extensions; there the icon
+ * is the one its topSites reply carried, if any.
  * @param {string} url
  * @param {HTMLElement} [fallback]
+ * @param {string} [favicon] - Firefox only: an inline image from topSites
+ * @returns {Node}
  */
-function siteIcon(url, fallback) {
+function siteIcon(url, fallback, favicon) {
+  if (isFirefox() && !favicon) {
+    if (fallback) fallback.hidden = false;
+    return document.createDocumentFragment();
+  }
   const img = document.createElement('img');
-  img.src = faviconUrl(url);
+  img.src = isFirefox() ? favicon : faviconUrl(url);
   img.alt = '';
   img.width = 16;
   img.height = 16;
@@ -418,13 +426,20 @@ async function loadBookmarks() {
 }
 
 function hasBookmarks(node) {
-  if (!node.children) return Boolean(node.url);
+  // Firefox's tree carries place: queries and file: entries it will not
+  // open from here, so a folder of only those counts as empty there.
+  if (!node.children) return isFirefox() ? isOpenable(node.url) : Boolean(node.url);
   return node.children.some(hasBookmarks);
 }
 
-/** Bookmarklets run script; this page opens places, not code. */
+/**
+ * Bookmarklets run script; this page opens places, not code. Firefox also
+ * refuses place:, file: and privileged about: addresses from an extension
+ * page, so there only web addresses are kept.
+ */
 function isOpenable(url) {
-  return typeof url === 'string' && !/^\s*(javascript|data):/i.test(url);
+  if (typeof url !== 'string' || /^\s*(javascript|data):/i.test(url)) return false;
+  return !isFirefox() || isLinkableUrl(url);
 }
 
 function renderTree(nodes) {
@@ -469,6 +484,21 @@ function renderNode(node, depth = 0) {
 }
 
 /**
+ * A bookmark's icon: the favicon in Chrome, the initial in Firefox, which has
+ * no favicon source for bookmarks.
+ * @param {{title?: string, url: string}} node
+ * @returns {Node}
+ */
+function bookmarkIcon(node) {
+  if (!isFirefox()) return siteIcon(node.url);
+  const initial = document.createElement('span');
+  initial.className = 'nt-bookmark-initial';
+  initial.setAttribute('aria-hidden', 'true');
+  initial.textContent = tileInitial({ title: node.title, url: node.url });
+  return initial;
+}
+
+/**
  * @param {{title?: string, url: string}} node
  * @param {string} [query] - Lowercased; its first match in the title is marked
  */
@@ -481,7 +511,7 @@ function bookmarkLink(node, query) {
   title.className = 'nt-bookmark-title';
   title.dir = 'auto';
   appendMarked(title, node.title || node.url, query);
-  link.append(siteIcon(node.url), title);
+  link.append(bookmarkIcon(node), title);
   if (query) {
     const host = document.createElement('span');
     host.className = 'nt-bookmark-host';
@@ -621,7 +651,7 @@ function setupEventListeners() {
   cardButton.addEventListener('click', flip);
   copyBtn.addEventListener('click', copyShownFace);
   anotherBtn.addEventListener('click', showAnother);
-  openChromeBtn.addEventListener('click', openChromeNewTab);
+  openChromeBtn.addEventListener('click', openBrowserNewTab);
   bookmarksBtn.addEventListener('click', () => {
     if (drawerOpen) closeDrawer();
     else openDrawer(bookmarksBtn);

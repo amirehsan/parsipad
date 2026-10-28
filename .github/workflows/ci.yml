@@ -42,16 +42,26 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run build
-      - name: Verify required files in dist/
+      - name: Verify required files in dist/ and dist-firefox/
         run: |
-          test -f dist/manifest.json
-          test -f dist/background/service-worker.js
-          test -f dist/content/content.js
-          test -f dist/popup/popup.js
-          test -f dist/popup/popup.html
+          for out in dist dist-firefox; do
+            test -f $out/manifest.json
+            test -f $out/background/service-worker.js
+            test -f $out/content/content.js
+            test -f $out/popup/popup.js
+            test -f $out/popup/popup.html
+          done
+      - name: Lint the Firefox package
+        run: npm run lint:firefox
       - name: Upload bundle artifact
         uses: actions/upload-artifact@v4
         with:
           name: parsipad-extension
           path: dist/
+          retention-days: 14
+      - name: Upload Firefox bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: parsipad-extension-firefox
+          path: dist-firefox/
           retention-days: 14

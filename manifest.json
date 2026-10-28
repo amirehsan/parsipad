@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
-  "version": "3.8.1",
+  "version": "3.9.0",
   "description": "__MSG_extensionDescription__",
   "default_locale": "en",
   "permissions": [
@@ -110,6 +110,7 @@
         "lib/i18n.js",
         "lib/language-detect.js",
         "lib/muted-sites.js",
+        "lib/platform.js",
         "lib/roving.js",
         "lib/translation/*.js"
       ],

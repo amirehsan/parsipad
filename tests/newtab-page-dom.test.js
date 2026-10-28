@@ -54,7 +54,7 @@ function detachPage() {
   }
 }
 
-function installChrome({ permission = false, grant = false, updateFails = false } = {}) {
+function installChrome({ permission = false, grant = false, updateFails = false, base = 'chrome-extension://parsipad', sites, tree = TREE } = {}) {
   listeners = [];
   globalThis.chrome = {
     storage: {
@@ -76,15 +76,15 @@ function installChrome({ permission = false, grant = false, updateFails = false 
     },
     runtime: {
       id: 'parsipad',
-      getURL: (p) => `chrome-extension://parsipad${p.startsWith('/') ? '' : '/'}${p}`
+      getURL: (p) => `${base}${p.startsWith('/') ? '' : '/'}${p}`
     },
-    bookmarks: { getTree: vi.fn(async () => structuredClone(TREE)) },
+    bookmarks: { getTree: vi.fn(async () => structuredClone(tree)) },
     permissions: {
       contains: vi.fn(async () => permission),
       request: vi.fn(async () => grant)
     },
     topSites: {
-      get: vi.fn(async () => [
+      get: vi.fn(async () => sites ? structuredClone(sites) : [
         { url: 'https://github.com/', title: 'GitHub' },
         { url: 'https://github.com/settings', title: 'GitHub settings' },
         { url: 'chrome://settings/', title: 'Settings' },
@@ -314,6 +314,19 @@ describe('new tab: turned off', () => {
     expect($('#nt-off-fallback a').getAttribute('href')).toBe('../settings/settings.html#flashcards');
   });
 
+  it('opens Firefox Home in Firefox, where chrome:// pages do not exist', async () => {
+    await openNewTab(off(), { base: 'moz-extension://parsipad' });
+    $('#nt-open-chrome').click();
+    await vi.waitFor(() => expect(chrome.tabs.update).toHaveBeenCalledWith(42, { url: 'about:home' }));
+    expect($('#nt-off-fallback').hidden).toBe(true);
+  });
+
+  it('explains and links to Settings when Firefox refuses its Home too', async () => {
+    await openNewTab(off(), { base: 'moz-extension://parsipad', updateFails: true });
+    $('#nt-open-chrome').click();
+    await vi.waitFor(() => expect($('#nt-off-fallback').hidden).toBe(false));
+  });
+
   it('follows the switch live, both ways', async () => {
     await openNewTab();
     await chrome.storage.local.set({ newtab_enabled: false });
@@ -451,6 +464,52 @@ describe('new tab: most visited', () => {
     expect(tiles[1].textContent).toContain('<b>Example</b>');
     expect(document.querySelector('#nt-tiles b')).toBeNull();
     expect(tiles[0].querySelector('img').getAttribute('src')).toMatch(/^chrome-extension:\/\/parsipad\/_favicon\/\?pageUrl=https%3A%2F%2Fgithub\.com/);
+  });
+});
+
+describe('new tab: Firefox', () => {
+  const FIREFOX = 'moz-extension://parsipad';
+  const ICON = 'data:image/png;base64,iVBORw0KGgo=';
+  const FIREFOX_TREE = [{
+    id: 'root________',
+    children: [{
+      id: 'menu________', title: 'Bookmarks Menu', children: [
+        { id: 'a', title: 'Recent Tags', url: 'place:type=6&sort=14&maxResults=10' },
+        { id: 'b', title: 'Smart', children: [{ id: 'b1', title: 'Most Visited', url: 'place:sort=8&maxResults=10' }] },
+        { id: 'c', title: 'Notes', url: 'file:///Users/me/notes.txt' },
+        { id: 'd', title: 'Persian news', url: 'https://www.bbc.com/persian' }
+      ]
+    }]
+  }];
+
+  it("shows Firefox's own favicon on a tile, and the letter where it has none", async () => {
+    const sites = [
+      { url: 'https://github.com/', title: 'GitHub', favicon: ICON },
+      { url: 'https://example.com/', title: 'Example' }
+    ];
+    await openNewTab({ ...seed(), newtab_panels: { bookmarks: true, recents: true } }, { permission: true, base: FIREFOX, sites });
+    await vi.waitFor(() => expect($('#nt-recents').hidden).toBe(false));
+    const [github, example] = document.querySelectorAll('#nt-tiles a');
+    expect(github.querySelector('img').getAttribute('src')).toBe(ICON);
+    expect(example.querySelector('img')).toBeNull();
+    expect(example.querySelector('.nt-tile-initial').hidden).toBe(false);
+    expect(example.querySelector('.nt-tile-initial').textContent).toBe('E');
+    expect(document.querySelector('[src*="_favicon"]')).toBeNull();
+  });
+
+  it('lists only bookmarks Firefox can open, each with its initial', async () => {
+    await openNewTab(seed(), { base: FIREFOX, tree: FIREFOX_TREE });
+    $('#nt-bookmarks-btn').click();
+    await vi.waitFor(() => expect(document.activeElement).toBe($('#nt-bookmark-search')));
+    const tree = $('#nt-bookmark-tree');
+    expect(tree.textContent).toContain('Persian news');
+    expect(tree.textContent).not.toContain('Recent Tags');
+    expect(tree.textContent).not.toContain('Smart');
+    expect(tree.textContent).not.toContain('Notes');
+    const link = tree.querySelector('a.nt-bookmark');
+    expect(link.querySelector('img')).toBeNull();
+    expect(link.querySelector('.nt-bookmark-initial').textContent).toBe('P');
+    expect(document.querySelector('[src*="_favicon"]')).toBeNull();
   });
 });
 

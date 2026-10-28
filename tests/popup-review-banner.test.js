@@ -98,7 +98,7 @@ describe('rating from the popup', () => {
   it('records the answer before opening the store, so a closing popup cannot lose it', () => {
     expect(body).toMatch(/event\.preventDefault\(\)/);
     const recordAt = body.indexOf("await answerReviewPrompt('rated')");
-    const openAt = body.indexOf('chrome.tabs.create({ url: STORE_REVIEWS_URL })');
+    const openAt = body.indexOf('chrome.tabs.create({ url: storeReviewsUrl() })');
     expect(recordAt).toBeGreaterThan(-1);
     expect(openAt).toBeGreaterThan(recordAt);
   });

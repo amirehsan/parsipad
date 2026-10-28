@@ -2,7 +2,7 @@ import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
 import { getHistory, getPolishHistory } from '../lib/history.js';
 import { getTheme, setTheme, updateUsageStats, getLanguage, getSelectedProvider, setSelectedProvider, getProviderApiKey, setProviderApiKey, normalizeApiKey, checkKeyFormat, getFavorites, isFavorite, claimReviewPrompt, respondToReviewPrompt } from '../lib/storage.js';
-import { PROVIDER_CONFIGS, ACTIONS, STORE_REVIEWS_URL, STORAGE_KEYS } from '../lib/constants.js';
+import { PROVIDER_CONFIGS, ACTIONS, STORAGE_KEYS } from '../lib/constants.js';
 import { t, applyTranslations } from '../lib/i18n.js';
 import { renderCard, injectCardStyles } from '../shared/card/index.js';
 import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
@@ -15,6 +15,7 @@ import { getProviderHealth, healthTone } from '../lib/provider-health.js';
 import { createFirstRun } from './first-run.js';
 import { screenshotCaptureFailed, screenshotGuidance } from './screenshot-guidance.js';
 import { classifyFile } from './file-kind.js';
+import { isFirefox, openSidebar, storeReviewsUrl } from '../lib/platform.js';
 
 // The popup script also runs inside the side panel, which must stay open.
 const isPanel = document.body.dataset.surface === 'panel';
@@ -134,6 +135,9 @@ const RECENT_PREVIEW_LENGTH = 120;
 async function init() {
   // Not awaited: it only has to be ready before the reader clicks Open in sidebar
   cacheWindowId();
+  // The markup names the Chrome Web Store; middle-click and "open in new tab"
+  // follow the href, so it has to name the store this copy came from.
+  if (reviewRateBtn) reviewRateBtn.href = storeReviewsUrl();
   await initLanguage();
   await initTheme();
   await annotateShortcuts();
@@ -216,9 +220,9 @@ function showSubmitShortcut() {
 }
 
 /**
- * Remember which window this page is in. sidePanel.open() must run inside the
- * click's user gesture, so the click handler reads this instead of awaiting
- * chrome.windows.getCurrent() first.
+ * Remember which window this page is in. Opening the side panel must run
+ * inside the click's user gesture, so the click handler reads this instead of
+ * awaiting chrome.windows.getCurrent() first.
  */
 async function cacheWindowId() {
   try {
@@ -383,13 +387,14 @@ function reopenRecent() {
  * Set up event listeners
  */
 function setupEventListeners() {
-  // Open in sidebar (not offered inside the panel itself). sidePanel.open()
-  // must run within the click's user gesture, so nothing else is awaited first.
+  // Open in sidebar (not offered inside the panel itself). Opening the panel
+  // must run within the click's user gesture, so nothing else is awaited
+  // first. Firefox opens its sidebar in the current window and needs no id.
   openSidePanelBtn.hidden = isPanel;
   openSidePanelBtn.addEventListener('click', async () => {
     try {
-      const windowId = currentWindowId ?? (await chrome.windows.getCurrent()).id;
-      await chrome.sidePanel.open({ windowId });
+      const windowId = isFirefox() ? undefined : currentWindowId ?? (await chrome.windows.getCurrent()).id;
+      await openSidebar({ windowId });
       window.close();
     } catch (error) {
       console.error('Could not open the side panel:', error);
@@ -2001,7 +2006,7 @@ async function answerReviewPrompt(response) {
 async function handleReviewRateClick(event) {
   event.preventDefault();
   await answerReviewPrompt('rated');
-  chrome.tabs.create({ url: STORE_REVIEWS_URL });
+  chrome.tabs.create({ url: storeReviewsUrl() });
 }
 
 /** "Later" and the close button both snooze; neither means never. */

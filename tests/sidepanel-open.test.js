@@ -29,10 +29,24 @@ describe('opening the side panel from the popup', () => {
     const start = popupJs.indexOf("openSidePanelBtn.addEventListener('click'");
     expect(start).toBeGreaterThan(-1);
     const body = popupJs.slice(start, popupJs.indexOf('\n  });', start));
+    expect(body).toContain('openSidebar({ windowId })');
     expect(body.indexOf('chrome.windows.getCurrent')).toBeGreaterThan(-1);
-    expect(body.indexOf('chrome.windows.getCurrent')).toBeLessThan(body.indexOf('chrome.sidePanel.open'));
-    const beforeOpen = body.slice(0, body.indexOf('await chrome.sidePanel.open'));
+    expect(body.indexOf('chrome.windows.getCurrent')).toBeLessThan(body.indexOf('openSidebar('));
+    const beforeOpen = body.slice(0, body.indexOf('await openSidebar'));
     expect(beforeOpen.match(/await /g)).toHaveLength(1);
+    // Firefox needs no window id, so it skips even that one await.
+    expect(beforeOpen.indexOf('isFirefox() ?')).toBeGreaterThan(-1);
+    expect(beforeOpen.indexOf('isFirefox() ?')).toBeLessThan(beforeOpen.indexOf('await '));
+  });
+
+  it('opens the panel from the Library without awaiting anything first', () => {
+    const libraryJs = read('library/library.js');
+    const start = libraryJs.indexOf('function openInPanel(');
+    expect(start).toBeGreaterThan(-1);
+    const body = libraryJs.slice(start, libraryJs.indexOf('\n}', start));
+    expect(body).toContain('openSidebar({ windowId })');
+    expect(body).not.toMatch(/await /);
+    expect(body).not.toContain('chrome.sidePanel');
   });
 });
 
@@ -56,7 +70,7 @@ describe('long-lived panel keeps up with the rest of the extension', () => {
     // Cached once at init, used directly; getCurrent is only the fallback.
     expect(popupJs).toMatch(/async function cacheWindowId\(\)/);
     expect(popupJs.slice(popupJs.indexOf('async function init()'), popupJs.indexOf('async function init()') + 400)).toMatch(/cacheWindowId\(\)/);
-    expect(body).toMatch(/currentWindowId \?\? \(await chrome\.windows\.getCurrent\(\)\)\.id/);
+    expect(body).toContain('isFirefox() ? undefined : currentWindowId ?? (await chrome.windows.getCurrent()).id');
   });
 
   it('re-applies the theme and the language when either changes in storage', () => {

@@ -498,6 +498,17 @@ body {
   height: 1rem;
 }
 
+/* Firefox has no bookmark favicons; the initial holds the same square. */
+.nt-bookmark-initial {
+  flex-shrink: 0;
+  width: 1rem;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  line-height: 1rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
 .nt-bookmark-title {
   flex: 1;
   min-width: 0;
