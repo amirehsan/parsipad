@@ -164,7 +164,7 @@ describe('content script wiring', () => {
     expect(listener('pointerdown')).toMatch(/toolbarTrigger\.onPointerDown\(isPointerOnOwnUi\(event\)\)/);
     expect(main).toMatch(/document\.addEventListener\('pointerup', toolbarTrigger\.onPointerUp, \{ capture: true \}\)/);
     expect(main).toMatch(/document\.addEventListener\('pointercancel', toolbarTrigger\.onPointerUp, \{ capture: true \}\)/);
-    expect(main).toMatch(/document\.addEventListener\('selectionchange', toolbarTrigger\.onSelectionChange\)/);
+    expect(main).toMatch(/document\.addEventListener\('selectionchange', toolbarTrigger\.onSelectionChange, \{ capture: true \}\)/);
   });
 
   it('tells the trigger when a gesture starts on the toolbar or the floating box, so their buttons still get the click', () => {
@@ -221,7 +221,7 @@ describe('content script wiring', () => {
 
   it('says in Settings that the toolbar stays out of text fields, in both languages', () => {
     const i18n = read('lib/i18n.js');
-    expect(i18n).toMatch(/selectionToolbarHint: '[^']*Never appears inside text fields\.'/);
-    expect(i18n).toMatch(/selectionToolbarHint: '[^']*هرگز داخل کادرهای متنی نمایش داده نمی‌شود\.'/);
+    expect(i18n).toMatch(/selectionToolbarHint: '[^']*Also appears in text boxes you are typing in, so Polish and Translate can replace what you selected\.'/);
+    expect(i18n).toMatch(/selectionToolbarHint: '[^']*در کادرهای متنی که در آن می\\u200cنویسید هم نمایش داده می\\u200cشود تا ویرایش و ترجمه بتوانند متن انتخاب\\u200cشده را جایگزین کنند\.'/);
   });
 });

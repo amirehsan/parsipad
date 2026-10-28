@@ -29,6 +29,7 @@ import { createPageRun, markBatch, failedIndexes, resumableIndexes, summarizeRun
 import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
 import { selectionToReport, createSelectionReporter, isEditableSelection, MAX_REPORT_LENGTH } from './selection-report.js';
 import { createToolbarTrigger, selectionAnchor, isSameAnchor } from './toolbar-trigger.js';
+import { captureEditableTarget, targetRect } from './editable-target.js';
 import { MUTED_SITES_KEY, isHostMuted, normalizeHost, addMutedSite, removeMutedSite } from '../lib/muted-sites.js';
 import { rovingIndex, applyRovingTabindex } from '../lib/roving.js';
 import { confirmPageTranslation, countParagraphs, CONFIRM_PAGE_TRANSLATE_KEY } from './page-confirm.js';
@@ -150,7 +151,9 @@ function init() {
   }, { capture: true });
   document.addEventListener('pointerup', toolbarTrigger.onPointerUp, { capture: true });
   document.addEventListener('pointercancel', toolbarTrigger.onPointerUp, { capture: true });
-  document.addEventListener('selectionchange', toolbarTrigger.onSelectionChange);
+  // Capture phase: Firefox fires selectionchange for a text control on the
+  // control itself, without bubbling, and the toolbar must see those too.
+  document.addEventListener('selectionchange', toolbarTrigger.onSelectionChange, { capture: true });
 
   // Tell the side panel what is selected so it can offer a one-click translate
   const reportSelection = createSelectionReporter((text) => {
@@ -223,6 +226,8 @@ function installSpaNavigationListener() {
     // change at all.
     if (location.href === lastHref) return;
     lastHref = location.href;
+    // A new page: whatever field Replace was pointed at is gone with it.
+    currentReplaceTarget = null;
     if (!pageTranslationState) return;
     clearTimeout(routeCheckTimer);
     routeCheckTimer = setTimeout(checkRouteChange, ROUTE_SETTLE_MS);
@@ -345,23 +350,31 @@ function handleMessage(message, sender, sendResponse) {
       return false;
 
     case 'SHOW_TRANSLATION':
-      // Context menu triggered - translate the text
+      // Context menu triggered - translate the text. The selection in a
+      // field is still there when the message arrives, so this is where
+      // Replace learns where to write.
+      currentReplaceTarget = captureEditableTarget(window.getSelection(), document.activeElement);
       translateAndShow(message.text);
       break;
 
     case 'SHOW_POLISH':
       // Context menu triggered - polish the text
+      currentReplaceTarget = captureEditableTarget(window.getSelection(), document.activeElement);
       polishAndShow(message.text);
       break;
 
-    case 'TRANSLATE_SELECTION':
-      // Keyboard shortcut triggered - get current selection
+    case 'TRANSLATE_SELECTION': {
+      // Keyboard shortcut triggered - get current selection. Inside a text
+      // control the Selection string is empty in Firefox; the target has
+      // the field's own slice.
+      currentReplaceTarget = captureEditableTarget(window.getSelection(), document.activeElement);
       const selection = window.getSelection();
-      const selectedText = selection?.toString().trim();
+      const selectedText = currentReplaceTarget?.text || selection?.toString().trim();
       if (selectedText) {
         translateAndShow(selectedText);
       }
       break;
+    }
 
     case 'SHOW_DICTIONARY':
       // Context menu triggered - look up word
@@ -429,7 +442,9 @@ async function translateAndShow(text, { sourceLang } = {}) {
   const selection = window.getSelection();
   // Both reads happen before the box exists: taking focus clears the
   // selection, and neither the rectangle nor the context survives that.
-  const selectionRect = captureSelectionRect(selection);
+  const selectionRect = currentReplaceTarget
+    ? targetRect(currentReplaceTarget)
+    : captureSelectionRect(selection);
   const context = captureSelectionContext(selection);
 
   createFloatingBox(selectionRect);
@@ -504,7 +519,11 @@ async function polishAndShow(text) {
   currentPolishOriginalText = text;
 
   // Capture the selection rectangle before the box takes focus and clears it.
-  const selectionRect = captureSelectionRect(window.getSelection());
+  // A selection inside a text control has no rectangle; the field's own is
+  // the anchor then.
+  const selectionRect = currentReplaceTarget
+    ? targetRect(currentReplaceTarget)
+    : captureSelectionRect(window.getSelection());
 
   // Create or update the polish floating box
   createPolishBox(selectionRect);
@@ -795,7 +814,7 @@ function createFloatingBox(selectionRect) {
 
   // Set up event listeners
   const closeBtn = shadowRoot.querySelector('.parsipad-close');
-  closeBtn.addEventListener('click', removeFloatingBox);
+  closeBtn.addEventListener('click', closeFloatingBox);
 
   const copyBtn = shadowRoot.querySelector('.parsipad-copy');
   copyBtn.addEventListener('click', handleCopy);
@@ -1850,6 +1869,25 @@ async function handleTranslationFavorite() {
 /**
  * Remove the floating box
  */
+/**
+ * Where Replace writes: the field or editor the current box's text was
+ * selected in, captured by the toolbar or the context menu before the box
+ * opened. Kept across the box's own re-renders (swap direction, translate
+ * sentence, regenerate), which go through removeFloatingBox; dropped when
+ * the user closes the box, a new toolbar is built, or the page navigates.
+ * @type {import('./editable-target.js').FieldTarget | import('./editable-target.js').RichTarget | null}
+ */
+let currentReplaceTarget = null;
+
+/**
+ * A dismissal by the user: the box goes, and so does the place Replace was
+ * pointed at.
+ */
+function closeFloatingBox() {
+  currentReplaceTarget = null;
+  removeFloatingBox();
+}
+
 function removeFloatingBox() {
   boxAbortController?.abort();
   boxAbortController = null;
@@ -1925,7 +1963,7 @@ function createPolishBox(selectionRect) {
 
   // Set up event listeners
   const closeBtn = shadowRoot.querySelector('.parsipad-close');
-  closeBtn.addEventListener('click', removeFloatingBox);
+  closeBtn.addEventListener('click', closeFloatingBox);
 
   // Prevent clicks inside box from closing it
   box.addEventListener('click', (e) => e.stopPropagation());
@@ -2312,7 +2350,7 @@ function createDictionaryBox(selectionRect) {
 
   // Set up event listeners
   const closeBtn = shadowRoot.querySelector('.parsipad-close');
-  closeBtn.addEventListener('click', removeFloatingBox);
+  closeBtn.addEventListener('click', closeFloatingBox);
 
   // Prevent clicks inside box from closing it
   box.addEventListener('click', (e) => e.stopPropagation());
@@ -3346,7 +3384,7 @@ function updatePageToggleButton() {
  */
 function handleDocumentClick(event) {
   if (floatingBox && !floatingBox.contains(event.target)) {
-    removeFloatingBox();
+    closeFloatingBox();
   }
   // Also remove selection popup if clicking outside it
   if (selectionPopup && !selectionPopup.contains(event.target)) {
@@ -3429,7 +3467,7 @@ function handleKeyDown(event) {
       previouslyFocused = null;
     }
     if (floatingBox) {
-      removeFloatingBox();
+      closeFloatingBox();
     }
     if (selectionPopup) {
       removeSelectionPopup();
@@ -3897,27 +3935,33 @@ function evaluateSelection() {
   if (selectionPopup && document.activeElement === selectionPopup) return;
 
   const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0 ||
+  // Inside something editable the toolbar shows only where Replace could
+  // write back: a text input, a textarea or a rich editor. Password and
+  // other fields, and custom elements with closed roots, still get nothing.
+  // A selection inside a text control may have no range at all, so the
+  // target is read before the range is required.
+  const target = captureEditableTarget(selection, document.activeElement);
+  if (!target && (!selection || selection.rangeCount === 0 ||
       isEditableSelection(selection, document.activeElement) ||
-      isSelectionInOwnUi(selection)) {
+      isSelectionInOwnUi(selection))) {
     removeSelectionPopup();
     return;
   }
 
   // A page-sized selection (Ctrl+A) gets no toolbar: Translate would send the
   // whole page in one request. Same cap as the side-panel report.
-  const selectedText = selection.toString().trim();
+  const selectedText = target ? target.text : selection.toString().trim();
   if (selectedText.length < 2 || selectedText.length > MAX_REPORT_LENGTH) {
     removeSelectionPopup();
     return;
   }
 
-  const rect = selection.getRangeAt(0).getBoundingClientRect();
+  const rect = target ? targetRect(target) : selection.getRangeAt(0).getBoundingClientRect();
   const anchor = selectionAnchor(selectedText, rect);
   if (selectionPopup && selectionPopup.isConnected && isSameAnchor(anchor, selectionPopupAnchor)) return;
 
   removeSelectionPopup();
-  createSelectionPopup(rect, selectedText);
+  createSelectionPopup(rect, selectedText, target);
   selectionPopupAnchor = anchor;
 }
 
@@ -3932,8 +3976,13 @@ function evaluateSelection() {
  *
  * @param {{top: number, bottom: number, left: number, right: number}} selectionRect - viewport coordinates
  * @param {string} selectedText
+ * @param {import('./editable-target.js').FieldTarget | import('./editable-target.js').RichTarget | null} [target]
+ *   the field or editor the text sits in, when Replace could write there
  */
-function createSelectionPopup(selectionRect, selectedText) {
+function createSelectionPopup(selectionRect, selectedText, target = null) {
+  // A new toolbar is a new selection; whatever Replace pointed at before is
+  // not what the user is looking at now.
+  currentReplaceTarget = null;
   // Create host element
   const host = document.createElement('div');
   host.id = 'parsipad-selection-popup';
@@ -4061,10 +4110,13 @@ function createSelectionPopup(selectionRect, selectedText) {
       // Remove popup first
       removeSelectionPopup();
 
-      // Execute action
+      // Execute action. Translate and Polish carry the field the text came
+      // from, so their box can offer Replace.
       if (action === 'translate') {
+        currentReplaceTarget = target;
         translateAndShow(selectedText);
       } else if (action === 'polish') {
+        currentReplaceTarget = target;
         polishAndShow(selectedText);
       } else if (action === 'dictionary' && isSingleWord) {
         dictionaryAndShow(selectedText);
