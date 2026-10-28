@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Translated files and screenshots came back without the zero-width non-joiner.** Persian from a text file dropped on the popup, or from a screenshot, ran its prefixes and suffixes together (نوشتههای, هیچجا, میشود instead of نوشته‌های, هیچ‌جا, می‌شود). The prompt behind those two paths only asked for standard written Persian, while the one behind hover, selection, block and page translation also spells out the orthography: Persian ی and ک, the non-joiner in prefixes and suffixes, Persian punctuation. Gemini in particular took the shorter wording as leave to drop the character. The file and screenshot prompts now carry the same rule, so their Persian is written the same way as everywhere else.
+
 ## [3.9.0] - 2026-10-24
 
 ### Added
