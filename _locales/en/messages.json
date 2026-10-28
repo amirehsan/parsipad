@@ -4,7 +4,7 @@
     "description": "Extension name shown in the Chrome Web Store and Extensions page."
   },
   "extensionDescription": {
-    "message": "Hover any paragraph to translate it. Screenshot translate, grammar lessons, flashcards. Claude, Gemini, or ChatGPT",
+    "message": "Hover any paragraph to translate Farsi or English. Grammar lessons for Persian speakers. Free, open source, your own AI key.",
     "description": "Short description shown in the Web Store listing."
   },
   "cmdTranslateSelection": {

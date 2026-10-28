@@ -1,154 +1,22 @@
-ParsiPad is an AI-powered Persian and English translator that lives in your browser. Point at a paragraph to translate it, select a phrase for a translation that understands the sentence around it, learn the grammar behind it, and keep the words you want to remember.
+ParsiPad is a free, open-source Persian and English translator that lives in your browser. It is built for Persian speakers who read English online, and for Persian speakers learning English. You choose the AI (Claude, Gemini or ChatGPT), use your own API key, and pay only for what you use. There is no ParsiPad account and no server of ours in between.
 
-You bring your own API key from Claude, Gemini, or ChatGPT. Your text goes to the provider you chose and nowhere else. There is no ParsiPad account, no server of ours in the middle, and nothing is stored outside your own browser.
 
+Translate anything on the page
 
-Point at anything to translate it
+Rest your pointer on a paragraph and click the small icon. The translation appears right underneath, so you read both languages together and the original page is never changed. Select a word or a passage and ParsiPad reads the sentence around it first, so you get the meaning that fits, with pronunciation and examples.
 
-Rest your pointer on a paragraph, a post, or a heading, and a small icon appears at its corner. Click it and the Persian arrives directly underneath, with the original left in place so you can read both together.
+Translate a whole page in place. ParsiPad tells you how many paragraphs there are and roughly what it will cost before it starts, shows progress, and lets you switch back to the original at any time. Drag a box over text you cannot select, drop in an image or a text file, or keep the side panel open while you browse. Direction is detected automatically, Persian to English or English to Persian.
 
-- The icon waits until you actually stop on something, so ordinary browsing stays quiet
-- It never offers to translate text that is already in your own language
-- Point at a heading and the whole section translates, each paragraph's Persian sitting under that paragraph rather than piling up at the end
-- The translation takes its colours from the page behind it, so it stays readable on dark sites and light ones alike
-- Your original page is never altered. The translation is added beside it, never on top of it
-- Works everywhere with no setup. Press Alt+B to translate without a mouse, and switch the whole thing off in Settings if you would rather, or mute it on just the sites where it gets in the way
+Shortcuts: Alt+B for the paragraph under your pointer, Alt+T for a selection, Alt+P for the whole page, Alt+S for a screenshot region, Alt+D for the dictionary.
 
 
-Select any text
+Learn: grammar lessons for Persian speakers
 
-Highlight a word or a passage on any page and get a translation that reads the sentence around it before deciding what the words mean. Persian to English and English to Persian, direction detected automatically.
+Any translation can explain itself. Open a grammar lesson with examples, English pronunciation and a short quiz built around the mistakes Persian speakers actually make: articles, prepositions, word order, and tenses that Persian handles differently. Look up any word for definitions, IPA pronunciation, synonyms and its Persian or English equivalent. Rewrite your own English as professional, conversational or concise. Star a translation and it becomes a flashcard. Everything you translate, look up or polish stays in one searchable Library, and if you turn it on, each new tab shows one of your saved words.
 
-A word gives you its senses by part of speech, the one that fits your sentence first, with pronunciation and worked examples. A sentence gives you labelled alternatives. Longer passages stream in as they arrive rather than making you wait.
 
-Text in other languages can be translated into Persian too, if you turn that on.
+Private by design
 
-Selecting text also brings up a small toolbar above it with Translate, Polish, and Dictionary buttons. It appears after a mouse drag, after a touch long-press, and for a selection made with the keyboard, where Tab moves into it, the arrow keys move between its buttons, and Escape closes it. It never appears inside text fields or editors, so it does not get in the way while you type, and it does not appear for page-sized selections. A last button mutes ParsiPad on the site you are on, with an Undo and a shortcut to the Muted sites list in Settings.
+Your API key stays on your device. Text is sent only when you ask, only the part you asked about, and only to the provider you chose. Your history and favorites stay in your browser, with no accounts and no tracking. Repeat lookups are served from a local cache, and the built-in Analytics page shows what you are spending with each provider. The source is open at github.com/amirehsan/parsipad.
 
-
-Whole pages
-
-Translate an entire page in place with Alt+P or the right-click menu, then toggle between the original and the translation whenever you like.
-
-- It asks before it starts: how many paragraphs the page has and about what it will cost with your provider, so there are no surprises. Choose Translate page or Cancel, or tick "Don't ask again" (the "Ask before translating a whole page" switch in Settings turns the question back on)
-- Progress shows as it goes. Cancel, or Escape when you are not typing in a text field, stops it and keeps every section that already finished. With a box or the selection toolbar open, Escape closes that first
-- If some sections fail, a summary says how many were translated and how many failed, and Retry failed sends only those. Pressing Translate page again picks up where it stopped, without sending again a section that already failed twice
-- If ParsiPad is updated while the page is open, the translation stops, keeps what finished and asks you to reload the page
-- On a site that changes pages without reloading, the original text is put back when you move on
-
-
-Screenshots, images, and documents
-
-- Screenshot region: press Alt+S, drag a box around anything on screen, and the text inside it is read and translated. Works on images, banners, and text you cannot select
-- Images and documents share one drop zone in Doc & Image: drop a file, click to choose one, or paste an image from your clipboard, and ParsiPad sends it where it belongs
-- Images: JPG, PNG, and WebP up to 5MB
-- Documents: a .txt file up to 100KB, translated in full, with progress as it works and the finished file ready to download
-
-
-Dictionary
-
-Look up any word with Alt+D or the right-click menu for definitions with example sentences, IPA pronunciation, synonyms and antonyms, and the Persian or English equivalent. You choose which directions the dictionary works in. Type a single word into the popup and you get the same full word card.
-
-
-A side panel that stays open
-
-The toolbar popup closes the moment you click back into the page. The side panel is the same ParsiPad, docked beside the page, so it stays open while you browse and long jobs such as a document or a whole-page translation keep running while you read.
-
-- Open it from the button in the popup header or from the right-click menu
-- Text you select on the page appears as a "Selected on this page" chip with a one-click Translate button
-- It never reads inside text fields, and the selected text stays in your browser until you press Translate
-
-
-Grammar, built for Persian speakers learning English
-
-Every translation can explain itself. Click to see the grammar points behind it without leaving the page, or open the full lesson for something deeper:
-
-- Explanations, examples, and quiz questions are all in English, so you study in the language you are learning
-- Quiz answers are built around the mistakes Persian speakers actually make in English: word order, missing articles, the wrong preposition, phrases translated too literally
-- Compare and contrast sections show where the two languages handle the same idea differently
-- Register badges mark what is formal and what is not
-- A common mistakes section for the errors worth catching early
-- Listen to English pronunciation on any English text
-- Save any lesson to review later
-
-
-Polish your own writing
-
-Rewrite anything you have written in three registers, professional, conversational, or concise, and regenerate any of them if the first attempt is not right.
-
-
-Save what is worth keeping
-
-Star any translation, polished passage, or grammar lesson, and it goes to your favourites.
-
-Practice turns your saved words into flashcards. Each session deals a handful of cards, one at a time. A card shows the saved translation, and flipping it reveals the original. Space or Enter flips it, the arrow keys move between cards, and C copies what is showing. Choose how many cards a session holds, from 5 to 30, in Settings. Open Practice from the side panel or from the Library. Grammar lessons stay in the Library for reading and are not dealt as cards. Flipping stays still if your system is set to reduce motion.
-
-Your saved words also come to every new tab. Each new tab shows one of them in large Persian or English type, under the time, the date and a greeting in both languages. Click it, or press Space or Enter, to reveal the original, and C copies it. Your bookmarks open in a searchable drawer with the "/" key and stay out of the way otherwise. Your most visited sites can appear as tiles, but only if you switch that on; your browser asks first, and switching it off gives the permission back. Site icons come from your browser's own cache, so the sites you visit are never sent anywhere. Prefer your browser's own New Tab? Turn ParsiPad's off in Settings, and the page offers a button back to it.
-
-
-Library
-
-Everything you translate, polish, or look up is kept in one searchable Library, with tabs for History, Favourites, and Lessons.
-
-- Search it, narrow it to translations, dictionary lookups, or polished text, or to one direction, and results are grouped under Today, Yesterday, This week, and Earlier
-- Star, copy, or open any entry in the side panel (polished text opens in Polish), or delete it. A deleted entry can be brought back with Undo for five seconds
-- Saved grammar lessons reopen from the Lessons tab exactly as you saved them, with no new request to your provider, so reopening one costs nothing
-- Clear all empties only the tab and type you are looking at, and asks first in words that name exactly what will go
-- What you are looking at stays in the page address, so a reload or a saved link brings you back to the same place
-
-
-Choose your AI
-
-- Claude by Anthropic, for nuance
-- Gemini by Google, for speed
-- ChatGPT by OpenAI, for versatility
-
-A small badge in the popup and the side panel names the provider you are using, with a dot showing how its last real request went: green when it worked, amber when it was rate-limited or slow, red when the key was rejected or the network failed, grey when nothing has been sent yet. Click it to open the provider settings. It only reflects requests you made and never sends one of its own.
-
-Switch whenever you like. Repeated lookups are cached, so the same word costs you nothing the second time, and closing a translation before it finishes stops it at once, so you never pay for one you did not read.
-
-
-Know what you are spending
-
-The Analytics page, opened from Data & backup in Settings, shows estimated cost per provider, broken down by what you actually did: translations, polishes, dictionary lookups, documents, images, and grammar lessons. View the last week, the last month, or everything, and export it as JSON.
-
-
-Reach it however suits you
-
-- The selection toolbar when you select text, which you can switch off
-- The right-click menu, for translating, polishing, dictionary lookups, whole pages, and screenshots
-- Keyboard shortcuts: Alt+T to translate, Alt+D for the dictionary, Alt+P for the page, Alt+S for a screenshot region, Alt+B for the block you are pointing at. The first four can be remapped in your browser's extension shortcut settings; Alt+B and Escape (closes a box or stops a page translation) are fixed keys on web pages, listed in Settings under Shortcuts
-- The toolbar popup, which opens with the cursor in the text box and switches between Translate, Polish, and Doc & Image for documents and images, with page translation and screenshots a click away
-- The side panel, docked beside the page and open as long as you want it
-
-
-Made to live with
-
-Dark mode that follows your system, an interface you can read in English or Persian, and Persian text laid out right-to-left wherever it appears, with English kept left-to-right beside it. Export your favourites, history, and cache to a JSON file and import it again on another machine, merging with what is there or replacing it. Anything that removes data, your key included, asks before it acts, and a failed copy or save never clears the translation you were reading.
-
-
-Settings that stay out of the way
-
-Settings is one page with a list of sections beside it: your AI provider and key, reading on web pages, language and appearance, flashcards, data and backup, shortcuts, and About. Each provider has its own card with its own key field, a show-key button, Save & test and Clear. Save & test checks the key looks right first, then makes one tiny real request with the key you typed and keeps it only if it works. A key that is rejected never replaces one that already works. Every on/off option is a clear switch with a short hint, and the theme can be Light, Dark, or System.
-
-Under Reading on web pages, Muted sites lets you add the sites where you do not want the translate icon or the selection toolbar. ParsiPad stays quiet there, subdomains included, with no page reload needed, and the list stays in your browser.
-
-
-Privacy
-
-- Your API keys never leave your device
-- No accounts, no tracking, no analytics of you
-- History, favourites, and your muted sites list are stored locally in your browser
-- To decide where to offer a translate icon, ParsiPad reads the page you are on, entirely inside your browser. That text is never sent anywhere. Text goes to your provider only when you ask for a translation, and only the part you asked about
-
-
-Getting started
-
-1. Get an API key from the provider you prefer. The "How do I get a key?" guide in ParsiPad walks through it in Persian or English, with the link, what the key starts with, and what it costs:
-   Claude: console.anthropic.com
-   Gemini: aistudio.google.com/apikey
-   ChatGPT: platform.openai.com/api-keys
-2. Choose that provider when ParsiPad first opens
-3. Paste your key and press "Save & test". ParsiPad sends one tiny real request and keeps the key only if it works, so a mistake is caught straight away
-4. Try a sample sentence on the welcome page to see it work with your own key, then press Done
-5. Start translating
+Works in Chrome, Edge, Brave and other Chromium browsers. Also available for Firefox.
