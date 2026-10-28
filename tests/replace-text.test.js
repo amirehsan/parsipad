@@ -136,6 +136,29 @@ describe('applyReplacement on a rich editor', () => {
     expect(el.textContent).toBe('some text here');
   });
 
+  it('never inserts a second copy when the editor takes the command but renders later', () => {
+    // Framework editors (Draft.js, Lexical, ProseMirror) handle beforeinput
+    // themselves and update the DOM on their next render. execCommand
+    // reports success while the DOM still shows the old text; a manual
+    // insert on top of that leaves two copies once the editor renders.
+    const { el, node, inputs, target } = richEditor('some text here', 'text');
+    let rendered = false;
+    document.execCommand = vi.fn(() => {
+      queueMicrotask(() => { node.data = 'some words here'; rendered = true; });
+      return true;
+    });
+    const result = applyReplacement(target, 'words');
+    expect(result.ok).toBe(true);
+    expect(el.textContent).toBe('some text here');
+    expect(el.querySelectorAll('*').length + el.childNodes.length).toBe(1);
+    expect(inputs).toHaveLength(0);
+    return new Promise((resolve) => queueMicrotask(() => {
+      expect(rendered).toBe(true);
+      expect(el.textContent).toBe('some words here');
+      resolve();
+    }));
+  });
+
   it('fails for a rich target whose range left the editor', () => {
     const { el, node, target } = richEditor('some text here', 'text');
     node.remove();

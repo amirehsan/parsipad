@@ -155,19 +155,19 @@ function writeRich(editor, range, text, doc) {
   editor.focus({ preventScroll: true });
 
   if (selection && insertText(doc, text)) {
-    const after = selection.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
-    if (after && (editor.textContent || '').includes(text)) {
-      // The command leaves the caret after the insertion; back it up over
-      // the inserted text to describe where it sits.
-      const around = after.cloneRange();
-      if (around.startContainer.nodeType === 3 && around.startOffset >= text.length) {
-        around.setStart(around.startContainer, around.startOffset - text.length);
-        return around;
-      }
+    // The editor owns the DOM from here. A framework editor (Draft.js,
+    // Lexical, ProseMirror) takes the command in beforeinput and renders on
+    // its next turn, so the text may not be in the DOM yet; inserting a
+    // node on top of that leaves two copies once it renders. Describe where
+    // the text sits when it can be seen, and otherwise hand back the caret,
+    // which makes undo decline rather than guess.
+    const after = selection.rangeCount ? selection.getRangeAt(0).cloneRange() : range.cloneRange();
+    const container = after.startContainer;
+    if (after.collapsed && container.nodeType === 3 && after.startOffset >= text.length
+        && container.data.slice(after.startOffset - text.length, after.startOffset) === text) {
+      after.setStart(container, after.startOffset - text.length);
     }
-    // The command ran but the result cannot be located; fall through only
-    // if nothing was inserted.
-    if ((editor.textContent || '').includes(text)) return null;
+    return after;
   }
 
   range.deleteContents();
