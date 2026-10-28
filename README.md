@@ -5,7 +5,7 @@
 <h1 align="center">ParsiPad</h1>
 
 <p align="center">
-  <strong>AI-powered Persian ↔ English translator for Chrome.</strong>
+  <strong>AI-powered Persian ↔ English translator for Chrome and Firefox.</strong>
   <br>
   Translate, look up, polish and learn, with your own Claude, Gemini or ChatGPT key.
 </p>
@@ -13,12 +13,15 @@
 <p align="center">
   <a href="https://chromewebstore.google.com/detail/parsipad-persian-english/kmifhjlofnblfogkjjcmhlmcecghhfbp"><img src="https://img.shields.io/chrome-web-store/v/kmifhjlofnblfogkjjcmhlmcecghhfbp?label=Chrome%20Web%20Store" alt="Chrome Web Store version"></a>
   <a href="https://chromewebstore.google.com/detail/parsipad-persian-english/kmifhjlofnblfogkjjcmhlmcecghhfbp"><img src="https://img.shields.io/chrome-web-store/users/kmifhjlofnblfogkjjcmhlmcecghhfbp?label=users" alt="Chrome Web Store users"></a>
+  <a href="https://addons.mozilla.org/firefox/addon/parsipad/"><img src="https://img.shields.io/amo/v/parsipad?label=Firefox%20Add-ons" alt="Firefox Add-ons version"></a>
+  <a href="https://addons.mozilla.org/firefox/addon/parsipad/"><img src="https://img.shields.io/amo/users/parsipad?label=users" alt="Firefox Add-ons users"></a>
   <a href="https://github.com/amirehsan/parsipad/actions/workflows/ci.yml"><img src="https://github.com/amirehsan/parsipad/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/amirehsan/parsipad" alt="MIT license"></a>
 </p>
 
 <p align="center">
-  <a href="https://chromewebstore.google.com/detail/parsipad-persian-english/kmifhjlofnblfogkjjcmhlmcecghhfbp">Install</a> ·
+  <a href="https://chromewebstore.google.com/detail/parsipad-persian-english/kmifhjlofnblfogkjjcmhlmcecghhfbp">Install for Chrome</a> ·
+  <a href="https://addons.mozilla.org/firefox/addon/parsipad/">Install for Firefox</a> ·
   <a href="https://parsipad.com">Website</a> ·
   <a href="docs/USER_GUIDE.md">User guide</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
@@ -84,13 +87,17 @@ See the [user guide](docs/USER_GUIDE.md) for a walkthrough of every feature.
 
 ## Installation
 
-### Chrome Web Store (recommended)
+### Chrome Web Store
 
 Install ParsiPad from the [Chrome Web Store](https://chromewebstore.google.com/detail/parsipad-persian-english/kmifhjlofnblfogkjjcmhlmcecghhfbp). It works in a recent version of Google Chrome and should also install in other Chromium-based browsers that support Chrome Web Store extensions, such as Microsoft Edge and Brave.
 
+### Firefox Add-ons
+
+Install ParsiPad from [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/parsipad/). It needs Firefox 140 or later on a desktop computer, and also installs in browsers built on Firefox, such as Zen, LibreWolf and Floorp. Its side panel opens in Firefox's sidebar.
+
 ### From source
 
-Requires [Node.js](https://nodejs.org/) 18 or later (CI uses Node 20).
+Requires [Node.js](https://nodejs.org/) 20 or later (CI uses Node 20).
 
 ```bash
 git clone https://github.com/amirehsan/parsipad.git
@@ -99,7 +106,12 @@ npm ci
 npm run build
 ```
 
-Then open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and select the `dist/` folder.
+`npm run build` writes the Chrome build to `dist/` and the Firefox build to `dist-firefox/`.
+
+- **Chrome:** open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and select the `dist/` folder.
+- **Firefox:** open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on** and select `dist-firefox/manifest.json`. Firefox removes a temporary add-on when it quits.
+
+[CONTRIBUTING.md](CONTRIBUTING.md#building-from-source) describes the build in more detail.
 
 ## Quick start
 
@@ -127,7 +139,7 @@ API usage is billed by your provider to your own account. Repeated lookups are s
 | `Alt+B` | Translate the paragraph at the pointer or keyboard focus | No |
 | `Escape` | Close a ParsiPad box or stop a page translation | No |
 
-Remap the first four at `chrome://extensions/shortcuts`. All shortcuts are also listed in Settings > Shortcuts.
+Remap the first four at `chrome://extensions/shortcuts` in Chrome, or under Manage Extension Shortcuts in Firefox's Add-ons and themes page. All shortcuts are also listed in Settings > Shortcuts.
 
 ## Privacy and permissions
 
@@ -141,9 +153,9 @@ Remap the first four at `chrome://extensions/shortcuts`. All shortcuts are also 
 | `storage` | Save settings, keys, history, favorites and the translation cache locally |
 | `contextMenus` | Add the right-click menu entries |
 | `activeTab`, `scripting` | Read the selection and show translation boxes on the tab you invoked ParsiPad on |
-| `sidePanel` | Open ParsiPad in Chrome's side panel |
+| `sidePanel` | Open ParsiPad in Chrome's side panel (Firefox uses its sidebar, which needs no permission) |
 | `bookmarks` | Show your bookmarks (read only) in the New Tab drawer |
-| `favicon` | Draw site icons from the browser's local cache, without an outside service |
+| `favicon` | Draw site icons from the browser's local cache, without an outside service (Chrome only; Firefox hands its cached icons over with `topSites`) |
 | `topSites` (optional) | Show Most visited tiles on the New Tab, requested only when you turn that on |
 | Host access to the three provider APIs | Send your requests to Anthropic, Google or OpenAI |
 
@@ -151,19 +163,23 @@ Read the full [privacy policy](PRIVACY.md).
 
 ## Development
 
-ParsiPad is written in plain JavaScript (ES modules) on Manifest V3, with no UI framework. [esbuild](https://esbuild.github.io/) bundles it into `dist/`, [Vitest](https://vitest.dev/) with happy-dom runs the tests, and [DOMPurify](https://github.com/cure53/DOMPurify) (vendored in `lib/vendor/`) sanitizes rendered output.
+ParsiPad is written in plain JavaScript (ES modules) on Manifest V3, with no UI framework. [esbuild](https://esbuild.github.io/) bundles it into `dist/` for Chrome and `dist-firefox/` for Firefox, from the same source, [Vitest](https://vitest.dev/) with happy-dom runs the tests, and [DOMPurify](https://github.com/cure53/DOMPurify) (vendored in `lib/vendor/`) sanitizes rendered output.
 
 ### Scripts
 
 | Command | Description |
 | --- | --- |
-| `npm run build` | Production build into `dist/` |
+| `npm run build` | Production build of both browsers, into `dist/` and `dist-firefox/` |
+| `npm run build:chrome`, `npm run build:firefox` | Production build of one browser |
 | `npm run build:dev` | Unminified build with inline source maps |
-| `npm run build:watch` | Development build that rebuilds on change |
+| `npm run build:watch` | Development build that rebuilds on change (Chrome; add `-- --browser=firefox` for Firefox) |
 | `npm test` | Run the unit tests once |
 | `npm run test:watch` | Run the tests in watch mode |
 | `npm run lint` | Lint with ESLint (`npm run lint:fix` to fix) |
-| `npm run clean` | Delete `dist/` |
+| `npm run lint:firefox` | Check the Firefox build with Mozilla's `web-ext lint` |
+| `npm run start:firefox` | Open Firefox with a clean profile and the Firefox build loaded |
+| `npm run package` | Build both browsers and write the Chrome, Firefox and source zips for a release |
+| `npm run clean` | Delete `dist/` and `dist-firefox/` |
 
 During development, run `npm run build:watch`, load `dist/` as an unpacked extension, and press the reload icon on `chrome://extensions` after each rebuild. CI runs lint, tests and a build on every push and pull request to `main`.
 
