@@ -28,7 +28,7 @@
      is the lowest one measured to stay legible on a card. */
   --color-text-tertiary: var(--color-text-muted);
 
-  /* The shared card's stylesheet consumes exactly these four names and
+  /* The shared card's stylesheet consumes exactly these five names and
      defines none of them. Mapping them onto the popup's own tokens here,
      rather than giving the card its own values, is what makes the card
      follow the popup's theme: --color-* is redefined under
@@ -38,6 +38,7 @@
   --pp-text-secondary: var(--color-text-secondary);
   --pp-text-muted: var(--color-text-tertiary);
   --pp-border: var(--color-border);
+  --pp-accent: var(--button-primary-bg);
 
   --color-success: var(--color-success-500);
   --color-error: var(--color-error-500);

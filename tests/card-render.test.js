@@ -100,3 +100,21 @@ describe('renderCard', () => {
     expect(() => renderCard({ translation: 'x' }, opts())).not.toThrow();
   });
 });
+
+describe('Replace action', () => {
+  it('renders a primary Replace action only when onReplace is given and there is a translation', () => {
+    for (const mode of ['word', 'sentence', 'text']) {
+      const onReplace = vi.fn();
+      const el = renderCard(of(mode), { ...opts(), onReplace });
+      const btn = el.querySelector('[data-action="cardReplace"]');
+      expect(btn, mode).not.toBeNull();
+      expect(btn.textContent, mode).toBe('Replace');
+      expect(btn.classList.contains('pp-card-action-primary'), mode).toBe(true);
+      btn.click();
+      expect(onReplace, mode).toHaveBeenCalledWith('ترجمه');
+
+      expect(renderCard(of(mode), opts()).querySelector('[data-action="cardReplace"]'), mode).toBeNull();
+      expect(renderCard(of(mode, { translation: '' }), { ...opts(), onReplace }).querySelector('[data-action="cardReplace"]'), mode).toBeNull();
+    }
+  });
+});

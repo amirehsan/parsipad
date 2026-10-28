@@ -30,6 +30,7 @@ import { applyHostTheme, ensurePersianFontLoaded } from './host-page.js';
 import { selectionToReport, createSelectionReporter, isEditableSelection, MAX_REPORT_LENGTH } from './selection-report.js';
 import { createToolbarTrigger, selectionAnchor, isSameAnchor } from './toolbar-trigger.js';
 import { captureEditableTarget, targetRect } from './editable-target.js';
+import { applyReplacement } from '../shared/replace-text.js';
 import { MUTED_SITES_KEY, isHostMuted, normalizeHost, addMutedSite, removeMutedSite } from '../lib/muted-sites.js';
 import { rovingIndex, applyRovingTabindex } from '../lib/roving.js';
 import { confirmPageTranslation, countParagraphs, CONFIRM_PAGE_TRANSLATE_KEY } from './page-confirm.js';
@@ -1151,6 +1152,7 @@ function showTranslation(result, originalText) {
     onListen: buildListenHandler(result),
     onCopy: (text) => handleCardCopy(text),
     onSave: () => handleTranslationFavorite(),
+    onReplace: currentReplaceTarget ? (text) => handleReplace(text, null) : undefined,
     isSaved: translationIsSaved,
     onTranslateSentence: buildSentenceHandler(result, originalText),
     onExplainGrammar: buildGrammarHandler(result, originalText),
@@ -1760,6 +1762,40 @@ async function handleCopy() {
 }
 
 /**
+ * Replace: write a polished version or a translation over the text it came
+ * from, in the field Replace was pointed at. On success the box closes and a
+ * toast offers Undo. When the field has changed under the user (the site
+ * rebuilt it, the text moved), nothing is written: the text goes to the
+ * clipboard instead and the toast says so, with the box left open.
+ * @param {string} text
+ * @param {string|null} variantLabel - the version's localised name, or null for a translation
+ */
+async function handleReplace(text, variantLabel) {
+  if (!text) return;
+  const result = applyReplacement(currentReplaceTarget, text);
+  if (result.ok) {
+    closeFloatingBox();
+    showToast({
+      message: variantLabel
+        ? t('replacedWithVariant', userLang).replace('{variant}', variantLabel)
+        : t('replacedWithTranslation', userLang),
+      withSettings: false,
+      action: {
+        label: t('libraryUndo', userLang),
+        onClick: () => { result.undo(); }
+      }
+    });
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // Nothing more to offer; the box is still open with the text on it.
+  }
+  showToast({ message: t('replaceFailedCopied', userLang), withSettings: false });
+}
+
+/**
  * Copy from the card's own Copy control, which hands over the text it
  * rendered rather than making the host dig it back out of the DOM.
  * @param {string} text
@@ -2029,6 +2065,7 @@ function showPolishResults(result) {
         </div>
       </div>
       <div class="parsipad-polish-text">${escapeHtml(result[variant])}</div>
+      ${currentReplaceTarget ? `<div class="parsipad-polish-footer"><button class="parsipad-polish-replace" data-version="${variant}" type="button">${escapeHtml(t('replace', userLang))}</button></div>` : ''}
     </div>
   `).join('');
   content.querySelectorAll('.parsipad-polish-favorite').forEach((btn) => nameControl(btn, 'addToFavorites'));
@@ -2038,6 +2075,16 @@ function showPolishResults(result) {
   // Add copy handlers
   content.querySelectorAll('.parsipad-polish-copy').forEach(btn => {
     btn.addEventListener('click', () => handlePolishCopy(btn, result));
+  });
+
+  // Replace reads the text on the card now, so a regenerated version is
+  // what goes into the field, not the first response.
+  content.querySelectorAll('.parsipad-polish-replace').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = btn.closest('.parsipad-polish-card');
+      const text = card?.querySelector('.parsipad-polish-text')?.textContent || '';
+      handleReplace(text, t(btn.dataset.version, userLang));
+    });
   });
 
   // Add regenerate handlers
