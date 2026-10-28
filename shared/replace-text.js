@@ -21,6 +21,9 @@
 
 const FAILED = Object.freeze({ ok: false });
 
+/** @param {string} s */
+const squeeze = (s) => s.replace(/\s+/g, '');
+
 /**
  * Where `text` sits in `value`: at the remembered offsets, or at its single
  * occurrence if the field changed under the user, or nowhere.
@@ -95,15 +98,24 @@ function writeField(element, start, end, text, doc) {
   element.focus({ preventScroll: true });
   element.setSelectionRange(start, end);
 
-  const inserted = { start, end: start + text.length };
-  if (insertText(doc, text) && element.value.slice(start, inserted.end) === text) {
-    element.setSelectionRange(inserted.end, inserted.end);
-    return inserted;
+  if (insertText(doc, text)) {
+    // The browser may have kept less than the whole text (maxlength). What
+    // it kept is the replacement; a changed value is the command's work.
+    const kept = element.value.length - (before.length - (end - start));
+    if (kept > 0 && element.value.slice(start, start + kept) === text.slice(0, kept)) {
+      const inserted = { start, end: start + kept };
+      element.setSelectionRange(inserted.end, inserted.end);
+      return inserted;
+    }
   }
 
-  setNativeValue(element, before.slice(0, start) + text + before.slice(end));
+  // The field's own limit still applies when the value is set by hand.
+  const room = element.maxLength >= 0 ? element.maxLength - (before.length - (end - start)) : Infinity;
+  const fitted = room < text.length ? text.slice(0, Math.max(0, room)) : text;
+  const inserted = { start, end: start + fitted.length };
+  setNativeValue(element, before.slice(0, start) + fitted + before.slice(end));
   element.setSelectionRange(inserted.end, inserted.end);
-  dispatchInput(element, text, win);
+  dispatchInput(element, fitted, win);
   element.dispatchEvent(new win.Event('change', { bubbles: true }));
   return inserted;
 }
@@ -127,7 +139,7 @@ function replaceInField(target, text, doc) {
     ok: true,
     undo: () => {
       if (!element.isConnected || element.readOnly || element.disabled) return false;
-      if (String(element.value ?? '').slice(inserted.start, inserted.end) !== text) return false;
+      if (String(element.value ?? '').slice(inserted.start, inserted.end) !== text.slice(0, inserted.end - inserted.start)) return false;
       const restored = writeField(element, inserted.start, inserted.end, target.text, doc);
       if (!restored) return false;
       element.setSelectionRange(restored.start, restored.end);
@@ -154,20 +166,27 @@ function writeRich(editor, range, text, doc) {
   }
   editor.focus({ preventScroll: true });
 
+  // Where the insertion starts, remembered before the command: the browser
+  // turns a newline into a block and runs of spaces into nbsp, so the text
+  // never reads back verbatim and cannot be searched for afterwards.
+  const marker = range.cloneRange();
+  marker.collapse(true);
+
   if (selection && insertText(doc, text)) {
     // The editor owns the DOM from here. A framework editor (Draft.js,
     // Lexical, ProseMirror) takes the command in beforeinput and renders on
-    // its next turn, so the text may not be in the DOM yet; inserting a
-    // node on top of that leaves two copies once it renders. Describe where
-    // the text sits when it can be seen, and otherwise hand back the caret,
-    // which makes undo decline rather than guess.
-    const after = selection.rangeCount ? selection.getRangeAt(0).cloneRange() : range.cloneRange();
-    const container = after.startContainer;
-    if (after.collapsed && container.nodeType === 3 && after.startOffset >= text.length
-        && container.data.slice(after.startOffset - text.length, after.startOffset) === text) {
-      after.setStart(container, after.startOffset - text.length);
+    // its next turn; inserting a node on top of that leaves two copies once
+    // it renders, so nothing is written by hand after a successful command.
+    // The inserted text runs from the marker to the caret the command left.
+    const caret = selection.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
+    if (caret && marker.startContainer.isConnected && editor.contains(marker.startContainer)) {
+      const around = doc.createRange();
+      around.setStart(marker.startContainer, marker.startOffset);
+      around.setEnd(caret.endContainer, caret.endOffset);
+      return around;
     }
-    return after;
+    // Hand back the caret: undo then declines rather than guesses.
+    return caret || marker;
   }
 
   range.deleteContents();
@@ -205,7 +224,9 @@ function replaceInRich(target, text, doc) {
     ok: true,
     undo: () => {
       if (!element.isConnected || !inserted.startContainer.isConnected || !inserted.endContainer.isConnected) return false;
-      if (inserted.toString() !== text) return false;
+      // Block boundaries and nbsp make the range read differently from the
+      // text that went in; whitespace is the only thing that may differ.
+      if (squeeze(inserted.toString()) !== squeeze(text)) return false;
       return Boolean(writeRich(element, inserted, target.text, doc));
     }
   };

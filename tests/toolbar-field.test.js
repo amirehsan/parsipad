@@ -108,11 +108,15 @@ const $ = (id) => document.getElementById(id);
 const toolbar = () => $('parsipad-selection-popup');
 const BOX_RECT = { top: 100, bottom: 160, left: 40, right: 340, width: 300, height: 60 };
 
-function selectInField(el, start, end) {
+// A mouse drag inside the field: the gesture ends on the field, and the
+// selection settles.
+function selectInField(el, start, end, { pointer = true } = {}) {
   el.getBoundingClientRect = () => BOX_RECT;
   el.focus();
+  if (pointer) el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse', button: 0 }));
   el.setSelectionRange(start, end);
   document.dispatchEvent(new Event('selectionchange'));
+  if (pointer) el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'mouse', button: 0 }));
   vi.advanceTimersByTime(300);
 }
 
@@ -131,6 +135,21 @@ describe('toolbar in fields', () => {
     expect(top).toBeGreaterThanOrEqual(0);
   });
 
+  it('needs a pointer gesture: a keyboard or programmatic selection in a field shows nothing', () => {
+    // Shift+Arrow while typing, or a site selecting a field's contents on
+    // focus, both arrive as bare selectionchange events.
+    selectInField($('box'), 0, 5, { pointer: false });
+    expect(toolbar()).toBeNull();
+  });
+
+  it('keeps the toolbar when the selection settles again after the gesture', () => {
+    selectInField($('box'), 0, 5);
+    const host = toolbar();
+    document.dispatchEvent(new Event('selectionchange'));
+    vi.advanceTimersByTime(300);
+    expect(toolbar()).toBe(host);
+  });
+
   it('stays hidden for a password field', () => {
     selectInField($('secret'), 0, 7);
     expect(toolbar()).toBeNull();
@@ -143,5 +162,8 @@ describe('toolbar in fields', () => {
     const request = sent.find((m) => m.action === 'TRANSLATE');
     expect(request).toBeDefined();
     expect(request.text).toBe('world');
+    // The page's Selection sits on the field's parent in Chrome, so its
+    // surrounding block is not the context of what was typed.
+    expect(request.context).toBeUndefined();
   });
 });

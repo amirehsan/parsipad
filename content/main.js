@@ -446,7 +446,9 @@ async function translateAndShow(text, { sourceLang } = {}) {
   const selectionRect = currentReplaceTarget
     ? targetRect(currentReplaceTarget)
     : captureSelectionRect(selection);
-  const context = captureSelectionContext(selection);
+  // Inside a text control the page's Selection sits on the control's parent,
+  // so the "context" it yields is the surrounding block, not what was typed.
+  const context = currentReplaceTarget?.kind === 'field' ? undefined : captureSelectionContext(selection);
 
   createFloatingBox(selectionRect);
   // Only now: opening the box closes the old one, which clears the context.
@@ -3972,8 +3974,9 @@ function isSelectionInOwnUi(selection) {
 /**
  * Look at the selection once it has settled (called by the toolbar trigger)
  * and show the toolbar for it, move it to a new range, or hide it.
+ * @param {{ pointer?: boolean }} [source] - whether a pointer gesture just ended
  */
-function evaluateSelection() {
+function evaluateSelection({ pointer = true } = {}) {
   if (siteMuted) return;
   if (!selectionPopupEnabled) return;
 
@@ -4006,6 +4009,15 @@ function evaluateSelection() {
   const rect = target ? targetRect(target) : selection.getRangeAt(0).getBoundingClientRect();
   const anchor = selectionAnchor(selectedText, rect);
   if (selectionPopup && selectionPopup.isConnected && isSameAnchor(anchor, selectionPopupAnchor)) return;
+
+  // In a field the toolbar is for a drag or a long-press only. Shift+Arrow
+  // while typing, and a page selecting a field's contents on focus, arrive
+  // as bare selectionchange events and would otherwise flash it up over the
+  // box the user is writing in.
+  if (target && !pointer) {
+    removeSelectionPopup();
+    return;
+  }
 
   removeSelectionPopup();
   createSelectionPopup(rect, selectedText, target);

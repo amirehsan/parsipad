@@ -18,6 +18,18 @@ describe('toolbar trigger', () => {
     expect(evaluate).toHaveBeenCalledTimes(1);
   });
 
+  it('tells evaluate whether a pointer gesture ended the selection', () => {
+    const evaluate = vi.fn();
+    const t = createToolbarTrigger({ evaluate, hide: () => {}, delay: 250 });
+    t.onPointerDown();
+    t.onPointerUp();
+    vi.advanceTimersByTime(250);
+    expect(evaluate).toHaveBeenLastCalledWith({ pointer: true });
+    t.onSelectionChange();
+    vi.advanceTimersByTime(250);
+    expect(evaluate).toHaveBeenLastCalledWith({ pointer: false });
+  });
+
   it('evaluates after selectionchange settles with no pointer (touch handles, keyboard)', () => {
     const evaluate = vi.fn();
     const t = createToolbarTrigger({ evaluate, hide: () => {}, delay: 250 });
@@ -190,7 +202,7 @@ describe('content script wiring', () => {
 
   it('checks the mute and the setting first, then focus, editable fields and its own UI', () => {
     const body = functionBody(main, 'evaluateSelection');
-    expect(body).toMatch(/^function evaluateSelection\(\) \{\s*if \(siteMuted\) return;\s*if \(!selectionPopupEnabled\) return;/);
+    expect(body).toMatch(/^function evaluateSelection\([^)]*\) \{\s*if \(siteMuted\) return;\s*if \(!selectionPopupEnabled\) return;/);
     const create = body.indexOf('createSelectionPopup(');
     expect(create).toBeGreaterThan(-1);
     for (const guard of [

@@ -89,11 +89,15 @@ async function settle() {
   for (let i = 0; i < 8; i++) await Promise.resolve();
 }
 
+// A mouse drag inside the field: the gesture ends on the field, and the
+// selection settles.
 function selectInField(el, start, end) {
   el.getBoundingClientRect = () => BOX_RECT;
   el.focus();
+  el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse', button: 0 }));
   el.setSelectionRange(start, end);
   document.dispatchEvent(new Event('selectionchange'));
+  el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'mouse', button: 0 }));
   vi.advanceTimersByTime(300);
 }
 

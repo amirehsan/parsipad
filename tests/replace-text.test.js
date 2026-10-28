@@ -102,6 +102,28 @@ describe('applyReplacement on a field', () => {
     expect(applyReplacement(fieldTarget(dis.el, 6, 11, 'world'), 'x')).toEqual({ ok: false });
   });
 
+  it('accepts what the browser kept under maxlength', () => {
+    const { el } = textarea('hello world');
+    el.maxLength = 9;
+    document.execCommand = vi.fn((command, ui, text) => {
+      const room = el.maxLength - (el.value.length - (el.selectionEnd - el.selectionStart));
+      el.setRangeText(text.slice(0, Math.max(0, room)), el.selectionStart, el.selectionEnd, 'end');
+      return true;
+    });
+    const result = applyReplacement(fieldTarget(el, 6, 11, 'world'), 'there, friend');
+    expect(result.ok).toBe(true);
+    expect(el.value).toBe('hello the');
+    expect([el.selectionStart, el.selectionEnd]).toEqual([9, 9]);
+  });
+
+  it('the fallback clamps to maxlength too', () => {
+    const { el } = textarea('hello world');
+    el.maxLength = 9;
+    const result = applyReplacement(fieldTarget(el, 6, 11, 'world'), 'there, friend');
+    expect(result.ok).toBe(true);
+    expect(el.value).toBe('hello the');
+  });
+
   it('undo restores the original text and offsets', () => {
     const { el } = textarea('hello world');
     const result = applyReplacement(fieldTarget(el, 6, 11, 'world'), 'there, friend');
@@ -157,6 +179,40 @@ describe('applyReplacement on a rich editor', () => {
       expect(el.textContent).toBe('some words here');
       resolve();
     }));
+  });
+
+  it('keeps a single copy and can undo when the browser turns a newline into a block', () => {
+    // Browsers render "\n" in insertText as a new block and runs of spaces as
+    // nbsp, so the inserted text never reads back verbatim from the DOM.
+    const { el, inputs, target } = richEditor('some text here', 'text');
+    document.execCommand = vi.fn((command, ui, text) => {
+      const selection = window.getSelection();
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      const [first, ...rest] = text.split('\n');
+      const nodes = [document.createTextNode(first)];
+      for (const line of rest) {
+        const block = document.createElement('div');
+        block.textContent = line;
+        nodes.push(block);
+      }
+      for (const node of nodes.reverse()) range.insertNode(node);
+      const last = nodes[0];
+      const caret = document.createRange();
+      caret.selectNodeContents(last);
+      caret.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(caret);
+      return true;
+    });
+    const result = applyReplacement(target, 'line one\nline two');
+    expect(result.ok).toBe(true);
+    expect(el.textContent.match(/line one/g)).toHaveLength(1);
+    expect(el.textContent.match(/line two/g)).toHaveLength(1);
+    expect(el.textContent).toBe('some line oneline two here');
+    expect(inputs).toHaveLength(0);
+    expect(result.undo()).toBe(true);
+    expect(el.textContent).toBe('some text here');
   });
 
   it('fails for a rich target whose range left the editor', () => {
