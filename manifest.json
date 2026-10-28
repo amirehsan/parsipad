@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
-  "version": "3.9.0",
+  "version": "3.10.0",
   "description": "__MSG_extensionDescription__",
   "default_locale": "en",
   "permissions": [
@@ -97,6 +97,7 @@
         "content/placement.js",
         "content/host-page.js",
         "content/selection-report.js",
+        "content/editable-target.js",
         "content/toolbar-trigger.js",
         "content/page-confirm.js",
         "content/reload-state.js",
@@ -106,6 +107,7 @@
         "shared/card/*.js",
         "shared/speech.js",
         "shared/source-override.js",
+        "shared/replace-text.js",
         "lib/cost-estimate.js",
         "lib/i18n.js",
         "lib/language-detect.js",

@@ -120,7 +120,7 @@ describe('muted sites', () => {
     // The toolbar trigger's timer calls evaluateSelection, so checking the
     // mute first there means a mute that lands while the timer is pending
     // still wins before the toolbar is built.
-    expect(functionBody(main, 'evaluateSelection')).toMatch(/^function evaluateSelection\(\) \{\s*if \(siteMuted\)/);
+    expect(functionBody(main, 'evaluateSelection')).toMatch(/^function evaluateSelection\([^)]*\) \{\s*if \(siteMuted\)/);
     expect(main).toMatch(/changes\[MUTED_SITES_KEY\]/);
   });
 });

@@ -62,7 +62,7 @@
 ### Translate anything on the page
 
 - **Point to translate:** rest the pointer on a paragraph, post or heading and click the icon; the translation appears directly underneath while the original stays in place. `Alt+B` does the same from the keyboard.
-- **Selection toolbar:** select text to get Translate, Polish, Dictionary and Mute buttons. Works with mouse, touch and keyboard, and never appears inside text fields.
+- **Selection toolbar:** select text to get Translate, Polish, Dictionary and Mute buttons. Works with mouse, touch and keyboard, and in text boxes you type in, where Replace puts the result back.
 - **Whole pages:** translate a page in place, with a cost estimate before it starts, progress as it goes, a toggle back to the original, and Retry for any section that failed.
 - **Screenshot region:** drag a box around anything on screen, including images and text you cannot select, and translate what is inside.
 

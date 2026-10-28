@@ -18,6 +18,18 @@ describe('toolbar trigger', () => {
     expect(evaluate).toHaveBeenCalledTimes(1);
   });
 
+  it('tells evaluate whether a pointer gesture ended the selection', () => {
+    const evaluate = vi.fn();
+    const t = createToolbarTrigger({ evaluate, hide: () => {}, delay: 250 });
+    t.onPointerDown();
+    t.onPointerUp();
+    vi.advanceTimersByTime(250);
+    expect(evaluate).toHaveBeenLastCalledWith({ pointer: true });
+    t.onSelectionChange();
+    vi.advanceTimersByTime(250);
+    expect(evaluate).toHaveBeenLastCalledWith({ pointer: false });
+  });
+
   it('evaluates after selectionchange settles with no pointer (touch handles, keyboard)', () => {
     const evaluate = vi.fn();
     const t = createToolbarTrigger({ evaluate, hide: () => {}, delay: 250 });
@@ -164,7 +176,7 @@ describe('content script wiring', () => {
     expect(listener('pointerdown')).toMatch(/toolbarTrigger\.onPointerDown\(isPointerOnOwnUi\(event\)\)/);
     expect(main).toMatch(/document\.addEventListener\('pointerup', toolbarTrigger\.onPointerUp, \{ capture: true \}\)/);
     expect(main).toMatch(/document\.addEventListener\('pointercancel', toolbarTrigger\.onPointerUp, \{ capture: true \}\)/);
-    expect(main).toMatch(/document\.addEventListener\('selectionchange', toolbarTrigger\.onSelectionChange\)/);
+    expect(main).toMatch(/document\.addEventListener\('selectionchange', toolbarTrigger\.onSelectionChange, \{ capture: true \}\)/);
   });
 
   it('tells the trigger when a gesture starts on the toolbar or the floating box, so their buttons still get the click', () => {
@@ -190,7 +202,7 @@ describe('content script wiring', () => {
 
   it('checks the mute and the setting first, then focus, editable fields and its own UI', () => {
     const body = functionBody(main, 'evaluateSelection');
-    expect(body).toMatch(/^function evaluateSelection\(\) \{\s*if \(siteMuted\) return;\s*if \(!selectionPopupEnabled\) return;/);
+    expect(body).toMatch(/^function evaluateSelection\([^)]*\) \{\s*if \(siteMuted\) return;\s*if \(!selectionPopupEnabled\) return;/);
     const create = body.indexOf('createSelectionPopup(');
     expect(create).toBeGreaterThan(-1);
     for (const guard of [
@@ -221,7 +233,7 @@ describe('content script wiring', () => {
 
   it('says in Settings that the toolbar stays out of text fields, in both languages', () => {
     const i18n = read('lib/i18n.js');
-    expect(i18n).toMatch(/selectionToolbarHint: '[^']*Never appears inside text fields\.'/);
-    expect(i18n).toMatch(/selectionToolbarHint: '[^']*هرگز داخل کادرهای متنی نمایش داده نمی‌شود\.'/);
+    expect(i18n).toMatch(/selectionToolbarHint: '[^']*Also appears in text boxes you are typing in, so Polish and Translate can replace what you selected\.'/);
+    expect(i18n).toMatch(/selectionToolbarHint: '[^']*در کادرهای متنی که در آن می\\u200cنویسید هم نمایش داده می\\u200cشود تا ویرایش و ترجمه بتوانند متن انتخاب\\u200cشده را جایگزین کنند\.'/);
   });
 });

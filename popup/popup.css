@@ -28,7 +28,7 @@
      is the lowest one measured to stay legible on a card. */
   --color-text-tertiary: var(--color-text-muted);
 
-  /* The shared card's stylesheet consumes exactly these four names and
+  /* The shared card's stylesheet consumes exactly these five names and
      defines none of them. Mapping them onto the popup's own tokens here,
      rather than giving the card its own values, is what makes the card
      follow the popup's theme: --color-* is redefined under
@@ -38,6 +38,7 @@
   --pp-text-secondary: var(--color-text-secondary);
   --pp-text-muted: var(--color-text-tertiary);
   --pp-border: var(--color-border);
+  --pp-accent: var(--button-primary-bg);
 
   --color-success: var(--color-success-500);
   --color-error: var(--color-error-500);
@@ -853,6 +854,32 @@ body {
   color: var(--color-text);
   word-wrap: break-word;
   white-space: pre-wrap;
+}
+
+.polish-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--item-gap);
+}
+
+/* The main thing to do with a version; Copy, Regenerate and Save stay quiet icons. */
+.polish-replace-btn {
+  min-height: 32px;
+  padding: var(--space-2) var(--space-4);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  background-color: var(--button-primary-bg);
+  color: var(--button-primary-text);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.polish-replace-btn:hover {
+  background-color: var(--button-primary-hover, var(--button-primary-bg));
+  filter: brightness(1.05);
 }
 
 /* Persian polish card text */

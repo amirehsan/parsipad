@@ -398,7 +398,10 @@ export function providerButton({ provider, onOpenSettings, lang, doc }) {
  * Actions without it stay plain buttons rather than claiming a state they
  * do not have.
  *
- * @param {Array<{key: string, onActivate: Function|null, pressed?: boolean}>} params.actions
+ * An action may carry `primary`, which styles it as the main thing to do
+ * with the result (Replace), beside the quiet text actions.
+ *
+ * @param {Array<{key: string, onActivate: Function|null, pressed?: boolean, primary?: boolean}>} params.actions
  * @param {string} params.lang - interface language
  * @param {Document} params.doc
  * @returns {HTMLElement|null}
@@ -410,11 +413,11 @@ export function actionsRow({ actions, lang, doc }) {
   const el = doc.createElement('div');
   el.className = 'pp-card-actions';
 
-  active.forEach(({ key, onActivate, pressed }) => {
+  active.forEach(({ key, onActivate, pressed, primary }) => {
     const label = cardLabel(key, lang);
     const btn = doc.createElement('button');
     btn.type = 'button';
-    btn.className = 'pp-card-action';
+    btn.className = primary ? 'pp-card-action pp-card-action-primary' : 'pp-card-action';
     // The action key, not the label, is how a host finds one control again
     // after rendering (to mark Save as pressed, say). Matching on the label
     // would break the moment the interface language changes.

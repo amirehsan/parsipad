@@ -10,9 +10,11 @@
 // No imports, so the content script can load it unbundled.
 
 /**
- * @param {{ evaluate: () => void, hide: () => void, delay?: number }} options
+ * @param {{ evaluate: (source: { pointer: boolean }) => void, hide: () => void, delay?: number }} options
  *   evaluate looks at the current selection and shows, moves or hides the
- *   toolbar; hide removes the toolbar at once.
+ *   toolbar; it is told whether a pointer gesture just ended (a drag or a
+ *   long-press) or the selection merely settled (keyboard, touch handles,
+ *   a page selecting text itself). hide removes the toolbar at once.
  * @returns {{ onPointerDown(onOwnUi?: boolean): void, onPointerUp(): void, onSelectionChange(): void }}
  */
 export function createToolbarTrigger({ evaluate, hide, delay = 250 }) {
@@ -30,11 +32,11 @@ export function createToolbarTrigger({ evaluate, hide, delay = 250 }) {
     }
   };
 
-  const schedule = () => {
+  const schedule = (pointer) => {
     cancel();
     timer = setTimeout(() => {
       timer = null;
-      evaluate();
+      evaluate({ pointer });
     }, delay);
   };
 
@@ -61,11 +63,11 @@ export function createToolbarTrigger({ evaluate, hide, delay = 250 }) {
         ownGesture = false;
         return;
       }
-      schedule();
+      schedule(true);
     },
     // Keyboard selection and touch selection handles.
     onSelectionChange() {
-      if (!pointerActive) schedule();
+      if (!pointerActive) schedule(false);
     }
   };
 }

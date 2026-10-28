@@ -328,6 +328,15 @@ export const CARD_STYLES = `
     .pp-card-action:hover {
       color: var(--pp-text);
     }
+    .pp-card-action-primary {
+      background: var(--pp-accent);
+      color: #fff;
+      font-weight: 600;
+    }
+    .pp-card-action-primary:hover {
+      color: #fff;
+      filter: brightness(1.08);
+    }
     .pp-card-action[aria-pressed="true"] {
       color: var(--pp-text);
       font-weight: 600;

@@ -1194,6 +1194,29 @@ export function getStyles() {
       color: var(--pp-accent);
     }
 
+    .parsipad-polish-footer {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
+
+    .parsipad-polish-replace {
+      background: var(--pp-accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 5px 12px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: filter 0.15s;
+    }
+
+    .parsipad-polish-replace:hover {
+      filter: brightness(1.08);
+    }
+
     @keyframes parsipad-spin {
       from { transform: rotate(0deg); }
       to { transform: rotate(360deg); }

@@ -7,6 +7,7 @@ import { t, applyTranslations } from '../lib/i18n.js';
 import { renderCard, injectCardStyles } from '../shared/card/index.js';
 import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
+import { replaceWholeValue } from '../shared/replace-text.js';
 import { getBoundShortcuts, submitShortcut } from '../shared/shortcuts.js';
 import { applyThemeToRoot } from '../lib/theme.js';
 import { directionLabel } from '../lib/direction-label.js';
@@ -497,6 +498,11 @@ function setupEventListeners() {
   // Regenerate buttons for polish outputs
   document.querySelectorAll('.polish-regenerate-btn').forEach(btn => {
     btn.addEventListener('click', () => handlePolishRegenerate(btn));
+  });
+
+  // Replace buttons for polish outputs
+  document.querySelectorAll('.polish-replace-btn').forEach(btn => {
+    btn.addEventListener('click', () => handlePolishReplace(btn));
   });
 
   // Favorite buttons for polish outputs
@@ -1083,6 +1089,35 @@ async function handlePolishCopy(btn) {
   } catch (error) {
     showNotice(t('copyFailed', currentLang), 'warning');
   }
+}
+
+/**
+ * The text a Polish card is showing now, so a regenerated version is what
+ * Copy and Replace hand over.
+ * @param {string} version
+ * @returns {string}
+ */
+function polishVersionText(version) {
+  if (version === 'professional') return polishProfessional.textContent;
+  if (version === 'conversational') return polishConversational.textContent;
+  if (version === 'concise') return polishConcise.textContent;
+  return '';
+}
+
+/**
+ * Replace: put the version into the popup's own text box, through the
+ * editing path that keeps the browser's undo, so Ctrl+Z brings the old
+ * text back. The results stay on screen so another version can be tried.
+ * @param {HTMLElement} btn - The clicked Replace button
+ */
+function handlePolishReplace(btn) {
+  const text = polishVersionText(btn.dataset.version);
+  if (!text) return;
+  if (!replaceWholeValue(inputText, text)) return;
+  inputText.focus();
+  const label = btn.textContent;
+  btn.textContent = t('replaced', currentLang);
+  setTimeout(() => { btn.textContent = label; }, 1500);
 }
 
 /**
