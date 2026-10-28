@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.9.1] - 2026-10-28
+## [3.10.0] - 2026-10-28
 
 ### Added
 - **Replace puts a polished version or a translation back where you typed it.** Polishing or translating text you had typed in a site's own box (an email reply, a comment, a chat message) ended at Copy: finishing meant going back to the box, selecting the old text again and pasting. Each version in the Polish box, and the translation on its card, now has a Replace button that writes the generated text over the text you selected, in the same box. A toast confirms which version went in and offers Undo, which puts your words back; the site's own Ctrl+Z works too, since the text is inserted the way typing is. If the site has rebuilt its box by the time you click, nothing is written: the text is copied instead and the toast says so. In the popup, Replace on a Polish card puts that version into the popup's text box, so it can be polished again, translated or copied from there. The button is there only when there is somewhere to write to; on ordinary page text it is simply absent.
