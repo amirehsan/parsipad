@@ -856,6 +856,32 @@ body {
   white-space: pre-wrap;
 }
 
+.polish-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--item-gap);
+}
+
+/* The main thing to do with a version; Copy, Regenerate and Save stay quiet icons. */
+.polish-replace-btn {
+  min-height: 32px;
+  padding: var(--space-2) var(--space-4);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  background-color: var(--button-primary-bg);
+  color: var(--button-primary-text);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.polish-replace-btn:hover {
+  background-color: var(--button-primary-hover, var(--button-primary-bg));
+  filter: brightness(1.05);
+}
+
 /* Persian polish card text */
 .polish-card-text[dir="rtl"],
 .polish-card-text.persian-text {
