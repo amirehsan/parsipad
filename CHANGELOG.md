@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.9.1] - 2026-10-28
 
+### Added
+- **Replace puts a polished version or a translation back where you typed it.** Polishing or translating text you had typed in a site's own box (an email reply, a comment, a chat message) ended at Copy: finishing meant going back to the box, selecting the old text again and pasting. Each version in the Polish box, and the translation on its card, now has a Replace button that writes the generated text over the text you selected, in the same box. A toast confirms which version went in and offers Undo, which puts your words back; the site's own Ctrl+Z works too, since the text is inserted the way typing is. If the site has rebuilt its box by the time you click, nothing is written: the text is copied instead and the toast says so. In the popup, Replace on a Polish card puts that version into the popup's text box, so it can be polished again, translated or copied from there. The button is there only when there is somewhere to write to; on ordinary page text it is simply absent.
+
+### Changed
+- **The selection toolbar now appears in text boxes you can edit.** Since 3.6.0 it stayed out of every input, textarea and editor, so Polish and Translate could only be reached through the context menu there, and Replace would have had nowhere to show. Selecting text in a text input, a textarea or a rich editor now shows the same toolbar as on page text, anchored to the box. Password and other non-text inputs, read-only and disabled fields, and custom elements that hide their field behind a closed shadow root still get nothing, since nothing could be written back to them. The side panel's selection chip is unchanged and keeps ignoring text fields.
+
 ### Fixed
 - **Translated files and screenshots came back without the zero-width non-joiner.** Persian from a text file dropped on the popup, or from a screenshot, ran its prefixes and suffixes together (نوشتههای, هیچجا, میشود instead of نوشته‌های, هیچ‌جا, می‌شود). The prompt behind those two paths only asked for standard written Persian, while the one behind hover, selection, block and page translation also spells out the orthography: Persian ی and ک, the non-joiner in prefixes and suffixes, Persian punctuation. Gemini in particular took the shorter wording as leave to drop the character. The file and screenshot prompts now carry the same rule, so their Persian is written the same way as everywhere else.
 
