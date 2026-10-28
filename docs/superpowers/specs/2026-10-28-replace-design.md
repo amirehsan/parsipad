@@ -128,6 +128,13 @@ code. The builder may compute a tighter rectangle (a caret-mirror
 measurement) later; the field rectangle is the required minimum and must
 be the fallback.
 
+Inside a field the toolbar is for a drag or a long-press only. A selection
+that arrives without a pointer gesture (Shift+Arrow while typing, a page
+selecting a field's contents on focus) never raises it, and one that
+merely settles again keeps a toolbar already on screen. (Decided after
+the builder review: the toolbar flashing over a box someone is typing in
+is worse than a keyboard route that already exists.)
+
 The toolbar's buttons and their order do not change: Translate, Polish,
 Dictionary, Mute. (My call, answering a question Ehsan left open: the
 toolbar in a compose box looks exactly like the toolbar on page text.)
