@@ -93,8 +93,8 @@ It returns one of:
 
 - `{ kind: 'field', element, start, end, text }` when the deepest active
   element (walking open shadow roots, as `selection-report.js` does) is a
-  textarea, or an input whose `type` is `text`, `search`, `url`, `email`
-  or missing, the field is neither `readOnly` nor `disabled`, and
+  textarea, or an input whose `type` is `text`, `search`, `url` or
+  missing (not `email`: browsers expose no selection on it), the field is neither `readOnly` nor `disabled`, and
   `selectionStart < selectionEnd`. `text` is `value.slice(start, end)`.
 - `{ kind: 'rich', element, range, text }` when the selection is not
   collapsed and its anchor is inside a `[contenteditable]` region that is
