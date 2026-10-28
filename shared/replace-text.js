@@ -21,9 +21,6 @@
 
 const FAILED = Object.freeze({ ok: false });
 
-/** @param {string} s */
-const squeeze = (s) => s.replace(/\s+/g, '');
-
 /**
  * Where `text` sits in `value`: at the remembered offsets, or at its single
  * occurrence if the field changed under the user, or nowhere.
@@ -51,6 +48,22 @@ function insertText(doc, text) {
   if (typeof doc.execCommand !== 'function') return false;
   try {
     return Boolean(doc.execCommand('insertText', false, text));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The browser's own undo: the exact inverse of an insertText it performed,
+ * blocks, spacing and length limits included. Only called when nothing has
+ * changed since that insert, so the top of the undo stack is ours.
+ * @param {Document} doc
+ * @returns {boolean}
+ */
+function browserUndo(doc) {
+  if (typeof doc.execCommand !== 'function') return false;
+  try {
+    return Boolean(doc.execCommand('undo', false, null));
   } catch {
     return false;
   }
@@ -103,7 +116,7 @@ function writeField(element, start, end, text, doc) {
     // it kept is the replacement; a changed value is the command's work.
     const kept = element.value.length - (before.length - (end - start));
     if (kept > 0 && element.value.slice(start, start + kept) === text.slice(0, kept)) {
-      const inserted = { start, end: start + kept };
+      const inserted = { start, end: start + kept, byCommand: true };
       element.setSelectionRange(inserted.end, inserted.end);
       return inserted;
     }
@@ -135,10 +148,21 @@ function replaceInField(target, text, doc) {
   const inserted = writeField(element, at.start, at.end, text, doc);
   if (!inserted) return FAILED;
 
+  // The value right after the insert: while it still reads this, the top of
+  // the browser's undo stack is our insert and undoing it is exact.
+  const snapshot = inserted.byCommand ? element.value : null;
+
   return {
     ok: true,
     undo: () => {
       if (!element.isConnected || element.readOnly || element.disabled) return false;
+      if (snapshot !== null && element.value === snapshot) {
+        element.focus({ preventScroll: true });
+        if (browserUndo(doc) && element.value !== snapshot) {
+          element.setSelectionRange(target.start, target.end);
+          return true;
+        }
+      }
       if (String(element.value ?? '').slice(inserted.start, inserted.end) !== text.slice(0, inserted.end - inserted.start)) return false;
       const restored = writeField(element, inserted.start, inserted.end, target.text, doc);
       if (!restored) return false;
@@ -179,14 +203,9 @@ function writeRich(editor, range, text, doc) {
     // it renders, so nothing is written by hand after a successful command.
     // The inserted text runs from the marker to the caret the command left.
     const caret = selection.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
-    if (caret && marker.startContainer.isConnected && editor.contains(marker.startContainer)) {
-      const around = doc.createRange();
-      around.setStart(marker.startContainer, marker.startOffset);
-      around.setEnd(caret.endContainer, caret.endOffset);
-      return around;
-    }
-    // Hand back the caret: undo then declines rather than guesses.
-    return caret || marker;
+    const around = caret || marker;
+    around.byCommand = true;
+    return around;
   }
 
   range.deleteContents();
@@ -220,13 +239,24 @@ function replaceInRich(target, text, doc) {
   const inserted = writeRich(element, range, text, doc);
   if (!inserted) return FAILED;
 
+  // The editor right after the insert. The browser turned the text into
+  // blocks and nbsp, so it cannot be located again for a re-insert; the
+  // only exact way back is the browser's own undo, and only while nothing
+  // else has changed. A framework editor that renders later will differ by
+  // then, and its own Ctrl+Z is the route; this undo declines.
+  const snapshot = inserted.byCommand ? element.innerHTML : null;
+
   return {
     ok: true,
     undo: () => {
-      if (!element.isConnected || !inserted.startContainer.isConnected || !inserted.endContainer.isConnected) return false;
-      // Block boundaries and nbsp make the range read differently from the
-      // text that went in; whitespace is the only thing that may differ.
-      if (squeeze(inserted.toString()) !== squeeze(text)) return false;
+      if (!element.isConnected) return false;
+      if (snapshot !== null) {
+        if (element.innerHTML !== snapshot) return false;
+        element.focus({ preventScroll: true });
+        return browserUndo(doc) && element.innerHTML !== snapshot;
+      }
+      if (!inserted.startContainer.isConnected || !inserted.endContainer.isConnected) return false;
+      if (inserted.toString() !== text) return false;
       return Boolean(writeRich(element, inserted, target.text, doc));
     }
   };

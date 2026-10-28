@@ -38,6 +38,40 @@ afterEach(() => {
   delete document.execCommand;
 });
 
+/**
+ * An execCommand like a browser's: insertText edits the focused field or
+ * the selection, and undo puts the last edit back exactly.
+ * @param {{ insert?: (text: string) => void }} [options]
+ */
+function browserLikeExecCommand({ insert } = {}) {
+  const stack = [];
+  const commands = [];
+  document.execCommand = vi.fn((command, ui, text) => {
+    commands.push(command);
+    const active = document.activeElement;
+    if (command === 'insertText') {
+      if (active && 'setRangeText' in active) {
+        stack.push(() => { active.value = active.dataset.before; });
+        active.dataset.before = active.value;
+        const room = active.maxLength >= 0 ? active.maxLength - (active.value.length - (active.selectionEnd - active.selectionStart)) : Infinity;
+        active.setRangeText(room < text.length ? text.slice(0, Math.max(0, room)) : text, active.selectionStart, active.selectionEnd, 'end');
+      } else if (active) {
+        const before = active.innerHTML;
+        stack.push(() => { active.innerHTML = before; });
+        insert(text);
+      }
+      return true;
+    }
+    if (command === 'undo') {
+      const entry = stack.pop();
+      if (entry) entry();
+      return Boolean(entry);
+    }
+    return false;
+  });
+  return commands;
+}
+
 describe('applyReplacement on a field', () => {
   it('replaces the slice, dispatches input and change, and places the caret after it', () => {
     const { el, events } = textarea('hello world');
@@ -124,6 +158,29 @@ describe('applyReplacement on a field', () => {
     expect(el.value).toBe('hello the');
   });
 
+  it('undo goes through the browser when the field is untouched, even under maxlength', () => {
+    const { el } = textarea('hello world');
+    el.maxLength = 9;
+    const commands = browserLikeExecCommand();
+    const result = applyReplacement(fieldTarget(el, 6, 11, 'world'), 'there, friend');
+    expect(el.value).toBe('hello the');
+    expect(result.undo()).toBe(true);
+    expect(el.value).toBe('hello world');
+    expect(commands).toEqual(['insertText', 'undo']);
+  });
+
+  it('undo falls back to re-inserting when the browser cannot undo', () => {
+    const { el } = textarea('hello world');
+    document.execCommand = vi.fn((command, ui, text) => {
+      if (command !== 'insertText') return false;
+      el.setRangeText(text, el.selectionStart, el.selectionEnd, 'end');
+      return true;
+    });
+    const result = applyReplacement(fieldTarget(el, 6, 11, 'world'), 'there');
+    expect(result.undo()).toBe(true);
+    expect(el.value).toBe('hello world');
+  });
+
   it('undo restores the original text and offsets', () => {
     const { el } = textarea('hello world');
     const result = applyReplacement(fieldTarget(el, 6, 11, 'world'), 'there, friend');
@@ -185,25 +242,25 @@ describe('applyReplacement on a rich editor', () => {
     // Browsers render "\n" in insertText as a new block and runs of spaces as
     // nbsp, so the inserted text never reads back verbatim from the DOM.
     const { el, inputs, target } = richEditor('some text here', 'text');
-    document.execCommand = vi.fn((command, ui, text) => {
-      const selection = window.getSelection();
-      const range = selection.getRangeAt(0);
-      range.deleteContents();
-      const [first, ...rest] = text.split('\n');
-      const nodes = [document.createTextNode(first)];
-      for (const line of rest) {
-        const block = document.createElement('div');
-        block.textContent = line;
-        nodes.push(block);
+    const commands = browserLikeExecCommand({
+      insert: (text) => {
+        const selection = window.getSelection();
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        const [first, ...rest] = text.split('\n');
+        const nodes = [document.createTextNode(first)];
+        for (const line of rest) {
+          const block = document.createElement('div');
+          block.textContent = line;
+          nodes.push(block);
+        }
+        for (const node of nodes.reverse()) range.insertNode(node);
+        const caret = document.createRange();
+        caret.selectNodeContents(nodes[0]);
+        caret.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(caret);
       }
-      for (const node of nodes.reverse()) range.insertNode(node);
-      const last = nodes[0];
-      const caret = document.createRange();
-      caret.selectNodeContents(last);
-      caret.collapse(false);
-      selection.removeAllRanges();
-      selection.addRange(caret);
-      return true;
     });
     const result = applyReplacement(target, 'line one\nline two');
     expect(result.ok).toBe(true);
@@ -211,8 +268,26 @@ describe('applyReplacement on a rich editor', () => {
     expect(el.textContent.match(/line two/g)).toHaveLength(1);
     expect(el.textContent).toBe('some line oneline two here');
     expect(inputs).toHaveLength(0);
+    // Undo is the browser's own, so blocks and spacing come back exactly.
     expect(result.undo()).toBe(true);
-    expect(el.textContent).toBe('some text here');
+    expect(el.innerHTML).toBe('some text here');
+    expect(commands).toEqual(['insertText', 'undo']);
+  });
+
+  it('undo declines once the editor changed after the insert', () => {
+    const { el, target } = richEditor('some text here', 'text');
+    const commands = browserLikeExecCommand({
+      insert: (text) => {
+        const range = window.getSelection().getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(document.createTextNode(text));
+      }
+    });
+    const result = applyReplacement(target, 'words');
+    el.appendChild(document.createTextNode(' and more typing'));
+    expect(result.undo()).toBe(false);
+    expect(commands).toEqual(['insertText']);
+    expect(el.textContent).toBe('some words here and more typing');
   });
 
   it('fails for a rich target whose range left the editor', () => {
