@@ -51,7 +51,7 @@
     "eslint": "^9.39.3",
     "globals": "^17.3.0",
     "happy-dom": "^20.11.6",
-    "vitest": "^2.1.9",
+    "vitest": "^5.0.5",
     "web-ext": "^10.8.0"
   },
   "dependencies": {
