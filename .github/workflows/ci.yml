@@ -57,13 +57,13 @@ jobs:
       - name: Lint the Firefox package
         run: npm run lint:firefox
       - name: Upload bundle artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: parsipad-extension
           path: dist/
           retention-days: 14
       - name: Upload Firefox bundle artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: parsipad-extension-firefox
           path: dist-firefox/
