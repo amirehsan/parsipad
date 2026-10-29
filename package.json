@@ -53,6 +53,6 @@
     "web-ext": "^10.8.0"
   },
   "dependencies": {
-    "dompurify": "^3.4.3"
+    "dompurify": "^3.4.17"
   }
 }
