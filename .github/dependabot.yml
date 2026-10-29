@@ -1,0 +1,28 @@
+# Weekly update pull requests for the npm toolchain and the GitHub Actions
+# the workflows use. Minor and patch bumps arrive as one grouped pull request
+# per ecosystem so they do not bury real changes; majors come one at a time.
+# Security updates are separate and arrive as soon as an advisory is out.
+#
+# DOMPurify is vendored in lib/vendor/ and not installed from npm, so it is
+# not covered here and is updated by hand.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore(deps)
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions-minor-and-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore(ci)

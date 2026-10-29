@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **You can check a release instead of trusting it.** Nothing showed that the copy in the Chrome Web Store or Firefox Add-ons was built from the published source, or that the extension sent nothing beyond the provider you chose; the privacy policy only said so. The build is reproducible, and `npm run verify` now rebuilds a version from its tag and compares it file by file with a store package or an installed copy. Each version is also published as a tagged GitHub release with its Chrome, Firefox and source zips and their SHA-256 sums. A new test fails if the manifest asks for any host beyond the three provider APIs, if anything but the provider classes opens a network connection, or if the source names a web address that is neither a provider API nor a link. [docs/VERIFY.md](docs/VERIFY.md) walks through all three checks. Nothing changes in the extension itself.
+- **CodeQL and Dependabot watch the code.** GitHub's CodeQL security analysis runs on every change and weekly, and Dependabot raises pull requests for dependency updates and security fixes.
+
 ## [3.10.0] - 2026-10-28
 
 ### Added

@@ -1,0 +1,38 @@
+name: CodeQL
+
+# GitHub's static analysis for security problems in the JavaScript source.
+# Findings appear under Security > Code scanning. It also runs weekly, so new
+# queries are applied to code that has not changed.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '23 4 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze JavaScript
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          build-mode: none
+          queries: security-extended
+          config: |
+            paths-ignore:
+              - lib/vendor
+              - landing
+              - tests
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:javascript-typescript
