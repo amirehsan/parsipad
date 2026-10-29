@@ -74,10 +74,21 @@ do all of the following in the same branch, without being asked:
    zips to `store-assets/`: `parsipad-vX.Y.Z.zip` for the Chrome Web Store,
    `parsipad-vX.Y.Z-firefox.zip` for addons.mozilla.org, and
    `parsipad-vX.Y.Z-source.zip`, which AMO requires with every version
-   because the code is bundled. It refuses to replace a zip that already
-   exists. The zips are git-ignored; they are build output for the store
-   uploads.
-5. **Landing page.** If the change affects anything `landing/` describes,
+   because the code is bundled. It also writes
+   `parsipad-vX.Y.Z-SHA256SUMS.txt` with the hash of each zip. It refuses
+   to replace a zip that already exists. The zips are git-ignored; they are
+   build output for the store uploads.
+5. **GitHub release.** Once the branch is merged and `main` is pushed, run
+   `npm run release -- --dry-run`, then `npm run release`. It tags `vX.Y.Z`
+   at the commit the source zip was archived from and publishes a GitHub
+   release with the three zips, the sums file and the version's changelog
+   section as notes. The release is public, so confirm with Ehsan before
+   running it. It refuses if the tag or release already exists, a checksum
+   no longer matches, or the commit is not on `origin/main`. Then check the
+   store copy against the source with `npm run verify -- <zip>`; a mismatch
+   means the build is no longer reproducible and `docs/VERIFY.md` is wrong
+   until it is fixed.
+6. **Landing page.** If the change affects anything `landing/` describes,
    update it on disk and deploy it as described above. Never commit it.
 
 Report in the final message which of these were done, and say so

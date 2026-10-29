@@ -16,6 +16,7 @@
   <a href="https://addons.mozilla.org/firefox/addon/parsipad/"><img src="https://img.shields.io/amo/v/parsipad?label=Firefox%20Add-ons" alt="Firefox Add-ons version"></a>
   <a href="https://addons.mozilla.org/firefox/addon/parsipad/"><img src="https://img.shields.io/amo/users/parsipad?label=users" alt="Firefox Add-ons users"></a>
   <a href="https://github.com/amirehsan/parsipad/actions/workflows/ci.yml"><img src="https://github.com/amirehsan/parsipad/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+  <a href="https://github.com/amirehsan/parsipad/actions/workflows/codeql.yml"><img src="https://github.com/amirehsan/parsipad/actions/workflows/codeql.yml/badge.svg?branch=main" alt="CodeQL status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/amirehsan/parsipad" alt="MIT license"></a>
 </p>
 
@@ -25,7 +26,8 @@
   <a href="https://parsipad.com">Website</a> ·
   <a href="docs/USER_GUIDE.md">User guide</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="PRIVACY.md">Privacy</a>
+  <a href="PRIVACY.md">Privacy</a> ·
+  <a href="docs/VERIFY.md">Verify it yourself</a>
 </p>
 
 <p align="center">
@@ -147,6 +149,7 @@ Remap the first four at `chrome://extensions/shortcuts` in Chrome, or under Mana
 - Text is sent only to the AI provider you chose, only when you ask for a translation, and only the part you asked about.
 - To decide where to offer the translate icon, ParsiPad reads the page you are viewing locally; that text is never sent anywhere.
 - No accounts, no telemetry, no tracking. The Analytics page is computed from local data and never leaves your device.
+- You do not have to take this on trust. The store copies are reproducible from this source, a test fails if any code sends data anywhere but the provider APIs, and [docs/VERIFY.md](docs/VERIFY.md) shows how to check both yourself.
 
 | Permission | Why it is needed |
 | --- | --- |
@@ -178,10 +181,12 @@ ParsiPad is written in plain JavaScript (ES modules) on Manifest V3, with no UI 
 | `npm run lint` | Lint with ESLint (`npm run lint:fix` to fix) |
 | `npm run lint:firefox` | Check the Firefox build with Mozilla's `web-ext lint` |
 | `npm run start:firefox` | Open Firefox with a clean profile and the Firefox build loaded |
-| `npm run package` | Build both browsers and write the Chrome, Firefox and source zips for a release |
+| `npm run package` | Build both browsers and write the Chrome, Firefox and source zips for a release, with their SHA-256 sums |
+| `npm run release` | Tag the packaged version and publish it as a GitHub release with its zips and sums (`-- --dry-run` to check first) |
+| `npm run verify -- <path>` | Build from this checkout and compare it, file by file, with a store package or installed copy |
 | `npm run clean` | Delete `dist/` and `dist-firefox/` |
 
-During development, run `npm run build:watch`, load `dist/` as an unpacked extension, and press the reload icon on `chrome://extensions` after each rebuild. CI runs lint, tests and a build on every push and pull request to `main`.
+During development, run `npm run build:watch`, load `dist/` as an unpacked extension, and press the reload icon on `chrome://extensions` after each rebuild. CI runs lint, tests and a build on every push and pull request to `main`, and CodeQL scans it for security problems.
 
 ### Project structure
 
@@ -222,7 +227,7 @@ Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [code
 
 ## Security
 
-Please do not report vulnerabilities in public issues. See [SECURITY.md](SECURITY.md) for how to report one privately.
+Please do not report vulnerabilities in public issues. See [SECURITY.md](SECURITY.md) for how to report one privately. To check a release yourself, see [docs/VERIFY.md](docs/VERIFY.md).
 
 ## License
 

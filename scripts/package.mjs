@@ -5,6 +5,10 @@
  *   parsipad-vX.Y.Z.zip          Chrome Web Store upload (the contents of dist/)
  *   parsipad-vX.Y.Z-firefox.zip  addons.mozilla.org upload (dist-firefox/)
  *   parsipad-vX.Y.Z-source.zip   the source AMO reviewers rebuild it from
+ *   parsipad-vX.Y.Z-SHA256SUMS.txt  the SHA-256 of each zip, in the format
+ *                                   `shasum -a 256 -c` reads, published with
+ *                                   the GitHub release so anyone can check
+ *                                   the zips they download are these
  *
  * It runs its own production build of both browsers first, so a stale,
  * dev or one-browser build in dist/ can never be what ships. The source zip
@@ -15,7 +19,8 @@
  * kept unless --force says otherwise.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -24,6 +29,7 @@ const OUT = join(ROOT, 'store-assets');
 const { version } = JSON.parse(readFileSync(join(ROOT, 'manifest.json'), 'utf8'));
 const FORCE = process.argv.includes('--force');
 const NAMES = [`parsipad-v${version}.zip`, `parsipad-v${version}-firefox.zip`, `parsipad-v${version}-source.zip`];
+const SUMS = `parsipad-v${version}-SHA256SUMS.txt`;
 
 const git = (...args) => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' });
 
@@ -36,7 +42,7 @@ if (git('status', '--porcelain').trim()) {
   fail('Commit or stash your changes first: the source zip must match the build.');
 }
 
-const existing = NAMES.filter(name => existsSync(join(OUT, name)));
+const existing = [...NAMES, SUMS].filter(name => existsSync(join(OUT, name)));
 if (existing.length && !FORCE) {
   fail(`Already packaged for ${version}: ${existing.join(', ')}. Bump the version, or pass --force to replace them.`);
 }
@@ -61,5 +67,10 @@ const source = join(OUT, NAMES[2]);
 rmSync(source, { force: true });
 git('archive', '--format=zip', '-o', source, 'HEAD');
 made.push(source);
+
+const sha256 = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
+const sums = join(OUT, SUMS);
+writeFileSync(sums, made.map((file, i) => `${sha256(file)}  ${NAMES[i]}\n`).join(''));
+made.push(sums);
 
 for (const file of made) console.log(`[parsipad] ${file.slice(ROOT.length + 1)}`);
