@@ -12,7 +12,7 @@ Shortcuts: Alt+B for the paragraph under your pointer, Alt+T for a selection, Al
 
 Learn: grammar lessons for Persian speakers
 
-Any translation can explain itself. Open a grammar lesson with examples, English pronunciation and a short quiz built around the mistakes Persian speakers actually make: articles, prepositions, word order, and tenses that Persian handles differently. Look up any word for definitions, IPA pronunciation, synonyms and its Persian or English equivalent. Rewrite your own English as professional, conversational or concise. When the text came from a box you are typing in, Replace puts the version you pick back in its place, and Undo brings your words back. Star a translation and it becomes a flashcard. Everything you translate, look up or polish stays in one searchable Library, and if you turn it on, each new tab shows one of your saved words.
+Any translation can explain itself. Open a grammar lesson with examples, English pronunciation and a short quiz built around the mistakes Persian speakers actually make: articles, prepositions, word order, and tenses that Persian handles differently. Look up any word for definitions, IPA pronunciation, synonyms and its Persian or English equivalent. Rewrite your own English as professional, conversational or concise, in your own words and voice, and regenerate any version for a different take. When the text came from a box you are typing in, Replace puts the version you pick back in its place, and Undo brings your words back. Star a translation and it becomes a flashcard. Everything you translate, look up or polish stays in one searchable Library, and if you turn it on, each new tab shows one of your saved words.
 
 
 Private by design

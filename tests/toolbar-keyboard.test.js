@@ -80,7 +80,7 @@ describe('selection toolbar keyboard path', () => {
     expect(['above', 'below']).toContain(root().querySelector('.selection-popup').dataset.placement);
     expect(root().querySelector('.selection-popup').getAttribute('aria-label')).toBe(translations.en.toolbarLabel);
     expect(buttons().map((b) => b.getAttribute('aria-label'))).toEqual([
-      translations.en.toolbarTranslate, translations.en.toolbarPolish, translations.en.toolbarDictionarySingleWord
+      translations.en.toolbarTranslate, translations.en.toolbarPolishTooShort, translations.en.toolbarDictionarySingleWord
     ]);
   });
 
@@ -255,7 +255,7 @@ describe('selection toolbar keyboard path', () => {
       selectWords();
       expect(root().querySelector('.selection-popup').getAttribute('aria-label')).toBe(translations.fa.toolbarLabel);
       expect(buttons().map((b) => b.querySelector('.pp-tooltip').textContent)).toEqual([
-        translations.fa.toolbarTranslate, translations.fa.toolbarPolish, translations.fa.toolbarDictionarySingleWord
+        translations.fa.toolbarTranslate, translations.fa.toolbarPolishTooShort, translations.fa.toolbarDictionarySingleWord
       ]);
     } finally {
       for (const listener of storageListeners) listener({ ui_language: { newValue: 'en' } }, 'local');

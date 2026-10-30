@@ -17,6 +17,8 @@ import { t } from '../lib/i18n.js';
 import { getTextDirection, detectLanguage } from '../lib/language-detect.js';
 import { requestTranslation } from '../lib/translation/client.js';
 import { ERROR_CODES, errorI18nKey, isContextInvalidated, toTranslationError } from '../lib/translation/errors.js';
+import { isTooShortToPolish } from '../lib/polish-gate.js';
+import { watchSlowReply, slowReplyMessage } from '../lib/slow-reply.js';
 import { renderReloadState } from './reload-state.js';
 import { isContextAlive, extensionUrl, notifyWorker } from './utils/extension.js';
 import { captureSelectionContext, sentenceAround } from './context.js';
@@ -465,11 +467,13 @@ async function translateAndShow(text, { sourceLang } = {}) {
   boxAbortController?.abort();
   boxAbortController = new AbortController();
 
+  const stopSlowWatch = watchSlowNotice(shadowRoot.querySelector('.parsipad-content'));
   let streamed = '';
   try {
     const response = await requestTranslation({ text, sourceLang: requestedSourceLang, context }, {
       signal: boxAbortController.signal,
       onDelta: (delta) => {
+        stopSlowWatch();
         streamed += delta;
         showStreamingText(streamed);
       }
@@ -488,6 +492,8 @@ async function translateAndShow(text, { sourceLang } = {}) {
     }
   } catch (error) {
     showError(error);
+  } finally {
+    stopSlowWatch();
   }
 }
 
@@ -538,6 +544,7 @@ async function polishAndShow(text) {
     return;
   }
 
+  const stopSlowWatch = watchSlowNotice(shadowRoot.querySelector('.parsipad-polish-content'));
   try {
     // Send polish request to background script
     const response = await chrome.runtime.sendMessage({
@@ -552,6 +559,8 @@ async function polishAndShow(text) {
     }
   } catch (error) {
     showPolishError(error);
+  } finally {
+    stopSlowWatch();
   }
 }
 
@@ -1293,6 +1302,7 @@ const PP_DESTRUCTIVE_ERROR_CODES = new Set([
   ERROR_CODES.API_KEY_NOT_SET,
   ERROR_CODES.NETWORK,
   ERROR_CODES.TIMEOUT,
+  ERROR_CODES.POLISH_TIMEOUT,
   ERROR_CODES.RATE_LIMITED,
   ERROR_CODES.SERVER_ERROR
 ]);
@@ -1305,6 +1315,65 @@ const PP_ERROR_ICON = `
     <line x1="12" y1="16" x2="12.01" y2="16"/>
   </svg>
 `;
+
+// The hourglass on the slow-reply notice; decorative, the text says it all.
+const PP_WAIT_ICON = `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+    <path d="M6.5 7h11"/>
+    <path d="M6.5 17h11"/>
+    <path d="M6 20v-2a6 6 0 1 1 12 0v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1z"/>
+    <path d="M6 4v2a6 6 0 1 0 12 0V4a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z"/>
+  </svg>
+`;
+
+/**
+ * The slow-reply notice, naming the provider the user chose. Read from
+ * storage at the moment it is needed, so a provider switched in Settings
+ * while the page was open is the one named.
+ * @returns {Promise<string>}
+ */
+async function slowReplyText() {
+  const stored = await chrome.storage.local.get(SELECTED_PROVIDER_KEY);
+  const name = PROVIDER_NAMES[stored[SELECTED_PROVIDER_KEY]] || PROVIDER_NAMES[DEFAULT_PROVIDER_ID];
+  return slowReplyMessage(name, userLang);
+}
+
+/**
+ * Put the slow-reply notice at the top of a box's content area, above the
+ * skeletons, which stay: the request is still running. The content area is
+ * a polite live region, so the notice is read out without a role of its own.
+ * @param {HTMLElement} content
+ * @param {string} message
+ */
+function renderWaitNotice(content, message) {
+  const noticeEl = document.createElement('div');
+  noticeEl.className = 'parsipad-wait-notice';
+  noticeEl.setAttribute('dir', userLang === 'fa' ? 'rtl' : 'ltr');
+  noticeEl.innerHTML = PP_WAIT_ICON;
+  const text = document.createElement('div');
+  text.textContent = message;
+  noticeEl.appendChild(text);
+  content.prepend(noticeEl);
+  keepFloatingBoxInViewport();
+}
+
+/**
+ * Arm the slow-reply notice for a request a box has just sent, over the
+ * content area showing its skeletons. Rendering checks that the area is
+ * still on the page and still loading, so a box opened for a newer request,
+ * or a result that landed meanwhile, never gets the notice.
+ * @param {HTMLElement} content
+ * @returns {() => void} stop
+ */
+function watchSlowNotice(content) {
+  return watchSlowReply({
+    message: slowReplyText,
+    render: (message) => {
+      if (!content.isConnected || content.getAttribute('aria-busy') !== 'true') return;
+      renderWaitNotice(content, message);
+    }
+  });
+}
 
 /**
  * What a box says about a failure. Every known code is said in the reader's
@@ -2162,7 +2231,8 @@ async function handlePolishRegenerate(btn) {
     const response = await chrome.runtime.sendMessage({
       action: 'REGENERATE_POLISH_VARIANT',
       text: currentPolishOriginalText,
-      variant: variant
+      variant: variant,
+      previous: originalText
     });
 
     // No longer busy before the words go in, so the change is read out.
@@ -4063,6 +4133,8 @@ function createSelectionPopup(selectionRect, selectedText, target = null) {
 
   // Check if selected text is a single word (for dictionary)
   const isSingleWord = selectedText.split(/\s+/).length === 1;
+  // Polish needs three words; below that there is no register to shift.
+  const canPolish = !isTooShortToPolish(selectedText);
 
   // Create popup structure with ARIA attributes for accessibility
   const popup = document.createElement('div');
@@ -4074,6 +4146,7 @@ function createSelectionPopup(selectionRect, selectedText, target = null) {
   // interpolation. Tooltips use theme-aware tokens so they stay legible on
   // dark host pages (previous ::before approach was dark-on-dark).
   const dictionaryKey = isSingleWord ? 'toolbarDictionary' : 'toolbarDictionarySingleWord';
+  const polishKey = canPolish ? 'toolbarPolish' : 'toolbarPolishTooShort';
   const buttons = [
     {
       action: 'translate',
@@ -4083,8 +4156,9 @@ function createSelectionPopup(selectionRect, selectedText, target = null) {
     },
     {
       action: 'polish',
-      label: t('toolbarPolish', userLang),
-      ariaLabel: t('toolbarPolish', userLang),
+      label: t(polishKey, userLang),
+      ariaLabel: t(polishKey, userLang),
+      disabled: !canPolish,
       svgPath: 'M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z'
     },
     {
@@ -4174,7 +4248,7 @@ function createSelectionPopup(selectionRect, selectedText, target = null) {
       if (action === 'translate') {
         currentReplaceTarget = target;
         translateAndShow(selectedText);
-      } else if (action === 'polish') {
+      } else if (action === 'polish' && canPolish) {
         currentReplaceTarget = target;
         polishAndShow(selectedText);
       } else if (action === 'dictionary' && isSingleWord) {

@@ -27,7 +27,7 @@ vi.mock('../lib/api.js', () => ({
   testApiKey: vi.fn()
 }));
 
-import { translate, testApiKey } from '../lib/api.js';
+import { translate, testApiKey, polish, regeneratePolishVariant } from '../lib/api.js';
 import { getHistory } from '../lib/history.js';
 import { translationCache } from '../lib/cache.js';
 import { setLanguage } from '../lib/storage.js';
@@ -611,5 +611,54 @@ describe('OPEN_OPTIONS', () => {
     await sendMessage({ action: 'OPEN_OPTIONS', section: 'javascript:alert(1)' });
     expect(chrome.runtime.openOptionsPage).toHaveBeenCalledTimes(2);
     expect(chrome.tabs.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('polish', () => {
+  beforeEach(() => {
+    polish.mockReset();
+    regeneratePolishVariant.mockReset();
+  });
+
+  // Persian text passed the local gate, so it cost a paid round trip before
+  // the model answered that Polish takes English only, and the error then
+  // said ParsiPad supports Persian and English, which was true but no help.
+  it('turns Persian text away before calling the provider, with the English-only message', async () => {
+    const res = await sendMessage({ action: 'POLISH', text: 'سلام، می‌توانیم جلسه را به پنجشنبه منتقل کنیم؟' });
+    expect(polish).not.toHaveBeenCalled();
+    expect(res.errorCode).toBe('POLISH_ENGLISH_ONLY');
+    expect(res.error).toMatch(/English/);
+  });
+
+  // Two words have no register to shift: the three cards came back nearly
+  // the same and the round trip was paid for nothing.
+  it('turns one or two words away before calling the provider, and says what to use instead', async () => {
+    for (const text of ['thanks', 'thanks alot', '  thanks   alot  ']) {
+      const res = await sendMessage({ action: 'POLISH', text });
+      expect(res.errorCode).toBe('POLISH_TOO_SHORT');
+      expect(res.error).toBe(t(errorI18nKey('POLISH_TOO_SHORT'), 'en'));
+    }
+    expect(polish).not.toHaveBeenCalled();
+  });
+
+  it('answers two Persian words with the English-only message, which says more', async () => {
+    const res = await sendMessage({ action: 'POLISH', text: 'سلام دوست' });
+    expect(res.errorCode).toBe('POLISH_ENGLISH_ONLY');
+    expect(polish).not.toHaveBeenCalled();
+  });
+
+  it('polishes English text and answers with the three versions', async () => {
+    polish.mockResolvedValue({ professional: 'A', conversational: 'B', concise: 'C', inputTokens: 1, outputTokens: 2 });
+    const res = await sendMessage({ action: 'POLISH', text: 'thanks for help yesterday' });
+    expect(polish).toHaveBeenCalledWith('thanks for help yesterday');
+    expect(res).toMatchObject({ professional: 'A', conversational: 'B', concise: 'C' });
+    expect(res).not.toHaveProperty('corrections');
+  });
+
+  it('passes the rejected version through to Regenerate', async () => {
+    regeneratePolishVariant.mockResolvedValue({ text: 'New', inputTokens: 1, outputTokens: 2 });
+    const res = await sendMessage({ action: 'REGENERATE_POLISH_VARIANT', text: 'thanks for help', variant: 'professional', previous: 'Old' });
+    expect(regeneratePolishVariant).toHaveBeenCalledWith('thanks for help', 'professional', 'Old');
+    expect(res.text).toBe('New');
   });
 });

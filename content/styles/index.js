@@ -1049,6 +1049,34 @@ export function getStyles() {
       color: var(--pp-error);
     }
 
+    /*
+     * A reply taking longer than a healthy one. Shown above the skeletons
+     * while the request still runs, in the info tone: nothing has failed.
+     * See lib/slow-reply.js.
+     */
+    .parsipad-wait-notice {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(138, 90, 4, 0.10);
+      border: 1px solid rgba(138, 90, 4, 0.28);
+      color: var(--pp-text);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .parsipad-wait-notice svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      color: var(--pp-warning);
+    }
+    /* The translation box stacks without a gap; the polish box has one. */
+    .parsipad-wait-notice + .parsipad-loading {
+      margin-top: 10px;
+    }
+
     .parsipad-open-settings,
     .parsipad-reload-page {
       margin-top: 8px;

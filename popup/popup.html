@@ -235,6 +235,17 @@
 
     <div id="status-line" class="status-line" role="status" aria-live="polite"></div>
 
+    <!-- Slow reply: the request is still running, the provider is just slow -->
+    <div id="wait-notice" class="wait-notice" role="status" aria-live="polite" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <path d="M6.5 7h11"/>
+        <path d="M6.5 17h11"/>
+        <path d="M6 20v-2a6 6 0 1 1 12 0v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1z"/>
+        <path d="M6 4v2a6 6 0 1 0 12 0V4a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z"/>
+      </svg>
+      <p id="wait-notice-text"></p>
+    </div>
+
     <div id="error-section" class="error-section" role="alert" hidden>
       <p id="error-message"></p>
     </div>
