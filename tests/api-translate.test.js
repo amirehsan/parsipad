@@ -75,6 +75,21 @@ describe('translate', () => {
     expect(state.provider.complete).not.toHaveBeenCalled();
   });
 
+  it('never lets an echoed task header through a streamed text reply', async () => {
+    const header = '<task>\nMode: text. Source: English (detected, may be wrong). Target: Persian.\nTranslate the whole text inside <text>.\n</task>\n';
+    state.provider.stream.mockImplementation(async ({ onDelta }) => {
+      onDelta('<task>\nMode: text.');
+      onDelta(' Source: English (detected, may be wrong). Target: Persian.\nTranslate the whole text inside <text>.\n</task>\n');
+      onDelta('سلام ');
+      onDelta('دنیا');
+      return { text: `${header}سلام دنیا`, inputTokens: 4, outputTokens: 2, truncated: false };
+    });
+    const deltas = [];
+    const result = await translate({ ...baseRequest, mode: 'text', text: 'Hello world. Bye.', onDelta: d => deltas.push(d) });
+    expect(deltas).toEqual(['سلام ', 'دنیا']);
+    expect(result.translation).toBe('سلام دنیا');
+  });
+
   it('throws API_KEY_NOT_SET without a key', async () => {
     state.apiKey = null;
     await expect(translate(baseRequest)).rejects.toMatchObject({ code: 'API_KEY_NOT_SET' });
