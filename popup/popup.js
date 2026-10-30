@@ -9,6 +9,7 @@ import { canSpeak, speak, cancelSpeech } from '../shared/speech.js';
 import { applySourceOverride } from '../shared/source-override.js';
 import { replaceWholeValue } from '../shared/replace-text.js';
 import { getBoundShortcuts, submitShortcut } from '../shared/shortcuts.js';
+import { watchSlowReply, slowReplyMessage } from '../lib/slow-reply.js';
 import { applyThemeToRoot } from '../lib/theme.js';
 import { directionLabel } from '../lib/direction-label.js';
 import { formatRelativeTime } from '../lib/format.js';
@@ -98,6 +99,8 @@ const imageCopyBtn = document.getElementById('image-copy-btn');
 const imageProviderBadge = document.getElementById('image-provider-badge');
 // Provider badges
 const polishProviderBadge = document.getElementById('polish-provider-badge');
+const waitNotice = document.getElementById('wait-notice');
+const waitNoticeText = document.getElementById('wait-notice-text');
 const themeBtn = document.getElementById('theme-btn');
 // Favorites elements
 const viewFavoritesBtn = document.getElementById('view-favorites-btn');
@@ -665,6 +668,7 @@ async function handleTranslate({ sourceLang } = {}) {
   setLoadingState(true);
   hideError();
   hideAllOutputs();
+  const stopSlowWatch = watchSlowReply({ message: slowReplyText, render: showWaitNotice });
 
   try {
     let streamed = '';
@@ -677,6 +681,7 @@ async function handleTranslate({ sourceLang } = {}) {
 
     const response = await requestTranslation({ text, sourceLang: resolved.sourceLang }, {
       onDelta: (delta) => {
+        stopSlowWatch();
         streamed += delta;
         streamInto(streamed);
       }
@@ -726,6 +731,8 @@ async function handleTranslate({ sourceLang } = {}) {
   } catch (error) {
     showError(error.message || 'Translation failed');
   } finally {
+    stopSlowWatch();
+    hideWaitNotice();
     setLoadingState(false);
   }
 }
@@ -748,6 +755,7 @@ async function handlePolish() {
   setLoadingState(true);
   hideError();
   hideAllOutputs();
+  const stopSlowWatch = watchSlowReply({ message: slowReplyText, render: showWaitNotice });
 
   try {
     const response = await chrome.runtime.sendMessage({
@@ -772,6 +780,8 @@ async function handlePolish() {
   } catch (error) {
     showError(error.message || 'Polish failed');
   } finally {
+    stopSlowWatch();
+    hideWaitNotice();
     setLoadingState(false);
   }
 }
@@ -1181,6 +1191,29 @@ function showNotice(message, tone = 'success', duration = 3000) {
  */
 function hideError() {
   errorSection.hidden = true;
+}
+
+/**
+ * The slow-reply notice, named for the provider the request went to.
+ * @returns {Promise<string>}
+ */
+async function slowReplyText() {
+  const name = (await currentProviderName()) || PROVIDER_CONFIGS.claude.name;
+  return slowReplyMessage(name, currentLang);
+}
+
+/**
+ * Say the provider is slow, under the action button, while the request
+ * still runs. Cleared by the request when its reply or error lands.
+ * @param {string} message
+ */
+function showWaitNotice(message) {
+  waitNoticeText.textContent = message;
+  waitNotice.hidden = false;
+}
+
+function hideWaitNotice() {
+  waitNotice.hidden = true;
 }
 
 /**

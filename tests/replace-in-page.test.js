@@ -104,10 +104,11 @@ function selectInField(el, start, end) {
 function selectPageText() {
   // A mouse selection on page text takes focus out of the field first.
   document.activeElement?.blur?.();
+  // The whole paragraph: Polish is dimmed below three words.
   const node = $('text').firstChild;
   const range = document.createRange();
   range.setStart(node, 0);
-  range.setEnd(node, 13);
+  range.setEnd(node, node.textContent.length);
   const selection = document.getSelection();
   selection.removeAllRanges();
   selection.addRange(range);

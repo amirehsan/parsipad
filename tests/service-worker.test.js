@@ -630,6 +630,23 @@ describe('polish', () => {
     expect(res.error).toMatch(/English/);
   });
 
+  // Two words have no register to shift: the three cards came back nearly
+  // the same and the round trip was paid for nothing.
+  it('turns one or two words away before calling the provider, and says what to use instead', async () => {
+    for (const text of ['thanks', 'thanks alot', '  thanks   alot  ']) {
+      const res = await sendMessage({ action: 'POLISH', text });
+      expect(res.errorCode).toBe('POLISH_TOO_SHORT');
+      expect(res.error).toBe(t(errorI18nKey('POLISH_TOO_SHORT'), 'en'));
+    }
+    expect(polish).not.toHaveBeenCalled();
+  });
+
+  it('answers two Persian words with the English-only message, which says more', async () => {
+    const res = await sendMessage({ action: 'POLISH', text: 'سلام دوست' });
+    expect(res.errorCode).toBe('POLISH_ENGLISH_ONLY');
+    expect(polish).not.toHaveBeenCalled();
+  });
+
   it('polishes English text and answers with the three versions', async () => {
     polish.mockResolvedValue({ professional: 'A', conversational: 'B', concise: 'C', inputTokens: 1, outputTokens: 2 });
     const res = await sendMessage({ action: 'POLISH', text: 'thanks for help yesterday' });

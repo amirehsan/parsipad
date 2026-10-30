@@ -113,7 +113,9 @@
         "lib/language-detect.js",
         "lib/muted-sites.js",
         "lib/platform.js",
+        "lib/polish-gate.js",
         "lib/roving.js",
+        "lib/slow-reply.js",
         "lib/translation/*.js"
       ],
       "matches": [

@@ -1,4 +1,5 @@
 import { translate, explainGrammar, polish, translateImage, regeneratePolishVariant, getGrammarLesson, testApiKey } from '../lib/api.js';
+import { isTooShortToPolish } from '../lib/polish-gate.js';
 import { lookupWord } from '../lib/dictionary.js';
 import { translateDocument } from '../lib/document-translator.js';
 import { translationCache } from '../lib/cache.js';
@@ -350,6 +351,10 @@ async function handlePolish(text) {
   const gate = isSupportedLanguage(text);
   if (!gate.supported) throw new TranslationError(ERROR_CODES.UNSUPPORTED);
   if (gate.detected === 'fa') throw new TranslationError(ERROR_CODES.POLISH_ENGLISH_ONLY);
+  // Below three words there is no register to shift; Dictionary and
+  // Translate serve a word or two better. The toolbar dims Polish for them
+  // before anything is sent; the context menu and the popup reach this gate.
+  if (isTooShortToPolish(text)) throw new TranslationError(ERROR_CODES.POLISH_TOO_SHORT);
 
   // Get current provider info
   const providerId = await getSelectedProvider();

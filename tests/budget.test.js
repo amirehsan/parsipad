@@ -1,11 +1,19 @@
 import { describe, it, expect } from 'vitest';
-import { TEMPERATURES, STREAM_IDLE_TIMEOUT_MS, POLISH_TIMEOUT_MS, computeMaxTokens, isStreamingMode } from '../lib/translation/budget.js';
+import { TEMPERATURES, STREAM_IDLE_TIMEOUT_MS, POLISH_TIMEOUT_MS, SLOW_REPLY_NOTICE_MS, computeMaxTokens, isStreamingMode } from '../lib/translation/budget.js';
 
 describe('budget', () => {
   it('exposes the agreed temperatures and idle timeout', () => {
     expect(TEMPERATURES).toEqual({ translate: 0.2, grammar: 0.3, polish: 0.5, polishVariant: 0.7, image: 0.2 });
     expect(STREAM_IDLE_TIMEOUT_MS).toBe(20000);
     expect(POLISH_TIMEOUT_MS).toBe(60000);
+  });
+  // Healthy replies measured 0.7 to 2 s on Gemini Flash-Lite and about 3 s on
+  // Claude Haiku, so 6 s rarely fires on a normal day and still comes well
+  // before anyone gives up; it must also come well before the request is
+  // given up on.
+  it('says a reply is slow at six seconds, long before giving up on it', () => {
+    expect(SLOW_REPLY_NOTICE_MS).toBe(6000);
+    expect(SLOW_REPLY_NOTICE_MS).toBeLessThan(POLISH_TIMEOUT_MS / 4);
   });
   it('uses fixed budgets for short modes', () => {
     expect(computeMaxTokens('word', 'charge')).toBe(700);

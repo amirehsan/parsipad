@@ -9,6 +9,9 @@ vi.mock('../lib/providers/index.js', () => ({
 
 import { polish, regeneratePolishVariant } from '../lib/api.js';
 import { POLISH_PROMPT, POLISH_VARIANT_PROMPT } from '../lib/translation/prompts.js';
+import { TranslationError, ERROR_CODES } from '../lib/translation/errors.js';
+
+const timedOut = () => Object.assign(new Error('Request timed out'), { name: 'TimeoutError' });
 
 function fakeProvider() {
   return { config: { displayName: 'Fake', maxTokens: 1024 }, complete: vi.fn() };
@@ -62,6 +65,18 @@ describe('polish', () => {
     state.provider.complete.mockResolvedValue(reply('{"unsupported": true}'));
     await expect(polish('x')).rejects.toMatchObject({ code: 'UNSUPPORTED' });
   });
+
+  // The shared timeout message says the translation took too long, which
+  // is the wrong word on a Polish card.
+  it('reports a timeout as Polish taking too long', async () => {
+    state.provider.complete.mockRejectedValue(timedOut());
+    await expect(polish('thanks for help yesterday')).rejects.toMatchObject({ code: 'POLISH_TIMEOUT' });
+  });
+
+  it('passes every other failure through unchanged', async () => {
+    state.provider.complete.mockRejectedValue(new TranslationError(ERROR_CODES.INVALID_API_KEY));
+    await expect(polish('x')).rejects.toMatchObject({ code: 'INVALID_API_KEY' });
+  });
 });
 
 describe('regeneratePolishVariant', () => {
@@ -95,5 +110,10 @@ describe('regeneratePolishVariant', () => {
   it('throws TRUNCATED when the reply was cut off', async () => {
     state.provider.complete.mockResolvedValue(reply('Thank you for', true));
     await expect(regeneratePolishVariant('x', 'concise', 'y')).rejects.toMatchObject({ code: 'TRUNCATED' });
+  });
+
+  it('reports a timeout as Polish taking too long', async () => {
+    state.provider.complete.mockRejectedValue(timedOut());
+    await expect(regeneratePolishVariant('x', 'concise', 'y')).rejects.toMatchObject({ code: 'POLISH_TIMEOUT' });
   });
 });
