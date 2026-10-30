@@ -184,3 +184,10 @@ describe('buildPolishVariantUserMessage', () => {
     expect(() => buildPolishVariantUserMessage({ text: 'x', variant: 'poetic' })).toThrow(/variant/);
   });
 });
+
+describe('plain-text replies', () => {
+  it('tells the model to begin with the translation and never repeat the task', () => {
+    expect(buildSystemPrompt('text')).toMatch(/never repeat the task/);
+    expect(buildSystemPrompt('batch')).toMatch(/Begin with \[1\]/);
+  });
+});

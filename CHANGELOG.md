@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.12.1] - 2026-10-30
+
+### Fixed
+- **A translation no longer begins with ParsiPad's own request header.** Translating a block of text that was itself a set of instructions (a numbered to-do list written for an assistant) came back with the lines "Mode: text. Source: English (detected, may be wrong). Target: Persian. Translate the whole text inside <text>." in front of the Persian. Those lines are the header ParsiPad puts before every request. The model repeated it before translating, and block, page and long-selection translations show the model's reply as it is, so the header reached the screen and was saved to the Library with the translation. Word and sentence translations were never affected, because they are read as JSON. Such a header, and a <text> wrapper around the translation, are now removed from the reply before it is shown or saved, and held back while the reply streams, so they never flash on screen either. The prompt for these translations also tells the model to begin with the first translated word and never repeat the task, the tags or the source text.
+
 ## [3.12.0] - 2026-10-29
 
 ### Changed
