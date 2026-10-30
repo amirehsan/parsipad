@@ -1960,6 +1960,7 @@ async function handlePolishRegenerate(btn) {
       action: ACTIONS.REGENERATE_POLISH_VARIANT,
       text: original,
       variant: version,
+      previous: polishVersionText(version),
       historyId: currentPolishHistoryId
     });
 

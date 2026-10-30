@@ -117,3 +117,20 @@ describe('Polish result direction', () => {
     expect(card('concise').getAttribute('lang')).toBe('fa');
   });
 });
+
+describe('Polish regenerate request', () => {
+  // Regenerate sent only the original text, so the worker could not know
+  // what the writer had rejected and often handed back a near copy.
+  it('sends the version on the card as the one to replace', async () => {
+    await polishIn('en');
+    responses.REGENERATE_POLISH_VARIANT = { text: 'Could we move the meeting?' };
+    $('.polish-regenerate-btn[data-version="concise"]').click();
+    await vi.waitFor(() => expect(card('concise').textContent).toBe('Could we move the meeting?'));
+    // The popup from an earlier test in this file still has its DOMContentLoaded
+    // listener on the shared document, so it set itself up on this DOM too and
+    // answers the click with its own stale card. The instance under test
+    // registered last, so its message comes last.
+    const sent = chrome.runtime.sendMessage.mock.calls.map(([m]) => m).filter((m) => m.action === 'REGENERATE_POLISH_VARIANT').at(-1);
+    expect(sent).toMatchObject({ text: 'hi can we move the meeting to thursday', variant: 'concise', previous: POLISHED.concise });
+  });
+});

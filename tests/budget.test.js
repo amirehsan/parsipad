@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { TEMPERATURES, STREAM_IDLE_TIMEOUT_MS, computeMaxTokens, isStreamingMode } from '../lib/translation/budget.js';
+import { TEMPERATURES, STREAM_IDLE_TIMEOUT_MS, POLISH_TIMEOUT_MS, computeMaxTokens, isStreamingMode } from '../lib/translation/budget.js';
 
 describe('budget', () => {
   it('exposes the agreed temperatures and idle timeout', () => {
-    expect(TEMPERATURES).toEqual({ translate: 0.2, grammar: 0.3, polish: 0.5, image: 0.2 });
+    expect(TEMPERATURES).toEqual({ translate: 0.2, grammar: 0.3, polish: 0.5, polishVariant: 0.7, image: 0.2 });
     expect(STREAM_IDLE_TIMEOUT_MS).toBe(20000);
+    expect(POLISH_TIMEOUT_MS).toBe(60000);
   });
   it('uses fixed budgets for short modes', () => {
     expect(computeMaxTokens('word', 'charge')).toBe(700);

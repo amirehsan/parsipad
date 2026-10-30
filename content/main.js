@@ -2162,7 +2162,8 @@ async function handlePolishRegenerate(btn) {
     const response = await chrome.runtime.sendMessage({
       action: 'REGENERATE_POLISH_VARIANT',
       text: currentPolishOriginalText,
-      variant: variant
+      variant: variant,
+      previous: originalText
     });
 
     // No longer busy before the words go in, so the change is read out.

@@ -80,7 +80,7 @@ async function handleMessage(message, sender) {
       return handleScreenshotCapture();
 
     case ACTIONS.REGENERATE_POLISH_VARIANT:
-      return handleRegeneratePolishVariant(message.text, message.variant, message.historyId);
+      return handleRegeneratePolishVariant(message.text, message.variant, message.historyId, message.previous);
 
     case ACTIONS.ADD_FAVORITE:
       return handleAddFavorite(message.item);
@@ -344,11 +344,12 @@ async function handlePolish(text) {
     throw new Error('No text provided for polishing');
   }
 
-  // Polish currently only handles English copy, so non-en input is rejected.
+  // Polish rewrites English. Persian text is turned away here, not by the
+  // model, which would charge for saying so; the gate still lets Finglish
+  // and mixed text through for the model to judge.
   const gate = isSupportedLanguage(text);
-  if (!gate.supported) {
-    throw new Error(ERROR_MESSAGES.UNSUPPORTED_LANGUAGE);
-  }
+  if (!gate.supported) throw new TranslationError(ERROR_CODES.UNSUPPORTED);
+  if (gate.detected === 'fa') throw new TranslationError(ERROR_CODES.POLISH_ENGLISH_ONLY);
 
   // Get current provider info
   const providerId = await getSelectedProvider();
@@ -371,7 +372,6 @@ async function handlePolish(text) {
     professional: result.professional,
     conversational: result.conversational,
     concise: result.concise,
-    corrections: result.corrections,
     inputTokens: result.inputTokens,
     outputTokens: result.outputTokens,
     provider: providerConfig?.name || 'AI'
@@ -605,9 +605,10 @@ async function handleScreenshotCapture() {
  * @param {string} text - Original text to polish
  * @param {'professional' | 'conversational' | 'concise'} variant - Variant to regenerate
  * @param {number} historyId - History entry ID to update
+ * @param {string} [previous] - The version being replaced, so the new one differs from it
  * @returns {Promise<Object>}
  */
-async function handleRegeneratePolishVariant(text, variant, historyId) {
+async function handleRegeneratePolishVariant(text, variant, historyId, previous = '') {
   if (!text || text.trim().length === 0) {
     throw new Error('No text provided for polishing');
   }
@@ -621,7 +622,7 @@ async function handleRegeneratePolishVariant(text, variant, historyId) {
   const providerConfig = PROVIDER_CONFIGS[providerId];
 
   // Call API
-  const result = await regeneratePolishVariant(text, variant);
+  const result = await regeneratePolishVariant(text, variant, previous);
 
   // Update history if historyId provided
   if (historyId) {
