@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.12.0] - 2026-10-29
+
 ### Changed
 - **Polish asks for three words.** Polishing one or two words, such as "thanks alot", came back as three cards saying nearly the same thing, because there is no register to shift in so little text, and the request was paid for all the same. On the selection toolbar Polish is now dimmed below three words, the way Dictionary is dimmed above one, and its label says why. The context menu and the popup turn the same text away before any request with a notice that says Polish works on three words or more and points to Dictionary and Translate, which handle a word or two better.
 - **A slow provider is named, not waited on in silence.** When a provider took long to answer, the only sign of life was the spinner, right up to the point the request was given up on. Six seconds into a request with no reply, the popup, the side panel and the floating box now say that the provider you chose, by name, is taking longer than usual and that ParsiPad is still waiting, for up to a minute. Six seconds is three times a slow healthy reply, so the notice rarely appears on a normal day. The notice sits above the loading placeholders, which keep moving, and goes away the moment the reply, the first streamed words or an error arrive. The request itself is unchanged.
